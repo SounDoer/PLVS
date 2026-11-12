@@ -3,6 +3,8 @@ import { execFileSync } from "node:child_process";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { pathToFileURL } from "node:url";
+import { validateWebsiteMarker } from "./website-publication.mjs";
+import { WEBSITE_URL } from "./website-location.mjs";
 
 export const REVIEW_PATH = "docs/release-content-review.json";
 export const REVIEW_AREAS = ["userGuide", "readme", "website", "screenshots"];
@@ -57,6 +59,8 @@ export function checkContentReview(cwd) {
   const snapshot = contentSnapshot(cwd);
   const record = JSON.parse(readFileSync(resolve(cwd, REVIEW_PATH), "utf8"));
   if (record.schemaVersion !== 1) throw new Error("Review schemaVersion must be 1.");
+  if (!/^[0-9a-f]{40}$/.test(record.websiteSourceSha ?? ""))
+    throw new Error("Record the exact reviewed PLVS-Website commit.");
   for (const key of ["version", "baselineTag", "baselineRevision", "contentSha256"]) {
     if (record[key] !== snapshot[key])
       throw new Error(`Release content review is stale: ${key}. Re-review the candidate.`);
@@ -90,11 +94,22 @@ if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1]
   try {
     const command = process.argv[2];
     if (command === "snapshot") {
+      const response = await fetch(
+        new URL("publication.json?releaseReview=" + Date.now(), WEBSITE_URL),
+        {
+          headers: { "Cache-Control": "no-cache" },
+          signal: AbortSignal.timeout(30_000),
+        }
+      );
+      if (!response.ok) throw new Error("Cannot read the live website release identity.");
+      const { siteSourceSha } = validateWebsiteMarker(await response.json(), "SounDoer/PLVS");
+      if (!siteSourceSha) throw new Error("The live site has no separate source identity.");
       console.log(
         JSON.stringify(
           {
             schemaVersion: 1,
             ...contentSnapshot(process.cwd()),
+            websiteSourceSha: siteSourceSha,
             reviews: Object.fromEntries(
               REVIEW_AREAS.map((area) => [area, { status: "pending", rationale: "", evidence: [] }])
             ),

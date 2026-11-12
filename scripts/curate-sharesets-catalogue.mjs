@@ -15,7 +15,7 @@ import { tmpdir } from "node:os";
 import { dirname, isAbsolute, join, relative, resolve, sep } from "node:path";
 import { pathToFileURL } from "node:url";
 import { setTimeout as delay } from "node:timers/promises";
-import { buildSharesetsSite } from "./build-sharesets-site.mjs";
+import { writeCatalogueInputs } from "./export-website-inputs.mjs";
 import { readSharesetsSource, readSharesetsSourceRecords } from "./sharesets-catalogue-source.mjs";
 import {
   validateSharesetsSourceUpdate,
@@ -502,10 +502,14 @@ export async function curateSharesetsCatalogue({
       }
     }
     await validateSharesetsSourceUpdate(published.root, candidate.root);
-    await buildSharesetsSite({
-      contentDirectory: candidate.root,
-      outputDirectory: join(staging, "site"),
+    const inputs = join(staging, "site-inputs");
+    const manifest = await writeCatalogueInputs({
+      product: resolve(import.meta.dirname, ".."),
+      catalogueDirectory: candidate.root,
+      output: inputs,
+      review: true,
     });
+    await writeFile(join(inputs, "manifest.json"), JSON.stringify(manifest, null, 2) + "\n");
     const report = publicReport("write", published, candidate, changes, output);
     await writeFile(join(staging, "report.json"), `${JSON.stringify(report, null, 2)}\n`);
     await writeFile(join(staging, "report.md"), markdownReport(report));

@@ -566,5 +566,11 @@ jobs:
       GH_TOKEN: ${{ github.token }}
       TAG: v${{ inputs.version }}
     steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: v${{ inputs.version }}
+          persist-credentials: false
       - name: Dispatch the website deployment for the published tag
-        run: gh workflow run deploy-website.yml --repo "$GITHUB_REPOSITORY" --ref main -f ref="$TAG"
+        run: |
+          website_sha=$(jq -er '.websiteSourceSha | select(test("^[0-9a-f]{40}$"))' docs/release-content-review.json)
+          gh workflow run deploy-website.yml --repo "$GITHUB_REPOSITORY" --ref main -f ref="$TAG" -f website_ref="$website_sha"

@@ -1,9 +1,18 @@
 import { createHash } from "node:crypto";
 import { readFileSync } from "node:fs";
-import { resolve } from "node:path";
+import { join, resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 
 import { JSDOM } from "jsdom";
+
+export function readPrivacyPolicy(root) {
+  try {
+    return readFileSync(join(root, "docs/privacy-policy.html"), "utf8");
+  } catch (error) {
+    if (error.code !== "ENOENT") throw error;
+    return readFileSync(join(root, "website/privacy/index.html"), "utf8");
+  }
+}
 
 const normalize = (text) => text.replace(/\s+/gu, " ").trim();
 const blockTags = new Set([
@@ -133,7 +142,7 @@ if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1]
     if (!["check", "snapshot"].includes(mode) || process.argv.length > 3) {
       throw new Error("Usage: node scripts/privacy-review.mjs [check|snapshot]");
     }
-    const html = readFileSync("website/privacy/index.html", "utf8");
+    const html = readPrivacyPolicy(process.cwd());
     if (mode === "snapshot") {
       console.log(JSON.stringify(policySnapshot(html), null, 2));
     } else {

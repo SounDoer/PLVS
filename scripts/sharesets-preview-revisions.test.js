@@ -9,7 +9,7 @@ import { readSharesetsSource } from "./sharesets-catalogue-source.mjs";
 import { validateSharesetsListingRecord } from "./sharesets-catalogue-record.mjs";
 import { validateSharesetsSourceUpdate } from "./sharesets-catalogue-update.mjs";
 import { curateSharesetsCatalogue } from "./curate-sharesets-catalogue.mjs";
-import { buildSharesetsSite } from "./build-sharesets-site.mjs";
+import { writeCatalogueInputs } from "./export-website-inputs.mjs";
 
 const roots = [];
 const png = await sharp({ create: { width: 1, height: 1, channels: 4, background: "black" } })
@@ -95,19 +95,19 @@ describe("independent Sharesets preview revisions", () => {
       const content = owner(source.listings[0].document);
       expect(content.previews[0].path).toBe("original.png");
       expect(content.previewRevisions[0].previews[0].sha256).not.toBe(content.previews[0].sha256);
-      const output = await directory();
-      await buildSharesetsSite({ contentDirectory: candidate.root, outputDirectory: output });
-      const html = await readFile(join(output, "presets/monitor/index.html"), "utf8");
-      const base = `files/monitor/${included ? "included" : "v1"}`;
-      expect(html).toContain(`/sharesets/${base}/previews/r1/preset-workspace.png`);
-      expect(await readFile(join(output, base, "preset-workspace.png"))).toEqual(png);
-      expect(await readFile(join(output, base, "previews/r1/preset-workspace.png"))).toEqual(
-        revisedPng
-      );
-      expect(html).not.toContain("Release 2");
+      const output = join(await directory(), "inputs");
+      const manifest = await writeCatalogueInputs({
+        product: process.cwd(),
+        catalogueDirectory: candidate.root,
+        output,
+      });
+      const exported = owner(manifest.listings[0]);
+      expect(exported.previews[0].path).toBe("original.png");
+      expect(exported.previewRevisions[0].previews[0].path).toBe("revision-1.png");
+      expect(await readFile(join(output, "catalogue", "original.png"))).toEqual(png);
+      expect(await readFile(join(output, "catalogue", "revision-1.png"))).toEqual(revisedPng);
       if (!included) {
-        expect(html).toContain("/sharesets/files/monitor/v1/preset.plvspreset");
-        expect(await readFile(join(output, base, "preset.plvspreset"))).toEqual(
+        expect(await readFile(join(output, "catalogue", "preset.plvspreset"))).toEqual(
           await readFile(join(previous.root, "preset.plvspreset"))
         );
       }

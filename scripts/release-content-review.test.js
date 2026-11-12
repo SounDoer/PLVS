@@ -20,6 +20,7 @@ const commit = () => {
 function review() {
   const record = {
     schemaVersion: 1,
+    websiteSourceSha: "a".repeat(40),
     ...contentSnapshot(cwd),
     reviews: Object.fromEntries(
       REVIEW_AREAS.map((area) => [

@@ -1,5 +1,6 @@
+import { WEBSITE_URL } from "./website-location.mjs";
 import { execFileSync } from "node:child_process";
-import { appendFileSync, readFileSync } from "node:fs";
+import { appendFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 
@@ -79,7 +80,7 @@ async function main(args) {
       "Usage: website-publication.mjs review [candidate-ref] [verified-bootstrap-sha] | gate"
     );
   const candidate = git("rev-parse", "--verify", `${args[1] || "HEAD"}^{commit}`);
-  const host = readFileSync("website/CNAME", "utf8").trim();
+  const host = new URL(WEBSITE_URL).hostname;
   if (!/^[a-z0-9.-]+$/i.test(host)) throw new Error("Invalid website host.");
   const response = await fetch(`https://${host}/publication.json?review=${Date.now()}`, {
     signal: AbortSignal.timeout(30_000),

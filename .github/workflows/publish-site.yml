@@ -65,6 +65,7 @@ jobs:
           path: artifacts/policy-source
           sparse-checkout: |
             docs/privacy-review.json
+            docs/privacy-policy.html
             website/privacy/index.html
           sparse-checkout-cone-mode: false
           persist-credentials: false
@@ -90,7 +91,13 @@ jobs:
         run: |
           node scripts/export-website-inputs.mjs artifacts/product-source artifacts/site-inputs artifacts/content-source artifacts/policy-source
           (cd artifacts/site-source && npm run build -- ../site-inputs ../../_site)
-          cmp website/CNAME _site/CNAME
+          node --input-type=module <<'NODE'
+          import { readFileSync } from "node:fs";
+          import { WEBSITE_URL } from "./scripts/website-location.mjs";
+          if (readFileSync("_site/CNAME", "utf8").trim() !== new URL(WEBSITE_URL).hostname) {
+            throw new Error("Website candidate changed the production domain");
+          }
+          NODE
           node --input-type=module <<'NODE'
           import { readFileSync } from "node:fs";
           import { validatePrivacyReview } from "./scripts/privacy-review.mjs";

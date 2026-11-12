@@ -89,7 +89,7 @@ The production workflow in PLVS uses the separate renderer and owns the shared P
 the existing domain, and the live immutable-history baseline.
 
 After reviewing refreshed Sharesets previews, run `node scripts/marketing/prepare-homepage-assets.mjs`
-to refresh the homepage's derived WebP images. The six Preset and Theme tiles resolve the latest
+to refresh the homepage's derived WebP images in the sibling PLVS-Website checkout. The six Preset and Theme tiles resolve the latest
 published resource and its latest preview revision from the validated Catalogue; they do not read
 fixed `v1` screenshot paths. This is an explicit preparation step, not part of every website build.
 The same command generates 480, 800 and 1200 px wide WebP candidates under
@@ -104,16 +104,9 @@ the Dock pair with `scripts/marketing/render-homepage-images.mjs` and
 `publish-homepage-images.mjs` when their UI changes (see `docs/marketing-screenshots.md`), and
 review the resulting homepage. Publishing updates tracked image files, not the deployed website.
 
-Follow the phase-specific checks in [CONTRIBUTING.md](../CONTRIBUTING.md#git-commits-and-prs).
-Website-only work is classified to `website:verify`; mixed changes keep the broader gate.
-The website lane includes homepage image preparation and website maintenance documentation.
-CI runs scope classification and website validation for that lane; desktop frontend, Rust,
-installer and native-license jobs are skipped. Shared dependency changes and changes to the
-classifier still select broader checks.
-
-`website:verify` assembles and validates the complete site and runs website, guide, and deployment
-contract tests. CSS/layout changes also need browser screenshots at desktop, tablet, and mobile
-widths; unit tests cannot verify alignment.
+Build the website in [PLVS-Website](https://github.com/SounDoer/PLVS-Website). Its checks validate
+the rendered site. PLVS checks the guide source, reviewed policy, Catalogue source, and publication
+workflow contracts. Compare affected pages at desktop, tablet, and mobile widths for visual changes.
 
 Website-only changes land in PLVS-Website. Build and review the candidate with the same guide,
 privacy, and Catalogue revisions it will publish. After successful push CI for the website SHA,
@@ -162,22 +155,18 @@ form above is always a dry run: it validates the candidate records and new canon
 compares all existing Release records and bytes with the published baseline, and prints a concise
 JSON summary of additions, preview revisions, one-way withdrawals, and Listing copy edits. It writes nothing.
 
-The complete local website has one ordinary entry point: `npm run website:dev`. It assembles the
-homepage, generated user guide, Privacy Policy, and current Sharesets Catalogue in versioned
-directories under ignored `artifacts/website-dev/`, then serves the current successful build at
-`http://127.0.0.1:4173/`. The server owns that exact IPv4 port, watches all three inputs, keeps the
-last successful site after a build error, and reloads the browser after a successful rebuild. Use
-`npm run website:build` for a one-shot assembly under `artifacts/website/` and
-`npm run website:check` for assembly plus complete local-link and asset validation. `docs:site` and
-`sharesets:site` remain focused generator commands, not standalone complete-site previews.
-
 After reading that summary, repeat the same command with `--write`. This generates previews only for
 new Releases and preview revisions, validates the now-complete candidate and its immutable history, then creates a new
-review directory containing `site/`, `report.json`, and `report.md`. Preview IDs and paths belong in
+review directory containing `site-inputs/`, `report.json`, and `report.md`. Preview IDs and paths belong in
 the new Release or preview revision record; dimensions, hashes, Pack-derived metadata, and site copies are generated.
 The command refuses an existing review directory or existing new preview target, and it
-does not commit or deploy. Serve the review directory's `site/` as a static website when browser
-review is useful; for example, `npx vite preview --outDir path/to/review/site`.
+does not commit or deploy. To review the changes in a browser, build in PLVS-Website using a
+stable product export and the curation bundle as the third argument:
+
+```sh
+npm run build -- <stable-inputs> artifacts/catalogue-review <review-directory>/site-inputs
+python -m http.server 4173 --bind 127.0.0.1 --directory artifacts/catalogue-review
+```
 
 The baseline must be the exact content commit currently named by the deployed
 `/sharesets/publication.json`, not an arbitrary old checkout. Keep both checkouts unchanged while
@@ -218,7 +207,7 @@ redeploy an older tree as though the newer history never existed.
 
 ## Privacy policy review
 
-`website/privacy/index.html` is the policy source. `docs/privacy-review.json` is the latest
+`docs/privacy-policy.html` is the policy source. `docs/privacy-review.json` is the latest
 review record; git preserves earlier records. Its fingerprint covers normalized text inside
 `main` and link destinations, excluding the Effective date (checked separately), comments,
 scripts, styles and surrounding navigation/footer. Cosmetic classes, inline emphasis and
@@ -245,11 +234,11 @@ When policy wording, links or dates change:
    `effectiveDate` into the JSON record. Update `reviewedOn`, `changeSummary`, `scope`, `evidence`
    (source paths, inspected revision/configuration reference and findings), and `limitations`
    (use an explicit statement if none). This read-only command never writes an approval or date.
-4. Run `node scripts/privacy-review.mjs check` and `npm run website:verify`. Commit the policy and
+4. Run `node scripts/privacy-review.mjs check` and build the site candidate in PLVS-Website. Commit the policy and
    its review record together. For initial adoption only, the existing effective date is also
    the previous date; the initial record documents the source-review scope and its limits.
 
-`website/privacy/index.test.js` runs this gate in both `npm test` and the existing website CI job.
+`scripts/privacy-review.test.js` exercises this gate in PLVS CI. Production also checks the assembled policy.
 It rejects a stale fingerprint, missing review details, inconsistent dates and invalid date
 decisions. It does not judge whether prose is true, a change is material, or the declared previous
 date is historically correct. Reviewers must check the git diff and supporting evidence; editing

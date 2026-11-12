@@ -1,4 +1,4 @@
-// Responsive check of the homepage Dock pair against a running `npm run website:dev`.
+// Responsive check of the homepage Dock pair against a locally served PLVS-Website build.
 import process from "node:process";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { join, resolve } from "node:path";
@@ -19,7 +19,7 @@ const scrollViewport = 390;
 try {
   await fetch(url, { signal: AbortSignal.timeout(3000) });
 } catch {
-  throw new Error(`${url} is not reachable. Start npm run website:dev in another terminal first.`);
+  throw new Error(`${url} is not reachable. Serve the PLVS-Website candidate first.`);
 }
 const output = join(ROOT, "artifacts/marketing", `homepage-dock-review-${Date.now()}`);
 await mkdir(output, { recursive: true });

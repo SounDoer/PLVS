@@ -3,7 +3,7 @@ import { cp, mkdir, readFile, writeFile } from "node:fs/promises";
 import { dirname, join, resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 
-import { validatePrivacyReview } from "./privacy-review.mjs";
+import { readPrivacyPolicy, validatePrivacyReview } from "./privacy-review.mjs";
 import { releaseAssetNames } from "./release-assets.mjs";
 
 function sourceRevision(root) {
@@ -59,24 +59,12 @@ function presetView(pack) {
   };
 }
 
-export async function exportWebsiteInputs({
-  productRoot,
-  policyRoot,
-  contentRoot,
-  outputDirectory,
+export async function writeCatalogueInputs({
+  product,
+  catalogueDirectory,
+  output,
+  review = false,
 }) {
-  const product = resolve(productRoot);
-  const policy = resolve(policyRoot ?? product);
-  const content = resolve(contentRoot ?? product);
-  const output = resolve(outputDirectory);
-  const productSha = sourceRevision(product);
-  const policySha = policy === product ? productSha : sourceRevision(policy);
-  const contentSha = content === product ? productSha : sourceRevision(content);
-  const { version: productVersion } = await readJson(join(product, "package.json"));
-  if (!/^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)$/.test(productVersion)) {
-    throw new Error("Website inputs require a stable product version");
-  }
-
   const [{ readSharesetsSource }, { sharesetsAppRequirement }, { MODULE_CATALOG }, { STATS_META }] =
     await Promise.all([
       importProduct(product, "scripts/sharesets-catalogue-source.mjs"),
@@ -85,7 +73,7 @@ export async function exportWebsiteInputs({
       importProduct(product, "src/lib/statsCatalog.js"),
     ]);
 
-  const catalogue = await readSharesetsSource(join(content, "sharesets", "catalogue"));
+  const catalogue = await readSharesetsSource(catalogueDirectory);
   const listings = [];
   const files = new Set();
   for (const { document } of catalogue.listings) {
@@ -99,7 +87,7 @@ export async function exportWebsiteInputs({
     const profile =
       document.type === "loudness" ? (document.included?.item ?? pack?.items[0] ?? null) : null;
     const appRequirement = sharesetsAppRequirement(preset);
-    if (appRequirement === "Requires upcoming PLVS") {
+    if (!review && appRequirement === "Requires upcoming PLVS") {
       throw new Error("Unassigned PLVS compatibility for " + document.id);
     }
     for (const release of releases) files.add(release.artifact);
@@ -123,31 +111,14 @@ export async function exportWebsiteInputs({
     });
   }
 
-  const html = await readFile(join(policy, "website/privacy/index.html"), "utf8");
-  const record = await readJson(join(policy, "docs/privacy-review.json"));
-  const errors = validatePrivacyReview(html, record);
-  if (errors.length) throw new Error(errors.join("\n"));
-  const policyBody = /<main\b[^>]*>[\s\S]*?<\/main>/i.exec(html)?.[0];
-  if (!policyBody) throw new Error("Expected a reviewed privacy policy main element");
-
-  // Publish the manifest last so an interrupted export cannot be consumed.
   await mkdir(output);
-  await cp(join(product, "docs/user"), join(output, "guide"), { recursive: true });
-  await writeFile(join(output, "policy.html"), policyBody, "utf8");
   for (const file of files) {
     const target = join(output, "catalogue", file);
     await mkdir(dirname(target), { recursive: true });
     await cp(join(catalogue.root, file), target);
   }
-  const manifest = {
+  return {
     schemaVersion: 1,
-    productSha,
-    productVersion,
-    releaseAssets: releaseAssetNames(productVersion),
-    policySha,
-    policyFingerprint: record.contentSha256,
-    policyEffectiveDate: record.effectiveDate,
-    contentSha,
     modules: Object.fromEntries(
       Object.entries(MODULE_CATALOG).map(([id, { title }]) => [id, title])
     ),
@@ -155,6 +126,52 @@ export async function exportWebsiteInputs({
       Object.entries(STATS_META).map(([id, { label, unit }]) => [id, { label, unit }])
     ),
     listings,
+    fileCount: files.size,
+  };
+}
+
+export async function exportWebsiteInputs({
+  productRoot,
+  policyRoot,
+  contentRoot,
+  outputDirectory,
+}) {
+  const product = resolve(productRoot);
+  const policy = resolve(policyRoot ?? product);
+  const content = resolve(contentRoot ?? product);
+  const output = resolve(outputDirectory);
+  const productSha = sourceRevision(product);
+  const policySha = policy === product ? productSha : sourceRevision(policy);
+  const contentSha = content === product ? productSha : sourceRevision(content);
+  const { version: productVersion } = await readJson(join(product, "package.json"));
+  if (!/^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)$/.test(productVersion)) {
+    throw new Error("Website inputs require a stable product version");
+  }
+
+  const html = await readPrivacyPolicy(policy);
+  const record = await readJson(join(policy, "docs/privacy-review.json"));
+  const errors = validatePrivacyReview(html, record);
+  if (errors.length) throw new Error(errors.join("\n"));
+  const policyBody = /<main\b[^>]*>[\s\S]*?<\/main>/i.exec(html)?.[0];
+  if (!policyBody) throw new Error("Expected a reviewed privacy policy main element");
+
+  // Publish the manifest last so an interrupted export cannot be consumed.
+  const catalogue = await writeCatalogueInputs({
+    product,
+    catalogueDirectory: join(content, "sharesets", "catalogue"),
+    output,
+  });
+  await cp(join(product, "docs/user"), join(output, "guide"), { recursive: true });
+  await writeFile(join(output, "policy.html"), policyBody, "utf8");
+  const manifest = {
+    ...catalogue,
+    productSha,
+    productVersion,
+    releaseAssets: releaseAssetNames(productVersion),
+    policySha,
+    policyFingerprint: record.contentSha256,
+    policyEffectiveDate: record.effectiveDate,
+    contentSha,
   };
   await writeFile(join(output, "manifest.json"), JSON.stringify(manifest, null, 2) + "\n", {
     encoding: "utf8",
@@ -165,8 +182,8 @@ export async function exportWebsiteInputs({
     policySha,
     contentSha,
     productVersion,
-    listings: listings.length,
-    files: files.size,
+    listings: catalogue.listings.length,
+    files: catalogue.fileCount,
   };
 }
 

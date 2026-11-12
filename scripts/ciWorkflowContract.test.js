@@ -18,8 +18,8 @@ function commands(job) {
 }
 
 describe("ordinary CI lanes", () => {
-  it("runs push CI on main and website hotfix branches only", () => {
-    expect(workflow.on.push).toEqual({ branches: ["main", "website-hotfix/**"] });
+  it("runs push and pull request CI on main", () => {
+    expect(workflow.on.push).toEqual({ branches: ["main"] });
     expect(workflow.on.pull_request).toEqual({ branches: ["main"] });
   });
 
@@ -41,7 +41,7 @@ describe("ordinary CI lanes", () => {
 
   it("puts the cheap license gate ahead of every expensive lane", () => {
     expect(workflow.jobs.licenses.needs).toBe("scope");
-    expect(workflow.jobs.licenses.if).toBe("needs.scope.outputs.scope != 'website'");
+    expect(workflow.jobs.licenses.if).toBeUndefined();
     for (const name of [
       "contracts",
       "frontend",
@@ -65,13 +65,10 @@ describe("ordinary CI lanes", () => {
     });
   });
 
-  it("supplies branch identity for a detached first hotfix push and always verifies the website", () => {
-    const classify = workflow.jobs.scope.steps.find((step) => step.id === "changes");
-    expect(classify.env.BRANCH_NAME).toBe("${{ github.head_ref || github.ref_name }}");
-    expect(classify.run).toContain('--branch "$BRANCH_NAME"');
-    expect(workflow.jobs.website.if).toBeUndefined();
-    expect(commands(workflow.jobs.website)).toContain("npm run website:verify");
-    expect(commands(workflow.jobs.website)).not.toContain("cargo");
+  it("checks product publication inputs in the contracts lane", () => {
+    expect(commands(workflow.jobs.contracts)).toContain("node scripts/privacy-review.mjs check");
+    expect(commands(workflow.jobs.contracts)).toContain("npm run sharesets:source:check");
+    expect(workflow.jobs.website).toBeUndefined();
   });
 
   it("uses the reviewed decoder sidecar for tests without an apt FFmpeg download", () => {

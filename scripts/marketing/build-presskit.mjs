@@ -10,9 +10,10 @@ import jsQR from "jsqr";
 import sharp from "sharp";
 import { zipSync, unzipSync } from "fflate";
 import { validateWebsiteMarker } from "../website-publication.mjs";
+import { WEBSITE_URL } from "../website-location.mjs";
 
 const ROOT = resolve(import.meta.dirname, "../..");
-export const SITE_URL = "https://plvs.soundoer.com/";
+export const SITE_URL = WEBSITE_URL;
 const sha256 = (bytes) => createHash("sha256").update(bytes).digest("hex");
 const escapeHtml = (text) =>
   String(text).replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll('"', "&quot;");
@@ -65,9 +66,32 @@ export async function buildPressKit({
     });
   const commit = (value) =>
     git("rev-parse", "--verify", "--end-of-options", `${value}^{commit}`).toString().trim();
-  let websiteSha, contentSha;
+  function siteCommit(sha) {
+    if (!/^[a-f0-9]{40}$/.test(sha)) throw new Error("Invalid reviewed website commit.");
+    try {
+      commit(sha);
+    } catch {
+      git("fetch", "https://github.com/SounDoer/PLVS-Website.git", sha);
+    }
+    if (commit(sha) !== sha) throw new Error("Cannot resolve the published site source.");
+    return sha;
+  }
+  let websiteSha, contentSha, originalsFallback;
   if (ref) {
     websiteSha = contentSha = commit(ref);
+    const reviewBytes = git(
+      "ls-tree",
+      "--name-only",
+      contentSha,
+      "docs/release-content-review.json"
+    );
+    if (reviewBytes.length) {
+      const review = JSON.parse(git("show", `${contentSha}:docs/release-content-review.json`));
+      if (review.websiteSourceSha) {
+        originalsFallback = websiteSha;
+        websiteSha = siteCommit(review.websiteSourceSha);
+      }
+    }
   } else {
     const response = await fetchImpl(`${SITE_URL}publication.json?presskit=${Date.now()}`, {
       headers: { "Cache-Control": "no-cache" },
@@ -87,6 +111,10 @@ export async function buildPressKit({
         git("fetch", "origin", sha);
       }
       if (commit(sha) !== sha) throw new Error(`Cannot resolve published commit ${sha}.`);
+    }
+    if (marker.siteSourceSha) {
+      originalsFallback = websiteSha;
+      websiteSha = siteCommit(marker.siteSourceSha);
     }
   }
   const source = (sha, path) => git("show", `${sha}:${safePath(path)}`);
@@ -185,18 +213,25 @@ export async function buildPressKit({
       processing: "PNG conversion of website WebP; no recovered detail or upscaling",
     });
   }
-  const originals = git("ls-tree", "-r", "--name-only", websiteSha, "--", "website/assets/raw")
-    .toString()
-    .trim()
-    .split("\n")
-    .filter((path) => path.endsWith(".png"));
+  const originalPaths = (sha) =>
+    git("ls-tree", "-r", "--name-only", sha, "--", "website/assets/raw")
+      .toString()
+      .trim()
+      .split("\n")
+      .filter((path) => path.endsWith(".png"));
+  let originalsSha = websiteSha;
+  let originals = originalPaths(originalsSha);
+  if (!originals.length && originalsFallback) {
+    originalsSha = originalsFallback;
+    originals = originalPaths(originalsSha);
+  }
   if (!originals.length) throw new Error("Published website has no original PNG screenshots.");
   for (const path of originals) {
     await addImage(
       `05-Original-Screenshots/${path.slice("website/assets/raw/".length)}`,
-      source(websiteSha, path),
+      source(originalsSha, path),
       basename(path, ".png"),
-      { source: { commit: websiteSha, path }, processing: "Original PNG" }
+      { source: { commit: originalsSha, path }, processing: "Original PNG" }
     );
   }
   const catalogue = json(contentSha, "sharesets/catalogue/manifest.json");
@@ -300,7 +335,7 @@ export async function buildPressKit({
 async function main(args) {
   if (args.length === 1 && args[0] === "--help") {
     console.log(
-      "Usage: npm run presskit [-- --ref <commit>]\nDefault: export exact published website and Catalogue commits. --ref: export one local Git commit without querying the live website."
+      "Usage: npm run presskit [-- --ref <commit>]\nDefault: export exact published website and Catalogue commits. --ref: export a PLVS commit and its reviewed website source without querying the live marker."
     );
     return;
   }

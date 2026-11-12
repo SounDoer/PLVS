@@ -3,30 +3,6 @@ import { appendFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 
-// Keep the website-only fast path deliberately narrow. Shared dependencies and the classifier
-// itself require broader lanes.
-const websiteScripts = new Set([
-  "build-website.mjs",
-  "validate-website.mjs",
-  "validate-website.test.mjs",
-  "dev-website.mjs",
-  "build-user-docs.mjs",
-  "build-user-docs.test.mjs",
-  "build-sharesets-site.mjs",
-  "build-sharesets-site.test.js",
-  "site-components.mjs",
-  "profile-presentation.test.js",
-  "preset-presentation.mjs",
-  "preset-presentation.test.js",
-  "websiteReleaseLinks.test.js",
-  "marketing/prepare-homepage-assets.mjs",
-]);
-const websiteDocs = new Set([
-  "docs/website-and-sharesets.md",
-  "docs/website-design.md",
-  "docs/marketing-screenshots.md",
-]);
-
 const frontendFiles = new Set([
   ".nvmrc",
   ".prettierrc",
@@ -85,6 +61,7 @@ const contractRoots = [
   "licenses/",
   "scripts/",
   "sharesets/",
+  "website/", // Historical paths and the README image compatibility URL.
 ];
 const contractFiles = new Set([
   ".editorconfig",
@@ -99,17 +76,6 @@ const contractFiles = new Set([
   "THIRD-PARTY-NOTICES.md",
 ]);
 
-function isWebsitePath(path) {
-  return (
-    (path.startsWith("website/") &&
-      !path.split("/").some((part) => part.startsWith(".")) &&
-      /\.(?:html|css|js|json|svg|png|webp|jpg|jpeg|gif|ico|woff2?|txt)$/.test(path)) ||
-    /^docs\/user\/.+\.md$/.test(path) ||
-    websiteDocs.has(path) ||
-    (path.startsWith("scripts/") && websiteScripts.has(path.slice(8)))
-  );
-}
-
 function laneForPath(path) {
   if (classifierFiles.has(path)) return { frontend: true, native: true, known: true };
   if (path.startsWith("src-tauri/") || nativeFiles.has(path)) {
@@ -122,7 +88,6 @@ function laneForPath(path) {
   // npm dependencies include the Tauri build CLI as well as frontend packages. Keep dependency
   // changes on the full lane until package checks provide a narrower independent safety net.
   if (sharedDependencyFiles.has(path)) return { frontend: true, native: true, known: true };
-  if (isWebsitePath(path)) return { frontend: false, native: false, known: true };
   if (contractFiles.has(path) || contractRoots.some((root) => path.startsWith(root))) {
     return { frontend: false, native: false, known: true };
   }
@@ -157,21 +122,6 @@ const fullLanes = {
 
 export function classifyPaths(paths) {
   const files = [...new Set(paths)].sort();
-  if (files.length && files.every(isWebsitePath)) {
-    return {
-      scope: "website",
-      files,
-      unknown: [],
-      lanes: {
-        contracts: false,
-        frontend: false,
-        native: false,
-        package_windows: false,
-        package_macos: false,
-        package_linux: false,
-      },
-    };
-  }
   let frontend = false;
   let native = false;
   let packageWindows = false;
@@ -211,36 +161,12 @@ export function classifyPaths(paths) {
   };
 }
 
-export function inspectChanges({
-  base,
-  head = "HEAD",
-  branch,
-  working = true,
-  cwd = process.cwd(),
-}) {
+export function inspectChanges({ base, head = "HEAD", working = true, cwd = process.cwd() }) {
   const git = (...args) =>
     execFileSync("git", args, { cwd, encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] });
   try {
     const headSha = git("rev-parse", "--verify", `${head}^{commit}`).trim();
-    let baseSha;
-    let baseReason;
-    const currentBranch = branch ?? git("branch", "--show-current").trim();
-    if (
-      currentBranch.startsWith("website-hotfix/") &&
-      (base === "origin/main" || base === "0".repeat(40))
-    ) {
-      // A first push has no previous SHA; a release-based hotfix can also diverge from main.
-      // Inspect every commit after their verified fork point, never just HEAD's last commit.
-      const ancestors = git("merge-base", "--all", "origin/main", headSha)
-        .trim()
-        .split(/\s+/)
-        .filter(Boolean);
-      if (ancestors.length !== 1) throw new Error("No unique website hotfix fork point.");
-      [baseSha] = ancestors;
-      baseReason = "Website hotfix fork point with origin/main";
-    } else {
-      baseSha = git("rev-parse", "--verify", `${base}^{commit}`).trim();
-    }
+    const baseSha = git("rev-parse", "--verify", base + "^{commit}").trim();
     git("merge-base", "--is-ancestor", baseSha, headSha);
     const files = git("diff", "--name-only", "--no-renames", "-z", baseSha, headSha).split("\0");
     // Include every pending commit, including changes subsequently reverted within the push.
@@ -274,7 +200,6 @@ export function inspectChanges({
       ...classifyPaths(files.filter(Boolean)),
       base: baseSha,
       head: headSha,
-      ...(baseReason ? { baseReason } : {}),
     };
   } catch (error) {
     return {
@@ -290,13 +215,11 @@ export function inspectChanges({
 function main(args) {
   let base;
   let head = "HEAD";
-  let branch;
   let working = true;
   let run = false;
   for (let i = 0; i < args.length; i++) {
     if (args[i] === "--base") base = args[++i];
     else if (args[i] === "--head") head = args[++i];
-    else if (args[i] === "--branch") branch = args[++i];
     else if (args[i] === "--committed-only") working = false;
     else if (args[i] === "--run") run = true;
     else throw new Error(`Unknown argument: ${args[i]}`);
@@ -314,7 +237,7 @@ function main(args) {
       };
     }
   }
-  result ??= inspectChanges({ base, head, branch, working });
+  result ??= inspectChanges({ base, head, working });
   console.log(JSON.stringify(result, null, 2));
   if (process.env.GITHUB_OUTPUT) {
     appendFileSync(process.env.GITHUB_OUTPUT, `scope=${result.scope}\n`);
@@ -331,13 +254,11 @@ function main(args) {
   }
   if (run) {
     const command =
-      result.scope === "website"
-        ? "website:verify"
-        : result.scope === "contracts"
-          ? "check:contracts"
-          : result.scope === "frontend"
-            ? "check:frontend"
-            : "check";
+      result.scope === "contracts"
+        ? "check:contracts"
+        : result.scope === "frontend"
+          ? "check:frontend"
+          : "check";
     // Only fixed script names enter cmd.exe; no revision or path is interpolated into a shell.
     const child =
       process.platform === "win32"

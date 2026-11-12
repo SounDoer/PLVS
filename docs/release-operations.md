@@ -7,6 +7,9 @@ conventions remain in [CONTRIBUTING.md](../CONTRIBUTING.md).
 
 ## Release public-content review
 
+Record the exact reviewed `websiteSourceSha` from PLVS-Website. The release dispatch passes this
+commit to the website workflow alongside the published stable tag.
+
 Every stable desktop release requires `docs/release-content-review.json`. This is the latest
 review record; git retains previous records. Ordinary development CI does not require a fresh
 record. Both `release:preflight` and the remote Release validation job enforce it before builds.

@@ -11,6 +11,7 @@ import { tmpdir } from "node:os";
 import { extname, join, relative, resolve } from "node:path";
 import { chromium } from "playwright";
 import sharp from "sharp";
+import { websiteCheckout } from "./website-checkout.mjs";
 import { build } from "vite";
 import { DEFAULT_PRESET } from "../../src/lib/defaultPreset.js";
 import { DEFAULT_LOUDNESS_PROFILE } from "../../src/lib/loudnessProfileCatalog.js";
@@ -31,6 +32,7 @@ import {
 } from "./homepage-render-lib.mjs";
 
 const ROOT = resolve(import.meta.dirname, "..", "..");
+const WEBSITE = await websiteCheckout(ROOT);
 const RECIPE = join(ROOT, "scripts", "marketing", "recipes", "homepage-images.json");
 const DOCK_HEIGHT_CSS_PX = 150;
 
@@ -303,9 +305,9 @@ async function main() {
       const note = size === expected ? null : `expected ${expected}`;
       const path = join(out, `${image.name}.png`);
       await writeFile(path, raw);
-      const original = await readFile(join(ROOT, publicationTarget(recipe, image.name).png)).catch(
-        () => null
-      );
+      const original = await readFile(
+        join(WEBSITE, publicationTarget(recipe, image.name).png)
+      ).catch(() => null);
       report.images.push({
         name: image.name,
         originalSha256: original ? createHash("sha256").update(original).digest("hex") : null,
@@ -336,10 +338,10 @@ async function main() {
         return {
           name: entry.name,
           rendered: entry.file,
-          original: relative(out, join(ROOT, publicationTarget(recipe, image.name).png)).replaceAll(
-            "\\",
-            "/"
-          ),
+          original: relative(
+            out,
+            join(WEBSITE, publicationTarget(recipe, image.name).png)
+          ).replaceAll("\\", "/"),
           size: `${entry.width} × ${entry.height}`,
           note: entry.sizeMatches
             ? null

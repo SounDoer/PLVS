@@ -2,9 +2,7 @@ name: CI
 
 on:
   push:
-    # A website-hotfix branch needs push CI so deploy-website.yml can publish its exact commit
-    # (docs/website-and-sharesets.md, "Website hotfix from a release").
-    branches: [main, "website-hotfix/**"]
+    branches: [main]
   pull_request:
     branches: [main]
 
@@ -15,7 +13,6 @@ concurrency:
 jobs:
   licenses:
     needs: scope
-    if: needs.scope.outputs.scope != 'website'
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     steps:
@@ -51,20 +48,7 @@ jobs:
         env:
           BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.before }}
           HEAD_SHA: ${{ github.sha }}
-          BRANCH_NAME: ${{ github.head_ref || github.ref_name }}
-        run: node scripts/check-changes.mjs --base "$BASE_SHA" --head "$HEAD_SHA" --branch "$BRANCH_NAME" --committed-only
-
-  website:
-    runs-on: ubuntu-24.04
-    timeout-minutes: 10
-    steps:
-      - uses: actions/checkout@v7
-      - uses: actions/setup-node@v7
-        with:
-          node-version-file: .nvmrc
-          cache: npm
-      - run: npm ci
-      - run: npm run website:verify
+        run: node scripts/check-changes.mjs --base "$BASE_SHA" --head "$HEAD_SHA" --committed-only
 
   contracts:
     needs: [scope, licenses]
@@ -90,6 +74,9 @@ jobs:
 
       - name: Verify Sharesets source
         run: npm run sharesets:source:check
+
+      - name: Verify reviewed privacy policy
+        run: node scripts/privacy-review.mjs check
 
       # Canonical dialogue generation needs no host resampling. Keep the reviewed decoder
       # sidecars available to tooling that exercises the production file-analysis path.

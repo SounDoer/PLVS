@@ -9,9 +9,11 @@ import { createHash } from "node:crypto";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { dirname, isAbsolute, join, relative, resolve } from "node:path";
 import sharp from "sharp";
+import { websiteCheckout } from "./website-checkout.mjs";
 import { publicationTarget } from "./homepage-render-lib.mjs";
 
 const ROOT = resolve(import.meta.dirname, "..", "..");
+const WEBSITE = await websiteCheckout(ROOT);
 const RECIPE = join(ROOT, "scripts", "marketing", "recipes", "homepage-images.json");
 const sha256 = (bytes) => createHash("sha256").update(bytes).digest("hex");
 
@@ -47,7 +49,7 @@ for (const entry of report.images) {
   if (!entry.sizeMatches) problems.push(`${entry.name} is not its published size`);
   if (entry.errors.length > 0) problems.push(`${entry.name} rendered with page errors`);
   const target = publicationTarget(recipe, entry.name);
-  const current = await readFile(join(ROOT, target.png)).catch(() => null);
+  const current = await readFile(join(WEBSITE, target.png)).catch(() => null);
   if ((current ? sha256(current) : null) !== entry.originalSha256) {
     problems.push(`${target.png} changed since the run; render again and review`);
   }
@@ -80,8 +82,8 @@ for (const { entry, png, target } of entries) {
     height: entry.height,
     rawSha256: entry.sha256,
   };
-  await mkdir(dirname(join(ROOT, target.png)), { recursive: true });
-  await writeFile(join(ROOT, target.png), png);
+  await mkdir(dirname(join(WEBSITE, target.png)), { recursive: true });
+  await writeFile(join(WEBSITE, target.png), png);
   if (target.kind === "own") {
     const webp = await sharp(png).webp({ lossless: true }).toBuffer();
     const [decoded, original] = await Promise.all([
@@ -89,15 +91,15 @@ for (const { entry, png, target } of entries) {
       sharp(png).ensureAlpha().raw().toBuffer(),
     ]);
     if (!decoded.equals(original)) throw new Error(`${entry.name}: WebP export changed pixels.`);
-    await writeFile(join(ROOT, target.webp), webp);
+    await writeFile(join(WEBSITE, target.webp), webp);
     const metadata = { ...provenance, image: entry.name, ...describe, sha256: sha256(webp) };
-    await writeFile(join(ROOT, target.metadata), `${JSON.stringify(metadata, null, 2)}\n`);
+    await writeFile(join(WEBSITE, target.metadata), `${JSON.stringify(metadata, null, 2)}\n`);
   } else {
     features[entry.name] = describe;
   }
 }
 await writeFile(
-  join(ROOT, recipe.publication.rawDirectory, "provenance.json"),
+  join(WEBSITE, recipe.publication.rawDirectory, "provenance.json"),
   `${JSON.stringify({ ...provenance, images: features }, null, 2)}\n`
 );
 const prepare = spawnSync(process.execPath, ["scripts/marketing/prepare-homepage-assets.mjs"], {
@@ -106,5 +108,5 @@ const prepare = spawnSync(process.execPath, ["scripts/marketing/prepare-homepage
 });
 if (prepare.status !== 0) throw new Error("prepare-homepage-assets.mjs failed.");
 console.log(
-  "Published. Run npm run website:verify and review the homepage at 1440, 820 and 390 px."
+  "Prepared files in PLVS-Website. Build and review the homepage at 1440, 820 and 390 px."
 );

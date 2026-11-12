@@ -92,8 +92,8 @@ Until then, ignore this section.
 │  - docs/user/: every user-visible change is described in its    │
 │    chapter, and no claim contradicts what now ships             │
 │  - README.md highlights still summarise the product             │
-│  - website/index.html selling points still hold                 │
-│  - website/assets screenshots: retake if the UI visibly changed │
+│  - PLVS-Website homepage selling points still hold                 │
+│  - PLVS-Website screenshots: retake if the UI visibly changed │
 │    (commands in docs/marketing-screenshots.md)                  │
 │  - A changed promise or non-goal also updates docs/prd.md       │
 │  - Review privacy impact and the policy's effective date       │
@@ -345,7 +345,7 @@ Insert new section after `## [Unreleased]`, before the latest released version.
 Follow **Release public-content review** in `docs/release-operations.md`. Review all four surfaces against
 the complete stable-release range and collect concrete evidence. After committing the finished
 candidate in Step 5, run `npm run release:content:snapshot`, complete the pending decisions in
-`docs/release-content-review.json`, run `npm run release:content:check` and the required pre-commit
+`docs/release-content-review.json` with the exact reviewed `websiteSourceSha`, run `npm run release:content:check` and the required pre-commit
 checks, then commit the record before Step 6. Both local preflight and remote Release validation
 reject missing, incomplete or stale records. Any candidate change other than the record itself
 requires renewed review; never refresh its fingerprint without reviewing the change. Do not renew

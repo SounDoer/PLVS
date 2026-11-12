@@ -5,14 +5,14 @@ description: Build a shareable PLVS press kit ZIP with website screenshots, curr
 
 # PLVS Press Kit
 
-Run from the PLVS repository. The script and all source media live in this repository; no
-other checkout, desktop capture rig, NAS or running app is required.
+Run from PLVS. The script reads the exact website source and Catalogue commits from the live
+marker. A separate checkout, capture rig, NAS, or running app is unnecessary.
 
 - Run `npm run presskit` for the current published website. It reads the live publication marker
   and takes website and Catalogue files from their exact Git commits, including separate content
-  deployments. Missing commits are fetched from origin. It does not use dirty working-tree media.
-- Use `npm run presskit -- --ref <commit>` only for an explicitly requested version or offline
-  export. The README and manifest identify it as an explicit-ref export; do not call it the current
+  deployments. Missing commits are fetched from their owning repository. It does not use dirty working-tree media.
+- Use `npm run presskit -- --ref <commit>` for an explicitly requested PLVS revision. A split-era release uses its
+  recorded website source commit. The README and manifest identify it as an explicit-ref export; do not call it the current
   published website without checking that identity.
 - Outputs go to a new directory and ZIP under `artifacts/presskit/`; previous exports are preserved.
   Never deploy the website, start desktop builds or run release workflows just to export assets.

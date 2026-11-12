@@ -1,7 +1,7 @@
 # Design Token Specification
 
 PLVS desktop UI components, Theme bindings, and layout tokens. The
-[website design system](website-design.md) has its own reference.
+[website design system](https://github.com/SounDoer/PLVS-Website/blob/main/DESIGN.md) has its own reference.
 
 ## Where to start
 

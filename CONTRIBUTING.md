@@ -20,7 +20,6 @@ npm run typecheck
 npm test
 npm run build
 npm run check:changes    # final local gate before push or merge
-npm run website:dev
 ```
 
 For a newly created linked worktree, use `npm run worktree:setup` instead. It runs the locked
@@ -66,19 +65,15 @@ Checks happen in three phases:
 2. **At commit:** the pre-commit hook checks only relevant staged formatting, Rust formatting and
    Cargo lock consistency. Creating a commit does not trigger the full repository gate.
 3. **Before push or merge:** run `npm run check:changes` once after the final intended commit. It
-   examines all pending commits and working changes, then selects contracts, frontend, website or
+   examines all pending commits and working changes, then selects contracts, frontend or
    the full repository gate. Unknown or mixed changes fall back to `npm run check`.
 
 A successful `check:changes` remains valid while `HEAD`, the index and the worktree are unchanged.
 A rebase, amended commit, generated-file update or edit invalidates it; otherwise do not repeat it.
 
-On a release-based `website-hotfix/**` branch, the local classifier and first-push CI use the unique
-fork point with `origin/main`. They still inspect all branch commits, including reverted changes;
-the local gate also includes staged, unstaged and untracked files. Later CI pushes compare against
-the previous pushed SHA. Known website-only inputs run `website:verify`; desktop code, shared
-dependencies and the classifier itself retain their broader checks. Missing or ambiguous ancestry
-uses the full gate. Older release checkouts must carry the current gate as described in
-[`docs/website-and-sharesets.md`](docs/website-and-sharesets.md#website-hotfix-from-a-release).
+Website presentation is developed and tested in [PLVS-Website](https://github.com/SounDoer/PLVS-Website).
+Use [Website and Sharesets maintenance](docs/website-and-sharesets.md) for the product inputs
+and deployment.
 
 **Changelist (CL) descriptions**—the full narrative in a pull request body (or any equivalent review “description” field)—must also be **English** (what changed, why, risks or follow-ups in clear technical prose).
 

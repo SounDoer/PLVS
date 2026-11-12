@@ -1,5 +1,9 @@
 # Marketing screenshots
 
+The PLVS render and preparation tools use the sibling PLVS-Website checkout. Set
+`PLVS_WEBSITE_CHECKOUT` to an absolute checkout path when it lives elsewhere. The
+`website/assets/` paths below refer to that checkout.
+
 The homepage images that show PLVS are rendered, not captured: the app's own React panels, fed by
 committed fixtures that the production meter pipeline measured offline, drawn in headless
 Chromium. The same command reproduces the same pixels on any supported machine; no audio device,
@@ -61,7 +65,7 @@ tooling or dependencies still follow the normal repository checks before push.
   detail, multichannel, rules editor) and `provenance.json`; `prepare-homepage-assets.mjs` encodes
   them into `website/assets/homepage/` beside the Sharesets tiles.
 
-`website/assets/raw/` stays in Git but is not published. `npm run website:check` fails when the
+`website/assets/raw/` stays in Git but is not published. `npm run check -- <website-inputs>` in PLVS-Website fails when the
 assembled site contains an image that no page, stylesheet or script names; when an image leaves the
 website, delete its export and its original together. Runs, comparisons and reports stay under
 ignored `artifacts/marketing/`.
@@ -99,10 +103,10 @@ published original changed since the run. It writes the hero and Dock PNGs with 
 recipe, so `website/index.html` keeps its `width` and `height`. Then:
 
 ```sh
-npm run website:verify
+npm run check -- <website-inputs>
 ```
 
-and, with `npm run website:dev` running in another terminal,
+and, with `python -m http.server 4173 --bind 127.0.0.1 --directory artifacts/website` running in PLVS-Website in another terminal,
 `node scripts/marketing/review-dock-pair.mjs`, plus a look at the homepage at 1440, 820 and
 390 px. Keep the originals, exports and provenance together in one commit.
 

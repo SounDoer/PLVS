@@ -1,10 +1,10 @@
 # Sharesets content source
 
 Website presentation rules and the shared source are documented in
-[`docs/website-design.md`](../docs/website-design.md).
+[the website design guide](https://github.com/SounDoer/PLVS-Website/blob/main/DESIGN.md).
 
 This directory is the initial local checkout of the static Sharesets Catalogue content input. It
-is deliberately outside `website/`: website code reads it only through the versioned manifest and
+stays in PLVS: the website receives a validated bundle produced from the versioned manifest and
 an explicit content-directory argument, so this tree can move to a separate repository later.
 
 `catalogue/manifest.json` contains the curated Sharesets catalogue. Previews are generated from the
@@ -28,7 +28,6 @@ Validate this source boundary with:
 npm run sharesets:source:check
 npm run sharesets:source:check -- path/to/external/catalogue
 npm run sharesets:update:check -- path/to/published/catalogue path/to/candidate/catalogue
-npm run sharesets:site -- path/to/external/catalogue path/to/output/sharesets
 ```
 
 Validation opens every Release artifact through PLVS's stable Sharesets contract. Listing IDs,
@@ -57,14 +56,10 @@ remain unchanged. Published revisions and original previews are immutable, inclu
 The source validator applies the same artifact-derived preview contract to every revision.
 See [Catalogue curation](../docs/website-and-sharesets.md#curating-sharesets-content) for the release and preview revision rules.
 
-The static-site command generates the Sharesets root, all three family pages, stable Listing detail
-URLs, and an isolated copy of each validated download and preview. Its default output is the ignored
-`artifacts/sharesets-site/` directory; deployment passes an explicit assembled-site destination.
+The website build in PLVS-Website consumes the exported Catalogue and copies each validated
+download and preview to its stable public path. The manual Sharesets deployment can publish a
+chosen content ref independently against the live renderer and the stable product revision.
 
-The normal website workflow publishes the Catalogue with an app Release. A separate manual
-Sharesets workflow can publish a chosen content ref sooner, but it rebuilds the rest of the site
-from the latest stable Release tag. Its content checkout is isolated from the site checkout so the
-path can later point at a dedicated repository without changing the validator or builder commands.
 Both entry points call the same `publish-site.yml` workflow. The deployed Catalogue records its
 exact content commit in `sharesets/publication.json`; every deployment reads that marker and refuses
 any candidate that rewrites its published history. See CONTRIBUTING.md for recovery. Content-only additions must be brought back into the next app release's

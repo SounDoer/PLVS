@@ -37,8 +37,6 @@ failure cost is high. Keep the entry actionable and put durable incident context
 | `npm run smoke:capture`                | Exercise real capture hardware.                        |
 | `npm run smoke:agent-control`          | Exercise Agent Control against the running dev app.    |
 | `npm run soak:capture`                 | Run the four-hour capture soak.                        |
-| `npm run website:dev`                  | Serve the complete local website.                      |
-| `npm run website:verify`               | Validate website and documentation contracts.          |
 
 ## Agent Control
 
@@ -136,14 +134,14 @@ bump and group the CHANGELOG, so an unprefixed commit silently drops out of the 
   consistency checks without running unrelated toolchains.
 - Before each push or merge, run `npm run check:changes` once after the final intended commit. Its
   shared classifier examines every pending commit plus staged, unstaged, and untracked files.
-  Website, contracts, frontend, and native changes select progressively broader gates; mixed or
+  Contracts, frontend, and native changes select progressively broader gates; mixed or
   unknown changes and unavailable baselines fall back to the full `npm run check`.
 - A successful `check:changes` remains valid while `HEAD`, the index, and the worktree are unchanged.
   Do not repeat it before the same push. Any rebase, commit amendment, generated-file update, or
-  working-tree edit invalidates it. Inspect responsive screenshots for visual website changes.
+  working-tree edit invalidates it.
 - Stable desktop releases always run the full gate.
 
-**Website publication:** use `.agents/skills/plvs-website-publish/SKILL.md`; durable maintainer
+**Website:** edit presentation in [PLVS-Website](https://github.com/SounDoer/PLVS-Website). For publication, use `.agents/skills/plvs-website-publish/SKILL.md`; durable maintainer
 instructions live in `docs/website-and-sharesets.md`.
 
 The version must match in three places: `package.json`, `src-tauri/Cargo.toml`, `src-tauri/tauri.conf.json`. `npm run version:check` verifies this.

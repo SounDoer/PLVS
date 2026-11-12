@@ -1,0 +1,161 @@
+<main>
+  <p class="eyebrow">
+    Effective <time data-policy-effective-date datetime="2026-10-16">October 16, 2026</time>
+  </p>
+  <h1>Privacy Policy</h1>
+  <p class="lede">
+    This policy describes the data handled by the PLVS desktop app, the PLVS website, and the
+    service at <strong>list.plvs.soundoer.com</strong>. PLVS has no advertising, analytics, or
+    default telemetry.
+  </p>
+  <p class="promise">
+    <strong>PLVS never uploads audio samples, audio files, or measurement data.</strong> Live
+    capture and file analysis stay on your device.
+  </p>
+
+  <section>
+    <h2>Update Checks and Downloads</h2>
+    <p>
+      When automatic checking is enabled, PLVS checks when the app starts and every 12 hours while
+      it remains open. Fresh users choose their preferences before automatic requests begin;
+      existing users keep automatic checking enabled and automatic downloading disabled. You can
+      disable checking or start a manual check from Settings. Checks retrieve the
+      <code>latest.json</code> manifest from GitHub Releases. Packages are signature-verified; the
+      manifest itself is not signed. Preview builds compile the updater out.
+    </p>
+    <p>
+      The request does not contain audio, measurements, feedback, or a PLVS user identifier. Like
+      any web request, GitHub receives network information such as your IP address and request
+      headers and handles it under the
+      <a
+        href="https://docs.github.com/en/site-policy/privacy-policies/github-general-privacy-statement"
+        >GitHub Privacy Statement</a
+      >. PLVS does not keep a separate update-check history.
+    </p>
+    <p>
+      If you enable automatic downloading, PLVS also requests update packages from GitHub Releases
+      and its download infrastructure. These requests expose the same types of network information,
+      not your audio or measurements. Verified packages, release notes, and local
+      installation-attempt records are kept in application-managed storage for offline use. A newer
+      verified package replaces the previous package. Disabling automatic downloading cancels
+      background work and removes the staged package; it cannot recall a request already sent.
+      Installation still requires your confirmation. Manually requested updates remain available
+      independently of automatic preferences.
+    </p>
+  </section>
+
+  <section>
+    <h2>Newsletter Subscriptions</h2>
+    <p>
+      If you subscribe, PLVS collects the email address you enter, a random confirmation and
+      unsubscribe token, your subscription status, and creation, confirmation, and unsubscribe
+      timestamps. This data is used only to confirm the subscription, send PLVS release news, and
+      process unsubscription.
+    </p>
+    <p>
+      Subscriber records are stored in a self-hosted SQLite database. Confirmation messages and
+      newsletters are sent through Amazon Simple Email Service (Amazon SES), currently configured in
+      the <strong>us-east-1</strong> region. An unsubscribe request changes the record to
+      “unsubscribed” so no further newsletter is sent; it does not automatically erase the record.
+      Subscriber records remain until you request deletion.
+    </p>
+  </section>
+
+  <section>
+    <h2>Feedback</h2>
+    <p>
+      Feedback is sent only when you select <strong>Send</strong>. The request contains the text you
+      wrote and, if supplied, your reply email. Diagnostics are off by default. If you select
+      <strong>Attach Diagnostics</strong>, the request also contains the PLVS version, operating
+      system, processor architecture, build identity, collection time, window and Dock state, screen
+      geometry and scaling, recent Dock operations, and up to 500 PLVS log lines. Structured
+      snapshots exclude custom names, file paths, audio and screenshots. Diagnostic log text is
+      redacted from detected absolute paths onwards; free-form messages can still contain device
+      labels. Use <strong>View Diagnostics</strong> to inspect the attachment. The reviewed snapshot
+      is sent unless you refresh it or turn diagnostics off.
+    </p>
+    <p>
+      Dock operation summaries are kept locally per workspace, up to 100 records and 64 KiB,
+      including the current and previous recorded run with random session identifiers. New records
+      replace old ones; ongoing drags are summarized rather than recorded per mouse movement.
+      Display geometry is checked periodically and only changes are retained. Attachments have a
+      size limit and identify missing sections or omitted records. These records are not sent
+      automatically.
+    </p>
+    <p>
+      The receiving service adds the request origin and user-agent header to the email for
+      troubleshooting. It uses the source IP temporarily to enforce a limit of five requests per
+      minute. Application request logging is disabled, and request bodies are not written to the
+      subscriber database.
+    </p>
+  </section>
+
+  <section>
+    <h2>Crash Reports</h2>
+    <p>
+      PLVS saves crash reports locally whether or not prompting is enabled. A report can contain a
+      report and session identifier, creation time, crash type, PLVS version, operating system,
+      processor architecture, error message, source location, stack or component stack, and the last
+      200 lines from the crashed session. Home-directory paths are redacted. You can inspect the
+      exact request before sending it and optionally add a note and reply email. Logs and error
+      details can contain device labels, application events, and other paths.
+    </p>
+    <p>
+      Nothing is sent until you select <strong>Send</strong>. After a successful send, or if you
+      select <strong>Don’t Send</strong>, that local pending report is deleted.
+      <strong>Later</strong>
+      keeps it on the device. PLVS keeps at most the newest five local crash reports across the
+      prompted and suppressed queues. Its local application log rotates at 2 MB and keeps up to
+      three log files.
+    </p>
+  </section>
+
+  <section>
+    <h2>How Feedback and Crash Reports Are Handled</h2>
+    <p>
+      The self-hosted service at <strong>list.plvs.soundoer.com</strong> validates Feedback and
+      Crash Report requests and sends them through Amazon SES to the PLVS maintainer’s mailbox. They
+      are used to answer users, diagnose defects, and improve PLVS. They are not added to the
+      newsletter database, used for advertising, or sold.
+    </p>
+    <p>
+      The service does not have an automated retention schedule for those mailbox copies; they
+      remain until the maintainer deletes them or fulfills a deletion request. Amazon may process
+      message data as the email provider. See the
+      <a href="https://aws.amazon.com/privacy/">AWS Privacy Notice</a>.
+    </p>
+  </section>
+
+  <section>
+    <h2>Website</h2>
+    <p>
+      The website is hosted on GitHub Pages. It does not set PLVS analytics or advertising cookies.
+      The download section requests the latest public release metadata from the GitHub API. GitHub
+      may process ordinary server and network data under its own privacy statement.
+    </p>
+  </section>
+
+  <section>
+    <h2>Deletion Requests and Contact</h2>
+    <p>
+      To request access to or deletion of a newsletter record, Feedback message, or Crash Report,
+      email <a href="mailto:xichen@soundoer.com">xichen@soundoer.com</a>. Send the request from the
+      same email address when one was provided. For a submission without an email address, include
+      the approximate submission time and, for a Crash Report, its report identifier; otherwise it
+      may not be possible to identify the message reliably.
+    </p>
+    <p>
+      The unsubscribe link in every newsletter stops future newsletter delivery. Contact the same
+      address for privacy questions or to request full deletion of the retained subscriber record.
+    </p>
+  </section>
+
+  <section>
+    <h2>Changes to This Policy</h2>
+    <p>
+      Material changes will be published at this stable URL with a new effective date. The source
+      for this page is versioned with PLVS so its statements can be checked against the shipped
+      implementation.
+    </p>
+  </section>
+</main>

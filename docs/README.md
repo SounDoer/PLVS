@@ -17,7 +17,6 @@ alone makes them wrong, so they are updated in the same commit as the change.
 | [architecture.md](architecture.md)                 | Tech stack, directory map, audio pipeline, IPC, theme system           |
 | [design-tokens.md](design-tokens.md)               | Desktop tokens, Theme structure and text casing                        |
 | [glossary.md](glossary.md)                         | User-facing terms and their Chinese forms for subtitles and voice-over |
-| [website-design.md](website-design.md)             | Website tokens, layout rules and browsing patterns                     |
 | [pitfalls.md](pitfalls.md)                         | Counter-intuitive behaviour and the incident context behind rules      |
 | [agent-control/](agent-control/)                   | Agent Control contract; `generated/` is produced by tooling            |
 | [ffmpeg-sidecar-build.md](ffmpeg-sidecar-build.md) | How the bundled FFmpeg sidecar is built and fetched                    |
@@ -70,7 +69,7 @@ and [earlier working records](https://github.com/SounDoer/PLVS/tree/39a710db60ec
 
 ## Where the other documents live
 
-`README.md`, `CHANGELOG.md` and the website under `website/` are written for people who do not
+`README.md`, `CHANGELOG.md` and the [website](https://github.com/SounDoer/PLVS-Website) are written for people who do not
 know the project. The README and website homepage summarise the user guide and are reconciled
 against the changelog at release time; the website docs page is generated from `user/`.
 `CONTRIBUTING.md` is the short entry point for environment setup, daily commands and CI.

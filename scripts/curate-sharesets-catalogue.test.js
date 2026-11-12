@@ -140,7 +140,7 @@ describe("Sharesets curator workflow", () => {
     expect(existsSync(output)).toBe(false);
   });
 
-  it("generates only new Release previews and creates a review site plus reports", async () => {
+  it("generates only new Release previews and creates a Catalogue review bundle plus reports", async () => {
     const published = temporaryDirectory("plvs-curate-published-");
     const candidate = temporaryDirectory("plvs-curate-candidate-");
     const outputParent = temporaryDirectory("plvs-curate-output-");
@@ -165,7 +165,10 @@ describe("Sharesets curator workflow", () => {
     expect(generatePreviews).toHaveBeenCalledTimes(1);
     expect(readFileSync(join(candidate, "previews", "v1", "preset-workspace.png"))).toEqual(PNG);
     expect(readFileSync(join(candidate, "previews", "v2", "preset-workspace.png"))).toEqual(PNG);
-    expect(readFileSync(join(output, "site", "index.html"), "utf8")).toContain("Broadcast");
+    expect(
+      JSON.parse(readFileSync(join(output, "site-inputs", "manifest.json"), "utf8")).listings[0]
+        .title
+    ).toContain("Broadcast");
     expect(JSON.parse(readFileSync(join(output, "report.json"), "utf8"))).toMatchObject({
       additions: [{ listingId: "broadcast", releaseNumber: 2 }],
     });

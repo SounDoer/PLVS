@@ -1,15 +1,18 @@
 import { mkdir, readFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import sharp from "sharp";
+import { websiteCheckout } from "./website-checkout.mjs";
 import { readSharesetsSource } from "../sharesets-catalogue-source.mjs";
-const output = resolve("website/assets/homepage");
+const website = await websiteCheckout(process.cwd());
+const output = resolve(website, "website/assets/homepage");
 // The feature originals live where publish-homepage-images.mjs writes them.
 const raw = resolve(
+  website,
   JSON.parse(await readFile(resolve("scripts/marketing/recipes/homepage-images.json"), "utf8"))
     .publication.rawDirectory
 );
 await mkdir(output, { recursive: true });
-const responsive = resolve("website/assets/responsive");
+const responsive = resolve(website, "website/assets/responsive");
 await mkdir(responsive, { recursive: true });
 
 // Resize from the original pipeline, never from a previously encoded WebP.
@@ -31,7 +34,7 @@ async function writeHomepageImage(image, name, quality = 90) {
   await image.webp({ quality, effort: 6 }).toFile(resolve(output, `${name}.webp`));
 }
 
-await writeVariants(sharp(resolve("website/assets/raw/landing-hero.png")), "landing-hero");
+await writeVariants(sharp(resolve(website, "website/assets/raw/landing-hero.png")), "landing-hero");
 const previews = {
   spectral: ["spectral-inspection", "preset-workspace"],
   stereo: ["stereo-field-check", "preset-workspace"],

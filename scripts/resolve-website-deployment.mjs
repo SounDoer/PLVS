@@ -1,5 +1,6 @@
+import { WEBSITE_URL } from "./website-location.mjs";
 import { execFileSync } from "node:child_process";
-import { appendFileSync, readFileSync } from "node:fs";
+import { appendFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 
@@ -86,7 +87,7 @@ async function main() {
     CONTENT_REF: contentRef,
     POLICY_REF: policyRef,
   } = process.env;
-  const host = readFileSync("website/CNAME", "utf8").trim();
+  const host = new URL(WEBSITE_URL).hostname;
   const [response, history] = await Promise.all([
     fetch("https://" + host + "/publication.json?review=" + Date.now(), {
       signal: AbortSignal.timeout(30_000),

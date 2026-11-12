@@ -6,23 +6,16 @@ import { describe, expect, it } from "vitest";
 import { classifyPaths, inspectChanges } from "./check-changes.mjs";
 
 describe("change scope", () => {
-  it("separates website, contracts, frontend and native lanes", () => {
+  it("separates contracts, frontend and native lanes", () => {
     expect(
       classifyPaths([
-        "website/assets/sharesets.css",
         "docs/user/intro.md",
-        "scripts/build-website.mjs",
+        "docs/privacy-policy.html",
+        "scripts/export-website-inputs.mjs",
       ])
     ).toMatchObject({
-      scope: "website",
-      lanes: {
-        contracts: false,
-        frontend: false,
-        native: false,
-        package_windows: false,
-        package_macos: false,
-        package_linux: false,
-      },
+      scope: "contracts",
+      lanes: { contracts: true, frontend: false, native: false },
     });
     expect(classifyPaths(["CONTRIBUTING.md", "scripts/release-package-smoke.mjs"])).toMatchObject({
       scope: "contracts",
@@ -37,8 +30,6 @@ describe("change scope", () => {
       "shared/channel-layouts.json",
       "scripts/check-changes.mjs",
       "new-root.config",
-      "website/CNAME",
-      "website/.config.js",
     ]) {
       expect(classifyPaths([file])).toMatchObject({
         scope: "native",
@@ -111,75 +102,6 @@ describe("change scope", () => {
     });
   });
 
-  it("keeps homepage assets, their generator and maintenance guidance on the website lane", () => {
-    expect(
-      classifyPaths([
-        "website/index.html",
-        "website/assets/responsive/landing-hero-800.webp",
-        "scripts/marketing/prepare-homepage-assets.mjs",
-        "docs/website-and-sharesets.md",
-        "docs/website-design.md",
-        "docs/marketing-screenshots.md",
-      ])
-    ).toMatchObject({ scope: "website", lanes: { native: false, package_windows: false } });
-    for (const shared of ["package-lock.json", "src/App.jsx", "src-tauri/src/lib.rs"]) {
-      expect(classifyPaths(["website/index.html", shared]).scope).not.toBe("website");
-    }
-    expect(classifyPaths(["scripts/marketing/render-homepage-images.mjs"]).scope).toBe("contracts");
-  });
-
-  it("finds a release-based hotfix's complete range locally and on its first detached CI push", () => {
-    const cwd = mkdtempSync(join(tmpdir(), "plvs-hotfix-scope-"));
-    const git = (...args) =>
-      execFileSync("git", args, { cwd, encoding: "utf8", stdio: "pipe" }).trim();
-    const write = (path, value) => writeFileSync(join(cwd, path), value);
-    const commit = () => {
-      git("add", ".");
-      git("commit", "-m", "fixture");
-      return git("rev-parse", "HEAD");
-    };
-    try {
-      git("init");
-      git("config", "user.name", "Test");
-      git("config", "user.email", "test@example.com");
-      mkdirSync(join(cwd, "website"));
-      mkdirSync(join(cwd, "src-tauri"));
-      write("website/index.html", "released");
-      write("src-tauri/lib.rs", "released");
-      const release = commit();
-      write("src-tauri/lib.rs", "unreleased main change");
-      const main = commit();
-      git("update-ref", "refs/remotes/origin/main", main);
-      const branch = "website-hotfix/test";
-      git("checkout", "-b", branch, release);
-      write("website/index.html", "responsive images");
-      const firstPush = commit();
-      expect(inspectChanges({ base: "origin/main", cwd })).toMatchObject({
-        scope: "website",
-        base: release,
-        head: firstPush,
-        files: ["website/index.html"],
-      });
-      git("checkout", "--detach", firstPush);
-      const firstCI = { base: "0".repeat(40), branch, working: false, cwd };
-      expect(inspectChanges(firstCI)).toMatchObject({ scope: "website", base: release });
-      expect(inspectChanges({ ...firstCI, branch: "main" }).scope).toBe("native");
-      write("src-tauri/lib.rs", "changed inside the hotfix");
-      commit();
-      write("src-tauri/lib.rs", "released");
-      commit();
-      // Reverting desktop changes in the same first push cannot hide them from the gate.
-      expect(inspectChanges(firstCI)).toMatchObject({ scope: "native", base: release });
-      expect(inspectChanges({ base: firstPush, branch, cwd }).scope).toBe("native");
-      expect(inspectChanges({ base: "missing", branch, cwd }).scope).toBe("native");
-      git("update-ref", "-d", "refs/remotes/origin/main");
-      expect(inspectChanges(firstCI).scope).toBe("native");
-      expect(inspectChanges({ base: "origin/main", branch, cwd }).scope).toBe("native");
-    } finally {
-      rmSync(cwd, { recursive: true, force: true });
-    }
-  });
-
   it("covers all pending commits, reverted changes, renames, untracked and staged files", () => {
     const cwd = mkdtempSync(join(tmpdir(), "plvs-check-changes-"));
     const git = (...args) =>
@@ -208,7 +130,7 @@ describe("change scope", () => {
       const cleanBase = git("rev-parse", "HEAD");
       write("website/index.html", "another");
       commit();
-      expect(inspectChanges({ base: cleanBase, cwd }).scope).toBe("website");
+      expect(inspectChanges({ base: cleanBase, cwd }).scope).toBe("contracts");
       write("shared.js", "staged change");
       git("add", "shared.js");
       write("shared.js", "before");

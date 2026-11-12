@@ -1,11 +1,23 @@
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { pathToFileURL } from "node:url";
-import {
-  presetUsesDockAboveFullScreen,
-  presetUsesDockSurfaceOpacity,
-  presetUsesPanelOrientation,
-} from "./preset-presentation.mjs";
+// Workspace panel orientation first appeared after the Sharesets launch release. Keep the
+// requirement tied to the saved controls instead of a Listing ID or an unassigned app version.
+function presetUsesPanelOrientation(pack) {
+  return (pack?.items?.[0]?.workspace?.panels ?? []).some(
+    (panel) => panel.controls?.orientation !== undefined
+  );
+}
+
+// PLVS writes it only when off, but any explicit value is unknown to earlier releases.
+function presetUsesDockAboveFullScreen(pack) {
+  return pack?.items?.[0]?.dock?.aboveFullScreen !== undefined;
+}
+
+// Written only when the Dock is not opaque; any explicit value is unknown to earlier releases.
+function presetUsesDockSurfaceOpacity(pack) {
+  return pack?.items?.[0]?.dock?.surfaceOpacityPercent !== undefined;
+}
 
 export const SHARESETS_MINIMUM_APP_VERSION = "0.20.0";
 
