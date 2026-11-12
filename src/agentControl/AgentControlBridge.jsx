@@ -21,6 +21,7 @@ import { isDockSupported } from "../lib/platform.js";
 import { seedTokensFromLabels } from "../math/channelRoles.js";
 import { buildPublicSettings } from "./settingsControl.js";
 import { buildTransportSnapshot, selectImportTrack } from "./transportControl.js";
+import { getSuccessfulFileSession } from "../lib/fileAnalysisSessionRegistry.js";
 import { useAgentControlBridge } from "./useAgentControlBridge.js";
 import { useAgentControlState } from "./AgentControlStateContext.jsx";
 import { useVisualCaptureSurfaces } from "./useVisualCaptureSurfaces.js";
@@ -260,7 +261,7 @@ export function AgentControlBridge() {
           return {
             sessionId: plan.sessionId,
             reused: true,
-            result: { status: "completed", sessionId: plan.sessionId },
+            result: { status: "completed" },
           };
         }
         const run = beginFileAnalysisForControl(
@@ -272,7 +273,7 @@ export function AgentControlBridge() {
         if (!run) throw new Error("FILE analysis was not accepted.");
         await run.accepted;
         const { sessionId } = run;
-        return { sessionId, result: { sessionId } };
+        return { sessionId };
       }
       if (method === "transport.file.reanalyze") {
         if (meterRuntime.liveLifecycle === "running") await stopLiveForControl();
@@ -407,7 +408,9 @@ export function AgentControlBridge() {
       shortcutRegistrationErrors: settings.shortcutRegistrationErrors,
       dialogueDetectionRequested: dialogueGating,
       dialogueDetectionActive: dialogueGating && running,
-      hasCompletedFileAnalysis: fileSessions.some((session) => session.state === "complete"),
+      hasCompletedFileAnalysis: fileSessions.some((session) =>
+        Boolean(getSuccessfulFileSession(session))
+      ),
       sourceMode,
       channelCount,
       channelLabelMode: channelLabelOverride ? "custom" : "auto",
@@ -485,6 +488,9 @@ export function AgentControlBridge() {
       }
       if (changed.includes("settings.dialogueVadEngine")) {
         settings.setDialogueVadEngine(next.dialogueVadEngine);
+      }
+      if (changed.includes("settings.fileDialogueDetection")) {
+        settings.setFileDialogueDetection(next.fileDialogueDetection);
       }
       if (changed.includes("settings.channelLabels")) {
         settings.setChannelLabelOverrides((current) => {

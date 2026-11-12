@@ -130,8 +130,10 @@ retains partial results. Switching from LIVE to FILE stops capture but retains L
 extra confirmation.
 
 Already completed FILE results do not retroactively change with Settings or Panel analysis-request
-changes. Commands that alter relevant configuration report `fileReanalysisRequired`; only an
-explicit reanalyze starts new work.
+changes. Use [Settings Control](settings.md#file-dialogue-detection) to read or change the File
+toolbar's Dialogue Detection switch. Inspect each session's `analysisSettings.dialogue` to see the
+conditions captured for its result. Reanalyze applies current settings, and importing the same source
+and track again can rerun the existing entry when the dialogue conditions differ.
 
 FILE uses the same retained snapshot selection as LIVE. This reflects the existing FILE history
 scrub and Return to File Result behavior; it does not add playback or seek semantics. Selection is

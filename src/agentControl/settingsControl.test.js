@@ -17,6 +17,7 @@ const current = {
   interfaceSize: "default",
   historyRetentionSec: 3600,
   dialogueVadEngine: "firered",
+  fileDialogueDetection: false,
   channelLabels: { channelCount: 2, mode: "auto", layout: "stereo", roles: ["L", "R"] },
 };
 
@@ -57,6 +58,7 @@ describe("Settings Control", () => {
       interfaceSize: "large",
       historyRetentionSec: 7200,
       dialogueVadEngine: "silero",
+      fileDialogueDetection: false,
       channelLabels: {
         channelCount: 2,
         mode: "custom",

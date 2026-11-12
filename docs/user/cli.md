@@ -435,6 +435,16 @@ separate generation token and do not advance the global revision. A running Live
 `--allow-measurement-restart`. See [Device Control](../agent-control/devices.md) for inventory fields,
 Automatic semantics, dry-run, persistence/restart settlement, and copyable workflows.
 
+To enable Dialogue Detection for subsequent File analysis, read the current revision with
+`settings inspect --json`, then send a Settings patch. For example, in PowerShell:
+
+```powershell
+'{"fileDialogueDetection":true}' | plvs-cli settings update - --expected-revision <n> --json
+```
+
+Use `false` to turn it off. Existing results keep their original analysis settings until reanalyzed.
+[File Dialogue Detection settings](../agent-control/settings.md#file-dialogue-detection)
+
 Detailed payloads and behavior are documented in [Agent Control](../agent-control/README.md).
 
 ## JSON Contract

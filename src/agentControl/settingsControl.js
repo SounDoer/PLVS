@@ -63,6 +63,7 @@ export function buildPublicSettings(settings, context) {
     interfaceSize: settings.interfaceSize,
     historyRetentionSec: settings.historyRetentionSec,
     dialogueVadEngine: settings.dialogueVadEngine,
+    fileDialogueDetection: settings.fileDialogueDetection === true,
     channelLabels: {
       channelCount: context.channelCount,
       mode: context.channelLabelMode,
@@ -130,6 +131,11 @@ export function buildSettingsSchema(settings, context) {
       default: DEFAULT_DIALOGUE_VAD_ENGINE,
       current: settings.dialogueVadEngine,
       options: VAD_ENGINES,
+    },
+    fileDialogueDetection: {
+      type: "boolean",
+      default: false,
+      current: settings.fileDialogueDetection,
     },
     channelLabels: {
       type: "object",
@@ -322,6 +328,11 @@ export function planSettingsUpdate(current, patch, context, options = {}) {
       issue("invalidOption", "$.dialogueVadEngine", "dialogueVadEngine is not supported.")
     );
   }
+  if ("fileDialogueDetection" in patch && typeof patch.fileDialogueDetection !== "boolean") {
+    issues.push(
+      issue("invalidType", "$.fileDialogueDetection", "fileDialogueDetection must be a boolean.")
+    );
+  }
 
   let nextChannelLabels = current.channelLabels;
   if ("channelLabels" in patch) {
@@ -474,6 +485,9 @@ export function planSettingsUpdate(current, patch, context, options = {}) {
     ...(Object.hasOwn(patch, "dialogueVadEngine")
       ? { dialogueVadEngine: patch.dialogueVadEngine }
       : {}),
+    ...(Object.hasOwn(patch, "fileDialogueDetection")
+      ? { fileDialogueDetection: patch.fileDialogueDetection }
+      : {}),
     ...(Object.hasOwn(patch, "channelLabels") ? { channelLabels: nextChannelLabels } : {}),
   };
   const changed = [];
@@ -507,6 +521,12 @@ export function planSettingsUpdate(current, patch, context, options = {}) {
     settings.dialogueVadEngine
   );
   changedValue(changed, "settings.channelLabels", current.channelLabels, settings.channelLabels);
+  changedValue(
+    changed,
+    "settings.fileDialogueDetection",
+    current.fileDialogueDetection,
+    settings.fileDialogueDetection
+  );
 
   const effects = [];
   if (changed.includes("settings.historyRetentionSec") && context.sourceMode === "live") {
@@ -536,7 +556,9 @@ export function planSettingsUpdate(current, patch, context, options = {}) {
   }
   if (
     (changed.includes("settings.channelLabels") && context.sourceMode === "file") ||
-    (changed.includes("settings.dialogueVadEngine") && context.hasCompletedFileAnalysis === true)
+    (context.hasCompletedFileAnalysis === true &&
+      (changed.includes("settings.dialogueVadEngine") ||
+        changed.includes("settings.fileDialogueDetection")))
   ) {
     warnings.push({ code: "fileReanalysisRequired" });
   }

@@ -1,6 +1,6 @@
 /**
- * Every user-operable control rendered by Settings has one explicit authority owner. Agent
- * Control exposes only entries owned by `settings`; the other owners point to their existing
+ * Every user-operable Settings control and the File toolbar preference have explicit owners.
+ * Settings Control exposes entries owned by `settings`. Other owners point to their existing
  * command family or record why an agent must not operate the control.
  */
 export const SETTINGS_SURFACE_CONTROLS = Object.freeze([
@@ -21,6 +21,7 @@ export const SETTINGS_SURFACE_CONTROLS = Object.freeze([
   { id: "appearance.browseThemes", owner: "external" },
   { id: "analysis.historyRetention", owner: "settings", field: "historyRetentionSec" },
   { id: "analysis.dialogueVadEngine", owner: "settings", field: "dialogueVadEngine" },
+  { id: "file.dialogueDetection", owner: "settings", field: "fileDialogueDetection" },
   { id: "analysis.dialogueVadDocumentation", owner: "external" },
   { id: "channels.resetLabels", owner: "settings", field: "channelLabels" },
   { id: "channels.layout", owner: "settings", field: "channelLabels" },

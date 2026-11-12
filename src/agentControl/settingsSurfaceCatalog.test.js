@@ -29,6 +29,7 @@ describe("Settings surface authority catalogue", () => {
       "interfaceSize",
       "historyRetentionSec",
       "dialogueVadEngine",
+      "fileDialogueDetection",
       "channelLabels",
     ]);
   });

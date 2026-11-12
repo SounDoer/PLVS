@@ -250,6 +250,9 @@ async function mutate(ctx) {
     }
   }
   result.state.transport = live().transport;
+  if ("status" in result && result.status === "accepted" && execution?.sessionId) {
+    Object.assign(result, { sessionId: execution.sessionId });
+  }
   Object.assign(result, execution?.result ?? {});
   if (Array.isArray(execution?.affectedSessions)) {
     result.affectedSessions = execution.affectedSessions;

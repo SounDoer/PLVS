@@ -1,6 +1,6 @@
 # Settings Control
 
-Settings Control exposes persistent application preferences from the existing GUI Settings surface.
+Settings Control exposes persistent application preferences from GUI Settings and the File toolbar.
 It does not treat every value stored in the settings persistence domain as a public setting.
 
 ## Commands
@@ -26,7 +26,8 @@ Fields, types, defaults and options are generated from the schema:
 runtime state, reported by `settings inspect` rather than documented here.
 
 The public fields correspond to Open at Login, Close Behavior, the configurable keyboard shortcuts,
-Interface Size, History Length, Dialogue Detection, and channel-role labels.
+Interface Size, History Length, the Dialogue Detection engine, the File toolbar's Dialogue Detection
+switch, and channel-role labels.
 
 The following are intentionally outside Settings Control:
 
@@ -106,9 +107,9 @@ results include `historyRetentionReduced` with the previous and target values. T
 ## Dialogue Detection engine
 
 `dialogueVadEngine` accepts exactly `firered` or `silero`, with `firered` as the default.
-There is no Off value: the setting selects the engine, while Stats dialogue-metric demand determines
-whether the shared runtime is requested. Inspection separates the configured setting from runtime
-`dialogueDetection.requested`, `active`, and effective `engine`.
+Stats dialogue-metric demand determines whether Live requests the configured engine. The File
+toolbar switch determines whether a File analysis requests it. Inspection separates the configured
+setting from Live runtime `dialogueDetection.requested`, `active`, and effective `engine`.
 
 Changing the setting while no dialogue metrics request the runtime persists the new choice without
 starting VAD or restarting measurement. Changing it while Dialogue Detection is running invokes the
@@ -118,6 +119,15 @@ side-effect-free command fails with `confirmationRequired`. Dry-run needs no fla
 `effects: ["measurementRestart"]` and the required flag. A successful confirmed result reports the
 same effect and waits for backend synchronization, restart, and Settings persistence. A no-op needs
 no confirmation. The field is not captured by Presets and is unaffected by draft editors.
+
+## File Dialogue Detection
+
+`fileDialogueDetection` controls the File toolbar's Dialogue Detection switch. It can be read or
+updated in either source mode. File imports and reanalysis snapshot it when they start and use
+`dialogueVadEngine` when it is enabled. The switch does not affect Live's Stats-driven detection,
+restart measurement, or change an in-progress File attempt. If a successful File result exists,
+changing the switch returns `fileReanalysisRequired`. Use `transport file reanalyze` to apply the
+current preference to an existing result. History restoration uses the original analysis settings.
 
 ## Channel labels
 

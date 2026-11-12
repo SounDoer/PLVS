@@ -67,9 +67,10 @@ is a new entry in `src/agentControl/bridge/domains.js`: the entry is what gives 
 revision watcher, its settlement slot and its place in the unmount cleanup, so none of the three can
 be added without the others.
 
-`src/agentControl/settingsSurfaceCatalog.js` is the authority inventory for every user-operable
-Settings control. Each entry is owned by Settings Control, another Agent Control family, an external
-destination, or an explicit user-only boundary. `PUBLIC_FIELDS` is derived from that catalogue, so
+`src/agentControl/settingsSurfaceCatalog.js` tracks ownership for every user-operable Settings
+control and the File toolbar's Dialogue Detection preference. Each entry is owned by Settings
+Control, another Agent Control family, an external destination, or an explicit user-only boundary.
+`PUBLIC_FIELDS` is derived from that catalogue, so
 adding a Settings-owned control without exposing it cannot silently create a second field list.
 Settings Control also imports option lists and defaults from `src/settings/defaults.js` and
 `src/lib/dialogueVadEngines.js`; a value the GUI offers cannot drift from `settings describe`.

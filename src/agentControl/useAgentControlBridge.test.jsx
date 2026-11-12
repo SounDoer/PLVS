@@ -3457,6 +3457,7 @@ describe("useAgentControlBridge", () => {
       action: method,
       status: "accepted",
       revision: 1,
+      sessionId: "sessionId" in params ? params.sessionId : "file-new",
     });
   });
 
@@ -3598,6 +3599,68 @@ describe("useAgentControlBridge", () => {
     });
     expect(response.result).not.toHaveProperty("settings");
     expect(flush).toHaveBeenCalledTimes(1);
+  });
+
+  it("previews and saves File Dialogue Detection independently of Live detection", async () => {
+    const flush = vi.fn(async () => {});
+    mount({
+      agentSettings: { ...publicSettings, fileDialogueDetection: false },
+      agentSettingsContext: {
+        ...settingsContext,
+        dialogueDetectionActive: true,
+        hasCompletedFileAnalysis: true,
+      },
+      flush,
+    });
+    await waitUntilReady();
+
+    const update = (id, fileDialogueDetection, expectedRevision, dryRun = false) =>
+      send(
+        request(
+          "settings.update",
+          { patch: { fileDialogueDetection }, expectedRevision, dryRun },
+          id
+        )
+      );
+    const preview = await update("file-dialogue-preview", true, 0, true);
+    expect(preview.result).toMatchObject({
+      dryRun: true,
+      changed: true,
+      revision: 0,
+      effects: [],
+      warnings: [{ code: "fileReanalysisRequired" }],
+      state: { settings: { fileDialogueDetection: true } },
+    });
+    expect(flush).not.toHaveBeenCalled();
+    const initial = await send(request("settings.inspect", {}, "file-dialogue-initial"));
+    expect(initial.result.settings.fileDialogueDetection).toBe(false);
+
+    const saved = await update("file-dialogue-update", true, 0);
+    expect(saved.result).toMatchObject({
+      changed: true,
+      revision: 1,
+      effects: [],
+      state: {
+        settings: { fileDialogueDetection: true },
+        runtime: { dialogueDetection: { active: true } },
+      },
+    });
+    const inspected = await send(request("settings.inspect", {}, "file-dialogue-saved"));
+    expect(inspected.result.settings.fileDialogueDetection).toBe(true);
+    expect((await update("file-dialogue-noop", true, 1)).result).toMatchObject({
+      changed: false,
+      revision: 1,
+    });
+    expect(
+      (await update("file-dialogue-invalid", "false", 1)).error.data.details.issues
+    ).toMatchObject([{ code: "invalidType", path: "$.fileDialogueDetection" }]);
+    expect(flush).toHaveBeenCalledTimes(1);
+    expect((await update("file-dialogue-disable", false, 1)).result).toMatchObject({
+      changed: true,
+      revision: 2,
+      effects: [],
+      state: { settings: { fileDialogueDetection: false } },
+    });
   });
 
   it("rejects Appearance through Settings without applying or persisting it", async () => {

@@ -172,6 +172,11 @@ reports whether one is visible and its rectangle in CSS pixels relative to the m
 together with the viewport size. Names are declared by the components that render them; see
 [Pointer Control](pointer.md) for the vocabulary. An undeclared name is `uiTargetNotFound`.
 
+In File mode, `toolbar:dialogue-detection` identifies the Dialogue Detection switch. Set its value
+through [Settings Control](settings.md#file-dialogue-detection). When present, the summary's
+`file-summary:details` and `file-summary:warning` targets also accept
+`ui show dropdown --control <target-id>` with the current revision and UI generation.
+
 ## Errors
 
 Stable UI Navigation errors are:
