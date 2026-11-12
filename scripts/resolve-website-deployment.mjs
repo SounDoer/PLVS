@@ -58,7 +58,8 @@ export async function selectPolicyRef({
   return productSha;
 }
 
-const api = (path) => JSON.parse(execFileSync("gh", ["api", path], { encoding: "utf8" }));
+const api = (path, fields = []) =>
+  JSON.parse(execFileSync("gh", ["api", path, ...fields], { encoding: "utf8" }));
 
 async function verifySiteCI(siteSha) {
   const path = `repos/${SITE_REPOSITORY}/actions/workflows/ci.yml/runs?head_sha=${siteSha}&event=push&status=success`;
@@ -106,7 +107,10 @@ async function main() {
       : productRef;
   if (!stableTag.test(ref) && !sha.test(ref))
     throw new Error("Use a stable release tag or its exact commit");
-  const productSha = exact(api("repos/" + repository + "/commits/" + ref).sha, "PLVS product");
+  // Commit and comparison responses can include patches larger than Node's subprocess buffer.
+  const commitSha = (revision) =>
+    api("repos/" + repository + "/commits/" + revision, ["--jq", "{sha}"]).sha;
+  const productSha = exact(commitSha(ref), "PLVS product");
   const contents = (path, revision) =>
     JSON.parse(
       Buffer.from(
@@ -120,7 +124,7 @@ async function main() {
     api("repos/" + repository + "/releases/tags/" + tag),
     tag,
     productSha,
-    api("repos/" + repository + "/commits/" + tag).sha
+    commitSha(tag)
   );
   const productRuns = api(
     "repos/" +
@@ -138,11 +142,13 @@ async function main() {
   const livePolicy = exact(live.policySha ?? live.websiteSha, "Live privacy policy");
   const forward =
     productSha !== previousProduct &&
-    api("repos/" + repository + "/compare/" + previousProduct + "..." + productSha).status ===
-      "ahead";
+    api("repos/" + repository + "/compare/" + previousProduct + "..." + productSha, [
+      "--jq",
+      "{status}",
+    ]).status === "ahead";
   if (contentRef && contentRef !== "main") exact(contentRef, "Catalogue");
   const contentSha = contentRef
-    ? exact(api("repos/" + repository + "/commits/" + contentRef).sha, "Catalogue")
+    ? exact(commitSha(contentRef), "Catalogue")
     : forward
       ? productSha
       : history.commitSha;
