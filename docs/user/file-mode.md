@@ -34,6 +34,10 @@ file's row. During reanalysis, the previous result remains visible and you can k
 time point. A successful reanalysis replaces the result. The whole-file metrics on the right stay
 independent of timeline inspection.
 
+Long filenames in the summary bar and **Files** menu are shortened in the middle to keep the
+ending visible. Hover over a shortened name to see the full filename. The summary bar gives
+selected metrics priority and uses spare space to show more of the filename.
+
 Use **Clear All Files…** at the bottom of the **Files** menu to remove all entries and results after
 confirmation. Audio files on disk are kept.
 

@@ -5,6 +5,7 @@ import { Button } from "./ui/button.jsx";
 import { FileAnalysisHistoryMenu } from "./FileAnalysisHistoryMenu.jsx";
 import { HoverTip } from "./HoverTip.jsx";
 import { FileDetailPopover } from "./FileDetailPopover.jsx";
+import { MiddleTruncatedText } from "./MiddleTruncatedText.jsx";
 import { PanelSettingsHeader } from "./PanelSettingsHeader.jsx";
 import { SortableStatsList } from "./panel-settings/StatsSettings.jsx";
 import { useDropdownNavigation } from "../uiNavigation/useDropdownNavigation.js";
@@ -326,7 +327,14 @@ function SummaryMetrics({ preferences, onChange, report }) {
       );
       const gutter = parseFloat(getComputedStyle(sizing.current).columnGap) || 0;
       setVisibleCount(
-        fitFileMetrics(width, widths, gutter, overflowSizer.current.getBoundingClientRect().width)
+        width >= sizing.current.getBoundingClientRect().width
+          ? widths.length
+          : fitFileMetrics(
+              width,
+              widths,
+              gutter,
+              overflowSizer.current.getBoundingClientRect().width
+            )
       );
     };
     const observer = new ResizeObserver(measure);
@@ -339,47 +347,44 @@ function SummaryMetrics({ preferences, onChange, report }) {
   const hidden = metrics.slice(visibleCount);
   const overflow = useDropdownNavigation(hidden.length ? "file-summary:overflow" : null);
   return (
-    <div className="flex min-w-0 flex-1 items-center justify-end gap-[var(--ui-header-action-gap)]">
-      <div
-        ref={area}
-        className={cn("relative flex min-w-0 flex-1 items-center justify-end", metricGap)}
-      >
-        <div
-          aria-hidden="true"
-          className="pointer-events-none invisible absolute right-0 flex w-max flex-col"
-        >
+    <div className="ml-auto flex min-w-0 items-center gap-[var(--ui-header-action-gap)]">
+      <div ref={area} className="relative flex min-w-0 flex-auto justify-end">
+        {/* Reserve the natural width of all selected metrics before the filename grows. */}
+        <div aria-hidden="true" className="pointer-events-none invisible shrink-0">
           <div ref={sizing} className={cn("flex w-max", metricGap)}>
             {metrics.map((metric) => (
               <MetricColumn key={metric.id} metric={metric} report={report} />
             ))}
           </div>
-          <span ref={overflowSizer} className="inline-block w-[var(--ui-control-h)]" />
+          <span ref={overflowSizer} className="absolute w-[var(--ui-control-h)]" />
         </div>
-        {visible.map((metric) => (
-          <MetricTrigger key={metric.id} metric={metric} report={report} />
-        ))}
-        {hidden.length ? (
-          <Popover {...overflow.rootProps}>
-            <PopoverTrigger asChild>
-              <Button
-                variant="quiet"
-                size="icon"
-                {...overflow.triggerProps}
-                aria-label={hidden.length + " more summary metrics"}
+        <div className={cn("absolute inset-0 flex items-center justify-end", metricGap)}>
+          {visible.map((metric) => (
+            <MetricTrigger key={metric.id} metric={metric} report={report} />
+          ))}
+          {hidden.length ? (
+            <Popover {...overflow.rootProps}>
+              <PopoverTrigger asChild>
+                <Button
+                  variant="quiet"
+                  size="icon"
+                  {...overflow.triggerProps}
+                  aria-label={hidden.length + " more summary metrics"}
+                >
+                  +{hidden.length}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent
+                align="end"
+                className="grid w-max max-h-[var(--radix-popover-content-available-height)] grid-cols-[minmax(0,1fr)_max-content_max-content] gap-x-[var(--ui-metric-inline-gap)] overflow-auto p-1"
               >
-                +{hidden.length}
-              </Button>
-            </PopoverTrigger>
-            <PopoverContent
-              align="end"
-              className="grid w-max max-h-[var(--radix-popover-content-available-height)] grid-cols-[minmax(0,1fr)_max-content_max-content] gap-x-[var(--ui-metric-inline-gap)] overflow-auto p-1"
-            >
-              {hidden.map((metric) => (
-                <MetricTrigger key={metric.id} metric={metric} report={report} inOverflow />
-              ))}
-            </PopoverContent>
-          </Popover>
-        ) : null}
+                {hidden.map((metric) => (
+                  <MetricTrigger key={metric.id} metric={metric} report={report} inOverflow />
+                ))}
+              </PopoverContent>
+            </Popover>
+          ) : null}
+        </div>
       </div>
       <Popover {...options.rootProps}>
         <HoverTip
@@ -483,7 +488,8 @@ export function FileAnalysisSummary({
     >
       <div
         className={cn(
-          "flex w-[min(40%,var(--ui-surface-compact-w))] min-w-0 shrink-0 items-center",
+          // Grows into width the metrics leave unused; never shrinks below the old fixed width.
+          "flex max-w-max min-w-[min(40%,var(--ui-surface-compact-w))] flex-[1_1_0px] items-center",
           inlineGap
         )}
       >
@@ -505,7 +511,7 @@ export function FileAnalysisSummary({
         />
         <div className="flex min-w-0 flex-1 flex-col">
           <div className="flex min-h-[var(--ui-control-h)] min-w-0 items-center">
-            <span className="truncate font-semibold text-foreground">{fileName}</span>
+            <MiddleTruncatedText text={fileName} className="font-semibold text-foreground" />
             {details.length ? (
               <FileDetailPopover
                 label={activityOnly ? "analysis activity" : "file analysis warning"}
@@ -529,7 +535,7 @@ export function FileAnalysisSummary({
               </FileDetailPopover>
             ) : null}
           </div>
-          <div className="flex min-w-0 items-center text-[length:var(--ui-fs-caption)] text-muted-foreground">
+          <div className="flex min-w-0 items-center text-[length:var(--ui-fs-caption)] text-muted-foreground [contain:inline-size]">
             <span className="truncate">{metadata || "No Media Metadata"}</span>
             <FileDetailPopover
               label="file details"

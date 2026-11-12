@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { Check, Download, FileStack, Play, RefreshCw, Square, Trash2 } from "lucide-react";
 import { ConfirmDialog } from "./ConfirmDialog.jsx";
 import { HoverTip } from "./HoverTip.jsx";
+import { MiddleTruncatedText } from "./MiddleTruncatedText.jsx";
 import { useDropdownNavigation } from "../uiNavigation/useDropdownNavigation.js";
 import { Popover, PopoverContent, PopoverTrigger } from "./ui/popover.jsx";
 import { POPOVER_TITLE_CLASS } from "./ui/surfaceStyles.js";
@@ -134,12 +135,10 @@ export function FileAnalysisHistoryMenu({
                         active ? "border-primary bg-primary" : "border-muted-foreground"
                       )}
                     />
-                    <span
-                      className="min-w-0 flex-1 truncate text-[length:var(--ui-fs-control)] font-medium text-foreground"
-                      title={name}
-                    >
-                      {name}
-                    </span>
+                    <MiddleTruncatedText
+                      text={name}
+                      className="min-w-0 flex-1 text-[length:var(--ui-fs-control)] font-medium text-foreground"
+                    />
                   </RowAction>
                   <div className="flex shrink-0 items-center gap-1 pr-1">
                     {running ? (
