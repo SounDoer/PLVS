@@ -4,6 +4,8 @@ import {
   resolveWebsiteBaseline,
   validateWebsiteMarker,
 } from "./website-publication.mjs";
+import { selectPolicyRef, verifyProductRelease } from "./resolve-website-deployment.mjs";
+import { releaseAssetNames } from "./release-assets.mjs";
 
 const sha = "a".repeat(40);
 const marker = {
@@ -53,5 +55,36 @@ describe("website publication identity and gate", () => {
       expect(() => requireSuccessfulCI([invalid], sha)).toThrow();
     }
     expect(() => requireSuccessfulCI([], sha)).toThrow();
+  });
+});
+
+describe("split website release inputs", () => {
+  it("rejects drafts, mismatched commits and incomplete platform assets", () => {
+    const tag = "v0.26.0";
+    const assets = Object.values(releaseAssetNames("0.26.0")).map((name) => ({ name }));
+    const release = { tag_name: tag, draft: false, prerelease: false, assets };
+    expect(() => verifyProductRelease(release, tag, sha, sha)).not.toThrow();
+    expect(() => verifyProductRelease(release, tag, sha, marker.contentSha)).toThrow();
+    expect(() => verifyProductRelease({ ...release, draft: true }, tag, sha, sha)).toThrow();
+    expect(() =>
+      verifyProductRelease({ ...release, assets: assets.slice(1) }, tag, sha, sha)
+    ).toThrow(/missing/);
+  });
+
+  it("retains independent policy updates unless the new product changes the policy", async () => {
+    const previousProduct = sha;
+    const productSha = "b".repeat(40);
+    const livePolicy = "c".repeat(40);
+    const options = { previousProduct, productSha, livePolicy, forward: true };
+    await expect(selectPolicyRef({ ...options, digest: () => "same" })).resolves.toBe(livePolicy);
+    const digest = (ref) => ref;
+    await expect(selectPolicyRef({ ...options, digest })).rejects.toThrow(/independently/);
+    await expect(selectPolicyRef({ ...options, digest, explicit: productSha })).resolves.toBe(
+      productSha
+    );
+    await expect(selectPolicyRef({ ...options, digest, forward: false })).resolves.toBe(livePolicy);
+    await expect(
+      selectPolicyRef({ ...options, digest, livePolicy: previousProduct })
+    ).resolves.toBe(productSha);
   });
 });

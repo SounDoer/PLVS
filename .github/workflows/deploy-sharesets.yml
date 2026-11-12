@@ -4,11 +4,12 @@ on:
   workflow_dispatch:
     inputs:
       content_ref:
-        description: Content commit to publish against the latest stable website
+        description: Content commit to publish against the live website source and latest stable product
         required: true
         default: main
 
 permissions:
+  actions: read
   contents: read
   pages: write
   id-token: write

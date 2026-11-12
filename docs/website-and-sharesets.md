@@ -85,8 +85,8 @@ needed for presentation, copies the original published download and preview byte
 the privacy body against its review record. The manifest records the three source commits.
 In the website checkout, run `npm run check -- <export-directory>`.
 
-During the transition, the production deployment still runs here and owns the shared Pages
-lock and the live immutable-history baseline. The separate build produces review artifacts.
+The production workflow in PLVS uses the separate renderer and owns the shared Pages lock,
+the existing domain, and the live immutable-history baseline.
 
 After reviewing refreshed Sharesets previews, run `node scripts/marketing/prepare-homepage-assets.mjs`
 to refresh the homepage's derived WebP images. The six Preset and Theme tiles resolve the latest
@@ -115,84 +115,28 @@ classifier still select broader checks.
 contract tests. CSS/layout changes also need browser screenshots at desktop, tablet, and mobile
 widths; unit tests cannot verify alignment.
 
-Website publication does not bump the desktop version or create a GitHub Release. After checking
-and committing the intended changes:
+Website-only changes land in PLVS-Website. Build and review the candidate with the same guide,
+privacy, and Catalogue revisions it will publish. After successful push CI for the website SHA,
+dispatch the PLVS workflow against a published stable release:
 
-```powershell
-$siteSha = git rev-parse HEAD
-npm run website:review -- $siteSha
-git push origin main
-gh run list --workflow ci.yml --commit $siteSha --event push
-# Wait for the matching CI run to finish successfully before dispatching.
-gh workflow run deploy-website.yml --ref main -f ref=$siteSha
-```
+\`\`\`powershell
+gh workflow run deploy-website.yml --repo SounDoer/PLVS --ref main -f ref=v<stable> -f website_ref=<website-sha>
+\`\`\`
 
-The review command reads `/publication.json`, reports every changed file from the exact live
-website SHA, and separately lists guide differences from the latest stable desktop release. Read
-the actual diff, including website generator/shared inputs and generated guide output. Text
-corrections may ship independently; descriptions of unshipped app features must not silently go
-live. Resolve such differences before dispatch, or, with the user's approval (the normal rule
-against moving work off `main` still applies), publish from a website hotfix branch.
+Omit \`website_ref\` to keep the current live renderer. An independent privacy update can pass
+\`policy_ref=<plvs-policy-sha>\` after reviewing the policy and date. The workflow validates the
+published product commit and package inventory, and requires exact push CI for the product and
+website. A site-only update retains live Catalogue and privacy revisions by default. A forward
+desktop release can advance both through the history and privacy checks. Resolve competing
+policy edits before publishing them.
 
-### Website hotfix from a release
-
-A hotfix branch starts from the latest stable release tag, so it holds exactly the released site
-and guide; only what is copied into it changes. Push CI runs for branches named
-`website-hotfix/**`, which `deploy-website.yml` requires.
-
-```powershell
-git worktree add .claude/worktrees/website-hotfix-<topic> -b website-hotfix/<date>-<topic> v<latest>
-# In the worktree: npm run worktree:setup, then copy only what should ship, for example
-git checkout main -- website/assets sharesets/catalogue
-# If the release predates the current change gate, carry its implementation and tests together:
-git checkout main -- .github/workflows/ci.yml scripts/ciWorkflowContract.test.js scripts/check-changes.mjs scripts/check-changes.test.js
-npm run website:check
-git commit -m "fix(website): ..."
-npm run website:review -- (git rev-parse HEAD)
-git push -u origin website-hotfix/<date>-<topic>
-```
-
-- Copy only the files that should go live. Leave `docs/user/` and website pages describing
-  unreleased features on `main`; the review's guide differences since the release must be empty
-  or pure corrections.
-- Carry the current `sharesets/catalogue` from `main` whenever it is ahead of the live Catalogue:
-  publication validates the branch's content against live history and rejects older content.
-- `npm run website:check` builds the complete site from the branch, so a copied file that depends
-  on unreleased code fails there rather than live. Before pushing, run `npm run check:changes`
-  after the final commit. For a release-based hotfix, both the local command and first-push CI
-  use its unique common ancestor with `origin/main`, then inspect every branch commit plus local
-  pending changes where applicable. Subsequent CI pushes use the previous pushed SHA. A branch
-  name alone never skips desktop checks: native, shared-dependency or classifier edits still
-  select the broader lanes, including changes reverted within the same push. Missing or ambiguous
-  ancestry falls back to the full gate.
-- An older release without this gate needs the workflow, classifier and tests copied together.
-  That adoption is a tooling change and runs the full gate once; releases containing the gate
-  need no such copy for an image-only hotfix.
-- After that run succeeds, dispatch `deploy-website.yml` with the branch commit's full SHA and
-  verify as below. Everything copied already exists on `main`, so nothing merges back.
-- After the deployment is verified, tag the deployed commit and push the tag, then delete the
-  branch (local and remote) and its worktree:
-  `git tag -a website-hotfix-<date> <sha> -m "..."`. The next publication checks out the live
-  Sharesets content and reviews from the live website SHA, so that commit must stay reachable;
-  the tag keeps it without a branch. No workflow runs on tag pushes.
-- Delete the tag (local and remote) once a later website deployment has replaced that SHA in the
-  live `/publication.json` and `/sharesets/publication.json`, normally after the next release.
-
-The deployment workflow resolves the requested ref once, requires successful push CI for that
-exact SHA, then passes that SHA to the shared publication workflow. The existing live Sharesets
-history validation remains mandatory. Wait for the deployment conclusion, then verify the live
-`/publication.json` website SHA and the affected page in a browser. A dispatched run is not a
-completed publication. The root marker records `websiteSha` and `contentSha` separately; the
-existing `/sharesets/publication.json` continues to own immutable Catalogue history.
-
-On the first deployment of this workflow, the root marker will not yet exist. Recover the exact
-website SHA from the previous successful deployment's artifact and resolved checkout, then pass
-it explicitly: `npm run website:review -- <candidate-sha> <verified-live-website-sha>`. This bootstrap
-is accepted only for a missing (404) root marker, never for a malformed or unreadable marker, and
-never overrides an existing one. Do not substitute the Sharesets content SHA or assume the previous
-workflow's `headSha` is the deployed website ref. Later missing markers require the same evidence-
-based recovery rather than guessing a baseline. Re-run review if another deployment changes the
-live website while preparing a publication.
+The shared workflow holds the Pages lock across live baseline discovery, immutable Catalogue
+comparison, build, deployment, and marker verification. \`/publication.json\` records
+\`productSha\`, \`siteSourceSha\`, \`policySha\`, and \`contentSha\`. The compatibility field
+\`websiteSha\` identifies the PLVS product revision. The Catalogue's own
+\`/sharesets/publication.json\` still records the commit that owns its history. Wait for the run,
+check both markers, and inspect affected pages. A missing or invalid live marker needs evidence
+from the previous successful deployment before resuming publication.
 
 ## Curating Sharesets content
 

@@ -1,13 +1,19 @@
 name: Deploy Website
 
-# release.yml dispatches this with the published tag. Both publication paths protect live history.
+# release.yml dispatches the stable tag after publication.
 on:
   workflow_dispatch:
     inputs:
       ref:
-        description: Exact website commit SHA (or stable release tag); successful push CI required
+        description: Published stable PLVS tag or exact commit (main selects the latest stable release)
         required: true
         default: main
+      website_ref:
+        description: Exact PLVS-Website SHA with successful push CI (empty keeps the live site source)
+        type: string
+      policy_ref:
+        description: Exact PLVS privacy policy commit when publishing an independent policy update
+        type: string
 
 permissions:
   actions: read
@@ -16,23 +22,9 @@ permissions:
   id-token: write
 
 jobs:
-  validate:
-    runs-on: ubuntu-24.04
-    outputs:
-      sha: ${{ steps.gate.outputs.sha }}
-    steps:
-      - uses: actions/checkout@v7
-      - uses: actions/setup-node@v7
-        with:
-          node-version-file: .nvmrc
-      - name: Require successful CI for the exact website commit
-        id: gate
-        env:
-          GH_TOKEN: ${{ github.token }}
-          WEBSITE_REF: ${{ inputs.ref }}
-        run: node scripts/website-publication.mjs gate
   deploy:
-    needs: validate
     uses: ./.github/workflows/publish-site.yml
     with:
-      site_ref: ${{ needs.validate.outputs.sha }}
+      product_ref: ${{ inputs.ref }}
+      website_ref: ${{ inputs.website_ref }}
+      policy_ref: ${{ inputs.policy_ref }}

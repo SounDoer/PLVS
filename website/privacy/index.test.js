@@ -19,7 +19,8 @@ describe("Privacy Policy", () => {
     expect(validatePrivacyReview(html, review)).toEqual([]);
   });
   it("ships at /privacy/ through the complete website builder", () => {
-    expect(deployment).toContain("node scripts/build-website.mjs");
+    expect(deployment).toContain("node scripts/export-website-inputs.mjs");
+    expect(deployment).toContain("npm run build -- ../site-inputs ../../_site");
     expect(deployment).toContain("path: _site/");
     expect(html).toContain("<title>PLVS Privacy Policy</title>");
   });

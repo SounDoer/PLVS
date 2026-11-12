@@ -4,6 +4,7 @@ import { dirname, join, resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 
 import { validatePrivacyReview } from "./privacy-review.mjs";
+import { releaseAssetNames } from "./release-assets.mjs";
 
 function sourceRevision(root) {
   const git = (...args) => execFileSync("git", args, { cwd: root, encoding: "utf8" }).trim();
@@ -72,6 +73,9 @@ export async function exportWebsiteInputs({
   const policySha = policy === product ? productSha : sourceRevision(policy);
   const contentSha = content === product ? productSha : sourceRevision(content);
   const { version: productVersion } = await readJson(join(product, "package.json"));
+  if (!/^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)$/.test(productVersion)) {
+    throw new Error("Website inputs require a stable product version");
+  }
 
   const [{ readSharesetsSource }, { sharesetsAppRequirement }, { MODULE_CATALOG }, { STATS_META }] =
     await Promise.all([
@@ -139,6 +143,7 @@ export async function exportWebsiteInputs({
     schemaVersion: 1,
     productSha,
     productVersion,
+    releaseAssets: releaseAssetNames(productVersion),
     policySha,
     policyFingerprint: record.contentSha256,
     policyEffectiveDate: record.effectiveDate,

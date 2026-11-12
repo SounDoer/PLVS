@@ -13,6 +13,16 @@ export function validateWebsiteMarker(marker, repository) {
   ) {
     throw new Error("Invalid website publication marker; recover the exact published identity.");
   }
+  const splitFields = ["productSha", "siteRepository", "siteSourceSha", "policySha"];
+  if (
+    splitFields.some((field) => field in marker) &&
+    (marker.siteRepository !== "SounDoer/PLVS-Website" ||
+      marker.productSha !== marker.websiteSha ||
+      !shaPattern.test(marker.siteSourceSha ?? "") ||
+      !shaPattern.test(marker.policySha ?? ""))
+  ) {
+    throw new Error("Invalid split website publication marker.");
+  }
   return marker;
 }
 

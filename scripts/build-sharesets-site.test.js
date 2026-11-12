@@ -298,9 +298,7 @@ describe("Sharesets static site generator", () => {
 
   it("is part of release-bound website assembly", () => {
     const workflow = readFileSync(join(".github", "workflows", "publish-site.yml"), "utf8");
-    expect(workflow).toContain(
-      "node scripts/build-website.mjs ../content-source/sharesets/catalogue ../_site"
-    );
+    expect(workflow).toContain("npm run build -- ../site-inputs ../../_site");
   });
 
   it("builds useful empty browse pages", async () => {
