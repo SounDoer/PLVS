@@ -7,6 +7,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.26.1] - 2026-11-13
+
+### Added
+
+- File Mode lets you enable Dialogue Detection for subsequent analyses. It defaults to off,
+  remembers your choice, and preserves existing results until reanalysis.
+- Agent Control can configure File Dialogue Detection and summary metrics, wait for a specific
+  analysis run, and export selected results as a Statistics CSV.
+- Agent Control can crop screenshots to named, visible UI targets.
+
+### Changed
+
+- Simplified the File Summary detail controls and the drag-to-analyze prompt.
+
+### Fixed
+
+- Long filenames retain their endings when shortened in the File Summary and Files menu.
+
 ## [0.26.0] - 2026-11-12
 
 ### Added
