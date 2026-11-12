@@ -47,7 +47,13 @@ it("waits for track confirmation and freezes settings before probing", async () 
 });
 it("selects an identical file/track result without recomputation", async () => {
   const { result, begin, select } = mount([
-    { id: "old", metadata: probe, state: "complete", summary: {} },
+    {
+      id: "old",
+      metadata: probe,
+      state: "complete",
+      summary: {},
+      analysisSettings: { dialogue: { enabled: true, engine: "firered" } },
+    },
   ]);
   await act(async () => result.current.importFile(probe.path));
   act(() => result.current.confirm(1));

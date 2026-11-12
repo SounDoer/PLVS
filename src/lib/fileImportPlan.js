@@ -12,15 +12,22 @@ export function fileImportTracks(probe) {
  *
  * @returns {{ action: "select" | "rerun" | "analyze", sessionId: string | null }}
  */
-export function planFileImport(files, probe) {
+export function planFileImport(files, probe, settings = null) {
   const existing = files.find(
     (file) =>
       file.metadata?.selectedTrack?.index === probe.selectedTrack.index &&
       sameFileSourceVersion(file.metadata?.sourceVersion, probe.sourceVersion)
   );
   if (!existing) return { action: "analyze", sessionId: null };
+  const result = getSuccessfulFileSession(existing);
+  const previousDialogue = result?.analysisSettings?.dialogue;
+  const nextDialogue = settings?.dialogue;
+  const dialogueMatches =
+    !nextDialogue ||
+    (previousDialogue?.enabled === nextDialogue.enabled &&
+      previousDialogue?.engine === nextDialogue.engine);
   return {
-    action: getSuccessfulFileSession(existing) ? "select" : "rerun",
+    action: result && dialogueMatches ? "select" : "rerun",
     sessionId: existing.id,
   };
 }

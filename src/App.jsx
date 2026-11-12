@@ -577,6 +577,9 @@ function AppContent() {
       else if (action === "settings") setSettingsOpen(true);
     },
     sourceMode,
+    fileDialogueDetection: settings.fileDialogueDetection,
+    onToggleFileDialogueDetection: () =>
+      settings.setFileDialogueDetection(!settings.fileDialogueDetection),
     onSourceModeChange,
     onSourceTransportAction,
     onClear: clearAll,

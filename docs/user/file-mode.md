@@ -11,8 +11,8 @@ PLVS analyzes files locally using bundled ffprobe and FFmpeg.
 When a file contains multiple audio tracks, choose one in **Select Audio Track**, then choose
 **Analyze**. The default-marked track is selected initially. Cancelling leaves the current file
 and result unchanged. To choose another track, open or drop the file again; each track has its own
-analysis entry. Reopening an unchanged file and track reuses its existing result. If there is no
-completed result, reopening starts a new analysis in the same entry. Agent Control's
+analysis entry. Reopening an unchanged file and track reuses its existing result when Dialogue
+Detection settings match. Otherwise, reopening analyzes it again in the same entry. Agent Control's
 `transport file analyze` follows the same rules and takes `--track <index>` for a file with several
 audio tracks.
 Reanalyze keeps the original track. If the source contents changed, reanalysis creates a new entry
@@ -24,8 +24,13 @@ duration comes from decoded audio frames; container duration is only a progress 
 
 The pill shows progress and **Cancel** while the current file is working, **Retry** after a
 failure, and the duration after success. **Result** returns from a selected
-time without resetting zoom or scroll. The toolbar's **Sources** button stays in place and is
-disabled in File Mode. Open and other task starts are disabled while a file task is active.
+time without resetting zoom or scroll. Open and other task starts are disabled while a file task is active.
+
+The **Dialogue Detection** button takes the place of **Sources** in the toolbar. It defaults to
+off and PLVS remembers your choice. Toggle it to apply the change to the next Open, drop, or
+Reanalyze. Existing results keep their original analysis settings, shown in File Summary details.
+With detection off, PLVS still calculates programme loudness, peaks, and chart history. Dialogue
+readings are unavailable for that result.
 
 ## File Summary
 

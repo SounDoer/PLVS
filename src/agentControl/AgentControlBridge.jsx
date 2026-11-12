@@ -251,7 +251,7 @@ export function AgentControlBridge() {
           ? selectImportTrack(await probeFileAnalysis(params.path), params.trackIndex)
           : null;
         const plan = probe
-          ? planFileImport(meterRuntime.fileSessions, probe)
+          ? planFileImport(meterRuntime.fileSessions, probe, settings)
           : { action: "analyze", sessionId: null };
         if (meterRuntime.liveLifecycle === "running") await stopLiveForControl();
         switchSource("file");

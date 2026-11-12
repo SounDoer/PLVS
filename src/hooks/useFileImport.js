@@ -18,7 +18,7 @@ export function useFileImport({ files, busy, getSettings, begin, select, raiseNo
   }, []);
   const launch = useCallback(
     (probe, settings) => {
-      const plan = planFileImport(files, probe);
+      const plan = planFileImport(files, probe, settings);
       if (plan.action === "select") select(plan.sessionId);
       else if (plan.action === "rerun") begin(probe.path, settings, probe, plan.sessionId);
       else begin(probe.path, settings, probe);

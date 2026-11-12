@@ -23,6 +23,7 @@ import { fitFileMetrics, normalizeFileSummaryMetrics } from "../lib/fileSummaryP
 import { statDecimals } from "../lib/statsCatalog.js";
 import { formatClock } from "../hooks/useSessionTimer.js";
 import { cn } from "../lib/utils.js";
+import { DIALOGUE_VAD_ENGINE_OPTIONS } from "../lib/dialogueVadEngines.js";
 
 const DEFAULT_METRICS = normalizeFileSummaryMetrics(null);
 const inlineGap = "gap-[var(--ui-metric-inline-gap)]";
@@ -42,12 +43,22 @@ function FileInfo({ session }) {
   const metadata = session.metadata ?? {};
   const track = metadata.selectedTrack;
   const summary = session.summary;
+  const dialogue = session.analysisSettings?.dialogue;
+  const detector = DIALOGUE_VAD_ENGINE_OPTIONS.find(({ id }) => id === dialogue?.engine);
   const details = [
     ["Path", session.path ?? metadata.path],
     ["Container", formatContainer(metadata.container)],
     ["Track", track && formatTrackLabel(track)],
     ["Track Name", track?.title],
     ["Source Layout", track?.channelLayout],
+    [
+      "Dialogue Detection",
+      summary && dialogue
+        ? dialogue.enabled
+          ? (detector?.label ?? dialogue.engine)
+          : "Off"
+        : null,
+    ],
     [
       "Calculation Layout",
       summary?.loudnessLayoutKnown === false

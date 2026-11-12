@@ -742,7 +742,7 @@ export function SettingsContent({
             labelNode={
               <SettingsLabelWithTip
                 label="Dialogue Detection"
-                tip="The detector used for dialogue measurements. Changing it resets Live measurements; File results keep the detector used for their analysis."
+                tip="Chooses the detector used in Live and when Dialogue Detection is enabled in the File toolbar. Changing the detector resets Live measurements. Existing File results keep their original detector."
               />
             }
           >

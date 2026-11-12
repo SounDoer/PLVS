@@ -24,6 +24,17 @@ describe("planFileImport", () => {
     });
   });
 
+  it("reruns a completed result when its Dialogue Detection settings differ", () => {
+    const existing = {
+      ...entry("a", 1, true),
+      analysisSettings: { dialogue: { enabled: false, engine: null } },
+    };
+    expect(planFileImport([existing], probe(1), existing.analysisSettings).action).toBe("select");
+    expect(
+      planFileImport([existing], probe(1), { dialogue: { enabled: true, engine: "firered" } })
+    ).toEqual({ action: "rerun", sessionId: "a" });
+  });
+
   it("reruns the unchanged file and track when it has no result yet", () => {
     expect(planFileImport([entry("a", 1, false)], probe(1))).toEqual({
       action: "rerun",

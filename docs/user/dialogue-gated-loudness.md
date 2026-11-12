@@ -7,9 +7,9 @@ primary.
 
 ## Collection
 
-Dialogue Detection is on by default and runs throughout Live and File measurements, whether or not
-a dialogue row is currently visible in Stats. Adding or hiding a row changes only the display; it
-does not restart the measurement.
+Dialogue Detection runs throughout Live measurements. In File Mode it defaults to off and can be
+enabled with the toolbar's **Dialogue Detection** button for the next analysis. Adding or hiding a
+dialogue row in Stats changes only the display.
 
 For multichannel audio, PLVS analyzes non-LFE channels independently instead of averaging them.
 When the channel layout has a centre channel, detected centre speech takes priority; substantially

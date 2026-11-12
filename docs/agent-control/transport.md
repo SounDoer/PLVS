@@ -98,9 +98,10 @@ resolves a relative CLI path before transport and probes it with the GUI's impor
 with several audio tracks needs `--track <index>`, the track's `index` from the probe; without it
 the command fails side-effect free with `fileTrackSelectionRequired`, whose details list the
 tracks, because automation cannot answer the GUI's track dialog. An unknown index is invalid input.
-An unchanged file and track that already has a successful result is selected rather than
-reanalyzed: the action returns `status: "completed"` with that `sessionId`. An unchanged file and
-track without a result reruns on its existing entry; anything else creates a new ID. A started run
+An unchanged file and track with a successful result and matching Dialogue Detection settings is
+selected, and the action returns `status: "completed"` with that `sessionId`. An unchanged file and
+track with no result or different Dialogue Detection settings reruns on its existing entry. A
+different file or track creates a new ID. A started run
 selects FILE and returns `status: "accepted"` with its `sessionId` after Rust accepts analysis; it
 does not block until completion. A failure before acceptance fails the command and leaves an
 inspectable error session when an ID was already allocated.

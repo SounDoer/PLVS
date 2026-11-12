@@ -82,14 +82,25 @@ describe("SourceActionsProvider", () => {
   });
 
   it("describes the dialogue settings a file analysis should run with", () => {
-    const { result } = renderHook(() => useSourceActions(), { wrapper });
-    const { dialogue } = result.current.currentFileAnalysisSettings();
-
-    expect(dialogue.enabled).toBe(result.current.dialogueGating);
-    expect(dialogue.engine === null).toBe(!result.current.dialogueGating);
-    expect(dialogue.multichannelFusion).toBe(
-      result.current.dialogueGating ? "center-priority-fallback-v1" : null
+    const { result } = renderHook(
+      () => ({ actions: useSourceActions(), settings: useAppSettings() }),
+      { wrapper }
     );
+    expect(result.current.actions.dialogueGating).toBe(true);
+    expect(result.current.actions.currentFileAnalysisSettings().dialogue).toEqual({
+      enabled: false,
+      engine: null,
+      engineConfiguration: null,
+      multichannelFusion: null,
+    });
+
+    act(() => result.current.settings.setFileDialogueDetection(true));
+    expect(result.current.actions.currentFileAnalysisSettings().dialogue).toEqual({
+      enabled: true,
+      engine: result.current.settings.dialogueVadEngine,
+      engineConfiguration: "default",
+      multichannelFusion: "center-priority-fallback-v1",
+    });
   });
 
   it.each(["analyzing", "complete"])(

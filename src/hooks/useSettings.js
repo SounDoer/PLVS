@@ -1,4 +1,4 @@
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useThemeSettings } from "./useThemeSettings.js";
 import { useCustomThemeSettings } from "./useCustomThemeSettings.js";
 import { useAutostart } from "./useAutostart.js";
@@ -12,6 +12,9 @@ import { useViewSettings } from "./useViewSettings.js";
 import { useWindowPinnedSetting } from "./useWindowPinnedSetting.js";
 import { useUpdatePreferences } from "./useUpdatePreferences.js";
 import { useFileSummaryMetrics } from "./useFileSummaryMetrics.js";
+import { settingsStore } from "../persistence/index.js";
+
+const readFileDialogueDetection = () => settingsStore.read().fileDialogueDetection === true;
 
 /** @param {{ shortcutActionRef?: { current: any }, onHistoryRetentionChangeRef?: { current: any } }} [options] */
 export function useSettings({ shortcutActionRef, onHistoryRetentionChangeRef } = {}) {
@@ -40,6 +43,16 @@ export function useSettings({ shortcutActionRef, onHistoryRetentionChangeRef } =
   const windowPinnedSetting = useWindowPinnedSetting();
   const updatePreferences = useUpdatePreferences();
   const fileSummary = useFileSummaryMetrics();
+  const [fileDialogueDetection, setFileDialogueDetectionState] =
+    useState(readFileDialogueDetection);
+  useEffect(
+    () => settingsStore.subscribe(() => setFileDialogueDetectionState(readFileDialogueDetection())),
+    []
+  );
+  const setFileDialogueDetection = (enabled) => {
+    settingsStore.patch({ fileDialogueDetection: enabled });
+    setFileDialogueDetectionState(enabled);
+  };
 
   return {
     settingsOpen,
@@ -66,6 +79,8 @@ export function useSettings({ shortcutActionRef, onHistoryRetentionChangeRef } =
     ...windowPinnedSetting,
     ...updatePreferences,
     ...fileSummary,
+    fileDialogueDetection,
+    setFileDialogueDetection,
     autostartEnabled,
     setAutostartEnabled,
     setAutostartEnabledForControl,

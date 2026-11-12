@@ -1,5 +1,15 @@
 import { DeviceSelectionContent } from "./DeviceSelectionContent.jsx";
-import { Bookmark, Focus, Gauge, LayoutGrid, Settings, Trash2, Volume2 } from "lucide-react";
+import {
+  Bookmark,
+  Focus,
+  Gauge,
+  LayoutGrid,
+  MessageCircleOff,
+  MessageCircleText,
+  Settings,
+  Trash2,
+  Volume2,
+} from "lucide-react";
 import { HoverTip } from "./HoverTip.jsx";
 import { IconButton } from "./IconButton.jsx";
 import { SourceTransportCluster } from "./SourceTransportCluster.jsx";
@@ -39,6 +49,8 @@ const TOOLBAR_TRIGGER_OPEN_CLASS =
  *   statusOpen?: boolean,
  *   onStatusAction?: (action: string) => void,
  *   sourceMode: string,
+ *   fileDialogueDetection?: boolean,
+ *   onToggleFileDialogueDetection?: () => void,
  *   onSourceModeChange: (...args: any[]) => any,
  *   onSourceTransportAction: (...args: any[]) => any,
  *   onClear: (...args: any[]) => any,
@@ -88,6 +100,8 @@ export function AppHeader({
   statusOpen = false,
   onStatusAction,
   sourceMode,
+  fileDialogueDetection = false,
+  onToggleFileDialogueDetection,
   onSourceModeChange,
   onSourceTransportAction,
   onClear,
@@ -129,6 +143,8 @@ export function AppHeader({
     setCaptureDeviceId(id);
     onMenuOpenChange("sources", false);
   };
+
+  const DialogueIcon = fileDialogueDetection ? MessageCircleText : MessageCircleOff;
 
   const handlePrimaryAction = (actionKind) => {
     onSourceTransportAction(actionKind);
@@ -187,10 +203,18 @@ export function AppHeader({
         {isTauriApp &&
           (sourceMode === "file" ? (
             <IconButton
-              icon={<Volume2 className="size-[length:var(--ui-icon-shell-action)] shrink-0" />}
-              tip="Sources"
-              data-ui-target="toolbar:sources"
-              disabled
+              icon={
+                <DialogueIcon
+                  className="size-[length:var(--ui-icon-shell-action)]"
+                  aria-hidden="true"
+                />
+              }
+              tip={fileDialogueDetection ? "Dialogue Detection On" : "Dialogue Detection Off"}
+              aria-label="dialogue detection"
+              aria-pressed={fileDialogueDetection}
+              data-ui-target="toolbar:dialogue-detection"
+              onClick={onToggleFileDialogueDetection}
+              className={fileDialogueDetection ? "bg-ui-hover text-foreground" : undefined}
             />
           ) : (
             <Popover

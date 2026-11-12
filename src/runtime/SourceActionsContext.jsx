@@ -75,6 +75,7 @@ export function SourceActionsProvider({ children }) {
   const settings = useAppSettings();
   const { onClearRef, shortcutActionRef, onHistoryRetentionChangeRef, dialogueVadEngine } =
     settings;
+  const fileDialogueDetection = settings.fileDialogueDetection === true;
   const loudnessProfile = useLoudnessProfile();
 
   const [vectorscopeResetEpoch, setVectorscopeResetEpoch] = useState(0);
@@ -86,13 +87,18 @@ export function SourceActionsProvider({ children }) {
       ...(fileConditionsRef.current ? { requests: fileConditionsRef.current } : {}),
       channelRolesByCount: settings.channelLabelOverrides,
       dialogue: {
-        enabled: dialogueGating,
-        engine: dialogueGating ? settings.dialogueVadEngine : null,
-        engineConfiguration: dialogueGating ? "default" : null,
-        multichannelFusion: dialogueGating ? "center-priority-fallback-v1" : null,
+        enabled: fileDialogueDetection,
+        engine: fileDialogueDetection ? settings.dialogueVadEngine : null,
+        engineConfiguration: fileDialogueDetection ? "default" : null,
+        multichannelFusion: fileDialogueDetection ? "center-priority-fallback-v1" : null,
       },
     }),
-    [dialogueGating, settings.dialogueVadEngine, settings.channelLabelOverrides, fileConditionsRef]
+    [
+      fileDialogueDetection,
+      settings.dialogueVadEngine,
+      settings.channelLabelOverrides,
+      fileConditionsRef,
+    ]
   );
   const { exportFileAnalysisReport, copyFileAnalysisReportMarkdown } = useFileAnalysisReportExport({
     fileSession,

@@ -383,9 +383,14 @@ describe("AppHeader", () => {
     expect(screen.getByRole("switch", { name: "Hide Window Frame" })).toBeTruthy();
   });
 
-  it("keeps the Sources slot visible but disabled in File mode", () => {
-    renderHeader({ sourceMode: "file" });
-    expect(screen.getByRole("button", { name: "Sources" })).toHaveProperty("disabled", true);
-    expect(screen.queryByRole("button", { name: "Open file" })).toBeNull();
+  it("replaces Sources with the File Dialogue Detection toggle", () => {
+    const onToggleFileDialogueDetection = vi.fn();
+    const { rerender, props } = renderHeader({ sourceMode: "file", onToggleFileDialogueDetection });
+    const toggle = screen.getByRole("button", { name: "dialogue detection", pressed: false });
+    expect(screen.queryByRole("button", { name: "Sources" })).toBeNull();
+    fireEvent.click(toggle);
+    expect(onToggleFileDialogueDetection).toHaveBeenCalledOnce();
+    rerender(<HeaderWithMenus {...props} fileDialogueDetection />);
+    expect(screen.getByRole("button", { name: "dialogue detection", pressed: true })).toBe(toggle);
   });
 });
