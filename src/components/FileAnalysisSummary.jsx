@@ -542,7 +542,7 @@ export function FileAnalysisSummary({
               label="file details"
               target="file-summary:details"
               align="start"
-              className="max-w-full justify-start bg-transparent text-left hover:bg-transparent focus-visible:ring-1 focus-visible:ring-ring"
+              className="max-w-full justify-start bg-transparent text-left hover:bg-transparent"
               trigger={<span className="truncate">{metadata || "No Media Metadata"}</span>}
             >
               <FileInfo session={display} />
