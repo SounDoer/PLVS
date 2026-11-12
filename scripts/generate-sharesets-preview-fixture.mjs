@@ -5,7 +5,7 @@
 // mixed here from the stems in the audio archive; without it they are reported as source
 // unavailable and only the dialogue fixtures are checked or written.
 // Dialogue inputs use the hash-pinned 48 kHz speech PCM; generation does not resample on this host.
-// See docs/history/specs/2026-10-30-sharesets-preview-fixtures-design.md.
+// See https://github.com/SounDoer/PLVS/blob/39a710db60eca7d478627d9e24806a45b10c0ba6/docs/history/specs/2026-10-30-sharesets-preview-fixtures-design.md.
 import { readFile, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { buildDefaultSharesetsPreviewAnalysisRequests } from "../src/sharesets-preview/defaultAnalysisRequests.js";

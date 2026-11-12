@@ -1,4 +1,4 @@
-//! Turns an [`AudioFramePayload`] into one binary message (`docs/history/notes/perf/protocol.md` §7 step 3).
+//! Turns an [`AudioFramePayload`] into one binary message (`https://github.com/SounDoer/PLVS/blob/39a710db60eca7d478627d9e24806a45b10c0ba6/docs/history/notes/perf/protocol.md` §7 step 3).
 //!
 //! Spectrum's and Stereo Map's band rows leave the JSON side here. Everything else -- the scalars,
 //! Vectorscope, the band grid -- still serializes exactly as before, because the envelope carries

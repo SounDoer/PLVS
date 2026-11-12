@@ -23,7 +23,7 @@ const DEFAULT_MODULE_IDS = [...ALL_MODULE_IDS, "stereo-map"];
 
 // ---------------------------------------------------------------------------
 // Default tree, hand-tuned at 1280x800 logical
-// (docs/history/specs/2026-09-14-first-run-defaults-design.md):
+// (https://github.com/SounDoer/PLVS/blob/39a710db60eca7d478627d9e24806a45b10c0ba6/docs/history/specs/2026-09-14-first-run-defaults-design.md):
 //   H[ leaf(levelMeter)
 //    | V[ H[ leaf(loudness) | leaf(waveform) ] | leaf(spectrogram) | leaf(spectrum) | leaf(stereo-map) ]
 //    | V[ leaf(stats) | leaf(vectorscope) ] ]

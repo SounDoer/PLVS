@@ -36,7 +36,7 @@ import { createSurfaceRenderer } from "./spectrogram3dGlRenderer.js";
 //
 // Both are per CSS px, so a panel shows the same density at every DPR, and a 200% display does not
 // pay for twice the ridges. They were tuned as 14 and 6 per DEVICE px on a 125% display
-// (docs/history/notes/perf/spectrogram.md), so they are restated at that ratio: the counts there
+// (https://github.com/SounDoer/PLVS/blob/39a710db60eca7d478627d9e24806a45b10c0ba6/docs/history/notes/perf/spectrogram.md), so they are restated at that ratio: the counts there
 // are unchanged.
 const TUNED_DPR = 1.25;
 const RIDGE_TARGET_CSS_PX = 14 / TUNED_DPR;
@@ -73,7 +73,7 @@ const GRADIENT_STOPS = 16;
  * two triangles per segment, plus joins and antialiased edges. Lines submits ~100 ridges of ~230
  * points, so crossing the boundary means building well over a million triangles a second.
  *
- * Measured in a real window at 1383x640 (`docs/history/notes/perf/spectrogram.md` §1): the mesh costs
+ * Measured in a real window at 1383x640 (`https://github.com/SounDoer/PLVS/blob/39a710db60eca7d478627d9e24806a45b10c0ba6/docs/history/notes/perf/spectrogram.md` §1): the mesh costs
  * 16.9% of the GPU's 3d engine and 288 ms/s of GPU-process CPU at the themed width, and 3.8% and
  * 14 ms/s at one device pixel. It is a cliff, not a ramp -- 1.05 costs the same as 3.0 -- so there
  * is nothing to gain by inching above it, and the whole saving is lost by exceeding it at all.

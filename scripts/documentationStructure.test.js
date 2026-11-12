@@ -44,12 +44,10 @@ const sectionBody = (markdown, heading) => {
 };
 
 describe("documentation structure", () => {
-  it("keeps historical records under docs/history only", () => {
-    expect(existsSync(join(cwd(), "docs", "history", "README.md"))).toBe(true);
-    // The brainstorming and planning skills default to these paths; AGENTS.md overrides them, and
-    // this assertion is what makes the override visible when it is ignored.
-    expect(existsSync(join(cwd(), "docs", "superpowers"))).toBe(false);
-    expect(existsSync(join(cwd(), "docs", "working"))).toBe(false);
+  it("keeps working records out of the public documentation tree", () => {
+    for (const directory of ["history", "superpowers", "working"]) {
+      expect(existsSync(join(cwd(), "docs", directory)), directory).toBe(false);
+    }
   });
 
   it("gives every ADR a unique numeric identifier", () => {
@@ -63,13 +61,13 @@ describe("documentation structure", () => {
     expect(duplicates).toEqual([]);
   });
 
-  it("does not cite historical records from living documents", () => {
-    // docs/README.md and AGENTS.md describe where records go; ADRs are themselves historical and may
-    // record the design document a decision came from.
-    const skip = ["docs/history", "docs/adr", "docs/README.md"];
-    const documents = [...collectMarkdown("docs", skip), "README.md", "CONTRIBUTING.md"];
+  it("does not reference local working records from living documents", () => {
+    // Historical ADRs can retain the original references that document their provenance.
+    const documents = [...collectMarkdown("docs", ["docs/adr"]), "README.md", "CONTRIBUTING.md"];
     const citations = documents.flatMap((path) => {
-      const matches = read(path).match(/history\/(specs|plans|notes|mockups)\/[^\s)`]+/g) ?? [];
+      const matches =
+        read(path).match(/(?<!\/)\b(?:docs\/)?history\/(?:specs|plans|notes|mockups)\/[^\s)`]+/g) ??
+        [];
       return matches.map((match) => `${relative(".", path)} → ${match}`);
     });
 
@@ -77,11 +75,7 @@ describe("documentation structure", () => {
   });
 
   it("resolves relative links in living documents and the root documents", () => {
-    const documents = [
-      ...collectMarkdown("docs", ["docs/history"]),
-      "README.md",
-      "CONTRIBUTING.md",
-    ];
+    const documents = [...collectMarkdown("docs", []), "README.md", "CONTRIBUTING.md"];
     const broken = documents.flatMap((path) =>
       [...read(path).matchAll(/\]\(([^)\s#]+)(?:#[^)]*)?\)/g)]
         .map(([, target]) => target)
@@ -168,7 +162,7 @@ describe("public documents state what the code ships", () => {
     const withoutEarlierNames = (markdown) =>
       markdown.replace(/^\|\s*Earlier name\s*\|.*\n(?:\|.*\n)*/m, "").replace(/adr\/[\w.-]+/g, "");
     const documents = [
-      ...collectMarkdown("docs", ["docs/history", "docs/adr"]),
+      ...collectMarkdown("docs", ["docs/adr"]),
       ...collectMarkdown(".agents/skills", []),
       "AGENTS.md",
       "CONTRIBUTING.md",

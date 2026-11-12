@@ -136,7 +136,7 @@ export function spectrogramRenderTimeWindow(timeWindow, visualFrames, maxAdvance
  * Gap detection (`spectrogramFrameEndMs`) needs a nominal interval to size its gap threshold, but
  * the actual cadence depends on how the view was produced: live visual history ticks at ~40ms
  * (`VISUAL_HIST_SAMPLE_SEC`), while file-mode visual history is coarser, ~100ms (see
- * docs/history/specs/2026-06-29-sample-clocked-history-cadence-design.md, "File-mode visual
+ * https://github.com/SounDoer/PLVS/blob/39a710db60eca7d478627d9e24806a45b10c0ba6/docs/history/specs/2026-06-29-sample-clocked-history-cadence-design.md, "File-mode visual
  * resolution"). A caller-supplied constant tuned for the live cadence makes every file-mode frame
  * look like a gap, painting narrow bars separated by blank stripes instead of one continuous
  * heatmap. Falls back to `fallbackMs` when the view has too few rows to infer an interval.

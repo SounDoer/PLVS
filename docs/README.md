@@ -68,14 +68,12 @@ Write an ADR when someone could reasonably look at the code and ask "why not jus
 simpler thing?" — layered device identity (0003) and three parallel VAD engines (0004) look
 redundant until you know why they are not. Routine choices do not need one.
 
-## 5. History — [history/](history/)
+## 5. Engineering working records
 
-Specs, plans, performance investigations, spikes and mockups. They may be refined while the work
-they belong to is active, but they are not maintained to match the current product and are never
-cited as current behaviour. See [history/README.md](history/README.md).
-
-New specs go to `history/specs/YYYY-MM-DD-<topic>-design.md` and new plans to
-`history/plans/YYYY-MM-DD-<feature>.md`; see the Documentation section in `AGENTS.md`.
+Maintainers keep working specs, plans, investigations and mockups in the private PLVS-Dev
+repository. The [pre-migration PLVS snapshot](https://github.com/SounDoer/PLVS/tree/39a710db60eca7d478627d9e24806a45b10c0ba6/docs/history)
+preserves public access to earlier records, including references in historical ADRs.
+See [AGENTS.md](../AGENTS.md) for the workflow.
 
 ## Where the other documents live
 
@@ -90,7 +88,7 @@ against the changelog at release time; the website docs page is generated from `
 Facts the code owns are checked by tests rather than by review, in
 `scripts/documentationStructure.test.js`: the panels, auto-detected channel layouts, macOS minimum
 version, release package names and `plvs-cli` commands named in public documents must match the
-code; relative links must resolve; living documents must not link into `history/`; Agent Control
+code; relative links must resolve; living documents must be usable without the private archive; Agent Control
 pages must leave command syntax to `agent-control/generated/`. `scripts/build-user-docs.test.mjs`
 checks that every chapter reaches the website. Prose is not asserted. They run as part of
 `npm run check`.

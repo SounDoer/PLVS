@@ -1,5 +1,5 @@
 /**
- * Decoder for the binary frame envelope (`docs/history/notes/perf/protocol.md` §3).
+ * Decoder for the binary frame envelope (`https://github.com/SounDoer/PLVS/blob/39a710db60eca7d478627d9e24806a45b10c0ba6/docs/history/notes/perf/protocol.md` §3).
  *
  * One channel message carries the whole frame:
  *

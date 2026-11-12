@@ -16,7 +16,7 @@
  * Hidden and opaque own their codes, so both classifications are exact and quantization is confined
  * to the ramp -- unlike the energy plane it replaces, which quantized across the gate boundary and
  * hid 0.083% of the bands that should have been faintly visible. Measured by
- * `npm run experiment:stereo-map-opacity-codec`; the numbers are in `docs/history/notes/perf/stereo-map.md`
+ * `npm run experiment:stereo-map-opacity-codec`; the numbers are in `https://github.com/SounDoer/PLVS/blob/39a710db60eca7d478627d9e24806a45b10c0ba6/docs/history/notes/perf/stereo-map.md`
  * §3.2b.
  */
 const GATE_FLOOR_DB = -96;

@@ -12,7 +12,7 @@
  *   node scripts/spectrogram-shimmer-probe.mjs --seconds 60 --label "surface gl"
  *
  * Three things about the method are load-bearing and were each learned the expensive way. They are
- * in `docs/history/notes/perf/spectrogram.md` §1 in full; in short:
+ * in `https://github.com/SounDoer/PLVS/blob/39a710db60eca7d478627d9e24806a45b10c0ba6/docs/history/notes/perf/spectrogram.md` §1 in full; in short:
  *
  * 1. THE DENOMINATOR IS UPDATES, NOT FRAMES. The panel repaints ~25 times a second while the visible
  *    window advances 10 times a second, so most repaints draw the same picture. Averaging over frames

@@ -1,5 +1,5 @@
 /**
- * Baseline for the unified binary protocol round (`docs/history/notes/perf/protocol.md`).
+ * Baseline for the unified binary protocol round (`https://github.com/SounDoer/PLVS/blob/39a710db60eca7d478627d9e24806a45b10c0ba6/docs/history/notes/perf/protocol.md`).
  *
  * Every band row Rust sends today crosses the IPC boundary as JSON text: `serde_json` formats each
  * value into decimal digits and the webview parses them back into numbers, only for the frontend to

@@ -152,7 +152,7 @@ export function drawWaveformCanvas(
   const xFor = (/** @type {number} */ j) => j - fracPhase; // one bucket per device pixel, sub-pixel phase
   if (frequencyColor) {
     // One colour per pixel column, so the split-derived anchors are resolved once here and the
-    // result is written into a single reused array. See `docs/history/notes/perf/waveform.md` §2.1.
+    // result is written into a single reused array. See `https://github.com/SounDoer/PLVS/blob/39a710db60eca7d478627d9e24806a45b10c0ba6/docs/history/notes/perf/waveform.md` §2.1.
     const frequencyScale = waveformFrequencyScale(
       { lowMidSplitHz, midHighSplitHz },
       spectralPalette

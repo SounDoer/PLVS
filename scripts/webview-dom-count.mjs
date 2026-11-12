@@ -7,7 +7,7 @@
  * shows `setAttribute` near the top without saying which panel issued the writes or how many a
  * single update makes, and those are the two numbers that decide whether anything is worth doing.
  *
- * Prerequisites are the profiler's (see `docs/history/notes/perf/README.md`):
+ * Prerequisites are the profiler's (see `https://github.com/SounDoer/PLVS/blob/39a710db60eca7d478627d9e24806a45b10c0ba6/docs/history/notes/perf/README.md`):
  *
  *   WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS=--remote-debugging-port=9222 npm run desktop:dev
  *   node scripts/webview-dom-count.mjs --seconds 5

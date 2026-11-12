@@ -5,9 +5,9 @@
  * often a panel repaints** or **how many separate draw calls one repaint submits**. Both are
  * structural facts about the code rather than timings, and both have been guessed wrong here more
  * than once -- the Waveform panel's repaint rate was inferred from a dependency chain three times
- * and was wrong every time (`docs/history/notes/perf/waveform.md` §2.0).
+ * and was wrong every time (`https://github.com/SounDoer/PLVS/blob/39a710db60eca7d478627d9e24806a45b10c0ba6/docs/history/notes/perf/waveform.md` §2.0).
  *
- * Prerequisites are the profiler's (see `docs/history/notes/perf/README.md`):
+ * Prerequisites are the profiler's (see `https://github.com/SounDoer/PLVS/blob/39a710db60eca7d478627d9e24806a45b10c0ba6/docs/history/notes/perf/README.md`):
  *
  *   WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS=--remote-debugging-port=9222 npm run desktop:dev
  *   node scripts/webview-draw-count.mjs --seconds 5

@@ -19,7 +19,7 @@ import {
  * them. Cross-domain orchestration (notice lifecycle, engine stop, scrub-offset
  * resets, source switching) stays with the caller and composes these verbs —
  * same seam style as useCaptureTransport. See
- * docs/history/specs/2026-07-08-c2-app-state-ownership-design.md.
+ * https://github.com/SounDoer/PLVS/blob/39a710db60eca7d478627d9e24806a45b10c0ba6/docs/history/specs/2026-07-08-c2-app-state-ownership-design.md.
  */
 export function useFileSessionLedger({
   budget = FILE_HISTORY_BUDGET_BYTES,

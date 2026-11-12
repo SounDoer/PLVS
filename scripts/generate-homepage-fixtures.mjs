@@ -3,7 +3,7 @@
 // "Full Band Crescendo" stems. Check mode (default) fails when a committed fixture differs from
 // the producer; `--write` replaces it. Both beds are mixed here from the stems in the audio
 // archive; without it both fixtures are reported as source unavailable.
-// See docs/history/specs/2026-10-29-homepage-images-renderer-design.md.
+// See https://github.com/SounDoer/PLVS/blob/39a710db60eca7d478627d9e24806a45b10c0ba6/docs/history/specs/2026-10-29-homepage-images-renderer-design.md.
 import { readFile, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { buildDefaultSharesetsPreviewAnalysisRequests } from "../src/sharesets-preview/defaultAnalysisRequests.js";

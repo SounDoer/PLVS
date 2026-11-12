@@ -144,7 +144,7 @@ function timestampAt(rows, index) {
  * Walking forward from row 0 costs the whole ring, and the ring holds the entire retention window
  * (an hour by default, four at most) while the panel typically shows a minute of it -- so the walk
  * grew with how long the app had been running, not with what was on screen. See
- * `docs/history/notes/perf/waveform.md` §2.7.
+ * `https://github.com/SounDoer/PLVS/blob/39a710db60eca7d478627d9e24806a45b10c0ba6/docs/history/notes/perf/waveform.md` §2.7.
  *
  * Assumes the timestamps do not decrease, which is what `FrameIntake` produces: the engine sends
  * `u64` milliseconds and the session-boundary offset keeps them ordered across a restart. A row

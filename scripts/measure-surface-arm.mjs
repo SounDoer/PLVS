@@ -16,8 +16,7 @@
  *
  * 2. The capture device does NOT persist across launches, while the panel controls do. An arm can
  *    therefore come up pointed at a device with no signal and record two minutes of silence with an
- *    empty panel and no error anywhere — the same shape as the trap in `docs/history/notes/perf/
- *    protocol.md` §10.3. The status bar is read back and asserted.
+ *    empty panel and no error anywhere — the same shape as the trap in `https://github.com/SounDoer/PLVS/blob/39a710db60eca7d478627d9e24806a45b10c0ba6/docs/history/notes/perf/protocol.md` §10.3. The status bar is read back and asserted.
  *
  * 3. The window comes back at a different size from launch to launch (1383x640, 1918x886 and
  *    2222x1026 were all seen in one session with identical settings). Point count and row cap follow
