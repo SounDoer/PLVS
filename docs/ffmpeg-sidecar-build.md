@@ -19,11 +19,11 @@ per-platform configuration and toolchain evidence, dependency reports, and binar
 
 ## Targets and package layout
 
-| Target | Asset suffix | Installed location |
-| --- | --- | --- |
-| Windows x86_64 | `x86_64-pc-windows-msvc.exe` | Beside `plvs.exe` |
-| macOS Apple Silicon | `aarch64-apple-darwin` | `PLVS.app/Contents/MacOS` |
-| Ubuntu 24.04 x86_64 | `x86_64-unknown-linux-gnu` | Stable: `/usr/lib/plvs/sidecars`; Preview: `/usr/lib/plvs-preview/sidecars` |
+| Target              | Asset suffix                 | Installed location                                                          |
+| ------------------- | ---------------------------- | --------------------------------------------------------------------------- |
+| Windows x86_64      | `x86_64-pc-windows-msvc.exe` | Beside `plvs.exe`                                                           |
+| macOS Apple Silicon | `aarch64-apple-darwin`       | `PLVS.app/Contents/MacOS`                                                   |
+| Ubuntu 24.04 x86_64 | `x86_64-unknown-linux-gnu`   | Stable: `/usr/lib/plvs/sidecars`; Preview: `/usr/lib/plvs-preview/sidecars` |
 
 Windows and macOS use Tauri `externalBin`. Linux deb configs map the fetched triple-named inputs
 to plain `ffmpeg`/`ffprobe` names in the identity-private directory. Linux never installs these
@@ -32,7 +32,7 @@ files in `/usr/bin` and does not depend on Ubuntu's `ffmpeg` package.
 The Rust runtime honors an absolute `PLVS_FFMPEG_DIR` development/test override. Packaged Linux
 otherwise resolves only its identity-private directory; Windows and macOS resolve adjacent tools.
 Linux visual recording does not use these sidecars, which have no video encoder; it uses the
-distribution FFmpeg ([ADR 0037](adr/0037-linux-recording-uses-distribution-ffmpeg.md)).
+distribution FFmpeg ([ADR 0037](https://github.com/SounDoer/PLVS/blob/421b7333059d94f36a41197ae9c7a0de11c96a66/docs/adr/0037-linux-recording-uses-distribution-ffmpeg.md)).
 
 ## Reproducible recipe
 

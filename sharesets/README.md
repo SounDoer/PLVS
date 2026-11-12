@@ -55,7 +55,7 @@ an ISO `publishedAt` date, and a complete `previews` array using new paths. The 
 supplies the gallery, while the original download, Release number, and all original image URLs
 remain unchanged. Published revisions and original previews are immutable, including image bytes.
 The source validator applies the same artifact-derived preview contract to every revision.
-See [ADR 0029](../docs/adr/0029-sharesets-preview-revisions.md) for the versioning decision.
+See [Catalogue curation](../docs/website-and-sharesets.md#curating-sharesets-content) for the release and preview revision rules.
 
 The static-site command generates the Sharesets root, all three family pages, stable Listing detail
 URLs, and an isolated copy of each validated download and preview. Its default output is the ignored

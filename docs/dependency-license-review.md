@@ -35,10 +35,8 @@ notice collection; ONNX Runtime is separately recorded despite being fetched by 
 Changing a tool's license, redistributing a development environment, or adding generated runtime
 code requires review of that use. Source-code license compliance does not settle codec patents.
 
-Do not infer a model's license from its Rust wrapper. In particular, historical `ten-vad-rs`
-metadata says Apache-2.0 while the upstream TEN VAD model adds usage restrictions. It is recorded
-in `restrictedPackages`; generation cannot approve its reintroduction. Any future use needs an
-explicit review of the actual model terms, not just a refreshed package record.
+Review the model's terms independently of its wrapper. Entries in `restrictedPackages` require
+explicit review of the actual model and its provenance before reintroduction.
 
 For historical releases, prepare supplements against each release's exact lockfiles and binary
 provenance. Never apply today's dependency list to an old installer, overwrite an existing binary,

@@ -46,7 +46,7 @@ Packaged update acceptance builds two real versions from one clean commit under 
 identity. It never uses the stable, dev, or Preview identity, data directory, updater key, or feed.
 On Linux the packages keep the stable `plvs` package name and paths, which the Linux updater
 requires, so the run installs them system-wide and restores the machine afterwards
-([ADR 0038](adr/0038-linux-update-acceptance-installs-the-system-package.md)).
+([ADR 0038](https://github.com/SounDoer/PLVS/blob/421b7333059d94f36a41197ae9c7a0de11c96a66/docs/adr/0038-linux-update-acceptance-installs-the-system-package.md)).
 
 ```bash
 npm run update:acceptance:build
@@ -192,7 +192,7 @@ After the three builds, `release.yml` also calls
 downloads the exact `release-candidate-<platform>` artifact and runs
 `scripts/release-package-smoke.mjs` on it: the portable ZIP on Windows, a copy of `PLVS.app` from
 the DMG on macOS, the deb unpacked with `dpkg-deb -x` on Linux. Nothing is installed. The app starts
-from a temporary directory with `--plvs-test-app-data-root` ([ADR 0035](adr/0035-packaged-builds-accept-an-isolated-data-root.md))
+from a temporary directory with `--plvs-test-app-data-root` ([ADR 0035](https://github.com/SounDoer/PLVS/blob/421b7333059d94f36a41197ae9c7a0de11c96a66/docs/adr/0035-packaged-builds-accept-an-isolated-data-root.md))
 on a seeded profile in which only Agent Control is enabled, so the maintainer's own PLVS, running or
 not, and its settings are untouched. The package's own `plvs-cli` runs the base Agent Control
 smoke scenarios, selects the rig device, starts Live under the rig lease and requires the reading
@@ -208,8 +208,7 @@ once on `renderNotSettled` only, recording the retry in `warnings`; a second uns
 other failure still fails. On macOS this script and `run-update-acceptance.mjs` hold
 `caffeinate -d -i` for their own lifetime. That cannot unlock a locked screen or render without a
 display, so the Mac runner must not auto-lock or sleep and needs an active display (a monitor that
-is on, or an HDMI dummy plug) whenever release or scheduled update acceptance can run; the first nightly
-update acceptance failed on the Mac at 05:19 with the frontend no longer answering.
+is on, or an HDMI dummy plug) whenever release or scheduled update acceptance can run.
 
 Check the runners against an earlier release run's candidates without a release:
 
@@ -252,69 +251,22 @@ One-time setup for the release-package smoke, beyond the table above:
 
 ### Windows unattended desktop runner
 
-Runner connectivity, an awake computer, and a usable desktop are separate requirements. An HDMI
-dummy plug supplies a display output but does not return a disconnected Remote Desktop (RDP)
-session to the local console. Disable automatic sleep and display-off on the rig's operating power
-source; on a laptop, also configure closing the lid to do nothing. Keep the desktop unlocked for
-visual tests. The runner can remain online and run capture smoke while package recording receives
-no frames, so runner status and capture smoke alone do not validate this setup.
+An online runner still needs a usable interactive console for package recording. Leave the
+display awake and the test desktop unlocked. An HDMI dummy plug supplies a display but cannot
+return a disconnected RDP session to the console. See
+[Microsoft's interactive-agent guidance](https://learn.microsoft.com/en-us/azure/devops/pipelines/test/ui-testing-considerations?view=azure-devops)
+for console handoff with `tscon`.
 
-[Microsoft's UI testing guidance](https://learn.microsoft.com/en-us/azure/devops/pipelines/test/ui-testing-considerations?view=azure-devops)
-uses an interactive user-session agent and `tscon` to preserve the desktop when leaving RDP. From
-an elevated terminal, discover the current session with `query user`, then use its actual ID:
-
-```powershell
-tscon <session-id> /dest:console
-```
-
-This disconnects RDP and transfers that user session to the local console; session IDs must not be
-hard-coded. The Windows rig automates the handoff with the local scheduled task
-`PLVS Restore Console After RDP`. Its `RemoteDisconnect` trigger is restricted to the runner user,
-and it runs with that user's elevated interactive token, without a task password. The script
-checks its identity and session state, handles only its own disconnected session, and rechecks
-before calling `tscon` so a quick reconnect is left alone. This event-driven adaptation has been
-verified on the rig; the Microsoft example performs the handoff before the user leaves RDP.
-The task does not unlock a desktop that the user explicitly locks.
-
-The elevated script and its log live under `C:\Program Files\PLVS Runner Maintenance\`; only
-Administrators and SYSTEM may modify that directory. Verification scripts and results live under
-`C:\actions-runner-plvs\maintenance-verification\`. These are machine-local installations, not
-scripts provisioned by the repository or workflows. Do not put scheduled-task scripts in an
-AppData path written from an MSIX application container: the apparent path can resolve to that
-app's private `LocalCache`, while Task Scheduler sees no file. On this rig that caused the
-verification task to exit `0xFFFD0000` before its script ran. Verify paths by launching the actual
-scheduled task, not only by reading them from the configuring app.
-
-For recovery after reboot, enable automatic console login with the signed Microsoft
-[Sysinternals Autologon](https://learn.microsoft.com/en-us/sysinternals/downloads/autologon) GUI.
-Enter the Windows account password in that GUI, never in chat, scripts, command arguments or
-repository files. Autologon stores an LSA secret that administrators can recover, and the machine
-boots into an unlocked user desktop; use this configuration only on a suitably protected rig.
-The existing Startup-folder launcher then starts `run.cmd` in that session. Autologon does not
-validate credentials when enabled: a registry flag alone is not reboot evidence.
-
-Validate both paths independently:
-
-1. Disconnect RDP and confirm the task restores the runner user's session to `console`. Run the
-   existing release-package smoke and evidence verifier for an exact candidate commit, using
-   `--wait` for a busy rig lease. Require screenshots, recording and live audio to pass without
-   reconnecting RDP during the test.
-2. Reboot and leave RDP disconnected until verification completes. Confirm a local logon and
-   `Runner.Listener` startup precede any remote connection, and that package smoke passes on the
-   console. A manually triggered test after reconnecting is evidence for that test, not for the
-   boot trigger. The rig's one-shot `PLVS Verify Next Boot Recovery` task waits 45 seconds after
-   logon, saves `boot-verification.json` and package evidence in the verification directory, then
-   disables itself; explicitly re-enable it when another reboot needs acceptance.
-
-Inspect the task result and console-handoff log when diagnosing failures. To undo the setup,
-disable `PLVS Restore Console After RDP` and any pending boot-verification task, then use
-Autologon's **Disable** button to remove automatic login. The runner still requires a logged-in
-interactive desktop afterwards.
+Verify disconnect and reboot independently on the dedicated rig. After each, require the runner
+to execute the exact-candidate package smoke with screenshots, recording and live audio, without
+reconnecting RDP during the test. Capture smoke and runner connectivity alone do not establish
+visual readiness. The maintainer keeps the installed tasks, paths and recovery details with the
+rig's private setup notes.
 
 ### Linux update acceptance runner
 
 `update-acceptance.yml` installs the real `plvs` system package on the Ubuntu runner and restores the
-machine afterwards ([ADR 0038](adr/0038-linux-update-acceptance-installs-the-system-package.md)).
+machine afterwards ([ADR 0038](https://github.com/SounDoer/PLVS/blob/421b7333059d94f36a41197ae9c7a0de11c96a66/docs/adr/0038-linux-update-acceptance-installs-the-system-package.md)).
 The runner is unattended, so its account is authorized once, from that account in a checkout:
 
 ```bash
@@ -430,22 +382,16 @@ What this cannot do:
 - `<bad>`'s assets remain downloadable from its release page; the tag and assets cannot be removed
   or replaced.
 
-## Signing secrets inventory
+## Signing and notarization recovery
 
-These are every repository Actions secret that `release.yml` reads.
-`GH_TOKEN` there is the automatic per-run `github.token`, not a stored secret. Never commit or paste
-secret values anywhere, including this file; the backup column says where a value is kept, not
-what it is.
+The updater verifies packages with the public key embedded in the installed application.
+`TAURI_SIGNING_PRIVATE_KEY` and its password cannot be recovered from that public key. If they
+are lost, existing installations cannot adopt the replacement trust root through the updater.
+Users need to install a build that carries the new public key.
 
-| Secret                               | Used by                                       | What it signs                                                                                                   | If lost                                                                                                                                                                                                                                                   | Backup location                                 | Expiry / renewal                                                                                    |
-| ------------------------------------ | --------------------------------------------- | --------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------- | --------------------------------------------------------------------------------------------------- |
-| `TAURI_SIGNING_PRIVATE_KEY`          | `release.yml` Windows, macOS and Linux builds | Updater signatures for every platform's package in `latest.json`, including the Linux version-notice descriptor | **Not recoverable.** Every installed app trusts only the public key embedded at build time (`plugins.updater.pubkey` in `src-tauri/tauri.conf.json`). A new key reaches users only through a manual reinstall of a build that carries the new public key. | The maintainer's Bitwarden vault.               | Does not expire.                                                                                    |
-| `TAURI_SIGNING_PRIVATE_KEY_PASSWORD` | Same jobs as the key                          | Unlocks the updater private key                                                                                 | **Not recoverable.** The key is unusable without it, with the same consequence as losing the key.                                                                                                                                                         | The maintainer's Bitwarden vault, with the key. | Does not expire.                                                                                    |
-| `APPLE_CERTIFICATE`                  | `build-macos`                                 | Base64 Developer ID Application `.p12`: code signature of the `.app` and DMG                                    | Recoverable: issue a new Developer ID Application certificate under the same Apple team and export a new `.p12`. The updater does not depend on it.                                                                                                       | The maintainer's NAS.                           | Expires 2031-09-17. Renew in the Apple Developer account before that date, then replace the secret. |
-| `APPLE_CERTIFICATE_PASSWORD`         | `build-macos`                                 | Export password of the `.p12`                                                                                   | Recoverable: re-export the `.p12` with a new password from the keychain that holds its private key, or issue a new certificate.                                                                                                                           | The maintainer's NAS.                           | Follows the certificate.                                                                            |
-| `APPLE_API_PRIVATE_KEY_BASE64`       | `build-macos`                                 | Base64 App Store Connect API `.p8`: authenticates notarization of the app and DMG                               | Recoverable: Apple allows one download only, so revoke the key, generate a new one, and update `APPLE_API_KEY` with it.                                                                                                                                   | The maintainer's NAS.                           | No expiry date; revocable in App Store Connect.                                                     |
-| `APPLE_API_KEY`                      | `build-macos`                                 | Key ID of the App Store Connect API key (identifier, not key material)                                          | Recoverable: shown in App Store Connect next to the key.                                                                                                                                                                                                  | App Store Connect                               | Follows the API key.                                                                                |
-| `APPLE_API_ISSUER`                   | `build-macos`                                 | Issuer ID of the App Store Connect team (identifier, not key material)                                          | Recoverable: shown in App Store Connect.                                                                                                                                                                                                                  | App Store Connect                               | Does not expire.                                                                                    |
-
-The Apple Developer Program membership renews on 2027-10-04. If it lapses, notarization fails and
-`build-macos` stops the release, so renew it before that date.
+Apple Developer ID signing and notarization use separate credentials. A replacement Developer ID
+certificate under the same team does not change updater trust. A lost App Store Connect API key
+requires a replacement and an updated key ID. Keep the Apple Developer Program membership and
+certificate current. See the [release workflow](../.github/workflows/release.yml) for the exact
+secret names and jobs. The maintainer keeps recovery locations and renewal dates in the private
+rig and signing notes.

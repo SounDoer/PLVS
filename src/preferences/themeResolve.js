@@ -1,6 +1,6 @@
 /**
  * Resolves persisted shell appearance + optional fixed theme id to a concrete builtin theme id.
- * @see docs/adr/0002-theme-id-and-appearance.md
+ * @see docs/architecture.md, Theme and token system
  */
 
 import { DEFAULT_THEME_ID, isThemeId, THEME_IDS } from "../theme/builtinThemesV2.js";

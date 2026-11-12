@@ -38,10 +38,6 @@ buried in build-script output.
 the entire panel tree. Logic-only modules must import `workspace/moduleCatalog.js` for ids, titles,
 and drag minimums. Only rendering code should reach the registry.
 
-Before the catalog split, pure-looking helpers pulled all canvas panels into profile validation,
-preset filtering, and the workspace reducer. Nothing was functionally wrong, but test startup grew
-until unrelated persistence tests approached Vitest's per-test timeout.
-
 ## Windows and dock geometry
 
 ### Webview scale is not Rust's monitor scale
@@ -77,7 +73,7 @@ must not manage it independently.
 nothing once the window has left the topmost band. Tauri's `set_always_on_top` also skips a call that
 matches its own flag, so it cannot repair the state either. The Dock strip therefore never leaves
 the topmost band for a full-screen window: it hides instead
-([ADR 0045](adr/0045-dock-full-screen-fills-the-edge-and-hides-instead-of-lowering.md)). Verify
+([ADR 0045](https://github.com/SounDoer/PLVS/blob/421b7333059d94f36a41197ae9c7a0de11c96a66/docs/adr/0045-dock-full-screen-fills-the-edge-and-hides-instead-of-lowering.md)). Verify
 topmost changes with the window in the background, as it is when a full-screen window closes; a
 command typed while PLVS has focus passes either way.
 
@@ -102,64 +98,23 @@ rebuilds the harness on the way to a run. The rig therefore verifies the feature
 mtimes with Rust source and Cargo manifests. Exit 2 means the rig is unusable, not that capture
 failed.
 
-The harness used to build into `src-tauri/target/release/plvs.exe` without `dev-identity`. During the
-v0.15.4 preflight it silently replaced the dev-identity GUI from `npm run desktop:dev-optimized`; launching that
-file opened the stable identity's settings alongside the installed PLVS, with no single-instance guard. Do not
-move the harness back into the `release` profile.
-
-`capture-acceptance.yml` builds the harness itself right before capture smoke, because every
-version bump edits `Cargo.toml` and `Cargo.lock` and would otherwise always trip this guard. Ad-hoc
-smoke and soak runs do not build it. When instructed, rebuild explicitly and rerun:
+Rebuild the harness after source or Cargo manifest changes, or when the rig reports exit 2 and
+names a stale binary. Release acceptance builds it before running capture smoke.
 
 ```sh
 cargo build --manifest-path src-tauri/Cargo.toml --profile harness --bin plvs --features capture-harness
 ```
 
-This guard was added after the v0.14.5 preflight and soak both used a binary older than the final DSP
-change; the trailing `app.version` was the only visible clue.
-
 ### Soak runs are the drift baseline
 
-`soak:capture` and `soak:desktop` write to ignored `artifacts/soak/`. Reviewed capture references
-are also archived in `fixtures/capture-soak-baselines/`; its README owns promotion and comparison.
-Routine CI diagnostics expire after 90 days and are not the permanent reference archive.
+Compare complete capture soaks after warmup with reviewed references from the same platform and
+measurement contract. See [baseline verification](../fixtures/capture-soak-baselines/README.md).
+An interrupted capture run cannot establish a baseline. Desktop soaks measure dropped frames and
+chunks and have their own verdict.
 
-A `soak:capture` run that reached its full duration ends with a summary line carrying the app
-version. Keep those: the drift of the next run is judged against them. Delete interrupted runs —
-drift is `max - min` of each reading after its warmup, which is still converging early on, so a short
-run reads high and is not comparable with a four-hour one.
-
-Each periodic line carries Integrated, LRA, Max M, Max S and True Peak Max, all whole-run values;
-runs recorded before 2026-10-15 carry Integrated only, so compare the other readings only between
-runs that have them. Beyond drift, the soak requires Max M and Max S to equal Integrated, as they
-must over a constant tone. A gap there means something else reached the cable at some point — a
-contaminant a maximum keeps for the rest of the run, even if Integrated has since recovered.
-
-The VB-Cable rig is one shared device. On 2026-10-15 a soak read exactly +6.02 dB for tens of
-seconds at a time: another agent's panel-verification scripts, in its own worktree, imported
-`synthesizeSignal` and `startPlayer` from `capture-rig.mjs` and played the identical test tone into
-`CABLE Input`. Two copies sum in phase, so a reading exactly 6.02 dB high means a second player, not a
-meter defect. Before a smoke or soak, make sure no other session is driving the rig.
-
-`soak:desktop` records UI frame drops and audio chunk drops, not loudness drift, and its verdict is
-self-contained, so its files play no baseline role and can be deleted once read.
-
-Release capture acceptance runs on self-hosted runners (see
-[Release operations](release-operations.md#home-capture-runners)). Three traps cost the first setup
-on 2026-10-20 a run each:
-
-- **macOS microphone permission follows the launching process.** A runner installed as a
-  LaunchAgent built and ran the smoke but captured silence: TCC attributed the audio request to the
-  runner's bundled Node, which has no audio-input entitlement (`Client is not granted access`).
-  Started with `./run.sh` from a Terminal that holds microphone permission, it captures, also while
-  the screen is locked. A silent macOS capture on a runner means a permission problem first.
-- **Windows `bash` is often WSL.** The first `bash.exe` on a desktop PATH is usually
-  `C:\Windows\System32\bash.exe`. A quoted shell path in the workflow does not help: the runner
-  split `"C:\Program Files\Git\bin\bash.exe"` at the quote and failed before the first step. The
-  runner's launcher puts Git Bash first on PATH instead.
-- **Corepack can dirty the checkout.** `actions/setup-node` probing Yarn let Corepack add a
-  `packageManager` field to `package.json`; capture evidence then refused a dirty worktree. The
-  workflow sets `COREPACK_ENABLE_AUTO_PIN: 0`.
+A constant-tone run should have Max M and Max S consistent with Integrated. A sustained jump of
+about 6.02 dB on the Windows rig can indicate two identical players feeding the cable in phase.
+Run only through commands that hold the [machine-wide rig lease](visual-and-capture-validation.md).
 
 ## Scene operations and draft editors
 
@@ -208,8 +163,7 @@ that preset because strip editors exist only while docked. Restoring them later 
 overwrite a hand-tuned strip.
 
 Dock-enabled presets still round-trip their strip layout. Treat the fields in a dock-disabled preset
-as dead snapshot data, not as a missing restore branch. This behaviour was investigated and retained
-on 2026-09-05.
+as dead snapshot data, not as a missing restore branch.
 
 ## Rendering changes
 
@@ -220,13 +174,8 @@ can change colour, alpha and line weight without changing a single visible shape
 see it: jsdom has no WebGL, and Canvas tests mock the context. Screenshots viewed by eye miss it too,
 because the usual result is "a little softer", which reads as a style rather than a fault.
 
-The 2026-08-31 WebGL port of the 3D Surface is the incident. It set `premultipliedAlpha: false` while
-its blend already multiplied colour by alpha, so every translucent pixel was composited at alpha
-squared. The quiet-terrain fade tuned on 2026-08-03 against the CPU renderer lost strength, and the
-thin floor grid rendered faint and broken, with some pixels darker than the background. Nothing
-flagged it for a month, and a later opacity cleanup excluded "Spectrogram alpha" as already settled.
-It was found on 2026-09-29 only by comparing pixel values between Lines and Surface. The guard is
-`spectrogram3dGlRenderer.test.js`.
+Match the shader's output and blend equation to the WebGL compositing mode. The 3D Surface
+regression test checks this because a mismatched premultiplied-alpha path can apply alpha twice.
 
 When a change alters how something is rendered:
 
@@ -242,50 +191,18 @@ Screen-space size rules for every renderer are in `docs/architecture.md` ("Scree
 
 ## Persistence
 
-### Pick the correct domain
+Choose the domain in [the persistence entry point](../src/persistence/index.js). The live desktop
+backend uses the [multi-workbench storage boundary](architecture.md#multi-workbench-runtime):
+Workspace state has a single writer and shared Library items and global preferences use revisioned
+SQLite writes. `plvs-settings.json` is a legacy migration input.
 
-Persistence is split into domains with distinct export, reset, and migration behaviour. Read
-`src/persistence/index.js` before adding a key. The deprecated `plvs.ui` adapter is not a fallback;
-it exists only in `cleanupLegacyKeys.js`.
+An external writer must use the domain's write path and notify the React owner where the write does
+not already do so. Follow `transfer/libraryAdapters.js` and test what the owning view displays.
+Avoid enabling same-context notification on coalesced domains as a shortcut.
 
-### External writers must notify the React owner
+For a persistence check, let writes settle, restart the application and verify the restored data
+under the relevant identity and Workspace. Vite reload can replay the original boot snapshot.
+Keep the pre-paint hydration boundary in Rust; a later page-load injection can race first reads.
 
-Writing a domain store outside the React state that owns it does not update the visible list in the
-same context. The desktop backend's subscription is a no-op, and the browser `storage` event fires
-only in other documents. An external writer such as `transfer/libraryAdapters.js` must call
-`store.notifyLocal()` after writing, and the test must render the owner and assert the visible result.
-
-Do not enable `notifySameContext` globally as a shortcut. `plvs:settings` uses coalesced writes during
-interactions such as opacity dragging, and global same-context notification would make subscribers
-reread on every write. Ordinary owner hooks should continue updating their own React state directly.
-
-### `plvs-settings.json` is the shared store
-
-Despite its name, `plvs-settings.json` contains all four frontend domains—settings, workspace,
-presets, and themes—plus Rust-owned siblings such as window bounds, capture preferences, shortcuts,
-and the Agent Control permission. Renaming it requires a boot-time Rust migration before the first
-store read, downgrade semantics, locked-file and permission handling, and real installation testing.
-Do not treat a filename cleanup as a mechanical refactor.
-
-Profile import inserts selected domain and sibling keys rather than replacing the file. In
-particular, `agentControlEnabled` is intentionally excluded so a shared profile cannot transfer a
-local permission to another machine.
-
-### Vite reload rewinds the desktop persistence cache
-
-`pluginStoreBackend` reads from a synchronous cache seeded by `window.__PLVS_INITIAL_STATE__` and
-does not reread disk. Rust creates that initialization script once during application setup; a Vite
-page reload reruns the original boot script, replacing the cache with the boot snapshot. The next
-write can persist that stale snapshot over newer disk data.
-
-Production's profile-change path relaunches Tauri so Rust recomputes the snapshot, and profile import
-suspends plugin-store persistence before reloading. The hazard is the desktop development reload.
-Never use a manual check spanning HMR or a Vite reload as proof that persistence reached disk. Restart
-the app and inspect `plvs-settings.json` itself.
-
-Do not attempt to refresh the snapshot from Tauri's `on_page_load`. The approach was measured on
-2026-09-06: WebView2 `ExecuteScriptAsync` landed 6–26 ms after the earliest inline script on every
-trial. Dev appeared safe only because Vite's module graph added roughly 700 ms before consumers read
-the value. A production bundle has no such margin, and the three independent consumers
-(`pluginStoreBackend.js`, `useDockMode.js`, and `agentControl/appSnapshot.js`) could observe different
-generations if an asynchronous update landed mid-load.
+Keep Agent Control consent local to the identity. Profile transfer must not carry the permission
+to another machine.

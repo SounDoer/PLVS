@@ -12,11 +12,11 @@ Desktop (Tauri):
 npm run desktop:dev
 ```
 
-`npm run desktop:dev` and `npm run desktop:dev-optimized` both pass `--config src-tauri/tauri.dev.conf.json --features dev-identity`, which changes the app identifier to `com.soundoer.plvs.dev`. The dev app therefore has its own `%APPDATA%\com.soundoer.plvs.dev\plvs-settings.json` and its own webview data, and never overwrites the settings, window position or dock state of an installed stable PLVS. The build script first builds the standalone `src-tauri/plvs-cli` workspace package with the same identity, then stages it as a Tauri external binary; host and CLI must always come as a pair. Dev-identity debug builds go to `src-tauri/target/dev-identity`, apart from the directory `cargo test` writes to, so `npm run check` can run while the dev app is open ([ADR 0024](adr/0024-development-identity-target-directory.md)).
+`npm run desktop:dev` and `npm run desktop:dev-optimized` both pass `--config src-tauri/tauri.dev.conf.json --features dev-identity`, which changes the app identifier to `com.soundoer.plvs.dev`. The dev app therefore has its own application data root and WebView data, and never overwrites the settings, window position or dock state of an installed stable PLVS. The build script first builds the standalone `src-tauri/plvs-cli` workspace package with the same identity, then stages it as a Tauri external binary; host and CLI must always come as a pair. Dev-identity debug builds go to `src-tauri/target/dev-identity`, apart from the directory `cargo test` writes to, so `npm run check` can run while the dev app is open ([ADR 0024](https://github.com/SounDoer/PLVS/blob/421b7333059d94f36a41197ae9c7a0de11c96a66/docs/adr/0024-development-identity-target-directory.md)).
 
-In a linked worktree (for example under `.claude/worktrees/`), `npm run desktop:dev` runs a dev app that can sit beside the main checkout's and other worktrees' ([ADR 0028](adr/0028-parallel-worktree-dev-apps.md)). It picks a Vite port in 1430–1499 instead of 1420 and keeps its app data in the worktree's ignored `.dev-data/`, which starts as a first run; delete the directory to start over. `desktop:control`, `smoke:agent-control`, `ui:walkthrough` and `theme:gallery` run from that worktree reach only that worktree's app. An optimized build from `npm run desktop:dev-optimized` in a worktree is launched by hand with `src-tauri/target/release/plvs --plvs-test-app-data-root <worktree>/.dev-data` to get the same isolation. The main checkout is unchanged.
+In a linked worktree (for example under `.claude/worktrees/`), `npm run desktop:dev` runs a dev app that can sit beside the main checkout's and other worktrees' ([ADR 0028](https://github.com/SounDoer/PLVS/blob/421b7333059d94f36a41197ae9c7a0de11c96a66/docs/adr/0028-parallel-worktree-dev-apps.md)). It picks a Vite port in 1430–1499 instead of 1420 and keeps its app data in the worktree's ignored `.dev-data/`, which starts as a first run; delete the directory to start over. `desktop:control`, `smoke:agent-control`, `ui:walkthrough` and `theme:gallery` run from that worktree reach only that worktree's app. An optimized build from `npm run desktop:dev-optimized` in a worktree is launched by hand with `src-tauri/target/release/plvs --plvs-test-app-data-root <worktree>/.dev-data` to get the same isolation. The main checkout is unchanged.
 
-The three app identities are named `stable` (`com.soundoer.plvs`), `dev` (`com.soundoer.plvs.dev`) and `preview` (`com.soundoer.plvs.preview`). "Release" names only the Cargo profile and the act of publishing a version, never an identity. ADRs written before this naming keep the earlier names:
+The three app identities are named `stable` (`com.soundoer.plvs`), `dev` (`com.soundoer.plvs.dev`) and `preview` (`com.soundoer.plvs.preview`). "Release" names only the Cargo profile and the act of publishing a version, never an identity. The archived decisions use some earlier names:
 
 | Earlier name                                                   | Current name                                              |
 | -------------------------------------------------------------- | --------------------------------------------------------- |
@@ -56,7 +56,7 @@ Each identity has its own settings, webview data and Agent Control discovery, so
 | `npm run rust:test` (part of `npm run check`)       | `stable`  | `debug`   | `debug/`                         |
 | Capture harness build                               | `stable`  | `harness` | `harness/`                       |
 
-`release/plvs` is whichever of the three `release`-profile commands ran last. The dev `debug` build has its own directory because `cargo test` and a running dev app would otherwise fight over `debug/plvs`; see [ADR 0024](adr/0024-development-identity-target-directory.md). `plvs-cli` forwards to the `plvs` beside it, so the two are always built as a pair with the same identity.
+`release/plvs` is whichever of the three `release`-profile commands ran last. The dev `debug` build has its own directory because `cargo test` and a running dev app would otherwise fight over `debug/plvs`; see [ADR 0024](https://github.com/SounDoer/PLVS/blob/421b7333059d94f36a41197ae9c7a0de11c96a66/docs/adr/0024-development-identity-target-directory.md). `plvs-cli` forwards to the `plvs` beside it, so the two are always built as a pair with the same identity.
 
 `src-tauri/target/` is ignored by Git and can be deleted at any time. Everything in it is rebuilt on demand; the first dev build afterwards takes a few minutes.
 
@@ -158,7 +158,7 @@ install side by side without `Conflicts` (ADR 0036). The Rust build scripts emit
 The deb fetches checksum-pinned FFmpeg/FFprobe and installs them below
 `/usr/lib/plvs-preview/sidecars`; it never owns, replaces, or depends on Ubuntu's
 `/usr/bin/ffmpeg`. Stable packages use `/usr/lib/plvs/sidecars`. See
-[ADR 0033](adr/0033-linux-deb-bundles-private-ffmpeg-sidecars.md). Build on the stated baseline;
+[ADR 0033](https://github.com/SounDoer/PLVS/blob/421b7333059d94f36a41197ae9c7a0de11c96a66/docs/adr/0033-linux-deb-bundles-private-ffmpeg-sidecars.md). Build on the stated baseline;
 building on a newer distribution can silently raise the required glibc version.
 
 `scripts/verify-linux-deb.sh <package.deb> <output-directory> <fixture-directory> [companion.deb]`

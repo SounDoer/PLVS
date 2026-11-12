@@ -133,11 +133,3 @@ checks its dialogue fixtures. The arrangement, the 7.1.4 and 5.1 placements, the
 positions and the stereo master settings (including its side gain) live in
 `scripts/marketing/music-beds.mjs`. When the hero verdicts no longer hold after a change, adjust
 the arrangement or master there; never edit a fixture.
-
-## Historical capture audio
-
-The NAS audio archive also retains `discovery/discovery-hero.wav` (Discovery by Scott Buckley,
-CC BY 4.0), used by the retired real-app homepage capture workflow. Its provenance and credit
-remain in `assets/marketing/audio/discovery-hero.source.json` and `ATTRIBUTION.txt` for archive
-identification and attribution. It is not an input to the current homepage or Sharesets images.
-The WAV remains outside Git; removing it from the current tree does not remove it from Git history.

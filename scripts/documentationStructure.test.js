@@ -45,25 +45,13 @@ const sectionBody = (markdown, heading) => {
 
 describe("documentation structure", () => {
   it("keeps working records out of the public documentation tree", () => {
-    for (const directory of ["history", "superpowers", "working"]) {
+    for (const directory of ["adr", "history", "superpowers", "working"]) {
       expect(existsSync(join(cwd(), "docs", directory)), directory).toBe(false);
     }
   });
 
-  it("gives every ADR a unique numeric identifier", () => {
-    const names = readdirSync(join(cwd(), "docs", "adr")).filter((name) => name.endsWith(".md"));
-    const identifiers = names.map((name) => name.match(/^(\d{4})-/)?.[1] ?? `invalid:${name}`);
-    const duplicates = identifiers.filter(
-      (identifier, index) => identifiers.indexOf(identifier) !== index
-    );
-
-    expect(identifiers.filter((identifier) => identifier.startsWith("invalid:"))).toEqual([]);
-    expect(duplicates).toEqual([]);
-  });
-
   it("does not reference local working records from living documents", () => {
-    // Historical ADRs can retain the original references that document their provenance.
-    const documents = [...collectMarkdown("docs", ["docs/adr"]), "README.md", "CONTRIBUTING.md"];
+    const documents = [...collectMarkdown("docs", []), "README.md", "CONTRIBUTING.md"];
     const citations = documents.flatMap((path) => {
       const matches =
         read(path).match(/(?<!\/)\b(?:docs\/)?history\/(?:specs|plans|notes|mockups)\/[^\s)`]+/g) ??
@@ -75,7 +63,12 @@ describe("documentation structure", () => {
   });
 
   it("resolves relative links in living documents and the root documents", () => {
-    const documents = [...collectMarkdown("docs", []), "README.md", "CONTRIBUTING.md"];
+    const documents = [
+      ...collectMarkdown("docs", []),
+      "README.md",
+      "CONTRIBUTING.md",
+      "sharesets/README.md",
+    ];
     const broken = documents.flatMap((path) =>
       [...read(path).matchAll(/\]\(([^)\s#]+)(?:#[^)]*)?\)/g)]
         .map(([, target]) => target)
@@ -155,14 +148,13 @@ describe("public documents state what the code ships", () => {
 
   it("names the app identities stable, dev and preview", () => {
     // Vocabulary, not sentences: each of these spellings once named an identity alongside the
-    // current one. ADRs keep them, in their file names too, and CONTRIBUTING.md lists them in its
-    // table of earlier names.
+    // current one. The historical aliases table preserves the earlier spellings.
     const earlierSpellings =
       /\b(?:release|production|official)[- ]identity\b|\bdevelopment[- ](?:app|GUI|CLI|identity)\b|\binstalled release\b|--identity (?:development|release)\b/gi;
     const withoutEarlierNames = (markdown) =>
       markdown.replace(/^\|\s*Earlier name\s*\|.*\n(?:\|.*\n)*/m, "").replace(/adr\/[\w.-]+/g, "");
     const documents = [
-      ...collectMarkdown("docs", ["docs/adr"]),
+      ...collectMarkdown("docs", []),
       ...collectMarkdown(".agents/skills", []),
       "AGENTS.md",
       "CONTRIBUTING.md",

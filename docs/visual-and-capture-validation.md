@@ -199,25 +199,12 @@ the library. It then returns to the public `ui inspect`, `visual screenshot`, an
 and cancelling the real Update Preferences choice saves it as skipped, so the runner uses the exact
 fixture reset token for both.
 
-These fixture commands are absent from public capabilities, help, completion, schema, and packaged
-CLIs. The `status.layout`, `status.summary`, `status.details`, `status.capture-failed`,
-`status.update`, `status.update-ready` and `status.update-failed` fixtures preview fixed inputs in
-the shared status presentation owner. They neither disconnect capture nor stage real updates.
-`status.details` opens the normal status popover or Dock's existing read-only accessory. Use reset
-for every status scene; the opaque fixture ID restores the real status inputs and closes its list.
-
-The checked-in `development-fixtures.example.json` includes all seven status states and an
-Extra Large status-list case for normal mode. For Dock, copy
-`scripts/ui-walkthrough/dock-status.example.json` (nine scenes) or
-`scripts/ui-walkthrough/dock-bottom-status.example.json` (four scenes), replace the workbench ID,
-and run the same command. Before starting, enter Dock at the top or bottom edge respectively;
-these manifests inspect the existing Dock configuration and do not change its edge or layout.
-Keep the toolbar collapsed initially to check the status icon and automatic toolbar opening on
-capture failure. Review the clean scene for complete Stats rows, aligned columns, and unwanted
-scrollbars. The details scenes capture the native `dock-editor` window, and capture failure captures
-`dock-header`. Each scenario resets its status inputs and restores declared Interface Size changes.
-These are repeatable screenshot reviews; a successful run verifies capture and restoration, while
-clipping, alignment, and window placement still require visual review of the images.
+Status fixtures preview the production presentation with fixed inputs. They neither disconnect
+capture nor stage updates. Use the fixture reset token to restore the real inputs and dismiss the
+fixture surface. The [walkthrough manifests](../scripts/ui-walkthrough/) define the exact scenes.
+For the Dock status manifests, enter Dock at the specified edge with its toolbar initially
+collapsed. Review the images for unexpected toolbar opening, clipped Stats and misplaced
+accessories. A successful run verifies capture and restoration; visual judgment still matters.
 
 These commands remain restricted to development
 CLIs. They never invoke Save, Send, Confirm, Update, Restart, Apply, Delete, or mutate arbitrary
@@ -327,8 +314,8 @@ left by a killed run is removed automatically once its process is gone; a holder
 or PID cannot be read counts as alive and is cleared by hand only when it really is dead. On
 Windows, a lease file another user created can only be deleted by that user or an administrator.
 There is no way to take a live lease
-([ADR 0028](adr/0028-parallel-worktree-dev-apps.md),
-[ADR 0039](adr/0039-capture-rig-lease-is-machine-wide.md)). The rig routes VLC directly to the
+([ADR 0028](https://github.com/SounDoer/PLVS/blob/421b7333059d94f36a41197ae9c7a0de11c96a66/docs/adr/0028-parallel-worktree-dev-apps.md),
+[ADR 0039](https://github.com/SounDoer/PLVS/blob/421b7333059d94f36a41197ae9c7a0de11c96a66/docs/adr/0039-capture-rig-lease-is-machine-wide.md)). The rig routes VLC directly to the
 virtual device and never changes the system default output. Install and reboot after the platform
 driver setup before running it; PLVS does not install or manage that driver.
 

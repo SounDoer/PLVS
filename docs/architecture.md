@@ -2,7 +2,7 @@
 
 > **Purpose**: the technical map of PLVS — stack, directory layout, audio pipeline, frontend/backend communication, theme system.  
 > **Audience**: the project author and AI agents. The **implementation on `main`** is authoritative; when this document and the code disagree, the code wins.  
-> **Related**: product scope in [`prd.md`](prd.md); UI token details in [`design-tokens.md`](design-tokens.md); architecture decisions in [`adr/`](adr/).
+> See [product scope](prd.md), [design tokens](design-tokens.md), and the [documentation index](README.md).
 
 ---
 
@@ -18,7 +18,8 @@
 | Components    | shadcn/ui (Radix)                 | Shell and settings controls                               |
 | Tests         | Vitest                            | Frontend unit tests (next to the source, `*.test.js/jsx`) |
 
-**Why Rust + Tauri:** Rust has no GC, which keeps the audio callback thread realtime-safe; Tauri uses the system WebView (no bundled Chromium, an installer of ~10 MB); the existing React components are reused as they are. Electron and JUCE were rejected over size and positioning (see the history of the original architecture.md and the ADRs).
+Rust lets the audio engine avoid garbage collection on the realtime callback thread. Tauri uses the
+system WebView, which keeps the desktop package smaller and lets the same React UI run across platforms.
 
 ---
 
@@ -76,7 +77,8 @@ Each metering workbench is one Tauri process with its own Rust audio engine, Rea
 window and single-writer Workspace file. A shared SQLite database in WAL mode owns Library items,
 ordering, revisions, global preferences and the ordered restore set. Item and collection writes use
 expected revisions; Workspace state never shares a writer and measurement history is never
-persisted.
+persisted. Boot migrates the legacy `plvs-settings.json` when needed, then hydrates the Workspace
+and shared data before the frontend first reads them.
 
 On macOS, LaunchServices sends a reopen event to the running application instead of starting a
 second process. A reopen with a visible workbench spawns an ordinary additional process; when all
@@ -97,7 +99,7 @@ workbenches the Tray builds the same complete control group for each instance. T
 menu lives for the Tray's lifetime. Keyed reconciliation updates labels, checks, enabled state and
 child membership while retaining surviving item handles and their action channels. Callbacks read
 the latest workbench state. Replacing the attached menu can detach the Windows command handler
-while an older popup is still open; see [ADR 0041](adr/0041-retain-native-tray-menu-handles.md).
+while an older popup is still open; see [ADR 0041](https://github.com/SounDoer/PLVS/blob/421b7333059d94f36a41197ae9c7a0de11c96a66/docs/adr/0041-retain-native-tray-menu-handles.md).
 Targeted hide, Settings, source selection and preset actions use the existing instance mailbox with
 an optional selection ID; the receiving React runtime calls its own window, source or preset
 business function. Native coordination relays these actions without mutating frontend stores.
@@ -139,7 +141,7 @@ While the recorded helper or installer is alive, a new workspace cannot start. O
 an unfinished attempt is recorded as failed and the installed version starts. A completed or failed
 attempt is not automatically retried. A fresh session removes previous helper artifacts. Updater
 commands are not exposed to webviews; only the native update commands can install. The offline adapter and its trust boundary are described in
-[ADR 0030](adr/0030-verify-cached-updates-through-updater-adapter.md).
+[ADR 0030](https://github.com/SounDoer/PLVS/blob/421b7333059d94f36a41197ae9c7a0de11c96a66/docs/adr/0030-verify-cached-updates-through-updater-adapter.md).
 
 Dock update/setup presentation is an independent `dock-update` accessory with event permissions
 only. Like the toolbar and editor accessories it is not created at startup: its WebView renderer
@@ -164,7 +166,7 @@ WebView content. Linux uses the corresponding WebKitGTK visible-WebView snapshot
 no desktop-capture portal. Windows recording uses Windows Graphics Capture and Media Foundation,
 macOS recording uses ScreenCaptureKit and AVAssetWriter, and Linux sends WebKitGTK frames to the
 distribution FFmpeg at `/usr/bin/ffmpeg`, never the audio-only sidecar, after checking that it has
-the libx264 and AAC encoders ([ADR 0037](adr/0037-linux-recording-uses-distribution-ffmpeg.md)).
+the libx264 and AAC encoders ([ADR 0037](https://github.com/SounDoer/PLVS/blob/421b7333059d94f36a41197ae9c7a0de11c96a66/docs/adr/0037-linux-recording-uses-distribution-ffmpeg.md)).
 All three reuse Rust's measured-source PCM timeline and encode
 H.264/AAC MP4 when audio is requested; explicit silent recordings contain only H.264 video. Linux
 does not advertise system-pointer capture. The timeline places each buffer at the time it arrived
@@ -177,7 +179,7 @@ recorded silence.
 Application state in the main window is owned by React context providers, one per domain, nested in
 `App` (`src/App.jsx`) in dependency order. A provider reads the providers that enclose it and
 never one it encloses. The reasons are in
-[ADR 0022](adr/0022-ordered-providers-own-frontend-state.md).
+[ADR 0022](https://github.com/SounDoer/PLVS/blob/421b7333059d94f36a41197ae9c7a0de11c96a66/docs/adr/0022-ordered-providers-own-frontend-state.md).
 
 | Owner (outermost first) | Owns                                                                                                    | Read through                                                         |
 | ----------------------- | ------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------- |
@@ -309,6 +311,11 @@ need it. When adding a top-level directory, add a row in the same commit.
 - **macOS**: system audio goes through `macos/` (Core Audio process tap, macOS 14.2+); physical inputs go through cpal. Global system output uses a device-specific tap that excludes an empty process list. When a global tap starts against a completely idle output device, PLVS briefly opens a zero-filled stream on that same device until the first tap callback arrives; this clocks the aggregate without making the running session hold an unnecessary render stream. Application sources keep the running ordinary GUI hosts among the Core Audio process objects, derive a stable application ID from the host bundle, merge helper processes under the same host and capture them with `CATapDescription initWithProcesses`. Pausing does not remove a source, because the HAL may temporarily empty the output device list and a process tap may legitimately stop calling back. Application taps currently follow the default output device and keep that device's native channel layout. Platform dispatch lives in `platform_backend.rs`.
 - **Capture health**: a running capture that stops receiving callbacks for longer than `CAPTURE_STALL_TIMEOUT` (5 s) is treated as failed; `engine-state-changed` emits `error`, and the frontend stays in `error` and shows the reason. macOS global taps first have a separate 30 s startup allowance for the recording-permission prompt and temporary idle-device wake-up; the 5 s running-stream watch begins after their first callback. Windows loopback without a silence stream is excluded from the pure callback-stall check (it does not call back during silence), but still reacts immediately to fatal backend stream errors. Windows `DeviceNotAvailable` / `StreamInvalidated` are reported as a structured `deviceInvalidated` reason; the frontend releases the old stream, re-resolves the current device, clears the interrupted Live measurement and rebuilds once automatically. The next recovery is allowed only after the replacement has produced audio for two seconds, which prevents failure loops. The device monitor thread observes both the device list and the current default output every 2 s; under Automatic, a default output change restarts capture. With an Application selected, it also refreshes the current PID / Core Audio process object set for the stable application ID every 2 s; a changed set rebinds through the same safe restart path, and a vanished target ends the false LIVE state and shows an error. Audio dropped before analysis is reported through `engine-backpressure` and shown as Audio Dropped in the footer until Clear or a new session.
 
+Device enumeration, identity and the frontend DTO have separate owners. Keep stable ID hashing
+and legacy ID resolution in the cpal-free `device_id.rs` so that identity compatibility can be
+tested without a host or audio hardware. The enumeration adapter alone inspects native devices;
+the DTO carries the resulting identity and display data across the IPC boundary.
+
 ### DSP layer (`src-tauri/src/dsp/`)
 
 | Module               | Computes                                                                                                                                                             |
@@ -366,8 +373,8 @@ retain their own topology. An unavailable or invalid system speaker mapping refu
 unsupported role inside a valid scope remains unknown and retains the channels 1/2 loudness fallback.
 Manual roles apply within the monitored scope. Native roles stay out of persisted manual selections
 and travel with frames/history. See
-[ADR 0053](adr/0053-system-output-monitoring-follows-configured-speakers.md) and its Windows stereo
-scope amendment in [ADR 0055](adr/0055-windows-complete-stereo-mix-is-a-safe-monitoring-scope.md).
+[ADR 0053](https://github.com/SounDoer/PLVS/blob/421b7333059d94f36a41197ae9c7a0de11c96a66/docs/adr/0053-system-output-monitoring-follows-configured-speakers.md) and its Windows stereo
+scope amendment in [ADR 0055](https://github.com/SounDoer/PLVS/blob/421b7333059d94f36a41197ae9c7a0de11c96a66/docs/adr/0055-windows-complete-stereo-mix-is-a-safe-monitoring-scope.md).
 
 Multichannel detection uses the versioned `center-priority-fallback-v1` policy. Each non-LFE
 channel has independent detector state, so opposite phase and an LFE-heavy mix cannot cancel or
@@ -449,7 +456,7 @@ First-paint flow (`src/main.jsx`):
 4. `compileTheme` validates typed recipe inputs/outputs and compiles Core Colors, Palettes and sparse Advanced overrides into a complete Resolved Theme
 5. `themeRuntime` publishes that one result with an increasing revision: CSS is written to the DOM and Canvas subscribes through selectors; `applyLayoutToDocument` handles layout, font size, geometry, and non-Theme product tuning
 
-**Token layers** (see [`design-tokens.md`](design-tokens.md) and ADR 0001/0002/0005/0011/0012/0013/0014/0015):
+**Token layers** (see [`design-tokens.md`](design-tokens.md)):
 
 | Layer            | Output                                                                                                                      | Defined / published in                                                      |
 | ---------------- | --------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------- |
@@ -477,7 +484,7 @@ fixtures; changing a default design does not rewrite compatibility history.
 Semantics 3 made ordinary Border opaque, aliased Input Border to it, and derived Grid from Panel
 Surface independently. Semantics 2 documents preserve their authored Border and inherited Grid
 appearance while migrating through that boundary; see
-[ADR 0017](adr/0017-opaque-interface-borders-and-independent-grids.md).
+[ADR 0017](https://github.com/SounDoer/PLVS/blob/421b7333059d94f36a41197ae9c7a0de11c96a66/docs/adr/0017-opaque-interface-borders-and-independent-grids.md).
 
 Semantics 4 aligns automatic data-state and interface relationships: Loudness Momentary and
 Short-term use Primary and Secondary Data, transport Live uses Status Critical, transport Snapshot
@@ -485,7 +492,7 @@ uses Primary Snapshot, and Interface feedback inherits its Interface Palette see
 Semantics 1, 2, and 3 documents migrate at the existing persistence/import ingress. Explicit
 Advanced overrides survive; automatic roles adopt the current relationships. Portable themes
 retain format 1 and now emit semantics 4. See
-[ADR 0021](adr/0021-align-automatic-theme-role-semantics.md).
+[ADR 0021](https://github.com/SounDoer/PLVS/blob/421b7333059d94f36a41197ae9c7a0de11c96a66/docs/adr/0021-align-automatic-theme-role-semantics.md).
 
 Semantics 5 models a selected Snapshot as a History data state with shared History Primary and
 Secondary roles plus one uniform, lightness-only Palette History treatment for Status, Frequency,
@@ -494,8 +501,8 @@ hues, and Level Meter Gradient and Level Zones share the same Level Status histo
 meter-specific family. Semantics 5 remained unreleased while this final derived-role boundary was
 corrected, so existing local semantics 5 documents are intentionally recompiled without an
 additional migration. See
-[ADR 0025](adr/0025-model-snapshot-as-history-data-state.md) and
-[ADR 0026](adr/0026-prioritize-core-data-and-unify-palette-history.md).
+[ADR 0025](https://github.com/SounDoer/PLVS/blob/421b7333059d94f36a41197ae9c7a0de11c96a66/docs/adr/0025-model-snapshot-as-history-data-state.md) and
+[ADR 0026](https://github.com/SounDoer/PLVS/blob/421b7333059d94f36a41197ae9c7a0de11c96a66/docs/adr/0026-prioritize-core-data-and-unify-palette-history.md).
 
 Theme colour roles resolve to opaque colours. Chart fill opacity is fixed product composition,
 shared by panels, Dock, and Theme Preview through `src/lib/chartFill.js` (ADR 0019). The
@@ -672,7 +679,7 @@ The main strip alone reserves space; accessories are overlay Dock windows that c
 focus. Boot capabilities are shared by the main and accessory renderers. Leaving Dock restores the
 normal window type; suspension removes the strut, and the window manager removes it on process
 death. Linux does not expose Above Full Screen. See
-[ADR 0054](adr/0054-linux-dock-uses-ewmh-on-the-actual-x11-backend.md).
+[ADR 0054](https://github.com/SounDoer/PLVS/blob/421b7333059d94f36a41197ae9c7a0de11c96a66/docs/adr/0054-linux-dock-uses-ewmh-on-the-actual-x11-backend.md).
 
 GTK keeps the WebKit natural/default height as a minimum when a window is non-resizable. Linux
 therefore uses explicit equal min/max geometry hints on resizable native windows for the strip and
@@ -704,7 +711,7 @@ marks it covered meanwhile.
 Where a taskbar that does not auto-hide shows on the Dock's monitor, Shell's own state read from it
 decides: Shell keeps that taskbar out of the topmost band for exactly as long as it treats the
 monitor as full screen, so the strip takes the taskbar's place exactly while Shell keeps it empty
-(see [ADR 0047](adr/0047-dock-reads-shell-full-screen-from-the-taskbar.md)). Without such a
+(see [ADR 0047](https://github.com/SounDoer/PLVS/blob/421b7333059d94f36a41197ae9c7a0de11c96a66/docs/adr/0047-dock-reads-shell-full-screen-from-the-taskbar.md)). Without such a
 taskbar, Shell's notification starts and ends a report and the z-order decides between them. The
 z-order walk finds the first ordinary window covering the monitor, looking past PLVS's own windows,
 click-through overlays, Shell's taskbars, which Shell can leave above the full-screen window for a
@@ -719,10 +726,10 @@ unchanged, and the strip and toolbar refuse activation, because Shell ends full 
 the taskbar back when another application's window takes the foreground. A toolbar opened then holds
 no focus, so while it shows a low-level mouse hook and a foreground WinEvent hook report the user
 going elsewhere and the frontend closes it (see
-[ADR 0046](adr/0046-a-filling-dock-strip-refuses-activation.md)). With it off, the strip is hidden
+[ADR 0046](https://github.com/SounDoer/PLVS/blob/421b7333059d94f36a41197ae9c7a0de11c96a66/docs/adr/0046-a-filling-dock-strip-refuses-activation.md)). With it off, the strip is hidden
 until the report ends. It is never dropped out of the
 topmost band, because Windows refuses to return a background process's window there (see
-[ADR 0045](adr/0045-dock-full-screen-fills-the-edge-and-hides-instead-of-lowering.md)). Open accessories move with the strip. Nothing
+[ADR 0045](https://github.com/SounDoer/PLVS/blob/421b7333059d94f36a41197ae9c7a0de11c96a66/docs/adr/0045-dock-full-screen-fills-the-edge-and-hides-instead-of-lowering.md)). Open accessories move with the strip. Nothing
 raises the header while the strip is hidden: it is opened only from the strip's entry, and the
 full-screen window taking the foreground closes a toolbar that was already open, through the same
 focus rule that closes it when the user clicks another application.
@@ -741,7 +748,7 @@ A closed `dock-settings` host remains warm for 60 seconds after its final busine
 acknowledged and its client reports idle. Reopening cancels retirement. After retirement, opening
 Settings creates a fresh renderer and readiness handshake. Authoring retains immediate retirement
 after the same ordered idle acknowledgement. See
-[ADR 0051](adr/0051-dock-accessories-use-bounded-idle-retention.md).
+[ADR 0051](https://github.com/SounDoer/PLVS/blob/421b7333059d94f36a41197ae9c7a0de11c96a66/docs/adr/0051-dock-accessories-use-bounded-idle-retention.md).
 
 Settings uses a narrow `dock-settings` host, following the ordinary drawer's Interface Size width.
 Theme/Profile/Feedback use the separate `dock-authoring` host, with the shared floating frame's
@@ -767,13 +774,16 @@ shell portals a dimmed backdrop into the editor surface supplied by the host con
 dialogs cannot darken unrelated applications. The editor's existing overflow clipping owns the rounded
 edge; the backdrop does not duplicate its radius. No clipping coordinates or resize listeners are used.
 
-Authoring drafts, preview-open state, validation, and file operations remain in main. An inactive
+Authoring drafts, preview-open state, validation, and file operations remain in main. Accessory
+WebViews receive view snapshots and emit declared, ordered actions; they do not own stores or
+run native file operations. Main checks the action's presentation session and request identity
+before applying it. Dialogs are parented to the visible owning host when possible. An inactive
 authoring client acknowledges receipt/completion of its outstanding operations before declaring
 itself idle; main then destroys that WebView. Reopening creates a fresh renderer and readiness
 handshake. Hiding for a form change preserves the controller and draft. Settings remains reusable.
 Only owners with both presentations explicitly register Dock transferability; preset operations
 continue to refuse every open blocking editor. The Agent Control planner reads the same live blocker
-policy as the business guard. See [ADR 0050](adr/0050-dock-authoring-preserves-floating-editor-presentation.md).
+policy as the business guard. See [ADR 0050](https://github.com/SounDoer/PLVS/blob/421b7333059d94f36a41197ae9c7a0de11c96a66/docs/adr/0050-dock-authoring-preserves-floating-editor-presentation.md).
 
 Toolbar visibility is owned by `useDockAccessoryVisibility`: an explicit open flag, or an open
 editor, or an error notice. Each of the three WebViews reports its own window focus — the strip
@@ -786,7 +796,7 @@ and atomic recovery journals use a serial queue. A display-wide lease prevents c
 workbenches from owning the same reservation. Suspend/exit restores only unchanged window geometry;
 startup recovers journals whose lease is free. Permission loss or display removal falls back to an
 overlay and reconciles the frontend. This service does not change `NSScreen.visibleFrame` or resize
-native full-screen applications; see [ADR 0023](adr/0023-macos-dock-accessibility-avoidance.md).
+native full-screen applications; see [ADR 0023](https://github.com/SounDoer/PLVS/blob/421b7333059d94f36a41197ae9c7a0de11c96a66/docs/adr/0023-macos-dock-accessibility-avoidance.md).
 
 On macOS, `macos_dock_window.rs` and `native/macos/dock_window_bridge.m` own Panel presentation
 on AppKit's main thread. The macOS-only pinned `tauri-nspanel` plugin converts the existing window into a Panel;
@@ -803,7 +813,7 @@ safe display frame. Notifications, bounded retries and a one-second fallback whi
 Space/display changes; suspend and exit stop polling. Accessory-only mouse/application observation
 emits `dock-interaction-elsewhere` into React's existing dismissal owner. Native geometry changes
 emit `dock-native-geometry-changed` to remeasure anchors. See
-[ADR 0048](adr/0048-macos-dock-uses-panel-hosts-and-space-membership.md) for the host conversion policy and maintenance scope.
+[ADR 0048](https://github.com/SounDoer/PLVS/blob/421b7333059d94f36a41197ae9c7a0de11c96a66/docs/adr/0048-macos-dock-uses-panel-hosts-and-space-membership.md) for the host conversion policy and maintenance scope.
 
 Rust's `dock.rs` / `dock_accessories.rs` own physical-pixel geometry and window lifecycle. The main
 React root owns the runtime, workspace, presets and Dock persistence; the two accessory roots receive
@@ -932,7 +942,7 @@ matching `PLVS_HOST_BINARY` / `PLVS_CLI_BINARY` names the CLI forwarder, doctor 
 use to find each other (ADR 0036). The existing adjacent
 binary locator uses `/usr/lib/plvs/sidecars` for stable and `/usr/lib/plvs-preview/sidecars` for
 Preview without searching `/usr/bin` or `PATH`. Preview retains its separate identity and has no
-automatic updater. See [ADR 0033](adr/0033-linux-deb-bundles-private-ffmpeg-sidecars.md) for the
+automatic updater. See [ADR 0033](https://github.com/SounDoer/PLVS/blob/421b7333059d94f36a41197ae9c7a0de11c96a66/docs/adr/0033-linux-deb-bundles-private-ffmpeg-sidecars.md) for the
 package layout and decoder policy.
 
 Linux recording disables FFmpeg's redundant probing for its explicitly described raw video and PCM
@@ -972,4 +982,4 @@ temporary directory, validates the deb name, architecture and version, then invo
 constraints. The worker judges availability by the installed target it updates, not by its own
 cache copy. It accepts completion only after
 `dpkg-query` reports the expected installed version. See
-[ADR 0034](adr/0034-linux-deb-updates-use-a-privileged-installer.md).
+[ADR 0034](https://github.com/SounDoer/PLVS/blob/421b7333059d94f36a41197ae9c7a0de11c96a66/docs/adr/0034-linux-deb-updates-use-a-privileged-installer.md).

@@ -1,7 +1,7 @@
 # Pointer Control
 
 Pointer Control moves the operating-system pointer onto a named PLVS control for unattended
-tutorial recording. It never presses, scrolls or types ([ADR 0043](../adr/0043-tutorial-pointer-moves-but-never-clicks.md));
+tutorial recording. It never presses, scrolls or types ([ADR 0043](https://github.com/SounDoer/PLVS/blob/421b7333059d94f36a41197ae9c7a0de11c96a66/docs/adr/0043-tutorial-pointer-moves-but-never-clicks.md));
 the operation that follows is an ordinary Agent Control command.
 
 Command syntax and arguments are in [`generated/commands.md`](generated/commands.md).

@@ -13,7 +13,6 @@ This file records only what an agent cannot infer from the code. Details live in
 | Product scope and boundaries                 | `docs/prd.md`                  |
 | Design tokens                                | `docs/design-tokens.md`        |
 | User-facing terms, Chinese subtitle forms    | `docs/glossary.md`             |
-| Architecture decisions                       | `docs/adr/`                    |
 | Local dev, CI, versioning                    | `CONTRIBUTING.md`              |
 | Specialized maintainer workflows             | `docs/README.md`               |
 | How the documentation itself is organised    | `docs/README.md`               |
@@ -85,7 +84,7 @@ Only the directories that carry rules are listed; the rest of the tree speaks fo
   Maintainers can use a sibling `PLVS-Notebook` checkout and follow its `AGENTS.md` for record placement.
   Routine work needs no separate record. Without archive access, keep working notes in the
   conversation and proceed with the product work. Do not recreate an archive in this repository.
-- Keep durable conclusions in the relevant maintained documentation or ADR. Public contributors
+- Keep durable conclusions and their reasons in the relevant maintained documentation. Public contributors
   must be able to build, test, and maintain PLVS with this checkout alone.
 - User-visible behaviour changes update the matching `docs/user/` chapter in the same commit.
   README and website summaries are reconciled at release; `docs/prd.md` changes only when a
@@ -94,8 +93,9 @@ Only the directories that carry rules are listed; the rest of the tree speaks fo
   third-party services also follow the privacy review in `docs/website-and-sharesets.md`.
   Fingerprints are omission guards, not substitutes for semantic review.
 - Extend `scripts/documentationStructure.test.js` for facts the code owns instead of testing prose.
-- Write a new ADR when someone could reasonably ask why the obvious simpler choice was rejected.
-  ADRs are never edited; a changed decision supersedes the old one.
+- Record a significant design decision in its Notebook project when someone could reasonably
+  ask why the simpler choice was rejected. Keep the durable reason in the relevant PLVS document.
+  Preserve earlier decisions and identify the record that supersedes them.
 
 ## Code style
 
@@ -106,7 +106,7 @@ Documentation, comments, commit messages and PRs are in English. String literals
 Line endings are LF (`.editorconfig`, `.gitattributes`). Formatting and lint are enforced by `npm run check` — no need to memorize the rules.
 UI-visible labels across PLVS default to Title Case unless there's a specific reason not to, e.g. `Max Hold`, `Channel Pair`; `aria-label`s stay lowercase — a separate, non-user-facing convention.
 New or renamed UI labels use the terms in `docs/glossary.md`; a new term is added there in the same commit.
-The three app identities are `stable`, `dev` and `preview`. "Release" names the Cargo profile and the act of publishing a version, never an identity. The dev identity's programs are the dev app and the dev CLI. `scripts/documentationStructure.test.js` rejects the earlier spellings; ADRs keep them, and `docs/desktop-development.md` maps old to new.
+The three app identities are `stable`, `dev` and `preview`. "Release" names the Cargo profile and the act of publishing a version, never an identity. The dev identity's programs are the dev app and the dev CLI. `scripts/documentationStructure.test.js` rejects the earlier spellings; the archived ADRs keep them, and `docs/desktop-development.md` maps old to new.
 
 ## Testing
 
@@ -207,6 +207,5 @@ rules below are the working set; the incident history and rationale live there.
   Verify any change to how a panel renders by comparing Agent Control screenshot pixels before and
   after; tests see neither compositing nor line weight.
 - **Persistence:** choose the domain in `src/persistence/index.js`; external writers must notify the
-  owning React state. `plvs-settings.json` is the shared store and must not be casually renamed.
-  During desktop development, never validate persistence across a Vite reload—restart the app and
-  inspect the file. Do not refresh the boot snapshot from `on_page_load`.
+  owning React state. Identify the Workspace or shared Library that owns the data. Validate
+  persistence by restarting the app and checking the restored state. Keep boot hydration in Rust.

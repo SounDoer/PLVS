@@ -59,21 +59,14 @@ updates the matching chapter in the same commit.
 The PRD states intent and limits. It does not inventory current capabilities — counts, feature
 lists and "we currently don't have X" belong in [user/](user/) and `CHANGELOG.md`.
 
-## 4. Decisions — [adr/](adr/)
+## 4. Engineering decisions and working records
 
-A decision that still constrains the code, recorded once. ADRs are never edited; a decision that
-changes gets a new ADR that supersedes the old one.
+Keep current constraints and their rationale in the relevant maintained document. Maintainers
+keep full decision records, working specs, plans, investigations and mockups in PLVS-Notebook,
+with the project that owns the work. See [AGENTS.md](../AGENTS.md) for the workflow.
 
-Write an ADR when someone could reasonably look at the code and ask "why not just do the obvious
-simpler thing?" — layered device identity (0003) and three parallel VAD engines (0004) look
-redundant until you know why they are not. Routine choices do not need one.
-
-## 5. Engineering working records
-
-Maintainers keep working specs, plans, investigations and mockups in the private PLVS-Notebook
-repository. The [pre-migration PLVS snapshot](https://github.com/SounDoer/PLVS/tree/39a710db60eca7d478627d9e24806a45b10c0ba6/docs/history)
-preserves public access to earlier records, including references in historical ADRs.
-See [AGENTS.md](../AGENTS.md) for the workflow.
+The public snapshots preserve the [former ADR directory](https://github.com/SounDoer/PLVS/tree/421b7333059d94f36a41197ae9c7a0de11c96a66/docs/adr)
+and [earlier working records](https://github.com/SounDoer/PLVS/tree/39a710db60eca7d478627d9e24806a45b10c0ba6/docs/history).
 
 ## Where the other documents live
 
