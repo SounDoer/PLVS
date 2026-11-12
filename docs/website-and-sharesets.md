@@ -72,8 +72,10 @@ shipping release remains unassigned, preventing a guessed minimum version from r
 
 [PLVS-Website](https://github.com/SounDoer/PLVS-Website) builds the candidate site from a
 versioned input bundle. PLVS owns the guide source, the reviewed privacy policy and the
-validation and interpretation of Sharesets. Export from clean checkouts at the exact revisions
-chosen for the candidate:
+validation and interpretation of Sharesets. Use the Node version in `.nvmrc` and run
+`npm ci --ignore-scripts` in the PLVS checkout that runs the exporter. If the selected product
+revision is in a separate checkout, run the same command there so its validation code can
+load its dependencies. Export from clean checkouts at the exact revisions chosen for the candidate:
 
 ```sh
 node scripts/export-website-inputs.mjs <product-checkout> <new-output-directory> [catalogue-checkout] [privacy-checkout]
@@ -83,7 +85,7 @@ The product checkout supplies the guide and the validation and compatibility cod
 checkouts default to that same revision. The export validates the Catalogue, projects the data
 needed for presentation, copies the original published download and preview bytes, and checks
 the privacy body against its review record. The manifest records the three source commits.
-In the website checkout, run `npm run check -- <export-directory>`.
+In the website checkout, run `npm ci`, then `npm run check -- <export-directory>`.
 
 The production workflow in PLVS uses the separate renderer and owns the shared Pages lock,
 the existing domain, and the live immutable-history baseline.
