@@ -47,7 +47,7 @@ selected metrics priority and uses spare space to show more of the filename.
 Use **Clear All Files…** at the bottom of the **Files** menu to remove all entries and results after
 confirmation. Audio files on disk are kept.
 
-Hover the file metadata row, warning icon, or metric controls for details. Click to keep the same details
+Hover the file metadata text, warning icon, or metric controls for details. Click to keep the same details
 open, and click again, press Escape, or click outside to close them. Peak details include each
 decoded channel's maximum and occurrence time. **Loudest Range** shows the start and end of the loudest
 Momentary or Short-term window within the track. A settings warning explains which changes need

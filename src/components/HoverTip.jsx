@@ -2,6 +2,7 @@ import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react
 import { createPortal } from "react-dom";
 import { cn } from "@/lib/utils";
 import { LAYER_FLOATING } from "@/components/ui/layers.js";
+import { COMPACT_HOVER_PADDING_CLASS } from "@/components/ui/surfaceStyles.js";
 
 const VIEWPORT_MARGIN = 8;
 const TIP_GAP = 6;
@@ -143,7 +144,8 @@ export function useHoverTip({ tip, side = "bottom", align = "center", tipClassNa
               "fixed opacity-100 pointer-events-none",
               "transition-opacity delay-100",
               "text-[length:var(--ui-fs-axis)] text-foreground bg-popover",
-              "border border-border rounded-xs px-2 py-1",
+              "border border-border rounded-xs",
+              COMPACT_HOVER_PADDING_CLASS,
               "whitespace-nowrap shadow-raised",
               tipClassName
             )}

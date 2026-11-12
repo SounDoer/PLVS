@@ -3,9 +3,20 @@ import { usePreviewPin } from "../hooks/usePreviewPin.js";
 import { useDropdownNavigation } from "../uiNavigation/useDropdownNavigation.js";
 import { Popover, PopoverContent, PopoverTrigger } from "./ui/popover.jsx";
 import { Button } from "./ui/button.jsx";
+import { COMPACT_HOVER_PADDING_CLASS } from "./ui/surfaceStyles.js";
 import { cn } from "../lib/utils.js";
 
-export function FileDetailPopover({ label, target, trigger, children, className }) {
+/**
+ * @param {{
+ *   label: string,
+ *   target: string,
+ *   trigger: import("react").ReactNode,
+ *   children: import("react").ReactNode,
+ *   className?: string,
+ *   align?: "start" | "center" | "end",
+ * }} props
+ */
+export function FileDetailPopover({ label, target, trigger, children, className, align = "end" }) {
   const content = useRef(null);
   const { mode, modeRef, returnFocusRef, cancelClose, changeMode, scheduleClose, onEscape } =
     usePreviewPin();
@@ -46,8 +57,11 @@ export function FileDetailPopover({ label, target, trigger, children, className 
       <PopoverContent
         ref={content}
         aria-label={label}
-        align="end"
-        className="max-h-[var(--radix-popover-content-available-height)] w-max max-w-[min(var(--ui-surface-compact-w),calc(100vw-1rem))] select-text overflow-auto overscroll-contain p-[var(--ui-drawer-pad)] text-[length:var(--ui-fs-control)]"
+        align={align}
+        className={cn(
+          "max-h-[var(--radix-popover-content-available-height)] w-max max-w-[min(var(--ui-surface-compact-w),calc(100vw-1rem))] select-text overflow-auto overscroll-contain p-0 text-[length:var(--ui-fs-control)]",
+          COMPACT_HOVER_PADDING_CLASS
+        )}
         onMouseEnter={cancelClose}
         onMouseLeave={scheduleClose}
         onKeyDown={onEscape}

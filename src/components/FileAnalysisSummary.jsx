@@ -540,7 +540,8 @@ export function FileAnalysisSummary({
             <FileDetailPopover
               label="file details"
               target="file-summary:details"
-              className="flex w-full min-w-0 justify-start text-left focus-visible:bg-ui-hover"
+              align="start"
+              className="max-w-full justify-start bg-transparent text-left hover:bg-transparent focus-visible:ring-1 focus-visible:ring-ring"
               trigger={<span className="truncate">{metadata || "No Media Metadata"}</span>}
             >
               <FileInfo session={display} />

@@ -256,7 +256,8 @@ and a surface-specific text colour stay with the caller.
   anchored menus, settings, or details the user can keep open. `PopoverContent` owns the shared
   surface, layer, and default positioning. File Summary details use
   [`FileDetailPopover`](../src/components/FileDetailPopover.jsx) for hover preview and click to
-  keep the details open.
+  keep the details open. Their content uses the same compact padding as `HoverTip`,
+  `0.5rem` on each side and `0.25rem` above and below.
 
 When information is needed to identify an item or complete an action, provide a visible or
 keyboard-accessible way to reach it. Use hover for optional help or to reveal text whose full
