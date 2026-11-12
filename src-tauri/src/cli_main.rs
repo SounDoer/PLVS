@@ -1339,7 +1339,8 @@ mod tests {
     assert_eq!(json["ok"], true);
     assert_eq!(json["result"]["manifestVersion"], 1);
     let commands = json["result"]["commands"].as_array().unwrap();
-    assert_eq!(commands.len(), 137);
+    let manifest = crate::cli_manifest::command_manifest().unwrap();
+    assert_eq!(commands.len(), manifest.commands.len());
     assert_eq!(commands[0]["id"], "app.capabilities");
     let doctor = commands
       .iter()
