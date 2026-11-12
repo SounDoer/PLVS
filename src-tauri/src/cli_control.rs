@@ -397,6 +397,7 @@ pub enum ControlCommand {
   VisualScreenshot {
     target: String,
     panel_id: Option<String>,
+    target_id: Option<String>,
     expected_revision: Option<u64>,
     expected_ui_generation: Option<u64>,
     out: String,
@@ -1530,6 +1531,7 @@ fn parse_visual_args(args: &[String]) -> Result<ControlCommand, String> {
 
   let mut target = None;
   let mut panel_id = None;
+  let mut target_id = None;
   let mut expected_revision = None;
   let mut expected_ui_generation = None;
   let mut out = None;
@@ -1542,7 +1544,12 @@ fn parse_visual_args(args: &[String]) -> Result<ControlCommand, String> {
         json = true;
         index += 1;
       }
-      "--target" | "--panel-id" | "--expected-revision" | "--expected-ui-generation" | "--out" => {
+      "--target"
+      | "--target-id"
+      | "--panel-id"
+      | "--expected-revision"
+      | "--expected-ui-generation"
+      | "--out" => {
         let Some(value) = rest.get(index + 1) else {
           return Err(format!("The {flag} option requires a value."));
         };
@@ -1551,6 +1558,7 @@ fn parse_visual_args(args: &[String]) -> Result<ControlCommand, String> {
         }
         match flag {
           "--target" if target.is_none() => target = Some(value.clone()),
+          "--target-id" if target_id.is_none() => target_id = Some(value.clone()),
           "--panel-id" if panel_id.is_none() => panel_id = Some(value.clone()),
           "--out" if out.is_none() => out = Some(value.clone()),
           "--expected-revision" if expected_revision.is_none() => {
@@ -1580,6 +1588,9 @@ fn parse_visual_args(args: &[String]) -> Result<ControlCommand, String> {
   if !json {
     return Err("The visual screenshot command requires --json.".to_string());
   }
+  if target.is_some() && target_id.is_some() {
+    return Err("Specify exactly one of --target and --target-id.".to_string());
+  }
   let target = match target.as_deref() {
     Some("main") => "main",
     Some("workspace") => "workspace",
@@ -1593,7 +1604,8 @@ fn parse_visual_args(args: &[String]) -> Result<ControlCommand, String> {
         "Unknown visual screenshot target: {value}. Expected main, workspace, panel, dock-header, dock-editor, dock-update, or dock-settings."
       ))
     }
-    None => return Err("The visual screenshot command requires --target.".to_string()),
+    None if target_id.is_some() => "named",
+    None => return Err("The visual screenshot command requires --target or --target-id.".to_string()),
   };
   if target == "panel" && panel_id.is_none() {
     return Err("The panel target requires --panel-id.".to_string());
@@ -1608,6 +1620,7 @@ fn parse_visual_args(args: &[String]) -> Result<ControlCommand, String> {
   Ok(ControlCommand::VisualScreenshot {
     target: target.to_string(),
     panel_id,
+    target_id,
     expected_revision,
     expected_ui_generation,
     out,
@@ -4714,6 +4727,7 @@ fn request_for_command<R: Read>(
     ControlCommand::VisualScreenshot {
       target,
       panel_id,
+      target_id,
       expected_revision,
       expected_ui_generation,
       ..
@@ -4722,6 +4736,9 @@ fn request_for_command<R: Read>(
         serde_json::Map::from_iter([("kind".to_string(), Value::String(target.clone()))]);
       if let Some(panel_id) = panel_id {
         target_value.insert("panelId".to_string(), Value::String(panel_id.clone()));
+      }
+      if let Some(target_id) = target_id {
+        target_value.insert("targetId".to_string(), Value::String(target_id.clone()));
       }
       let mut params =
         serde_json::Map::from_iter([("target".to_string(), Value::Object(target_value))]);
@@ -6609,6 +6626,17 @@ mod tests {
   }
 
   fn canonical_argv(entry: &crate::cli_manifest::CommandEntry) -> Vec<String> {
+    if entry.id == "visual.screenshot" {
+      return args(&[
+        "visual",
+        "screenshot",
+        "--target-id",
+        "toolbar:presets",
+        "--out",
+        "output.png",
+        "--json",
+      ]);
+    }
     if entry.id.ends_with(".export") && entry.id != "config.export" {
       let mut argv = entry.path.clone();
       argv.extend(["--all".to_string(), "--json".to_string()]);
@@ -9652,7 +9680,7 @@ mod tests {
   fn visual_parser_enforces_panel_output_json_and_closed_options() {
     let help = family_help_text("visual");
     assert!(help.contains("plvs-cli visual describe <--json|--format text>"));
-    assert!(help.contains("plvs-cli visual screenshot --target"));
+    assert!(help.contains("plvs-cli visual screenshot [--target"));
     assert!(help_text().contains("dock-header|dock-editor"));
 
     for invalid in [
@@ -10046,6 +10074,7 @@ mod tests {
     ControlCommand::VisualScreenshot {
       target: "main".to_string(),
       panel_id: None,
+      target_id: None,
       expected_revision: None,
       expected_ui_generation: None,
       out: out.to_string_lossy().into_owned(),

@@ -3379,7 +3379,7 @@ Capture a PLVS surface screenshot.
 - Schema references: `visual.target`, `agentControl.revision`
 
 ```text
-plvs-cli visual screenshot --target <main|workspace|panel|dock-header|dock-editor|dock-update|dock-settings> [--panel-id <panel-id>] [--expected-revision <n>] [--expected-ui-generation <n>] --out <file> --json
+plvs-cli visual screenshot [--target <main|workspace|panel|dock-header|dock-editor|dock-update|dock-settings> | --target-id <target-id>] [--panel-id <panel-id>] [--expected-revision <n>] [--expected-ui-generation <n>] --out <file> --json
 ```
 
 ### Positionals
@@ -3390,7 +3390,8 @@ None.
 
 | Name | Maps to | Required | Value |
 | --- | --- | --- | --- |
-| `--target` | `target.kind` | yes | string; one of "main", "workspace", "panel", "dock-header", "dock-editor", "dock-update", "dock-settings" |
+| `--target` | `target.kind` | no | string; one of "main", "workspace", "panel", "dock-header", "dock-editor", "dock-update", "dock-settings" |
+| `--target-id` | `target.targetId` | no | string |
 | `--panel-id` | `target.panelId` | no | string |
 | `--expected-revision` | `expectedRevision` | no | integer; 0 to inf |
 | `--expected-ui-generation` | `expectedUiGeneration` | no | integer; 0 to 9007199254740991 |

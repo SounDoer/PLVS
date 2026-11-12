@@ -1,4 +1,5 @@
 import { normalizeVisualTarget } from "./visualControl.js";
+import { findVisibleUiTarget } from "../uiNavigation/uiTargets.js";
 
 export const VISUAL_SURFACE_ATTRIBUTE = "data-visual-capture-surface";
 export const VISUAL_PANEL_ATTRIBUTE = "data-visual-panel-id";
@@ -7,6 +8,7 @@ export const VISUAL_SETTLEMENT_TIMEOUT_MS = 3000;
 
 const WINDOW_LABELS = Object.freeze({
   main: "main",
+  named: "main",
   workspace: "main",
   panel: "main",
   dockHeader: "dock-header",
@@ -87,6 +89,7 @@ export function resolveVisualSurface({
 
   const viewport = viewportFor(windowObject, documentObject);
   let element;
+  let readinessElement;
   if (semanticTarget.kind === "panel") {
     element = findPanelElement(documentObject, semanticTarget.panelId, windowObject, viewport);
     if (!element) {
@@ -95,6 +98,10 @@ export function resolveVisualSurface({
         `Panel ${semanticTarget.panelId} is not currently rendered.`
       );
     }
+  } else if (semanticTarget.kind === "named") {
+    element = findVisibleUiTarget(semanticTarget.targetId, documentObject, windowObject);
+    if (!element) return failure("targetUnavailable", "The named UI target is not visible.");
+    readinessElement = documentObject.querySelector(`[${VISUAL_SURFACE_ATTRIBUTE}="main"]`);
   } else {
     element = documentObject.querySelector(
       `[${VISUAL_SURFACE_ATTRIBUTE}="${semanticTarget.kind}"]`
@@ -102,7 +109,8 @@ export function resolveVisualSurface({
     if (!element) return failure("targetUnavailable", "The requested surface is not mounted.");
   }
 
-  const ready = element.getAttribute(VISUAL_SURFACE_READY_ATTRIBUTE) === "true";
+  const ready =
+    (readinessElement ?? element).getAttribute(VISUAL_SURFACE_READY_ATTRIBUTE) === "true";
   const rendered = isRendered(element, windowObject, viewport);
   const rect =
     semanticTarget.kind === "main"
@@ -228,7 +236,8 @@ export async function settleVisualSurface({
       if (!resolved.ok) {
         if (
           resolved.error.reason === "panelNotFound" ||
-          resolved.error.reason === "panelNotVisible"
+          resolved.error.reason === "panelNotVisible" ||
+          (target.kind === "named" && resolved.error.reason === "targetUnavailable")
         ) {
           throw Object.assign(new Error(resolved.error.message), resolved.error);
         }

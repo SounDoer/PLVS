@@ -79,6 +79,28 @@ describe("visual surface resolution", () => {
     ).toEqual({ x: 10, y: 10, width: 300, height: 200 });
   });
 
+  it("bounds a named control to the visible main WebView", () => {
+    const main = addSurface("main", rect(0, 0, 800, 600));
+    const button = document.createElement("button");
+    button.dataset.uiTarget = "toolbar:dialogue-detection";
+    button.getBoundingClientRect = vi.fn(() => new DOMRect(790, 10, 20, 25));
+    main.append(button);
+    const target = { kind: "named", targetId: "toolbar:dialogue-detection" };
+    expect(resolveVisualSurface({ target, workspace: {} })).toMatchObject({
+      ok: true,
+      surface: {
+        element: button,
+        ready: true,
+        rect: { x: 790, y: 10, width: 10, height: 25 },
+      },
+    });
+    button.style.visibility = "hidden";
+    expect(resolveVisualSurface({ target, workspace: {} })).toMatchObject({
+      ok: false,
+      error: { reason: "targetUnavailable" },
+    });
+  });
+
   it("selects the rendered focus Panel and leaves overlays untouched", () => {
     const workspace = { panelsById: { spectrum: {} } };
     const hiddenLeaf = addPanel("spectrum", rect(0, 0, 200, 100));

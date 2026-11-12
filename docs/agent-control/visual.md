@@ -24,6 +24,9 @@ artifact. `recording.unavailable` is `null` while recording is available; otherw
 ## Targets and pixels
 
 - `main` is the complete PLVS main WebView client area, excluding native window chrome.
+- `--target-id <id>` crops to a visible named control or region in the main WebView. Use the
+  IDs returned by `ui targets`. The crop is bounded by the viewport and includes the pixels
+  currently painted there. An absent or hidden target returns `targetUnavailable`.
 - `workspace` is the rendered workspace inside the main WebView. It is unavailable in Dock form.
 - `panel` is one currently rendered Panel body selected by `--panel-id`; hidden inactive tabs fail.
 - `dock-header`, `dock-editor`, `dock-update`, and `dock-settings` are the complete client areas of those accessory WebViews. They
@@ -68,6 +71,7 @@ later mutations.
 $state = plvs-cli inspect --json | ConvertFrom-Json
 plvs-cli visual screenshot --target workspace --expected-revision $state.result.revision --out .\workspace.png --json
 plvs-cli visual screenshot --target panel --panel-id spectrum-2 --out .\spectrum.png --json
+plvs-cli visual screenshot --target-id toolbar:dialogue-detection --out .\dialogue-toggle.png --json
 ```
 
 For an overlay or editor, use `ui inspect -> ui show -> visual screenshot -> ui close` and pass the

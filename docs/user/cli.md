@@ -344,8 +344,11 @@ Patch uses closed editor-specific operations and never Saves. `revision` protect
 document. See [Editor Draft Control](../agent-control/editor-drafts.md) for atomicity, stale drafts,
 Theme-only history, and the Cancel/discard workflow.
 
-Visual Capture saves the actual rendered pixels of the running app. Dock accessory screenshots
-capture the complete visible client area, including when the screen constrains the editor's size.
+Visual Capture saves the actual rendered pixels of the running app. To crop a visible main-window
+control or region, use
+`visual screenshot --target-id <id> --out <file> --json` with an ID from `ui targets`.
+Dock accessory screenshots capture the complete visible client area, including when the screen
+constrains the editor's size.
 Screenshots and recording are available on Windows, macOS, and Linux. The recording-only `dock`
 target is available on Windows and macOS and includes the strip, toolbar, open editor, and any
 desktop visible behind transparent surfaces:
@@ -434,6 +437,8 @@ Selection accepts only `default` or an exact ID returned by `device list`. Inven
 separate generation token and do not advance the global revision. A running Live switch requires
 `--allow-measurement-restart`. See [Device Control](../agent-control/devices.md) for inventory fields,
 Automatic semantics, dry-run, persistence/restart settlement, and copyable workflows.
+
+### File analysis automation
 
 To enable Dialogue Detection for subsequent File analysis, read the current revision with
 `settings inspect --json`, then send a Settings patch. For example, in PowerShell:

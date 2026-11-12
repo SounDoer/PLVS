@@ -1372,7 +1372,7 @@ describe("useAgentControlBridge", () => {
         recording: { available: false },
         runtime: {
           windowForm: "normal",
-          availableScreenshotTargets: ["main", "workspace", "panel"],
+          availableScreenshotTargets: ["main", "workspace", "panel", "named"],
         },
       });
 

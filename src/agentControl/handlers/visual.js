@@ -40,7 +40,8 @@ async function screenshot(ctx) {
     throw visualSemanticFailure({ reason: "visualUnavailable" });
   }
   const availableTargets = visualControl.getRuntime()?.availableScreenshotTargets ?? [];
-  if (!availableTargets.includes(request.params.target.kind)) {
+  const surfaceKind = request.params.target.kind === "named" ? "main" : request.params.target.kind;
+  if (!availableTargets.includes(surfaceKind)) {
     throw visualSemanticFailure({ reason: "targetUnavailable" });
   }
   if (visual.captureActive.current) {

@@ -1,5 +1,8 @@
+import { isUiTargetId } from "../uiNavigation/uiTargets.js";
+
 export const VISUAL_SCREENSHOT_TARGET_KINDS = Object.freeze([
   "main",
+  "named",
   "workspace",
   "panel",
   "dockHeader",
@@ -74,7 +77,12 @@ export function normalizeVisualTarget(value) {
     };
   }
 
-  const allowedFields = value.kind === "panel" ? new Set(["kind", "panelId"]) : new Set(["kind"]);
+  const allowedFields =
+    value.kind === "panel"
+      ? new Set(["kind", "panelId"])
+      : value.kind === "named"
+        ? new Set(["kind", "targetId"])
+        : new Set(["kind"]);
   const extraField = Object.keys(value).find((key) => !allowedFields.has(key));
   if (extraField) {
     return {
@@ -99,6 +107,16 @@ export function normalizeVisualTarget(value) {
       };
     }
     return { ok: true, target: { kind: value.kind, panelId: value.panelId } };
+  }
+  if (value.kind === "named") {
+    if (!isUiTargetId(value.targetId)) {
+      return {
+        ok: false,
+        path: ".targetId",
+        message: "target.targetId must be a named UI target.",
+      };
+    }
+    return { ok: true, target: { kind: value.kind, targetId: value.targetId } };
   }
   return { ok: true, target: { kind: value.kind } };
 }
@@ -142,7 +160,7 @@ export function buildVisualDescription({ revision, platform, runtime }) {
   const screenshotAvailable = platform?.screenshot?.available === true;
   const recordingAvailable = platform?.recording?.available === true;
   const screenshotTargets = screenshotAvailable
-    ? retainKnown(platform.screenshot.targets, VISUAL_SCREENSHOT_TARGET_KINDS)
+    ? screenshotTargetsWithNamed(platform.screenshot.targets)
     : [];
   const recordingTargets = recordingAvailable
     ? retainKnown(platform.recording.targets, VISUAL_RECORDING_TARGET_KINDS)
@@ -195,11 +213,16 @@ export function buildVisualDescription({ revision, platform, runtime }) {
       windowForm: runtime?.windowForm === "dock" ? "dock" : "normal",
       sourceMode,
       availableScreenshotTargets: retainKnown(
-        runtime?.availableScreenshotTargets,
+        screenshotTargetsWithNamed(runtime?.availableScreenshotTargets),
         screenshotTargets
       ),
       availableAudioSources: retainKnown(runtime?.availableAudioSources, audioSources),
     },
   };
+}
+
+function screenshotTargetsWithNamed(targets) {
+  const known = retainKnown(targets, VISUAL_SCREENSHOT_TARGET_KINDS);
+  return known.includes("main") && !known.includes("named") ? [...known, "named"] : known;
 }
 import { commandEntriesForFeatureGate } from "./commandManifest.js";

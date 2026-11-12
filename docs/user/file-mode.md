@@ -59,6 +59,8 @@ Integrated, LRA, and True Peak Max are the defaults. A narrow window puts remain
 
 ## Statistics CSV
 
+For scripted export, see [File analysis automation](cli.md#file-analysis-automation).
+
 At the bottom of the **Files** menu, choose **Export Statistics…**. All successful results are selected by
 default. Choose any number of them, including one, and then **Export CSV…**. An entry with a
 previous successful result remains eligible while it is reanalyzing. The export uses the selected

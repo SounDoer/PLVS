@@ -6637,7 +6637,7 @@
       "id": "visual.screenshot",
       "family": "visual",
       "path": ["visual", "screenshot"],
-      "usage": "plvs-cli visual screenshot --target <main|workspace|panel|dock-header|dock-editor|dock-update|dock-settings> [--panel-id <panel-id>] [--expected-revision <n>] [--expected-ui-generation <n>] --out <file> --json",
+      "usage": "plvs-cli visual screenshot [--target <main|workspace|panel|dock-header|dock-editor|dock-update|dock-settings> | --target-id <target-id>] [--panel-id <panel-id>] [--expected-revision <n>] [--expected-ui-generation <n>] --out <file> --json",
       "summary": "Capture a PLVS surface screenshot.",
       "execution": "runningApp",
       "operation": "action",
@@ -6651,7 +6651,7 @@
       "options": [
         {
           "name": "--target",
-          "required": true,
+          "required": false,
           "value": {
             "type": "string",
             "enum": [
@@ -6665,6 +6665,14 @@
             ]
           },
           "mapsTo": "target.kind"
+        },
+        {
+          "name": "--target-id",
+          "required": false,
+          "value": {
+            "type": "string"
+          },
+          "mapsTo": "target.targetId"
         },
         {
           "name": "--panel-id",

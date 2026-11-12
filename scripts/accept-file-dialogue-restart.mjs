@@ -136,20 +136,34 @@ export async function runFileDialogueRestart({ executable, root, outDir }) {
 
   function checkToolbar(pressed, screenshot) {
     const settings = invoke(["settings", "inspect"]);
-    assert.equal(settings.settings.fileDialogueDetection, pressed);
-    const location = invoke(["ui", "locate", "--target", target]);
-    assert.equal(location.visible, true);
-    assert.equal(location.state?.pressed, pressed);
-    invoke([
+    const full = invoke([
       "visual",
       "screenshot",
       "--target",
       "main",
       "--expected-revision",
-      String(location.revision),
+      String(settings.revision),
       "--out",
       join(outDir, screenshot),
     ]);
+    const location = invoke(["ui", "locate", "--target", target]);
+    assert.equal(settings.settings.fileDialogueDetection, pressed);
+    assert.equal(location.visible, true);
+    assert.equal(location.state?.pressed, pressed);
+    const cropped = invoke([
+      "visual",
+      "screenshot",
+      "--target-id",
+      target,
+      "--expected-revision",
+      String(location.revision),
+      "--out",
+      join(outDir, screenshot.replace(".png", "-toggle.png")),
+    ]);
+    assert.deepEqual(cropped.target, { kind: "named", targetId: target });
+    assert.ok(cropped.artifact.width > 0 && cropped.artifact.height > 0);
+    assert.ok(cropped.artifact.width < full.artifact.width);
+    assert.ok(cropped.artifact.height < full.artifact.height);
   }
 
   function runFile(action, argument) {

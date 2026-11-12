@@ -14,13 +14,13 @@ export function isUiTargetId(value) {
   return typeof value === "string" && value.length <= 256 && TARGET_ID.test(value);
 }
 
-function visibleRect(element) {
+function visibleRect(element, windowObject = globalThis.window) {
   if (!element?.isConnected) return null;
-  const style = globalThis.getComputedStyle?.(element);
+  const style = windowObject?.getComputedStyle?.(element);
   if (style && (style.visibility === "hidden" || style.display === "none")) return null;
   const rect = element.getBoundingClientRect();
   if (!(rect.width > 0 && rect.height > 0)) return null;
-  const viewport = { width: globalThis.innerWidth, height: globalThis.innerHeight };
+  const viewport = { width: windowObject?.innerWidth, height: windowObject?.innerHeight };
   if (rect.right <= 0 || rect.bottom <= 0 || rect.left >= viewport.width) return null;
   if (rect.top >= viewport.height) return null;
   return rect;
@@ -47,6 +47,14 @@ function declaredTargets(root) {
     entries.push([element.getAttribute("data-ui-target"), element]);
   }
   return [...entries, ...panelParts(root)].filter(([id]) => isUiTargetId(id));
+}
+
+export function findVisibleUiTarget(id, root, windowObject) {
+  return (
+    declaredTargets(root).find(
+      ([candidate, element]) => candidate === id && visibleRect(element, windowObject)
+    )?.[1] ?? null
+  );
 }
 
 /** Reads states exposed by the rendered element through native controls or ARIA. */

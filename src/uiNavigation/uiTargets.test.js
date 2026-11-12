@@ -48,12 +48,15 @@ describe("UI targets", () => {
       <input data-ui-target="setting:checkbox" type="checkbox" checked>
     `;
     for (const element of document.querySelectorAll("[data-ui-target]")) rect(element, 10, 10);
-    expect(locateUiTarget("toolbar:dialogue-detection").state).toEqual({
-      pressed: true,
-      disabled: false,
+    expect(locateUiTarget("toolbar:dialogue-detection")).toMatchObject({
+      state: { pressed: true, disabled: false },
     });
-    expect(locateUiTarget("menu:trigger").state).toEqual({ expanded: false, disabled: true });
-    expect(locateUiTarget("setting:checkbox").state).toEqual({ checked: true, disabled: false });
+    expect(locateUiTarget("menu:trigger")).toMatchObject({
+      state: { expanded: false, disabled: true },
+    });
+    expect(locateUiTarget("setting:checkbox")).toMatchObject({
+      state: { checked: true, disabled: false },
+    });
   });
 
   it("locates a target in viewport pixels and tells hidden from unknown", () => {

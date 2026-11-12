@@ -37,6 +37,7 @@ describe("visual control contract", () => {
   it("freezes the public target, audio, and recording-state vocabularies", () => {
     expect(VISUAL_SCREENSHOT_TARGET_KINDS).toEqual([
       "main",
+      "named",
       "workspace",
       "panel",
       "dockHeader",
@@ -127,7 +128,7 @@ describe("visual control contract", () => {
       platform: "windows",
       screenshot: {
         available: true,
-        targets: ["main", "workspace", "panel", "dockHeader", "dockEditor"],
+        targets: ["main", "workspace", "panel", "dockHeader", "dockEditor", "named"],
         format: "png",
         maxConcurrent: 1,
       },
@@ -154,7 +155,7 @@ describe("visual control contract", () => {
       runtime: {
         windowForm: "normal",
         sourceMode: "live",
-        availableScreenshotTargets: ["main", "workspace", "panel"],
+        availableScreenshotTargets: ["main", "workspace", "panel", "named"],
         availableAudioSources: ["none", "measuredSource"],
       },
     });
