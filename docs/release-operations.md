@@ -325,14 +325,13 @@ How users reach a version:
   app sees on its next check.
 - PLVS sets no version comparator, so the vendored updater (`src-tauri/vendor/tauri-plugin-updater`)
   offers a release only when its version is greater than the running one. There is no downgrade.
-- The homepage resolves its version label and download buttons in the visitor's browser from the
-  GitHub API `releases/latest` (`website/index.html`), so it follows the Latest mark without a
-  redeploy. The rest of the website (user guide, privacy policy) is static and was deployed from
-  the bad tag by `release.yml`'s `deploy-website` job.
+- The homepage download links and guide share the published website's product revision. Moving
+  GitHub's Latest mark changes the updater feed. Redeploy the website to change its download links
+  and guide. See [website publication](website-and-sharesets.md#website-checks-and-independent-publication).
 
 Steps, with `<bad>` the broken version and `<previous>` the last good stable version:
 
-1. Stop new installs and updates by moving the Latest mark back:
+1. Stop offering the bad release through the updater and GitHub's Latest entry point:
 
    ```bash
    gh release edit v<previous> --latest
@@ -353,24 +352,19 @@ Steps, with `<bad>` the broken version and `<previous>` the last good stable ver
    gh release edit v<bad> --notes-file notes.md
    ```
 
-3. Ship a higher fixed version through the normal `plvs-release` flow. Never retag `<bad>`. The
-   fixed release's `publish-release` job marks it Latest, and its `deploy-website` job redeploys the
-   website from the new tag, which ends the response.
-
-4. Check that the website does not point at `<bad>` while the fix is pending. Open the homepage and
-   confirm the version label shows `v<previous>`. Then read
-   `git diff v<previous> v<bad> -- docs/user website`: if the live guide or pages describe
-   behaviour only `<bad>` has, or send users to it, redeploy the website from the previous tag:
+3. Redeploy the website against the previous stable product tag:
 
    ```bash
-   npm run website:review -- v<previous>
    gh workflow run deploy-website.yml --ref main -f ref=v<previous>
    ```
 
-   The deployment gate accepts a stable tag whose commit passed push CI, and the live Sharesets
-   history check still applies. Redeploying an older tag also reverts any independent website
-   publication made since `<bad>`; the review output lists those files. Confirm the live
-   `/publication.json` `websiteSha` equals `git rev-parse v<previous>^{commit}`.
+   Review the prior guide and confirm the retained website copy is appropriate for that version.
+   This keeps the live renderer, reviewed privacy revision, and published Catalogue history.
+   After the deploy, confirm that the homepage links and the live marker's `productSha` point at
+   the previous stable release. See the website publication guide for exact-revision review.
+
+4. Ship a higher fixed version through the normal `plvs-release` flow. Never retag `<bad>`.
+   The fixed Release becomes Latest, then its website job advances the download links and guide.
 
 What this cannot do:
 

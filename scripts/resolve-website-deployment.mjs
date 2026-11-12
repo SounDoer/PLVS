@@ -59,6 +59,24 @@ export async function selectPolicyRef({
 
 const api = (path) => JSON.parse(execFileSync("gh", ["api", path], { encoding: "utf8" }));
 
+async function verifySiteCI(siteSha) {
+  const path = `repos/${SITE_REPOSITORY}/actions/workflows/ci.yml/runs?head_sha=${siteSha}&event=push&status=success`;
+  let runs;
+  try {
+    runs = JSON.parse(
+      execFileSync("gh", ["api", path], { encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] })
+    ).workflow_runs;
+  } catch {
+    // A repository-scoped Actions token may be unable to read another public repo's runs.
+    const response = await fetch(`https://api.github.com/${path}`, {
+      signal: AbortSignal.timeout(30_000),
+    });
+    if (!response.ok) throw new Error(`Cannot verify website source CI (HTTP ${response.status})`);
+    runs = (await response.json()).workflow_runs;
+  }
+  requireSuccessfulCI(runs, siteSha);
+}
+
 async function main() {
   const {
     GITHUB_REPOSITORY: repository,
@@ -113,19 +131,7 @@ async function main() {
   requireSuccessfulCI(productRuns, productSha);
 
   const siteSha = exact(websiteRef || live.siteSourceSha || bootstrapSiteSha, "Website source");
-  // The separate source repository is public. The publisher's token stays scoped to PLVS.
-  const siteCi = await fetch(
-    "https://api.github.com/repos/" +
-      SITE_REPOSITORY +
-      "/actions/workflows/ci.yml/runs?head_sha=" +
-      siteSha +
-      "&event=push&status=success",
-    {
-      signal: AbortSignal.timeout(30_000),
-    }
-  );
-  if (!siteCi.ok) throw new Error("Cannot verify website source CI (HTTP " + siteCi.status + ")");
-  requireSuccessfulCI((await siteCi.json()).workflow_runs, siteSha);
+  await verifySiteCI(siteSha);
 
   const previousProduct = exact(live.productSha ?? live.websiteSha, "Live product");
   const livePolicy = exact(live.policySha ?? live.websiteSha, "Live privacy policy");
