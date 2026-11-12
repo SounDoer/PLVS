@@ -4,8 +4,9 @@ Inspect a local audio file offline, using the same meter panels as live monitori
 
 ## Opening a file
 
-Drop an audio file onto the window, or choose **Open** in the transport pill. PLVS reads the file's
-metadata with ffprobe and decodes it with a bundled FFmpeg — no external tools to install.
+In File Mode, drag an audio file or a video with an audio track over the window. Release it when
+**Drop File to Analyze** appears. You can also choose **Open** in the transport pill.
+PLVS analyzes files locally using bundled ffprobe and FFmpeg.
 
 When a file contains multiple audio tracks, choose one in **Select Audio Track**, then choose
 **Analyze**. The default-marked track is selected initially. Cancelling leaves the current file

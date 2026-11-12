@@ -39,7 +39,11 @@ describe("FileDropOverlay", () => {
   it("shows the overlay on drag enter when active", async () => {
     render(<FileDropOverlay active onDropFile={vi.fn()} />);
     await emit({ type: "enter", paths: ["C:/mix/final.wav"] });
-    expect(screen.getByText("Drop file to analyze")).toBeTruthy();
+    expect(screen.getByText("Drop File to Analyze")).toBeTruthy();
+    expect(screen.queryByText(/stay local/)).toBeNull();
+
+    await emit({ type: "leave" });
+    expect(screen.queryByText("Drop File to Analyze")).toBeNull();
   });
 
   it("calls onDropFile with the dropped path when active", async () => {

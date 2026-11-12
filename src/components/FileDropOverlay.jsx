@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { getCurrentWebview } from "@tauri-apps/api/webview";
-import { SCRIM_CLASS } from "@/components/ui/surfaceStyles.js";
+import { FileAudio } from "lucide-react";
+import { POPOVER_SURFACE_CLASS, SCRIM_CLASS } from "@/components/ui/surfaceStyles.js";
 import { cn } from "@/lib/utils";
 import { LAYER_FLOATING } from "@/components/ui/layers.js";
 
@@ -46,14 +47,17 @@ export function FileDropOverlay({ active, onDropFile }) {
   if (!visible) return null;
 
   return (
-    <div className={cn(SCRIM_CLASS, LAYER_FLOATING, "pointer-events-none grid place-items-center")}>
-      <div className="rounded-xl border border-border bg-popover px-6 py-5 text-center shadow-raised">
-        <p className="text-[length:var(--ui-fs-body)] font-semibold text-foreground">
-          Drop file to analyze
-        </p>
-        <p className="mt-1 text-[length:var(--ui-fs-control)] text-muted-foreground">
-          Audio files and videos with audio tracks stay local.
-        </p>
+    <div
+      className={cn(SCRIM_CLASS, LAYER_FLOATING, "pointer-events-none grid place-items-center p-4")}
+    >
+      <div
+        className={cn(
+          POPOVER_SURFACE_CLASS,
+          "flex min-w-0 items-center gap-3 px-4 py-3 text-[length:var(--ui-fs-body)]"
+        )}
+      >
+        <FileAudio aria-hidden="true" className="size-[1.25em] shrink-0 text-primary" />
+        <p className="min-w-0 font-semibold">Drop File to Analyze</p>
       </div>
     </div>
   );
