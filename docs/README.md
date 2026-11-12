@@ -70,7 +70,7 @@ redundant until you know why they are not. Routine choices do not need one.
 
 ## 5. Engineering working records
 
-Maintainers keep working specs, plans, investigations and mockups in the private PLVS-Dev
+Maintainers keep working specs, plans, investigations and mockups in the private PLVS-Notebook
 repository. The [pre-migration PLVS snapshot](https://github.com/SounDoer/PLVS/tree/39a710db60eca7d478627d9e24806a45b10c0ba6/docs/history)
 preserves public access to earlier records, including references in historical ADRs.
 See [AGENTS.md](../AGENTS.md) for the workflow.

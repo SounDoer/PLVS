@@ -81,8 +81,8 @@ Only the directories that carry rules are listed; the rest of the tree speaks fo
 
 `docs/README.md` owns the document map. These placement rules bind agents:
 
-- Save working specs, plans, and investigations in the private PLVS-Dev repository when available.
-  Maintainers can use a sibling `PLVS-Dev` checkout and follow its `AGENTS.md` for record placement.
+- Save working specs, plans, and investigations in the private PLVS-Notebook repository when available.
+  Maintainers can use a sibling `PLVS-Notebook` checkout and follow its `AGENTS.md` for record placement.
   Routine work needs no separate record. Without archive access, keep working notes in the
   conversation and proceed with the product work. Do not recreate an archive in this repository.
 - Keep durable conclusions in the relevant maintained documentation or ADR. Public contributors
