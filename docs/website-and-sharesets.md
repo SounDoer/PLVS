@@ -68,6 +68,26 @@ shipping release remains unassigned, preventing a guessed minimum version from r
 
 ## Website checks and independent publication
 
+### Separate website build
+
+[PLVS-Website](https://github.com/SounDoer/PLVS-Website) builds the candidate site from a
+versioned input bundle. PLVS owns the guide source, the reviewed privacy policy and the
+validation and interpretation of Sharesets. Export from clean checkouts at the exact revisions
+chosen for the candidate:
+
+```sh
+node scripts/export-website-inputs.mjs <product-checkout> <new-output-directory> [catalogue-checkout] [privacy-checkout]
+```
+
+The product checkout supplies the guide and the validation and compatibility code. The other
+checkouts default to that same revision. The export validates the Catalogue, projects the data
+needed for presentation, copies the original published download and preview bytes, and checks
+the privacy body against its review record. The manifest records the three source commits.
+In the website checkout, run `npm run check -- <export-directory>`.
+
+During the transition, the production deployment still runs here and owns the shared Pages
+lock and the live immutable-history baseline. The separate build produces review artifacts.
+
 After reviewing refreshed Sharesets previews, run `node scripts/marketing/prepare-homepage-assets.mjs`
 to refresh the homepage's derived WebP images. The six Preset and Theme tiles resolve the latest
 published resource and its latest preview revision from the validated Catalogue; they do not read
