@@ -53,7 +53,8 @@ export function SourceProvider({ children }) {
         raiseNotice(
           "error",
           "Could not switch the audio device.",
-          errorDetails("Device selection failed", error)
+          errorDetails("Device selection failed", error),
+          { helpTopic: "audio-capture" }
         );
         return false;
       }

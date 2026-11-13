@@ -299,6 +299,22 @@
       "touches": []
     },
     {
+      "id": "normal-speaker-layout",
+      "durable": [],
+      "ui": {
+        "kind": "eventFixture",
+        "name": "status.speaker-layout",
+        "surfaceKind": "status",
+        "phase": "speaker-layout",
+        "action": "reset"
+      },
+      "screenshot": {
+        "target": "main",
+        "output": "normal-speaker-layout.png"
+      },
+      "touches": []
+    },
+    {
       "id": "normal-update",
       "durable": [],
       "ui": {

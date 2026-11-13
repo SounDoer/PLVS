@@ -51,6 +51,14 @@ describe("status details", () => {
     fireEvent.keyDown(screen.getByRole("dialog"), { key: "Escape" });
     expect(screen.queryByRole("region", { name: "status details" })).toBeNull();
   });
+  it("offers troubleshooting alongside the channel settings action", () => {
+    const onHelp = vi.fn();
+    render(<AppStatusList items={buildAppStatusItems({ layoutUnknown: true })} onHelp={onHelp} />);
+    expect(screen.getByRole("button", { name: "Open Settings" })).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Troubleshooting" }));
+    expect(onHelp).toHaveBeenCalledWith("channel-layout-unknown");
+  });
+
   it("shows full details in the shared list used by the Dock accessory", () => {
     render(
       <AppStatusList

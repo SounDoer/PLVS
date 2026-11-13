@@ -135,7 +135,9 @@ describe("useFileAnalysisReportExport", () => {
       await result.current.exportFileAnalysisReport();
     });
 
-    expect(raiseNotice).toHaveBeenCalledWith("error", "Report export failed");
+    expect(raiseNotice).toHaveBeenCalledWith("error", "Report export failed", undefined, {
+      helpTopic: "file-report",
+    });
   });
 
   function installClipboard(writeText) {
@@ -256,6 +258,8 @@ describe("useFileAnalysisReportExport", () => {
     });
 
     expect(copied).toBe(false);
-    expect(raiseNotice).toHaveBeenCalledWith("error", "Copy failed");
+    expect(raiseNotice).toHaveBeenCalledWith("error", "Copy failed", undefined, {
+      helpTopic: "file-report",
+    });
   });
 });

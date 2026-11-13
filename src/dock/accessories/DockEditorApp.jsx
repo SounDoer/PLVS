@@ -225,6 +225,7 @@ export function DockEditorApp() {
             showTitle={false}
             items={payload.statusItems ?? []}
             onAction={(value) => action("status-action", { action: value })}
+            onHelp={(topic) => action("status-action", { action: "help", topic })}
           />
         </DockEditorShell>
       ) : payload.view === "modules" ? (

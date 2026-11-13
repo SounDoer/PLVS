@@ -364,6 +364,7 @@ describe("useFileAnalysisEngine", () => {
     expect(setAnalyzingFileId.mock.calls.at(-1)[0]("session-b")).toBe("session-b");
     expect(raiseNotice).toHaveBeenCalledWith("error", "Error: decode failed", undefined, {
       requiresAttention: true,
+      helpTopic: "file-open-analysis",
     });
   });
 

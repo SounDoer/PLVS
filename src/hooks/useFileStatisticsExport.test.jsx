@@ -73,7 +73,7 @@ it("writes nothing on cancellation and allows retry after a write error", async 
     "error",
     "Statistics export failed",
     undefined,
-    { requiresAttention: true }
+    { requiresAttention: true, helpTopic: "file-report" }
   );
   expect(result.current.busy).toBe(false);
   expect(result.current.open).toBe(true);

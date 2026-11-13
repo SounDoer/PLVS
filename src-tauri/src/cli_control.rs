@@ -892,6 +892,7 @@ fn parse_development_fixture_args(args: &[String]) -> Result<ControlCommand, Str
         | "status.summary"
         | "status.details"
         | "status.capture-failed"
+        | "status.speaker-layout"
         | "status.update"
         | "status.update-ready"
         | "status.update-failed"

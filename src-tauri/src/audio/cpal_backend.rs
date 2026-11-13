@@ -15,6 +15,7 @@ use super::device::DeviceInfo;
 #[cfg(target_os = "windows")]
 use super::device_enum::is_loopback_capture;
 use super::device_enum::{build_device_list, resolve_device};
+use super::source_layout::CaptureWorkerError;
 
 use crate::dsp::speech::VadEngineKind;
 use crate::engine::MeterPipeline;
@@ -364,7 +365,7 @@ impl AudioCapture for CpalBackend {
 
 pub(crate) struct CaptureSession {
   stop_tx: std::sync::mpsc::Sender<()>,
-  join: Option<JoinHandle<Result<(), String>>>,
+  join: Option<JoinHandle<Result<(), CaptureWorkerError>>>,
   clear_peak_history: Arc<AtomicBool>,
   reset_tp_max: Arc<AtomicBool>,
 }
@@ -438,8 +439,10 @@ impl CaptureSession {
           let error_code = stream_error.load(Ordering::Relaxed);
           emit_capture_failure(
             &failure_app,
-            error,
-            (error_code != STREAM_ERROR_NONE).then_some("deviceInvalidated"),
+            error.message(),
+            error
+              .reason()
+              .or_else(|| (error_code != STREAM_ERROR_NONE).then_some("deviceInvalidated")),
           );
         }
         result
@@ -1098,7 +1101,7 @@ where
   outcome
 }
 
-fn run_capture_worker(args: RunCaptureArgs) -> Result<(), String> {
+fn run_capture_worker(args: RunCaptureArgs) -> Result<(), CaptureWorkerError> {
   let RunCaptureArgs {
     device_id,
     device,
@@ -1124,7 +1127,8 @@ fn run_capture_worker(args: RunCaptureArgs) -> Result<(), String> {
     || super::device_id::parse_legacy_output_index(&device_id).is_some();
   let native_layout = super::source_layout::capture_device_layout(&device, channels, output);
   if output {
-    super::source_layout::MonitoringPlan::require_system_scope(channels, native_layout.clone())?;
+    super::source_layout::MonitoringPlan::require_system_scope(channels, native_layout.clone())
+      .map_err(CaptureWorkerError::SystemSpeakerLayout)?;
   }
   let bridge_layout = native_layout.clone();
   #[cfg(target_os = "linux")]
@@ -1168,6 +1172,7 @@ fn run_capture_worker(args: RunCaptureArgs) -> Result<(), String> {
       );
     },
   )
+  .map_err(CaptureWorkerError::from)
 }
 
 #[cfg(test)]

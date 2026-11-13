@@ -46,7 +46,8 @@ export function DockProvider({ children }) {
       raiseNotice(
         "error",
         "Screen-space avoidance stopped. Dock remains an overlay.",
-        "Check Accessibility permission and the Dock display, then enable Reserve Screen Space again."
+        "Check Accessibility permission and the Dock display, then enable Reserve Screen Space again.",
+        { helpTopic: "dock" }
       );
     })
       .then((dispose) => {
@@ -121,7 +122,8 @@ export function DockProvider({ children }) {
           raiseNotice(
             "error",
             "Could not restore the main window. Try again.",
-            errorDetails("Restore window failed", error)
+            errorDetails("Restore window failed", error),
+            { helpTopic: "dock" }
           );
         }
         return { ok: false, error };
@@ -149,7 +151,8 @@ export function DockProvider({ children }) {
           raiseNotice,
           error,
           "Could not move Dock. The previous position was kept.",
-          "Dock failed"
+          "Dock failed",
+          "dock"
         );
       }
     },
@@ -198,7 +201,8 @@ export function DockProvider({ children }) {
         raiseNotice(
           "error",
           "Dock height could not be changed. The previous height was kept.",
-          errorDetails("Dock resize failed", error)
+          errorDetails("Dock resize failed", error),
+          { helpTopic: "dock" }
         );
       }
     },
@@ -215,7 +219,8 @@ export function DockProvider({ children }) {
       raiseNotice(
         "error",
         "Dock layout could not be reset. The previous layout was kept.",
-        errorDetails("Dock reset failed", error)
+        errorDetails("Dock reset failed", error),
+        { helpTopic: "dock" }
       );
     }
   }, [clearNotice, resizeDockHeight, dockLayout, raiseNotice]);

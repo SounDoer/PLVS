@@ -144,13 +144,14 @@ export function useMeterDisplay() {
       /** @type {string} */ kind,
       text,
       details,
-      options = /** @type {{requiresAttention?: boolean}} */ ({})
+      options = /** @type {{requiresAttention?: boolean, helpTopic?: string}} */ ({})
     ) => {
       clearGuardTimer();
       setNotice({
         kind,
         text,
         ...(typeof details === "string" && details ? { details } : null),
+        ...(options.helpTopic ? { helpTopic: options.helpTopic } : null),
         ...(options.requiresAttention === true ? { requiresAttention: true } : null),
       });
       // Refusals and informational notices describe a moment rather than a state to act on, so

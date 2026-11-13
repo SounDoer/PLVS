@@ -59,7 +59,10 @@ export function useFileStatisticsExport({
       setOpen(false);
       return true;
     } catch (_) {
-      raiseNotice("error", "Statistics export failed", undefined, { requiresAttention: true });
+      raiseNotice("error", "Statistics export failed", undefined, {
+        requiresAttention: true,
+        helpTopic: "file-report",
+      });
       return false;
     } finally {
       pending.current = false;

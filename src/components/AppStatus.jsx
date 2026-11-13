@@ -1,6 +1,16 @@
-import { TriangleAlert, CircleAlert, Info, Download, LoaderCircle, Check } from "lucide-react";
+import {
+  TriangleAlert,
+  CircleAlert,
+  Info,
+  Download,
+  LoaderCircle,
+  Check,
+  ExternalLink,
+} from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "./ui/popover.jsx";
 import { LinkButton } from "./ui/link-button.jsx";
+import { openExternalUrl } from "../ipc/openExternal.js";
+import { troubleshootingUrl } from "../lib/troubleshooting.js";
 import { cn } from "../lib/utils.js";
 import { useCallback, useEffect, useState } from "react";
 
@@ -21,8 +31,14 @@ export function StatusIcon({ item, className = "size-3.5 shrink-0" }) {
   );
 }
 
-/** @param {{ items: import("../lib/appStatus.js").AppStatusItem[], onAction?: (action: string) => void, accessory?: boolean, showTitle?: boolean }} props */
-export function AppStatusList({ items, onAction = () => {}, accessory = false, showTitle = true }) {
+/** @param {{ items: import("../lib/appStatus.js").AppStatusItem[], onAction?: (action: string) => void, accessory?: boolean, showTitle?: boolean, onHelp?: (topic: string) => void }} props */
+export function AppStatusList({
+  items,
+  onAction = () => {},
+  accessory = false,
+  showTitle = true,
+  onHelp,
+}) {
   return (
     <section
       aria-label="status details"
@@ -65,6 +81,18 @@ export function AppStatusList({ items, onAction = () => {}, accessory = false, s
                       : item.action === "check-update"
                         ? "Check Again"
                         : "Open Settings"}
+                  </LinkButton>
+                ) : null}
+                {troubleshootingUrl(item.helpTopic) ? (
+                  <LinkButton
+                    className="mt-1 flex w-fit items-center gap-1 text-primary"
+                    onClick={() => {
+                      if (onHelp) onHelp(item.helpTopic);
+                      else void openExternalUrl(troubleshootingUrl(item.helpTopic));
+                    }}
+                  >
+                    <span className="underline">Troubleshooting</span>
+                    <ExternalLink className="size-[1em] shrink-0" aria-hidden="true" />
                   </LinkButton>
                 ) : null}
               </div>

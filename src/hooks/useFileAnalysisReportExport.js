@@ -63,7 +63,7 @@ export function useFileAnalysisReportExport({
           URL.revokeObjectURL(url);
         }
       } catch (_) {
-        raiseNotice("error", "Report export failed");
+        raiseNotice("error", "Report export failed", undefined, { helpTopic: "file-report" });
       }
     },
     [buildReport, fileSession, raiseNotice]
@@ -80,7 +80,7 @@ export function useFileAnalysisReportExport({
         await navigator.clipboard.writeText(renderFileAnalysisReportMarkdown(buildReport(target)));
         return true;
       } catch (_) {
-        raiseNotice("error", "Copy failed");
+        raiseNotice("error", "Copy failed", undefined, { helpTopic: "file-report" });
         return false;
       }
     },

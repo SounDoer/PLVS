@@ -4,6 +4,7 @@ export const STATUS_FIXTURE_NAMES = {
   layout: "status.layout",
   summary: "status.summary",
   details: "status.details",
+  "speaker-layout": "status.speaker-layout",
   "capture-failed": "status.capture-failed",
   update: "status.update",
   "update-ready": "status.update-ready",
@@ -12,6 +13,16 @@ export const STATUS_FIXTURE_NAMES = {
 
 export function developmentStatusItems(phase) {
   if (phase === "layout") return buildAppStatusItems({ layoutUnknown: true });
+  if (phase === "speaker-layout") {
+    return buildAppStatusItems({
+      notice: {
+        kind: "error",
+        text: "Error: System speaker configuration is incomplete. Configure speakers for this output or select an input source.",
+        helpTopic: "system-output-speaker-layout",
+        requiresAttention: true,
+      },
+    });
+  }
   if (phase === "capture-failed")
     return buildAppStatusItems({
       notice: {

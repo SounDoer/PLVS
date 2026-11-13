@@ -63,6 +63,7 @@ export const EVENT_FIXTURES = Object.freeze({
   "status.layout": { surfaceKind: "status", phase: "layout", action: "reset" },
   "status.summary": { surfaceKind: "status", phase: "summary", action: "reset" },
   "status.details": { surfaceKind: "status", phase: "details", action: "reset" },
+  "status.speaker-layout": { surfaceKind: "status", phase: "speaker-layout", action: "reset" },
   "status.capture-failed": { surfaceKind: "status", phase: "capture-failed", action: "reset" },
   "status.update": { surfaceKind: "status", phase: "update", action: "reset" },
   "status.update-ready": { surfaceKind: "status", phase: "update-ready", action: "reset" },

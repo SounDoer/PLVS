@@ -250,12 +250,15 @@ describe("useAudioEngine", () => {
         "error",
         "Error: Audio unavailable",
         undefined,
-        { requiresAttention: true }
+        { requiresAttention: true, helpTopic: "audio-capture" }
       )
     );
   });
 
-  it("halts LIVE with the engine's reason when capture fails after starting", async () => {
+  it.each([
+    [undefined, "audio-capture"],
+    ["systemSpeakerLayout", "system-output-speaker-layout"],
+  ])("halts LIVE and chooses the help topic for %s", async (failureReason, helpTopic) => {
     const props = {
       intake: { reset: vi.fn() },
       setAudio: vi.fn(),
@@ -274,12 +277,13 @@ describe("useAudioEngine", () => {
     expect(props.halt).not.toHaveBeenCalled();
 
     const reason = "Capture stopped: no audio received for 5 s.";
-    act(() => engineEvents.state({ state: "error", error: reason }));
+    act(() => engineEvents.state({ state: "error", error: reason, reason: failureReason }));
     expect(props.halt).toHaveBeenCalledWith(expect.objectContaining({ message: reason }));
     expect(props.stopTimer).toHaveBeenCalled();
     expect(props.setSelectedOffset).toHaveBeenCalledWith(-1);
     expect(props.raiseNotice).toHaveBeenCalledWith("error", `Error: ${reason}`, undefined, {
       requiresAttention: true,
+      helpTopic,
     });
   });
 
@@ -361,7 +365,7 @@ describe("useAudioEngine", () => {
       "error",
       "Error: replacement invalidated",
       undefined,
-      { requiresAttention: true }
+      { requiresAttention: true, helpTopic: "audio-capture" }
     );
   });
 

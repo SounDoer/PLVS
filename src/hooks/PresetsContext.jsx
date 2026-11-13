@@ -135,7 +135,8 @@ export function PresetsProvider({ children }) {
       raiseNotice(
         "error",
         "Preset could not be applied.",
-        errorDetails("Preset apply failed", error)
+        errorDetails("Preset apply failed", error),
+        { helpTopic: "preset" }
       );
     },
     [raiseNotice]

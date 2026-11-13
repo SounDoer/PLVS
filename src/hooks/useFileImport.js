@@ -55,6 +55,7 @@ export function useFileImport({ files, busy, getSettings, begin, select, raiseNo
         cancel();
         raiseNotice("error", `Error: ${error?.message || "File could not be opened"}`, undefined, {
           requiresAttention: true,
+          helpTopic: "file-open-analysis",
         });
       }
     },

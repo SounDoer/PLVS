@@ -4,6 +4,7 @@ export const DEVELOPMENT_EVENT_FIXTURE_NAMES = Object.freeze([
   "status.summary",
   "status.details",
   "status.capture-failed",
+  "status.speaker-layout",
   "status.update",
   "status.update-ready",
   "status.update-failed",

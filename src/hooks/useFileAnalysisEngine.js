@@ -176,6 +176,7 @@ export function useFileAnalysisEngine({
             setAnalyzingFileId((current) => (current === sessionId ? null : current));
             raiseNotice("error", `Error: ${payload.message}`, undefined, {
               requiresAttention: true,
+              helpTopic: "file-open-analysis",
             });
           })
         );
@@ -201,7 +202,10 @@ export function useFileAnalysisEngine({
               ...current,
               dialogueDetectionError: code,
             }));
-            raiseNotice("error", `Error: ${message}`, code, { requiresAttention: true });
+            raiseNotice("error", `Error: ${message}`, code, {
+              requiresAttention: true,
+              helpTopic: "dialogue-detection",
+            });
           },
         });
         stage = "start";
@@ -236,7 +240,10 @@ export function useFileAnalysisEngine({
           analyzedAt: Date.now(),
         }));
         setAnalyzingFileId((current) => (current === sessionId ? null : current));
-        raiseNotice("error", `Error: ${message}`, undefined, { requiresAttention: true });
+        raiseNotice("error", `Error: ${message}`, undefined, {
+          requiresAttention: true,
+          helpTopic: "file-open-analysis",
+        });
         const acceptance = fileAnalysisAcceptanceRef?.current.get(sessionId);
         fileAnalysisAcceptanceRef?.current.delete(sessionId);
         if (acceptance) {

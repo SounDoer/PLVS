@@ -1,6 +1,33 @@
 //! Native speaker metadata, kept separate from user selections and physical channel counts.
 //! Queries and channel projection run on ordinary workers, never on an audio callback.
 
+#[derive(Debug)]
+pub(crate) enum CaptureWorkerError {
+  SystemSpeakerLayout(String),
+  Other(String),
+}
+
+impl From<String> for CaptureWorkerError {
+  fn from(message: String) -> Self {
+    Self::Other(message)
+  }
+}
+
+impl CaptureWorkerError {
+  pub(crate) fn message(&self) -> &str {
+    match self {
+      Self::SystemSpeakerLayout(message) | Self::Other(message) => message,
+    }
+  }
+
+  pub(crate) fn reason(&self) -> Option<&'static str> {
+    match self {
+      Self::SystemSpeakerLayout(_) => Some("systemSpeakerLayout"),
+      Self::Other(_) => None,
+    }
+  }
+}
+
 #[derive(Clone, Debug, PartialEq)]
 pub(crate) struct NativeLayout {
   pub roles: Vec<String>,

@@ -226,7 +226,7 @@ export function useAudioEngine({
                 "error",
                 `Error: ${message}`,
                 `Detector: ${dialogueVadEngineRef?.current ?? DEFAULT_DIALOGUE_VAD_ENGINE}; ${code}`,
-                { requiresAttention: true }
+                { requiresAttention: true, helpTopic: "dialogue-detection" }
               ),
           });
           const applyFrame = (f) => {
@@ -279,7 +279,13 @@ export function useAudioEngine({
               halt(new Error(message));
               stopTimer?.();
               setSelectedOffset(-1);
-              raiseNotice("error", `Error: ${message}`, undefined, { requiresAttention: true });
+              raiseNotice("error", `Error: ${message}`, undefined, {
+                requiresAttention: true,
+                helpTopic:
+                  payload.reason === "systemSpeakerLayout"
+                    ? "system-output-speaker-layout"
+                    : "audio-capture",
+              });
             }),
             await onEngineBackpressure((payload) => {
               if (mounted) recordAudioDrop?.(payload?.droppedChunks);
@@ -320,6 +326,7 @@ export function useAudioEngine({
         setSelectedOffset(-1);
         raiseNotice("error", `Error: ${err?.message || "Audio unavailable"}`, undefined, {
           requiresAttention: true,
+          helpTopic: "audio-capture",
         });
       }
     };

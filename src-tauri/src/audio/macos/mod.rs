@@ -22,6 +22,7 @@ use super::cpal_backend::{
 };
 use super::device::DeviceInfo;
 use super::device_id;
+use super::source_layout::CaptureWorkerError;
 use crate::dsp::speech::VadEngineKind;
 use crate::ipc::types::FrameSubscribers;
 
@@ -198,7 +199,7 @@ struct MacosTapWorkerArgs {
   dropped_chunks: Arc<AtomicU64>,
 }
 
-fn run_macos_tap_worker(args: MacosTapWorkerArgs) -> Result<(), String> {
+fn run_macos_tap_worker(args: MacosTapWorkerArgs) -> Result<(), CaptureWorkerError> {
   let MacosTapWorkerArgs {
     device_id,
     process_object_ids,
@@ -232,7 +233,8 @@ fn run_macos_tap_worker(args: MacosTapWorkerArgs) -> Result<(), String> {
   let reset_tp_max_for_thread = reset_tp_max.clone();
   let dropped_for_thread = dropped_chunks.clone();
   let native_layout = layout_for_uid(&uid, channels);
-  super::source_layout::MonitoringPlan::require_system_scope(channels, native_layout.clone())?;
+  super::source_layout::MonitoringPlan::require_system_scope(channels, native_layout.clone())
+    .map_err(CaptureWorkerError::SystemSpeakerLayout)?;
   let bridge = std::thread::spawn(move || {
     run_meter_pipeline_bridge_thread(
       consumer_delivery,
@@ -287,7 +289,7 @@ fn run_macos_tap_worker(args: MacosTapWorkerArgs) -> Result<(), String> {
       .map(|n| String::from_utf8_lossy(&err[..n]).into_owned())
       .filter(|s| !s.is_empty())
       .unwrap_or_else(|| "macos_tap_create failed".into());
-    return Err(msg);
+    return Err(msg.into());
   }
 
   // A Core Audio tap started while its output device is completely idle does not receive an IOProc
@@ -328,12 +330,12 @@ fn run_macos_tap_worker(args: MacosTapWorkerArgs) -> Result<(), String> {
   }
   delivery.stop_producer();
   let _ = bridge.join();
-  outcome
+  outcome.map_err(CaptureWorkerError::from)
 }
 
 pub(crate) struct MacosTapCaptureSession {
   stop_tx: std::sync::mpsc::Sender<()>,
-  join: Option<JoinHandle<Result<(), String>>>,
+  join: Option<JoinHandle<Result<(), CaptureWorkerError>>>,
   clear_peak_history: Arc<AtomicBool>,
   reset_tp_max: Arc<AtomicBool>,
 }
@@ -395,7 +397,7 @@ impl MacosTapCaptureSession {
           dropped_chunks,
         });
         if let Err(error) = &result {
-          emit_capture_failure(&failure_app, error, None);
+          emit_capture_failure(&failure_app, error.message(), error.reason());
         }
         result
       })

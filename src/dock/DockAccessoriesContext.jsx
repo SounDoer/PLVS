@@ -35,6 +35,8 @@ import { useDockAccessoryBridge } from "./useDockAccessoryBridge.js";
 import { useDockAccessoryVisibility } from "./useDockAccessoryVisibility.js";
 import { DOCK_HEADER_HEIGHT } from "./dockSizing.js";
 import { buildAppStatusItems } from "../lib/appStatus.js";
+import { troubleshootingUrl } from "../lib/troubleshooting.js";
+import { openExternalUrl } from "../ipc/openExternal.js";
 import { useDevelopmentEventFixtureAdapter } from "../dev/DevelopmentEventFixturesContext.jsx";
 import { developmentStatusItems } from "../dev/developmentStatusFixtureData.js";
 import { createUiNavigationError } from "../uiNavigation/uiNavigationModel.js";
@@ -54,6 +56,7 @@ const STATUS_FIXTURE_NAMES = {
   layout: "status.layout",
   summary: "status.summary",
   details: "status.details",
+  speakerlayout: "status.speaker-layout",
   capturefailed: "status.capture-failed",
   update: "status.update",
   updateready: "status.update-ready",
@@ -158,7 +161,8 @@ export function DockAccessoriesProvider({ children }) {
         raiseNotice(
           "error",
           "Dock controls could not open. The main window was restored.",
-          errorDetails("Dock accessory failed", accessoryError)
+          errorDetails("Dock accessory failed", accessoryError),
+          { helpTopic: "dock" }
         );
         return;
       }
@@ -168,7 +172,8 @@ export function DockAccessoriesProvider({ children }) {
         `${errorDetails("Dock accessory failed", accessoryError)}\n${errorDetails(
           "Restore window failed",
           result.error
-        )}`
+        )}`,
+        { helpTopic: "dock" }
       );
     },
     [docked, exitDockRestoringAttributes, raiseNotice]
@@ -358,7 +363,8 @@ export function DockAccessoriesProvider({ children }) {
       !importActive,
     establish: async (fixtureId) => {
       setStatusFixture({ fixtureId, phase });
-      if (docked && phase === "details") dockAccessoryVisibility.openEditor("status");
+      if (docked && ["details", "speaker-layout"].includes(phase))
+        dockAccessoryVisibility.openEditor("status");
       await new Promise((resolve) => setTimeout(resolve, 500));
     },
     matches: (id) => statusFixture?.fixtureId === id,
@@ -374,6 +380,7 @@ export function DockAccessoriesProvider({ children }) {
   useDevelopmentEventFixtureAdapter("status.layout", statusAdapter("layout"));
   useDevelopmentEventFixtureAdapter("status.summary", statusAdapter("summary"));
   useDevelopmentEventFixtureAdapter("status.details", statusAdapter("details"));
+  useDevelopmentEventFixtureAdapter("status.speaker-layout", statusAdapter("speaker-layout"));
   useDevelopmentEventFixtureAdapter("status.capture-failed", statusAdapter("capture-failed"));
   useDevelopmentEventFixtureAdapter("status.update", statusAdapter("update"));
   useDevelopmentEventFixtureAdapter("status.update-ready", statusAdapter("update-ready"));
@@ -381,7 +388,9 @@ export function DockAccessoriesProvider({ children }) {
   useUiSurface({
     active:
       Boolean(statusFixture) &&
-      (!docked || statusFixture.phase !== "details" || dockAccessoryVisibility.editorVisible),
+      (!docked ||
+        !["details", "speaker-layout"].includes(statusFixture.phase) ||
+        dockAccessoryVisibility.editorVisible),
     kind: "status",
     origin: "event",
     developmentFixture: STATUS_FIXTURE_NAMES[statusFixture?.phase.replaceAll("-", "")],
@@ -555,7 +564,10 @@ export function DockAccessoriesProvider({ children }) {
         dockAccessoryVisibility.closeEditor();
         if (payload.action === "update") openUpdateDetails();
         else if (payload.action === "check-update") void updateControls.refreshUpdateCheck();
-        else if (payload.action === "settings") {
+        else if (payload.action === "help") {
+          const url = troubleshootingUrl(payload.topic);
+          if (url) void openExternalUrl(url);
+        } else if (payload.action === "settings") {
           setSettingsOpen(true);
         }
       } else if (type === "open-editor") {
@@ -586,7 +598,8 @@ export function DockAccessoriesProvider({ children }) {
             reserveSpace
               ? "Could not release reserved screen space. Dock remains reserved."
               : "Could not reserve screen space. Dock remains an overlay.",
-            errorDetails("Reserve screen space failed", error)
+            errorDetails("Reserve screen space failed", error),
+            { helpTopic: "dock" }
           )
         );
       } else if (type === "toggle-above-full-screen") {
@@ -595,7 +608,8 @@ export function DockAccessoriesProvider({ children }) {
           raiseNotice(
             "error",
             "Could not change Above Full Screen.",
-            errorDetails("Above Full Screen failed", error)
+            errorDetails("Above Full Screen failed", error),
+            { helpTopic: "dock" }
           )
         );
       } else if (type === "restore-window") {
@@ -643,19 +657,37 @@ export function DockAccessoriesProvider({ children }) {
         void presets
           .apply(payload.presetId)
           .catch((error) =>
-            reportSceneOperationError(raiseNotice, error, "Preset failed.", "Preset failed")
+            reportSceneOperationError(
+              raiseNotice,
+              error,
+              "Preset failed.",
+              "Preset failed",
+              "preset"
+            )
           );
       } else if (type === "save-preset") {
         void presets
           .save(payload.name)
           .catch((error) =>
-            reportSceneOperationError(raiseNotice, error, "Preset failed.", "Preset failed")
+            reportSceneOperationError(
+              raiseNotice,
+              error,
+              "Preset failed.",
+              "Preset failed",
+              "preset"
+            )
           );
       } else if (type === "update-preset") {
         void presets
           .update(payload.presetId)
           .catch((error) =>
-            reportSceneOperationError(raiseNotice, error, "Preset failed.", "Preset failed")
+            reportSceneOperationError(
+              raiseNotice,
+              error,
+              "Preset failed.",
+              "Preset failed",
+              "preset"
+            )
           );
       } else if (type === "rename-preset") presets.rename(payload.presetId, payload.name);
       // Dock's Loudness Profile list is a separate webview with its own settings cache, so it never
@@ -726,7 +758,7 @@ export function DockAccessoriesProvider({ children }) {
         exportProfileRef,
         setImportActive,
         statusItems,
-        statusOpen: statusFixture?.phase === "details",
+        statusOpen: ["details", "speaker-layout"].includes(statusFixture?.phase),
         openDockMenu,
         getAccessoryTargets,
       }}

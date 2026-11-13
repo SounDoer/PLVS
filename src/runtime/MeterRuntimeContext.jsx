@@ -97,7 +97,7 @@ export function MeterRuntimeProvider({ children }) {
         "error",
         `Error: ${error?.message || "Could not stop File analysis"}`,
         undefined,
-        { requiresAttention: true }
+        { requiresAttention: true, helpTopic: "file-analysis-stop" }
       );
       throw error;
     }
@@ -282,6 +282,7 @@ export function MeterRuntimeProvider({ children }) {
         }));
       display.raiseNotice("error", `Error: ${error?.message || "File is unavailable"}`, undefined, {
         requiresAttention: true,
+        helpTopic: "file-open-analysis",
       });
       return null;
     } finally {

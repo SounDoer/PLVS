@@ -5,7 +5,7 @@ How to use PLVS, written for people using the app. The same content is published
 
 ## Chapters
 
-Read in this order; the website renders them as one page in the same order.
+Read in this order; the website renders the guide in the same order.
 
 1. [Getting Started](getting-started.md)
 2. [Signal Source](signal-source.md)
@@ -18,6 +18,7 @@ Read in this order; the website renders them as one page in the same order.
 9. [Command Line](command-line.md)
 10. [System Settings](system-settings.md)
 11. [FAQ & Known Limitations](faq.md)
+12. [Troubleshooting](troubleshooting.md)
 
 ## Reference
 
