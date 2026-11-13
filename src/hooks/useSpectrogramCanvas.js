@@ -375,6 +375,9 @@ export function useSpectrogramCanvas({
       const firstSnap = snaps && snaps.length > 0 ? snaps.rowAt(snaps.length - 1) : null;
       const bands = firstSnap?.bands;
       if (!bands || bands.length === 0 || len === 0 || span <= 0) {
+        // The erased canvas no longer owns a source for incremental painting.
+        cache.paintedSnaps = null;
+        cache.paintedOldestMs = NaN;
         ctx.clearRect(0, 0, canvas.width, canvas.height);
         return;
       }

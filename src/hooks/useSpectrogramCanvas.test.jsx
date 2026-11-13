@@ -202,6 +202,27 @@ describe("useSpectrogramCanvas", () => {
     expect(oldestColumn().slice(0, 3)).toEqual([0, 0, 0]);
   });
 
+  it("rebuilds the whole image when live data returns after a clear", () => {
+    const snaps = twoRowView();
+    const colormapLut = lutOf(255);
+    const { rerender } = render(<Harness snaps={snaps} colormapLut={colormapLut} />);
+    rafCallback();
+    const before = [...putImageData.mock.lastCall[0].data];
+    const rowAt = snaps.rowAt;
+    snaps.length = 0;
+    snaps.version += 1;
+    rerender(<Harness snaps={snaps} colormapLut={colormapLut} />);
+    rafCallback();
+    expect(putImageData).toHaveBeenCalledTimes(1);
+    snaps.length = 2;
+    snaps.version += 1;
+    snaps.rowAt = vi.fn(rowAt);
+    rerender(<Harness snaps={snaps} colormapLut={colormapLut} />);
+    rafCallback();
+    expect(snaps.rowAt).toHaveBeenCalledWith(0);
+    expect([...putImageData.mock.lastCall[0].data]).toEqual(before);
+  });
+
   it("redraws every column when the dB floor changes", () => {
     const snaps = twoRowView();
     const colormapLut = lutOf(255);
