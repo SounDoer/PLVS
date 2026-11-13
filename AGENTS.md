@@ -170,6 +170,8 @@ The one place rules are stated as rules. Each entry says what, not why; the why 
 
 **Always**
 
+- Shut down any dev servers, app instances, and background processes you started once you are done
+  using them, unless the user explicitly asks you to leave them running.
 - Follow Git workflow's phase-specific checks: focused tests while implementing, the staged
   pre-commit hook at commit time, and `check:changes` once before push or merge. Desktop release
   checks are never reduced.
