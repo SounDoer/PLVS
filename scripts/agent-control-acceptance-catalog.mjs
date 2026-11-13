@@ -145,6 +145,18 @@ const groups = [
     ],
   },
   {
+    scenario: "file-batch-round-trip",
+    disposition: "roundTrip",
+    commands: [
+      "transport.file.batch.inspect",
+      "transport.file.batch.enqueue",
+      "transport.file.batch.chooseTrack",
+      "transport.file.batch.stop",
+      "transport.file.batch.cancel",
+      "transport.file.batch.resume",
+    ],
+  },
+  {
     scenario: "semantic-ui-round-trip",
     disposition: "roundTrip",
     commands: [
