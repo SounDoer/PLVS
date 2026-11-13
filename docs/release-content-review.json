@@ -1,44 +1,42 @@
 {
   "schemaVersion": 1,
-  "version": "0.26.1",
-  "baselineTag": "v0.26.0",
-  "baselineRevision": "abb4e0c7b95fbf88bb2604f5676deefca6b8a437",
-  "candidateRevision": "0cd338728b21bf457e87f464ff0a6b10593b8d39",
-  "contentSha256": "51369d78d36af99a87951ad97b7610c4590637a2e6a9eb790b6cc046b666d464",
-  "websiteSourceSha": "8ff6d4c5cedc193a3ad7fadf5169ff3f6649a87f",
+  "version": "0.26.2",
+  "baselineTag": "v0.26.1",
+  "baselineRevision": "7b16706095479e2ec5bd7f9a30d4e6cbbf794e46",
+  "candidateRevision": "821e93b655011364a7260f541f5dcd8e897cade7",
+  "contentSha256": "246953865ea45c24800d42d96ead418291d46e24807b042d0337dd62e2abf554",
+  "websiteSourceSha": "ba26b80053552f98162330c136e969c1246adfd1",
   "reviews": {
     "userGuide": {
       "status": "updated",
-      "rationale": "The guide covers the File Mode detector default, persistence and reanalysis behavior, summary details and filename shortening, plus the new Agent Control File and screenshot commands.",
+      "rationale": "The File guide covers queue controls, track choice, progress and result selection, Statistics CSV defaults, and timeline jumps. The CLI guide describes the same queue and its commands. Troubleshooting covers the notices that expose help.",
       "evidence": [
-        "docs/user/file-mode.md, docs/user/dialogue-gated-loudness.md and docs/user/system-settings.md compared with src/components/AppHeader.jsx, src/components/FileAnalysisSummary.jsx and src/runtime/SourceActionsContext.jsx",
-        "docs/user/cli.md compared with src/agentControl/handlers/transport.js and src/agentControl/handlers/visual.js"
+        "docs/user/file-mode.md and docs/user/cli.md compared with src/hooks/useFileImportQueue.js, src/components/FileAnalysisSummary.jsx and src/agentControl/handlers/transport.js",
+        "docs/user/troubleshooting.md compared with src/components/AppStatus.jsx and src/lib/troubleshooting.js"
       ]
     },
     "readme": {
       "status": "unchanged",
-      "rationale": "The local File analysis highlight still describes the expanded File Mode. The README hero depicts the Live workspace, whose visible metering controls and panels are unaffected by the File changes.",
+      "rationale": "The local File analysis highlight still covers the expanded workflow, and the hero still represents the Live workspace during normal capture.",
       "evidence": [
-        "README.md What is PLVS compared with CHANGELOG.md 0.26.1 and docs/user/file-mode.md",
-        "PLVS-Website website/assets/landing-hero.webp compared with the AppHeader and Live panel diffs"
+        "README.md highlights compared with the 0.26.2 CHANGELOG and the visually inspected PLVS-Website landing hero"
       ]
     },
     "website": {
       "status": "updated",
-      "rationale": "The reviewed renderer continues to describe the Live workspace and builds the updated guide from the tagged product. Across the recorded baseline and candidate, File detection and its preference stay local. Agent Control uses the existing local transport and delivers selected statistics or rendered pixels to the caller for local file output. The independent renderer changes the site build and publish path while preserving the existing production domain, policy body and services. No production data collection, consent, provider, recipient, retention or deletion changes were found. The policy text and Effective date remain applicable.",
+      "rationale": "The pinned renderer builds the standalone troubleshooting page with links from the guide. The privacy review found user-invoked navigation to fixed first-party help topics and existing GitHub Releases, with no local paths, report data or diagnostics in those links. File analysis and the batch queue stay local. The website renderer changes introduce no collection, consent, recipients, providers, storage, retention or deletion changes. The current policy text and Effective date still apply.",
       "evidence": [
-        "PLVS-Website at 8ff6d4c5cedc193a3ad7fadf5169ff3f6649a87f, website/index.html and scripts/build-website.mjs",
-        "src/hooks/useSettings.js, src/runtime/SourceActionsContext.jsx, src/agentControl/handlers/transport.js, src/agentControl/handlers/visual.js and src-tauri/src/cli_control.rs",
-        ".github/workflows/publish-site.yml, scripts/export-website-inputs.mjs, docs/privacy-policy.html and docs/privacy-review.json compared with v0.26.0; privacy-review.mjs check passed"
+        "Candidate website build with exported 0.26.2 inputs passed and contained all 11 anchors from src/lib/troubleshooting.js",
+        "src/ipc/openExternal.js, src/uiNavigation/UiNavigationContext.jsx, src/hooks/useFileImportQueue.js and src-tauri/src/cli_control.rs compared with v0.26.1",
+        "Live publication.json and PLVS-Website 8ff6d4c..ba26b80 renderer and privacy diffs; docs/privacy-policy.html and docs/privacy-review.json unchanged; privacy-review.mjs check passed"
       ]
     },
     "screenshots": {
       "status": "unchanged",
-      "rationale": "The Live hero was visually inspected. The reviewed homepage screenshots cover Live metering, Dock, history, frequency, multichannel and rules, outside the changed File toolbar, summary and drop overlay. The renderer retains the corresponding image assets.",
+      "rationale": "The homepage and README show normal Live operation, Dock and other Live panels. File and Status changes occur outside those views, and the spectrogram fix releases cached source rows on clear without changing the normal render shown in the hero.",
       "evidence": [
-        "PLVS-Website website/index.html screenshot references and website/assets/landing-hero.webp",
-        "Git blob comparison of the hero, history and multichannel assets against v0.26.0",
-        "src/components/AppHeader.jsx, src/components/FileAnalysisSummary.jsx and src/components/FileDropOverlay.jsx release diffs"
+        "Visually inspected website/assets/landing-hero.webp and checked homepage image references and published WebP paths across PLVS-Website 8ff6d4c..ba26b80",
+        "Compared the depicted Live state with src/components/AppHeader.jsx, src/components/AppStatus.jsx and src/hooks/useSpectrogramCanvas.js changes since v0.26.1"
       ]
     }
   }
