@@ -8,6 +8,8 @@ import { useFileAnalysisReportExport } from "../hooks/useFileAnalysisReportExpor
 import { useSourceTransportActions } from "../hooks/useSourceTransportActions.js";
 import { useDialogueEngineRestart } from "../hooks/useDialogueEngineRestart.js";
 import { useFileImport } from "../hooks/useFileImport.js";
+import { useFileImportQueue } from "../hooks/useFileImportQueue.js";
+import { isTauri } from "../ipc/env.js";
 import { FileAudioTrackDialog } from "../components/FileAudioTrackDialog.jsx";
 import { ItemPickerDialog } from "../components/ItemPickerDialog.jsx";
 import { useFileStatisticsExport } from "../hooks/useFileStatisticsExport.js";
@@ -36,6 +38,7 @@ const EMPTY_FILE_SESSION = Object.freeze({ state: "empty" });
  *   vectorscopeResetEpoch: number,
  *   stereoMapResetEpoch: number,
  *   fileImport: ReturnType<typeof useFileImport>,
+ *   fileQueue: ReturnType<typeof useFileImportQueue>,
  *   onExportFileStatistics: () => void,
  * }} SourceActions
  */
@@ -114,12 +117,33 @@ export function SourceActionsProvider({ children }) {
     select: selectFile,
     raiseNotice,
   });
+  const fileQueue = useFileImportQueue({
+    enabled: sourceMode === "file",
+    busy: fileTaskBusy || fileImport.importBusy || Boolean(fileImport.selection),
+    files: fileSessions,
+    activeFileId: activeFileSession?.id,
+    getSettings: currentFileAnalysisSettings,
+    begin: beginRuntimeFileAnalysis,
+    select: selectFile,
+    stop: stopFileAnalysis,
+  });
   const statistics = useFileStatisticsExport({
     fileSessions,
     loudnessProfile,
     raiseNotice,
     appVersion: APP_VERSION,
   });
+  const { active: queueActive, enqueue } = fileQueue;
+  const { importFile } = fileImport;
+  const importMedia = useCallback(
+    (input) => {
+      const paths = Array.isArray(input) ? input : [input];
+      if (!paths.length || sourceMode !== "file") return;
+      if (isTauri() && (paths.length > 1 || queueActive || fileTaskBusy)) enqueue(paths);
+      else return importFile(paths[0]);
+    },
+    [sourceMode, queueActive, fileTaskBusy, enqueue, importFile]
+  );
   const actions = useSourceTransportActions({
     sourceMode,
     running,
@@ -136,14 +160,24 @@ export function SourceActionsProvider({ children }) {
     switchSource,
     clearActiveSource,
     beginRuntimeFileAnalysis,
-    importFile: fileImport.importFile,
-    fileTaskBusy: fileTaskBusy || fileImport.importBusy || Boolean(fileImport.selection),
-    fileImportBusy: fileImport.importBusy,
-    cancelFileImport: fileImport.cancel,
+    importFile: importMedia,
+    fileTaskBusy:
+      fileTaskBusy || fileQueue.active || fileImport.importBusy || Boolean(fileImport.selection),
+    fileImportBusy: fileImport.importBusy || fileQueue.probing,
+    cancelFileImport: () => {
+      fileImport.cancel();
+      if (fileQueue.probing) fileQueue.stopCurrent()?.catch(() => {});
+    },
     reanalyzeFile,
-    selectFile,
+    selectFile: (id) => {
+      fileQueue.onFileSelected(id);
+      if (id !== activeFileSession?.id) selectFile(id);
+    },
     removeFile,
-    clearFiles,
+    clearFiles: async () => {
+      fileQueue.clear();
+      await clearFiles();
+    },
     stopFileAnalysis,
     activeFileSession,
     getFileAnalysisSettings: currentFileAnalysisSettings,
@@ -172,6 +206,7 @@ export function SourceActionsProvider({ children }) {
       value={{
         ...actions,
         fileImport,
+        fileQueue,
         onExportFileStatistics: statistics.onOpen,
         fileSession,
         dialogueGating,
@@ -183,9 +218,9 @@ export function SourceActionsProvider({ children }) {
       }}
     >
       <FileAudioTrackDialog
-        selection={fileImport.selection}
-        onConfirm={fileImport.confirm}
-        onCancel={fileImport.cancel}
+        selection={fileImport.selection ?? fileQueue.selection}
+        onConfirm={fileImport.selection ? fileImport.confirm : fileQueue.confirm}
+        onCancel={fileImport.selection ? fileImport.cancel : fileQueue.dismiss}
       />
       {statistics.open ? (
         <ItemPickerDialog

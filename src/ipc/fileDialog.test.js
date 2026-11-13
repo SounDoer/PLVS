@@ -31,15 +31,15 @@ describe("pickMediaFile", () => {
     await expect(pickMediaFile()).resolves.toBe("C:\\mix.wav");
 
     expect(open).toHaveBeenCalledWith({
-      multiple: false,
+      multiple: true,
       directory: false,
       filters: [{ name: "Media", extensions: MEDIA_EXTENSIONS }],
     });
   });
 
-  it("normalizes cancelled or multi-select results to null", async () => {
-    vi.mocked(open).mockResolvedValue(["C:\\mix.wav"]);
-    await expect(pickMediaFile()).resolves.toBeNull();
+  it("preserves the selected paths and returns null for cancellation", async () => {
+    vi.mocked(open).mockResolvedValue(["C:\\mix.wav", "C:\\second.wav"]);
+    await expect(pickMediaFile()).resolves.toEqual(["C:\\mix.wav", "C:\\second.wav"]);
 
     vi.mocked(open).mockResolvedValue(null);
     await expect(pickMediaFile()).resolves.toBeNull();

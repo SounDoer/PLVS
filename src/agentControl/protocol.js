@@ -1537,6 +1537,48 @@ export function normalizeAgentControlRequest(input) {
     };
   }
 
+  if (input.method.startsWith("transport.file.batch.")) {
+    const action = input.method.split(".").at(-1);
+    const fields = new Set(action === "inspect" ? [] : ["expectedRevision"]);
+    if (action === "enqueue") fields.add("paths");
+    if (action === "chooseTrack" || action === "stop") fields.add("itemId");
+    if (action === "chooseTrack") fields.add("trackIndex");
+    const field = unknownField(input.params, fields);
+    if (field) return invalidParams(`$.params.${field}`, `Unknown parameter: ${field}.`);
+    const { expectedRevision, paths, itemId, trackIndex } = input.params;
+    if (
+      fields.has("expectedRevision") &&
+      (!Number.isSafeInteger(expectedRevision) || expectedRevision < 0)
+    ) {
+      return invalidParams(
+        "$.params.expectedRevision",
+        "expectedRevision must be a non-negative safe integer."
+      );
+    }
+    if (
+      fields.has("paths") &&
+      (!Array.isArray(paths) ||
+        paths.length < 1 ||
+        paths.length > 128 ||
+        !paths.every((path) => typeof path === "string" && path.trim()))
+    ) {
+      return invalidParams(
+        "$.params.paths",
+        "paths must contain between 1 and 128 non-empty paths."
+      );
+    }
+    if (fields.has("itemId") && (!Number.isSafeInteger(itemId) || itemId < 1)) {
+      return invalidParams("$.params.itemId", "itemId must be a positive safe integer.");
+    }
+    if (
+      fields.has("trackIndex") &&
+      (!Number.isInteger(trackIndex) || trackIndex < 0 || trackIndex > 0xffffffff)
+    ) {
+      return invalidParams("$.params.trackIndex", "trackIndex must be an unsigned 32-bit integer.");
+    }
+    return { ok: true, request: { id: input.id, method: input.method, params: input.params } };
+  }
+
   if (input.method === "transport.file.wait") {
     const field = unknownField(input.params, new Set(["sessionId", "runId", "timeoutMs"]));
     if (field) return invalidParams(`$.params.${field}`, `Unknown parameter: ${field}.`);

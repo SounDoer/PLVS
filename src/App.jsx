@@ -203,6 +203,7 @@ function AppContent() {
     onRemoveFile,
     onClearAllFiles,
     handleDropFile,
+    fileQueue,
     onSourceTransportAction,
     onSourceModeChange,
   } = useSourceActions();
@@ -354,7 +355,8 @@ function AppContent() {
   });
 
   const hasTpMaxValue = Number.isFinite(displayAudio?.tpMax);
-  const showFileAnalysisResult = sourceMode === "file" && fileSessions.length > 0;
+  const showFileAnalysisResult =
+    sourceMode === "file" && (fileSessions.length > 0 || fileQueue.items.length > 0);
   const {
     channelLabelRuntime,
     peakLabelContext,
@@ -559,6 +561,7 @@ function AppContent() {
   const fileDropProps = {
     active: sourceMode === "file",
     onDropFile: handleDropFile,
+    showScrim: !fileQueue.active && !meterRuntime.fileTaskBusy,
   };
   const shellHandlers = {
     showFocusControls,
@@ -623,12 +626,16 @@ function AppContent() {
     setSettingsOpen,
   };
   const fileSummaryProps = {
+    fileQueue,
     fileSession,
     fileSessions,
     activeFileId,
     analyzingFileId: meterRuntime.preparingFileId ?? analyzingFileId,
     fileTaskBusy:
-      meterRuntime.fileTaskBusy || fileImport.importBusy || Boolean(fileImport.selection),
+      meterRuntime.fileTaskBusy ||
+      fileQueue.active ||
+      fileImport.importBusy ||
+      Boolean(fileImport.selection),
     currentSettings: { ...currentFileAnalysisSettings(), requests: analysisRequests },
     summaryMetrics: settings.fileSummaryMetrics,
     onSummaryMetricsChange: settings.setFileSummaryMetrics,
@@ -780,6 +787,7 @@ function AppContent() {
                 pending: activeFileId === (meterRuntime.preparingFileId ?? analyzingFileId),
                 disabled:
                   meterRuntime.fileTaskBusy ||
+                  fileQueue.active ||
                   fileImport.importBusy ||
                   Boolean(fileImport.selection),
                 onRestore: () => meterRuntime.restoreFileHistory(activeFileId),

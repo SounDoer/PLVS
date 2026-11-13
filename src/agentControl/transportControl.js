@@ -70,6 +70,7 @@ export function buildTransportSnapshot(runtime, context = {}) {
       analyzingId: runtime.analyzingFileId ?? null,
       preparingId: runtime.preparingFileId ?? null,
       sessions: (runtime.fileSessions ?? []).map(serializeFileSession),
+      ...(context.fileBatch ? { batch: context.fileBatch } : {}),
     },
   };
 }
@@ -90,6 +91,7 @@ export function transportLifecycleSignature(snapshot) {
       activeId: snapshot.files.activeId,
       preparingId: snapshot.files.preparingId ?? null,
       analyzingId: snapshot.files.analyzingId,
+      batch: snapshot.files.batch,
       sessions: snapshot.files.sessions.map(
         ({ id, path, state, runId, runOutcome, error, historyReleased }) => ({
           id,
@@ -326,7 +328,8 @@ export function planTransportMutation(snapshot, method, params = {}, context = {
     });
   }
   if (method === "transport.file.clear") {
-    if (snapshot.files.sessions.length === 0) return result();
+    if (snapshot.files.sessions.length === 0 && !snapshot.files.batch?.items.length)
+      return result();
     return result({
       changed: ["transport.files"],
       effects: ["clearFileSessions"],

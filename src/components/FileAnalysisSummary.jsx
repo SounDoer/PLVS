@@ -502,6 +502,7 @@ function SummaryMetrics({ preferences, onChange, report, onJumpToTime, historyRe
 }
 
 export function FileAnalysisSummary({
+  fileQueue = null,
   fileSession,
   fileSessions = [],
   activeFileId,
@@ -560,6 +561,7 @@ export function FileAnalysisSummary({
       >
         <FileAnalysisHistoryMenu
           {...{
+            fileQueue,
             fileSessions,
             activeFileId,
             analyzingFileId,

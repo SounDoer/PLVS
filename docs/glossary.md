@@ -37,6 +37,10 @@ the UI disagree, the UI on `main` wins and this file is corrected.
 | Tab                    | A panel dropped onto another panel's title, sharing its space                                       | 标签页           |                             |
 | Source                 | What PLVS measures: system playback, a physical input, an application, or a file                    | 信号源           | device, input               |
 | Restore History        | Rebuild released File browsing history using the original source, track and analysis conditions     | 恢复浏览历史     |                             |
+| Choose Track           | Select one audio track for a queued File import                                                     | 选择音轨         |                             |
+| Cancel Batch           | Stop a File import batch and cancel its pending work                                                | 取消批量分析     |                             |
+| Resume Batch           | Restart interrupted and pending File imports in queue order                                         | 继续批量分析     |                             |
+| Add to Queue           | Append a File import to the current analysis queue                                                  | 加入队列         |                             |
 | Select Audio Track     | The picker shown when opening a file containing more than one audio track                           | 选择音轨         |                             |
 | Summary Metrics        | The whole-file readings selected for the File Summary region                                        | 摘要指标         |                             |
 | Clear All Files        | Remove all File list entries and analysis results after confirmation                                | 清空文件列表     |                             |

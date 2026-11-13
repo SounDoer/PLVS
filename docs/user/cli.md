@@ -450,6 +450,12 @@ To enable Dialogue Detection for subsequent File analysis, read the current revi
 Use `false` to turn it off. Existing results keep their original analysis settings until reanalyzed.
 [File Dialogue Detection settings](../agent-control/settings.md#file-dialogue-detection)
 
+For the desktop batch queue, switch to File Mode and use `transport file batch enqueue` with a JSON
+array of 1 to 128 paths. Pass the JSON file as the argument, or use `-` to read the array from stdin.
+Relative paths resolve from the CLI's working directory. A later enqueue appends to the same queue.
+Use `transport file batch inspect` to get the current revision, item IDs and available track indices.
+Use those IDs with `choose-track` or `stop`. `cancel` and `resume` apply to the batch as a whole.
+
 After `transport file analyze` or `transport file reanalyze` accepts a new run, pass its returned
 `sessionId` and `runId` to `transport file wait <session-id> --run-id <n> --json` before reading
 the report. Check for `outcome: "complete"`. [Waiting for a File run](../agent-control/transport.md#waiting-for-a-file-run)

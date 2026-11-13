@@ -24,7 +24,29 @@ duration comes from decoded audio frames; container duration is only a progress 
 
 The pill shows progress and **Cancel** while the current file is working, **Retry** after a
 failure, and the duration after success. **Result** returns from a selected
-time without resetting zoom or scroll. Open and other task starts are disabled while a file task is active.
+time without resetting zoom or scroll.
+
+## Batch import
+
+Select several files with **Open**, or drop them together into File Mode. PLVS analyzes one file at
+a time. Dropping more files while the batch is running adds them to the end of the queue. Open
+**Files** to check the queue and inspect results as they complete. The panels follow each file as
+it starts. Select a finished file to keep inspecting it while the queue runs. Select the running
+file to resume following the queue.
+
+- For a file with several audio tracks, use **Choose Track…** in **Files**. The queue continues
+  while the file waits. Confirming a track adds it to the end of the queue.
+- A failed file stays in the list with its error. Use **Retry** to add it to the end of the queue.
+  Any previous successful result remains available for inspection and export.
+- **Stop** on the current row stops that file and the queue continues. **Cancel Batch…** stops the
+  batch and cancels pending files after confirmation. Completed results and files waiting for track
+  selection stay in **Files**.
+- **Resume Batch** restarts the interrupted file from the beginning and continues the remaining
+  files in order using their original queued settings. Files skipped with **Stop** can be added
+  back individually with **Add to Queue**, or retried when the queue is idle.
+
+**Export Statistics…** is available as soon as there is a successful result. It defaults to all
+successful results in the session, including results from earlier imports.
 
 The **Dialogue Detection** button takes the place of **Sources** in the toolbar. It defaults to
 off and PLVS remembers your choice. Toggle it to apply the change to the next Open, drop, or

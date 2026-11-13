@@ -36,7 +36,7 @@ export function DisplaySnapshotProvider({ children }) {
     fileTaskBusy,
   } = useMeterRuntime();
   const { selectedOffset, selectedSnapshotTimeMs } = useMeterDisplayState();
-  const { fileSession, fileImport } = useSourceActions();
+  const { fileSession, fileImport, fileQueue } = useSourceActions();
   const { audio } = display;
   const { elapsedMsRef } = display.clock;
   const snapshot = useSnapshot({
@@ -78,8 +78,9 @@ export function DisplaySnapshotProvider({ children }) {
     fileSession,
     analyzingFileSession,
     preparingFileId,
-    fileImportBusy: fileImport.importBusy,
-    fileTaskBusy: fileTaskBusy || Boolean(fileImport.selection),
+    fileImportBusy: fileImport.importBusy || fileQueue.probing,
+    showBackgroundFileProgress: fileQueue.active,
+    fileTaskBusy: fileTaskBusy || fileQueue.active || Boolean(fileImport.selection),
   });
 
   return (

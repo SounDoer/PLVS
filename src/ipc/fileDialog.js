@@ -29,14 +29,14 @@ const REPORT_FILTERS = {
   csv: { name: "File Statistics (CSV)", extensions: ["csv"] },
 };
 
-/** @returns {Promise<string | null>} Absolute path, or null if the user cancelled. */
+/** @returns {Promise<string | string[] | null>} Selected paths, or null if the user cancelled. */
 export async function pickMediaFile() {
   const selected = await open({
-    multiple: false,
+    multiple: true,
     directory: false,
     filters: [{ name: "Media", extensions: MEDIA_EXTENSIONS }],
   });
-  return typeof selected === "string" ? selected : null;
+  return typeof selected === "string" || Array.isArray(selected) ? selected : null;
 }
 
 /** @returns {Promise<string | null>} Absolute path, or null if the user cancelled. */

@@ -58,6 +58,7 @@ function deriveLiveState({ running, selectedOffset = -1, elapsedMs = 0, selected
  *   preparingFileId?: string | null,
  *   fileImportBusy?: boolean,
  *   fileTaskBusy?: boolean,
+ *   showBackgroundFileProgress?: boolean,
  * }} options
  */
 function deriveFileState({
@@ -68,6 +69,7 @@ function deriveFileState({
   preparingFileId = null,
   fileImportBusy = false,
   fileTaskBusy = false,
+  showBackgroundFileProgress = false,
 }) {
   const state = fileSession?.state ?? "empty";
   const busy = fileTaskBusy || Boolean(analyzingFileSession || preparingFileId || fileImportBusy);
@@ -83,12 +85,20 @@ function deriveFileState({
     };
   }
   const preparing = preparingFileId !== null && preparingFileId === fileSession?.id;
-  if (fileImportBusy || preparing || state === "analyzing") {
-    const metadata = fileSession?.attempt?.metadata ?? fileSession?.metadata;
+  if (
+    fileImportBusy ||
+    preparing ||
+    state === "analyzing" ||
+    (showBackgroundFileProgress && analyzingFileSession)
+  ) {
+    const current = showBackgroundFileProgress
+      ? (analyzingFileSession ?? fileSession)
+      : fileSession;
+    const metadata = current?.attempt?.metadata ?? current?.metadata;
     const progressKnown = Number.isFinite(metadata?.durationMs) && !preparing && !fileImportBusy;
     return {
       ...base,
-      statusLabel: progressKnown ? formatProgress(fileSession.progress) : "Working…",
+      statusLabel: progressKnown ? formatProgress(current.progress) : "Working…",
       actionLabel: "CANCEL",
       chromeState: "live",
       actionKind: "stopFileAnalysis",

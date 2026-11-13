@@ -52,4 +52,30 @@ describe("FileDropOverlay", () => {
     await emit({ type: "drop", paths: ["C:/mix/final.wav"] });
     expect(onDropFile).toHaveBeenCalledWith("C:/mix/final.wav");
   });
+
+  it("shows the batch size and forwards all dropped paths in order", async () => {
+    const onDropFile = vi.fn();
+    const paths = ["C:/mix/one.wav", "C:/mix/two.wav"];
+    render(<FileDropOverlay active onDropFile={onDropFile} />);
+    await emit({ type: "enter", paths });
+    await emit({ type: "over" });
+    expect(screen.getByText("Drop 2 Files to Analyze")).toBeTruthy();
+    await emit({ type: "drop", paths });
+    expect(onDropFile).toHaveBeenCalledWith(paths);
+    expect(screen.queryByText("Drop 2 Files to Analyze")).toBeNull();
+  });
+
+  it("keeps an in-progress drag subscribed while the import callback changes", async () => {
+    const original = vi.fn();
+    const latest = vi.fn();
+    const { rerender } = render(<FileDropOverlay active onDropFile={original} />);
+    const paths = ["C:/mix/one.wav", "C:/mix/two.wav"];
+    await emit({ type: "enter", paths });
+    rerender(<FileDropOverlay active onDropFile={latest} showScrim={false} />);
+    expect(unlisten).not.toHaveBeenCalled();
+    expect(screen.getByText("Drop 2 Files to Analyze")).toBeTruthy();
+    await emit({ type: "drop", paths });
+    expect(latest).toHaveBeenCalledWith(paths);
+    expect(original).not.toHaveBeenCalled();
+  });
 });

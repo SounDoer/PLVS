@@ -60,7 +60,8 @@ function transportMutationMatches(method, params, execution, snapshot) {
   if (method === "transport.file.remove") {
     return !snapshot.files.sessions.some((session) => session.id === sessionId);
   }
-  if (method === "transport.file.clear") return snapshot.files.sessions.length === 0;
+  if (method === "transport.file.clear")
+    return snapshot.files.sessions.length === 0 && !snapshot.files.batch?.items.length;
   return false;
 }
 
@@ -72,6 +73,48 @@ async function inspect(ctx) {
     requestId,
     result: { revision: clock.current(), ...transport },
   };
+}
+
+async function batch(ctx) {
+  const { request, requestId, clock, live, settlement } = ctx;
+  if (request.method === "transport.file.batch.inspect") {
+    return { requestId, result: { revision: clock.current(), ...live().transport.files.batch } };
+  }
+  const currentRevision = clock.current();
+  if (request.params.expectedRevision !== currentRevision) {
+    throw semanticFailure(
+      "revisionConflict",
+      "$.params.expectedRevision",
+      "The File batch revision changed.",
+      -32004,
+      {
+        expectedRevision: request.params.expectedRevision,
+        currentRevision,
+      }
+    );
+  }
+  let sequence;
+  try {
+    ({ sequence } = await ctx.snap.executeTransport(request.method, request.params));
+  } catch (error) {
+    if (typeof error?.reason === "string") throw error;
+    throw semanticFailure(
+      "applicationFailed",
+      "$.params",
+      `File batch operation failed: ${error?.message || String(error)}`,
+      -32050,
+      { revision: clock.current(), partial: true }
+    );
+  }
+  const matches = (candidate) => candidate.files.batch?.commandSequence >= sequence;
+  if (!matches(live().transport)) {
+    await settlement.observed(
+      "transport",
+      settlement.arm("transport", { matches }),
+      "The File batch change"
+    );
+  }
+  return { requestId, result: { revision: clock.current(), ...live().transport.files.batch } };
 }
 
 /** @param {import("../bridge/types.js").BridgeContext} ctx */
@@ -335,6 +378,12 @@ async function mutate(ctx) {
 /** @type {Record<string, import("../bridge/types.js").HandlerEntry>} */
 export const transportHandlers = {
   "transport.inspect": { run: inspect },
+  "transport.file.batch.inspect": { run: batch },
+  "transport.file.batch.enqueue": { run: batch },
+  "transport.file.batch.chooseTrack": { run: batch },
+  "transport.file.batch.stop": { run: batch },
+  "transport.file.batch.cancel": { run: batch },
+  "transport.file.batch.resume": { run: batch },
   "transport.file.report": { run: fileReport },
   "transport.file.exportStatistics": { run: fileExportStatistics },
   "transport.file.wait": { run: fileWait, lane: "direct" },

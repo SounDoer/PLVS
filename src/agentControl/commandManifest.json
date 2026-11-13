@@ -5481,6 +5481,310 @@
       }
     },
     {
+      "id": "transport.file.batch.inspect",
+      "family": "transport",
+      "path": ["transport", "file", "batch", "inspect"],
+      "usage": "plvs-cli transport file batch inspect --json",
+      "summary": "Inspect the File batch queue.",
+      "execution": "runningApp",
+      "operation": "query",
+      "wireMethod": "transport.file.batch.inspect",
+      "json": "required",
+      "expectedRevision": "none",
+      "dryRun": false,
+      "outputFile": "none",
+      "positionals": [],
+      "options": [
+        {
+          "name": "--json",
+          "required": true,
+          "value": {
+            "type": "boolean"
+          }
+        }
+      ],
+      "wireParams": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [],
+        "properties": {}
+      }
+    },
+    {
+      "id": "transport.file.batch.enqueue",
+      "family": "transport",
+      "path": ["transport", "file", "batch", "enqueue"],
+      "usage": "plvs-cli transport file batch enqueue <file|-> --json --expected-revision <n>",
+      "summary": "Append an ordered list of paths to the File batch queue.",
+      "execution": "runningApp",
+      "operation": "action",
+      "wireMethod": "transport.file.batch.enqueue",
+      "json": "required",
+      "expectedRevision": "required",
+      "dryRun": false,
+      "outputFile": "none",
+      "positionals": [
+        {
+          "name": "file",
+          "mapsTo": "paths",
+          "required": true,
+          "value": {
+            "type": "string"
+          }
+        }
+      ],
+      "options": [
+        {
+          "name": "--json",
+          "required": true,
+          "value": {
+            "type": "boolean"
+          }
+        },
+        {
+          "name": "--expected-revision",
+          "mapsTo": "expectedRevision",
+          "required": true,
+          "value": {
+            "type": "integer",
+            "minimum": 0
+          }
+        }
+      ],
+      "wireParams": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["paths", "expectedRevision"],
+        "properties": {
+          "paths": {
+            "type": "array",
+
+            "items": {
+              "type": "string"
+            }
+          },
+          "expectedRevision": {
+            "schemaRef": "agentControl.revision"
+          }
+        }
+      }
+    },
+    {
+      "id": "transport.file.batch.chooseTrack",
+      "family": "transport",
+      "path": ["transport", "file", "batch", "choose-track"],
+      "usage": "plvs-cli transport file batch choose-track <item-id> --track <index> --json --expected-revision <n>",
+      "summary": "Choose a track for a waiting File batch item.",
+      "execution": "runningApp",
+      "operation": "action",
+      "wireMethod": "transport.file.batch.chooseTrack",
+      "json": "required",
+      "expectedRevision": "required",
+      "dryRun": false,
+      "outputFile": "none",
+      "positionals": [
+        {
+          "name": "item-id",
+          "mapsTo": "itemId",
+          "required": true,
+          "value": {
+            "type": "integer",
+            "minimum": 1
+          }
+        }
+      ],
+      "options": [
+        {
+          "name": "--json",
+          "required": true,
+          "value": {
+            "type": "boolean"
+          }
+        },
+        {
+          "name": "--track",
+          "mapsTo": "trackIndex",
+          "required": true,
+          "value": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 4294967295
+          }
+        },
+        {
+          "name": "--expected-revision",
+          "mapsTo": "expectedRevision",
+          "required": true,
+          "value": {
+            "type": "integer",
+            "minimum": 0
+          }
+        }
+      ],
+      "wireParams": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["itemId", "trackIndex", "expectedRevision"],
+        "properties": {
+          "itemId": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "trackIndex": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 4294967295
+          },
+          "expectedRevision": {
+            "schemaRef": "agentControl.revision"
+          }
+        }
+      }
+    },
+    {
+      "id": "transport.file.batch.stop",
+      "family": "transport",
+      "path": ["transport", "file", "batch", "stop"],
+      "usage": "plvs-cli transport file batch stop <item-id> --json --expected-revision <n>",
+      "summary": "Stop the current File batch item.",
+      "execution": "runningApp",
+      "operation": "action",
+      "wireMethod": "transport.file.batch.stop",
+      "json": "required",
+      "expectedRevision": "required",
+      "dryRun": false,
+      "outputFile": "none",
+      "positionals": [
+        {
+          "name": "item-id",
+          "mapsTo": "itemId",
+          "required": true,
+          "value": {
+            "type": "integer",
+            "minimum": 1
+          }
+        }
+      ],
+      "options": [
+        {
+          "name": "--json",
+          "required": true,
+          "value": {
+            "type": "boolean"
+          }
+        },
+        {
+          "name": "--expected-revision",
+          "mapsTo": "expectedRevision",
+          "required": true,
+          "value": {
+            "type": "integer",
+            "minimum": 0
+          }
+        }
+      ],
+      "wireParams": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["itemId", "expectedRevision"],
+        "properties": {
+          "itemId": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "expectedRevision": {
+            "schemaRef": "agentControl.revision"
+          }
+        }
+      }
+    },
+    {
+      "id": "transport.file.batch.cancel",
+      "family": "transport",
+      "path": ["transport", "file", "batch", "cancel"],
+      "usage": "plvs-cli transport file batch cancel --json --expected-revision <n>",
+      "summary": "Cancel the current File batch.",
+      "execution": "runningApp",
+      "operation": "action",
+      "wireMethod": "transport.file.batch.cancel",
+      "json": "required",
+      "expectedRevision": "required",
+      "dryRun": false,
+      "outputFile": "none",
+      "positionals": [],
+      "options": [
+        {
+          "name": "--json",
+          "required": true,
+          "value": {
+            "type": "boolean"
+          }
+        },
+        {
+          "name": "--expected-revision",
+          "mapsTo": "expectedRevision",
+          "required": true,
+          "value": {
+            "type": "integer",
+            "minimum": 0
+          }
+        }
+      ],
+      "wireParams": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["expectedRevision"],
+        "properties": {
+          "expectedRevision": {
+            "schemaRef": "agentControl.revision"
+          }
+        }
+      }
+    },
+    {
+      "id": "transport.file.batch.resume",
+      "family": "transport",
+      "path": ["transport", "file", "batch", "resume"],
+      "usage": "plvs-cli transport file batch resume --json --expected-revision <n>",
+      "summary": "Resume interrupted and pending File batch work.",
+      "execution": "runningApp",
+      "operation": "action",
+      "wireMethod": "transport.file.batch.resume",
+      "json": "required",
+      "expectedRevision": "required",
+      "dryRun": false,
+      "outputFile": "none",
+      "positionals": [],
+      "options": [
+        {
+          "name": "--json",
+          "required": true,
+          "value": {
+            "type": "boolean"
+          }
+        },
+        {
+          "name": "--expected-revision",
+          "mapsTo": "expectedRevision",
+          "required": true,
+          "value": {
+            "type": "integer",
+            "minimum": 0
+          }
+        }
+      ],
+      "wireParams": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["expectedRevision"],
+        "properties": {
+          "expectedRevision": {
+            "schemaRef": "agentControl.revision"
+          }
+        }
+      }
+    },
+    {
       "id": "transport.file.analyze",
       "family": "transport",
       "path": ["transport", "file", "analyze"],

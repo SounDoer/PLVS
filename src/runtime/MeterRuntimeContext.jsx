@@ -178,7 +178,13 @@ export function MeterRuntimeProvider({ children }) {
 
     return clearLiveSource();
   };
-  const beginFileAnalysis = (path, analysisSettings, probe = null, existingId = null) => {
+  const beginFileAnalysis = (
+    path,
+    analysisSettings,
+    probe = null,
+    existingId = null,
+    activate = true
+  ) => {
     if (!path) return null;
     display.clearNotice();
     if (fileHistory.analyzingFileId || taskSessionRef.current) {
@@ -186,14 +192,16 @@ export function MeterRuntimeProvider({ children }) {
       return null;
     }
 
-    display.clearSnapshot();
-    if (sourceMode === "file") display.clearAudio();
+    if (activate) {
+      display.clearSnapshot();
+      if (sourceMode === "file") display.clearAudio();
+    }
     if (existingId && fileHistory.sessionsById[existingId]) {
-      ledger.rerun(existingId, path, analysisSettings, probe, "analyze", true);
+      ledger.rerun(existingId, path, analysisSettings, probe, "analyze", activate);
       taskSessionRef.current = existingId;
       return existingId;
     }
-    const sessionId = ledger.beginRun(path, analysisSettings, probe);
+    const sessionId = ledger.beginRun(path, analysisSettings, probe, null, activate);
     taskSessionRef.current = sessionId;
     return sessionId;
   };

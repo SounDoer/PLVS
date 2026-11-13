@@ -355,6 +355,13 @@ pub enum ControlCommand {
     dry_run: bool,
   },
   TransportInspect,
+  TransportBatch {
+    action: String,
+    input: Option<String>,
+    item_id: Option<u64>,
+    track_index: Option<u32>,
+    expected_revision: Option<u64>,
+  },
   TransportStatisticsExport {
     input: String,
     out: String,
@@ -2471,6 +2478,9 @@ fn parse_transport_args(args: &[String]) -> Result<ControlCommand, String> {
     };
   }
   if let [scope, action, rest @ ..] = args {
+    if scope == "file" && action == "batch" {
+      return parse_transport_batch_args(rest);
+    }
     if scope == "file" && action == "wait" {
       return parse_transport_file_wait_args(rest);
     }
@@ -2619,6 +2629,71 @@ fn parse_transport_args(args: &[String]) -> Result<ControlCommand, String> {
     allow_stop_file_analysis,
     track_index,
     dry_run,
+  })
+}
+
+fn parse_transport_batch_args(args: &[String]) -> Result<ControlCommand, String> {
+  let usage = "Usage: plvs-cli transport file batch <inspect|enqueue|choose-track|stop|cancel|resume> ... --json";
+  let (action, rest) = args.split_first().ok_or(usage)?;
+  if action == "inspect" && rest == ["--json"] {
+    return Ok(ControlCommand::TransportBatch {
+      action: action.clone(),
+      input: None,
+      item_id: None,
+      track_index: None,
+      expected_revision: None,
+    });
+  }
+  let (input, item_id, options) = match (action.as_str(), rest) {
+    ("enqueue", [input, options @ ..]) => (Some(input.clone()), None, options),
+    ("choose-track" | "stop", [id, options @ ..]) => {
+      let id = id
+        .parse::<u64>()
+        .ok()
+        .filter(|id| *id > 0 && *id <= MAX_SAFE_REVISION)
+        .ok_or("Invalid batch item ID.")?;
+      (None, Some(id), options)
+    }
+    ("cancel" | "resume", options) => (None, None, options),
+    _ => return Err(usage.to_string()),
+  };
+  let mut track_index = None;
+  let mut expected_revision = None;
+  let mut json = false;
+  let mut options = options.iter();
+  while let Some(option) = options.next() {
+    match option.as_str() {
+      "--json" if !json => json = true,
+      "--expected-revision" if expected_revision.is_none() => {
+        expected_revision = Some(parse_ui_safe_integer(
+          options.next(),
+          "--expected-revision",
+        )?);
+      }
+      "--track" if action == "choose-track" && track_index.is_none() => {
+        track_index = Some(
+          options
+            .next()
+            .and_then(|value| value.parse::<u32>().ok())
+            .ok_or("Invalid --track index.")?,
+        );
+      }
+      _ => return Err(format!("Unexpected batch argument: {option}")),
+    }
+  }
+  if !json || expected_revision.is_none() || (action == "choose-track" && track_index.is_none()) {
+    return Err(usage.to_string());
+  }
+  Ok(ControlCommand::TransportBatch {
+    action: if action == "choose-track" {
+      "chooseTrack".to_string()
+    } else {
+      action.clone()
+    },
+    input,
+    item_id,
+    track_index,
+    expected_revision,
   })
 }
 
@@ -4195,6 +4270,7 @@ fn command_name(command: &ControlCommand) -> String {
     ControlCommand::DeviceRead { method } => method.clone(),
     ControlCommand::DeviceSelect { .. } => "device.select".to_string(),
     ControlCommand::TransportInspect => "transport.inspect".to_string(),
+    ControlCommand::TransportBatch { action, .. } => format!("transport.file.batch.{action}"),
     ControlCommand::TransportStatisticsExport { .. } => {
       "transport.file.exportStatistics".to_string()
     }
@@ -4807,6 +4883,50 @@ fn request_for_command<R: Read>(
       timeout_ms,
       ..
     } => serde_json::json!({ "recordingId": recording_id, "timeoutMs": timeout_ms }),
+    ControlCommand::TransportBatch {
+      input,
+      item_id,
+      track_index,
+      expected_revision,
+      ..
+    } => {
+      let mut params = serde_json::Map::new();
+      if let Some(input) = input {
+        let document = read_json_document(input, stdin, "File batch paths")
+          .map_err(ControlFailure::invalid_arguments)?;
+        let paths = document
+          .as_array()
+          .filter(|paths| !paths.is_empty() && paths.len() <= 128)
+          .ok_or_else(|| {
+            ControlFailure::invalid_arguments("Expected an array of 1 to 128 file paths.")
+          })?;
+        let paths = paths
+          .iter()
+          .map(|path| {
+            let path = path
+              .as_str()
+              .filter(|path| !path.trim().is_empty())
+              .ok_or_else(|| {
+                ControlFailure::invalid_arguments("Expected a non-empty file path.")
+              })?;
+            let path = std::path::absolute(path)
+              .map_err(|error| ControlFailure::invalid_arguments(error.to_string()))?;
+            Ok(Value::String(path.to_string_lossy().into_owned()))
+          })
+          .collect::<Result<Vec<_>, ControlFailure>>()?;
+        params.insert("paths".to_string(), Value::Array(paths));
+      }
+      if let Some(value) = item_id {
+        params.insert("itemId".to_string(), Value::from(*value));
+      }
+      if let Some(value) = track_index {
+        params.insert("trackIndex".to_string(), Value::from(*value));
+      }
+      if let Some(value) = expected_revision {
+        params.insert("expectedRevision".to_string(), Value::from(*value));
+      }
+      Value::Object(params)
+    }
     ControlCommand::TransportMutation {
       method,
       target_key,
@@ -6621,6 +6741,8 @@ mod tests {
       "name" => "Name".to_string(),
       "session-id" => "file-1".to_string(),
       "run-id" => "1".to_string(),
+      "item-id" => "1".to_string(),
+      "index" => "0".to_string(),
       "recording-id" => format!("rec-{}", "a".repeat(32)),
       "section" => "appearance".to_string(),
       "sources|loudness-profile|panels|views|presets|status" => "presets".to_string(),
@@ -6705,6 +6827,7 @@ mod tests {
     match method {
       "preset.reorder" => br#"{"presetIds":[]}"#,
       "transport.file.exportStatistics" => br#"{"sessionIds":["file-1"]}"#,
+      "transport.file.batch.enqueue" => br#"["sample.wav"]"#,
       "theme.reorder" | "loudnessProfile.reorder" => br#"[]"#,
       _ => br#"{}"#,
     }

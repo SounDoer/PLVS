@@ -20,6 +20,7 @@ function sampleForProperty(entry, name, schema) {
     panelId: "spectrum",
     patch: entry.id === "axis.panel.update" ? { linked: false } : {},
     path: "C:\\audio\\mix.wav",
+    paths: ["C:\\audio\\mix.wav"],
     presetId: "preset-1",
     presetIds: ["preset-1"],
     predicate: { kind: "signalPresent" },

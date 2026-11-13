@@ -110,6 +110,12 @@ Manifest version `1`. Entries are shown in stable presentation order.
 | `transport.live.start` | `transport live start` | runningApp / action | required | no | none |
 | `transport.live.stop` | `transport live stop` | runningApp / action | required | no | none |
 | `transport.live.clear` | `transport live clear` | runningApp / mutation | required | yes | none |
+| `transport.file.batch.inspect` | `transport file batch inspect` | runningApp / query | none | no | none |
+| `transport.file.batch.enqueue` | `transport file batch enqueue` | runningApp / action | required | no | none |
+| `transport.file.batch.chooseTrack` | `transport file batch choose-track` | runningApp / action | required | no | none |
+| `transport.file.batch.stop` | `transport file batch stop` | runningApp / action | required | no | none |
+| `transport.file.batch.cancel` | `transport file batch cancel` | runningApp / action | required | no | none |
+| `transport.file.batch.resume` | `transport file batch resume` | runningApp / action | required | no | none |
 | `transport.file.analyze` | `transport file analyze` | runningApp / action | required | no | none |
 | `transport.file.reanalyze` | `transport file reanalyze` | runningApp / action | required | no | none |
 | `transport.file.restore` | `transport file restore` | runningApp / action | required | no | none |
@@ -2855,6 +2861,161 @@ None.
 | `--json` | local only | yes | boolean |
 | `--expected-revision` | `expectedRevision` | yes | integer; 0 to inf |
 | `--dry-run` | `dryRun` | no | boolean |
+
+## `transport.file.batch.inspect`
+
+Inspect the File batch queue.
+
+- CLI path: `transport file batch inspect`
+- Execution: `runningApp`; operation: `query`
+- JSON: `required`; expected revision: `none`; dry-run: `false`; output file: `none`
+- Wire method: `transport.file.batch.inspect`
+
+```text
+plvs-cli transport file batch inspect --json
+```
+
+### Positionals
+
+None.
+
+### Options
+
+| Name | Maps to | Required | Value |
+| --- | --- | --- | --- |
+| `--json` | local only | yes | boolean |
+
+## `transport.file.batch.enqueue`
+
+Append an ordered list of paths to the File batch queue.
+
+- CLI path: `transport file batch enqueue`
+- Execution: `runningApp`; operation: `action`
+- JSON: `required`; expected revision: `required`; dry-run: `false`; output file: `none`
+- Wire method: `transport.file.batch.enqueue`
+- Schema references: `agentControl.revision`
+
+```text
+plvs-cli transport file batch enqueue <file|-> --json --expected-revision <n>
+```
+
+### Positionals
+
+| Name | Maps to | Required | Value |
+| --- | --- | --- | --- |
+| `file` | `paths` | yes | string |
+
+### Options
+
+| Name | Maps to | Required | Value |
+| --- | --- | --- | --- |
+| `--json` | local only | yes | boolean |
+| `--expected-revision` | `expectedRevision` | yes | integer; 0 to inf |
+
+## `transport.file.batch.chooseTrack`
+
+Choose a track for a waiting File batch item.
+
+- CLI path: `transport file batch choose-track`
+- Execution: `runningApp`; operation: `action`
+- JSON: `required`; expected revision: `required`; dry-run: `false`; output file: `none`
+- Wire method: `transport.file.batch.chooseTrack`
+- Schema references: `agentControl.revision`
+
+```text
+plvs-cli transport file batch choose-track <item-id> --track <index> --json --expected-revision <n>
+```
+
+### Positionals
+
+| Name | Maps to | Required | Value |
+| --- | --- | --- | --- |
+| `item-id` | `itemId` | yes | integer; 1 to inf |
+
+### Options
+
+| Name | Maps to | Required | Value |
+| --- | --- | --- | --- |
+| `--json` | local only | yes | boolean |
+| `--track` | `trackIndex` | yes | integer; 0 to 4294967295 |
+| `--expected-revision` | `expectedRevision` | yes | integer; 0 to inf |
+
+## `transport.file.batch.stop`
+
+Stop the current File batch item.
+
+- CLI path: `transport file batch stop`
+- Execution: `runningApp`; operation: `action`
+- JSON: `required`; expected revision: `required`; dry-run: `false`; output file: `none`
+- Wire method: `transport.file.batch.stop`
+- Schema references: `agentControl.revision`
+
+```text
+plvs-cli transport file batch stop <item-id> --json --expected-revision <n>
+```
+
+### Positionals
+
+| Name | Maps to | Required | Value |
+| --- | --- | --- | --- |
+| `item-id` | `itemId` | yes | integer; 1 to inf |
+
+### Options
+
+| Name | Maps to | Required | Value |
+| --- | --- | --- | --- |
+| `--json` | local only | yes | boolean |
+| `--expected-revision` | `expectedRevision` | yes | integer; 0 to inf |
+
+## `transport.file.batch.cancel`
+
+Cancel the current File batch.
+
+- CLI path: `transport file batch cancel`
+- Execution: `runningApp`; operation: `action`
+- JSON: `required`; expected revision: `required`; dry-run: `false`; output file: `none`
+- Wire method: `transport.file.batch.cancel`
+- Schema references: `agentControl.revision`
+
+```text
+plvs-cli transport file batch cancel --json --expected-revision <n>
+```
+
+### Positionals
+
+None.
+
+### Options
+
+| Name | Maps to | Required | Value |
+| --- | --- | --- | --- |
+| `--json` | local only | yes | boolean |
+| `--expected-revision` | `expectedRevision` | yes | integer; 0 to inf |
+
+## `transport.file.batch.resume`
+
+Resume interrupted and pending File batch work.
+
+- CLI path: `transport file batch resume`
+- Execution: `runningApp`; operation: `action`
+- JSON: `required`; expected revision: `required`; dry-run: `false`; output file: `none`
+- Wire method: `transport.file.batch.resume`
+- Schema references: `agentControl.revision`
+
+```text
+plvs-cli transport file batch resume --json --expected-revision <n>
+```
+
+### Positionals
+
+None.
+
+### Options
+
+| Name | Maps to | Required | Value |
+| --- | --- | --- | --- |
+| `--json` | local only | yes | boolean |
+| `--expected-revision` | `expectedRevision` | yes | integer; 0 to inf |
 
 ## `transport.file.analyze`
 

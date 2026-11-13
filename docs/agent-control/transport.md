@@ -140,6 +140,20 @@ FILE uses the same retained snapshot selection as LIVE. This reflects the existi
 scrub and Return to File Result behavior; it does not add playback or seek semantics. Selection is
 available while the active FILE result has retained history.
 
+## File batch queue
+
+The batch commands operate on the same queue as the Files menu. Mutations require File Mode and
+the current Transport revision. Enqueue takes an ordered JSON array of paths and returns the
+observed queue state. Files that fail to open are recorded individually while the queue continues.
+The queue state exposes transient numeric item IDs, the current item, whether the batch can resume,
+and available tracks for items waiting for track selection. Completed and running analysis results
+are available from Transport inspection using their File session IDs.
+
+Choosing a track appends the item to the queue tail. Stop targets the current queue item. Cancel
+retains the interrupted and queued work for Resume. Resume restarts the interrupted file from the
+beginning and uses each item's original settings. Successful results, individually stopped files
+and files awaiting track selection retain their existing behavior.
+
 ## Waiting for a File run
 
 An accepted analyze, reanalyze or restore returns `sessionId` and `runId`. Pass both to

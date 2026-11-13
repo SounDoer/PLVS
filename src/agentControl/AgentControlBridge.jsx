@@ -21,6 +21,7 @@ import { isDockSupported } from "../lib/platform.js";
 import { seedTokensFromLabels } from "../math/channelRoles.js";
 import { buildPublicSettings } from "./settingsControl.js";
 import { buildTransportSnapshot, selectImportTrack } from "./transportControl.js";
+import { semanticFailure } from "./bridge/failures.js";
 import { getSuccessfulFileSession } from "../lib/fileAnalysisSessionRegistry.js";
 import { useAgentControlBridge } from "./useAgentControlBridge.js";
 import { useAgentControlState } from "./AgentControlStateContext.jsx";
@@ -199,19 +200,44 @@ export function AgentControlBridge() {
       updateBusy,
     ]
   );
-  const { currentFileAnalysisSettings, dialogueGating } = useSourceActions();
+  const { currentFileAnalysisSettings, dialogueGating, fileQueue } = useSourceActions();
   const agentControlTransport = useMemo(
     () =>
       buildTransportSnapshot(meterRuntime, {
         requestedDeviceId: captureDeviceId,
         selectedOffset,
         docked,
+        fileBatch: fileQueue?.snapshot,
       }),
-    [captureDeviceId, docked, meterRuntime, selectedOffset]
+    [captureDeviceId, docked, fileQueue?.snapshot, meterRuntime, selectedOffset]
   );
   const executeAgentControlTransport = useCallback(
     async (/** @type {string} */ method, params) => {
       const fileTaskId = analyzingFileId ?? preparingFileId;
+      if (method.startsWith("transport.file.batch.")) {
+        const batch = fileQueue.snapshot;
+        const reject = (message) => {
+          throw semanticFailure("invalidFileBatchState", "$.params", message, -32012);
+        };
+        if (meterRuntime.sourceMode !== "file" || docked)
+          reject("Switch to File Mode before controlling the batch.");
+        if (method === "transport.file.batch.enqueue") fileQueue.enqueue(params.paths);
+        else if (method === "transport.file.batch.chooseTrack") {
+          if (!fileQueue.confirmTrack(params.itemId, params.trackIndex))
+            reject("The queued item is not waiting for that audio track.");
+        } else if (method === "transport.file.batch.stop") {
+          if (batch.currentId !== params.itemId) reject("That item is no longer running.");
+          await fileQueue.stopCurrent();
+        } else if (method === "transport.file.batch.cancel") {
+          if (!batch.active) reject("No File batch is active.");
+          await fileQueue.cancelBatch();
+        } else if (method === "transport.file.batch.resume") {
+          if (batch.active || !batch.canResume) reject("No idle File batch can be resumed.");
+          fileQueue.resumeBatch();
+        }
+        fileQueue.acknowledgeCommand();
+        return { sequence: batch.commandSequence + 1 };
+      }
       if (method === "transport.source.live") {
         if (fileTaskId) await stopFileAnalysis(fileTaskId);
         switchSource("live");
@@ -306,6 +332,7 @@ export function AgentControlBridge() {
         return { sessionId: params.sessionId };
       }
       if (method === "transport.file.clear") {
+        fileQueue?.clear();
         await clearFiles();
         return {};
       }
@@ -319,6 +346,9 @@ export function AgentControlBridge() {
       clearLiveForControl,
       clearSnapshot,
       currentFileAnalysisSettings,
+      docked,
+      fileQueue,
+      meterRuntime.sourceMode,
       meterRuntime.fileSessions,
       meterRuntime.liveLifecycle,
       reanalyzeFileForControl,
