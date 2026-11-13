@@ -159,11 +159,31 @@ function detailSeconds(seconds) {
   return seconds.toFixed(3);
 }
 
-function DetailPosition({ location }) {
+function TimelineTime({ timeSeconds, value, label, onJump }) {
+  const reading = <DetailReading value={value} unit="s" />;
+  if (!onJump || !Number.isFinite(timeSeconds)) return reading;
+  return (
+    <Button
+      variant="quiet"
+      className="h-auto rounded-xs px-1 text-[length:inherit] underline underline-offset-2"
+      aria-label={`jump to ${label} at ${detailSeconds(timeSeconds)} seconds`}
+      onClick={() => onJump(timeSeconds)}
+    >
+      {reading}
+    </Button>
+  );
+}
+
+function DetailPosition({ location, label, onJump }) {
   const time = Number.isFinite(location?.timeSeconds) ? detailSeconds(location.timeSeconds) : null;
   return (
     <>
-      <DetailReading value={time} unit="s" />
+      <TimelineTime
+        timeSeconds={location?.timeSeconds}
+        value={time}
+        label={label}
+        onJump={onJump}
+      />
       {time != null && location.framePosition < 0 && (
         <span className={METRIC_ANNOTATION}> · Before Start</span>
       )}
@@ -184,7 +204,7 @@ function loudestRange(metricId, position, sampleRateHz) {
   return start + "–" + detailSeconds(position.timeSeconds);
 }
 
-function MetricDetail({ metric, report }) {
+function MetricDetail({ metric, report, onJump, historyReleased }) {
   const value = report?.summary[metric.field];
   const reason = report?.unavailableReasons?.[metric.field];
   const position = metric.location && report?.summary.maximaLocations?.[metric.location];
@@ -214,9 +234,14 @@ function MetricDetail({ metric, report }) {
           <span className={METRIC_ANNOTATION}>{peak ? "First Maximum" : "Loudest Range"}</span>{" "}
           <span className="text-right">
             {peak ? (
-              <DetailPosition location={position} />
+              <DetailPosition location={position} label={metric.label} onJump={onJump} />
             ) : (
-              <DetailReading value={range} unit="s" />
+              <TimelineTime
+                timeSeconds={position?.timeSeconds}
+                value={range}
+                label={metric.label + " range end"}
+                onJump={onJump}
+              />
             )}
           </span>
         </p>
@@ -254,12 +279,24 @@ function MetricDetail({ metric, report }) {
                   />
                 </td>
                 <td className="text-right">
-                  <DetailPosition location={row[timeKey]} />
+                  <DetailPosition
+                    location={row[timeKey]}
+                    label={row.label + " " + metric.label}
+                    onJump={onJump}
+                  />
                 </td>
               </tr>
             ))}
           </tbody>
         </table>
+      ) : null}
+      {historyReleased &&
+      (Number.isFinite(position?.timeSeconds) ||
+        (peak &&
+          report?.summary.channelPeaks.some((row) =>
+            Number.isFinite(row[timeKey]?.timeSeconds)
+          ))) ? (
+        <p className="text-muted-foreground">Choose Restore History to jump to a time.</p>
       ) : null}
     </div>
   );
@@ -286,7 +323,7 @@ function MetricColumn({ metric, report }) {
   );
 }
 
-function MetricTrigger({ metric, report, inOverflow = false }) {
+function MetricTrigger({ metric, report, inOverflow = false, onJumpToTime, historyReleased }) {
   const value = report?.summary[metric.field];
   const available = Number.isFinite(value);
   return (
@@ -314,12 +351,25 @@ function MetricTrigger({ metric, report, inOverflow = false }) {
         )
       }
     >
-      <MetricDetail metric={metric} report={report} />
+      {(close) => (
+        <MetricDetail
+          metric={metric}
+          report={report}
+          historyReleased={historyReleased}
+          onJump={
+            onJumpToTime &&
+            ((timeSeconds) => {
+              onJumpToTime(timeSeconds);
+              close();
+            })
+          }
+        />
+      )}
     </FileDetailPopover>
   );
 }
 
-function SummaryMetrics({ preferences, onChange, report }) {
+function SummaryMetrics({ preferences, onChange, report, onJumpToTime, historyReleased }) {
   const metrics = preferences.visible
     .map((id) => FILE_METRICS.find((metric) => metric.id === id))
     .filter(Boolean);
@@ -371,7 +421,7 @@ function SummaryMetrics({ preferences, onChange, report }) {
         </div>
         <div className={cn("absolute inset-0 flex items-center justify-end", metricGap)}>
           {visible.map((metric) => (
-            <MetricTrigger key={metric.id} metric={metric} report={report} />
+            <MetricTrigger key={metric.id} {...{ metric, report, onJumpToTime, historyReleased }} />
           ))}
           {hidden.length ? (
             <Popover {...overflow.rootProps}>
@@ -390,7 +440,11 @@ function SummaryMetrics({ preferences, onChange, report }) {
                 className="grid w-max max-h-[var(--radix-popover-content-available-height)] grid-cols-[minmax(0,1fr)_max-content_max-content] gap-x-[var(--ui-metric-inline-gap)] overflow-auto p-1"
               >
                 {hidden.map((metric) => (
-                  <MetricTrigger key={metric.id} metric={metric} report={report} inOverflow />
+                  <MetricTrigger
+                    key={metric.id}
+                    {...{ metric, report, onJumpToTime, historyReleased }}
+                    inOverflow
+                  />
                 ))}
               </PopoverContent>
             </Popover>
@@ -464,6 +518,7 @@ export function FileAnalysisSummary({
   fileTaskBusy = false,
   summaryMetrics = DEFAULT_METRICS,
   onSummaryMetricsChange = null,
+  onJumpToTime = null,
 }) {
   const result = useMemo(() => getSuccessfulFileSession(fileSession), [fileSession]);
   const report = useMemo(() => (result ? buildFileAnalysisReport(result) : null), [result]);
@@ -554,6 +609,8 @@ export function FileAnalysisSummary({
         preferences={summaryMetrics}
         onChange={onSummaryMetricsChange}
         report={report}
+        onJumpToTime={onJumpToTime}
+        historyReleased={fileSession?.historyReleased === true}
       />
     </section>
   );

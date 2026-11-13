@@ -15,9 +15,8 @@ WASAPI, or route through a virtual audio cable to a WASAPI-visible device. See
 
 ## Can I export the metered data, like CSV?
 
-CSV or session-data export is not implemented yet. File Mode can export an analysis report, Agent
-Control can save a screenshot or a bounded H.264 recording of the rendered app, and configuration can
-be exported and imported separately.
+[File Mode](file-mode.md#statistics-csv) exports whole-file statistics for selected results as CSV.
+It also exports individual analysis reports. Live measurements and time series stay in PLVS.
 
 ## Are the dialogue readouts certified?
 
@@ -36,8 +35,8 @@ native full-screen applications are not resized. See [Dock](workspace.md#dock).
 
 Yes. PLVS ships a `.deb` package for Ubuntu 24.04 x86_64. Current stable packages can download a
 signed update in PLVS and install it through Ubuntu's administrator authentication and APT; older
-packages need one manual update from GitHub Releases to add that support. Dock is not available on
-Linux. See [Getting Started](getting-started.md#linux).
+packages need one manual update from GitHub Releases to add that support. [Dock](workspace.md#dock)
+works on supported X11 and XWayland window backends. See [Getting Started](getting-started.md#linux).
 
 ## Is PLVS available as a plugin (VST/AU/AAX)?
 

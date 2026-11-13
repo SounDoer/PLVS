@@ -83,6 +83,22 @@ describe("usePanelHistoryData", () => {
     expect(second.result.current.isHistoryHudVisible).toBe(false);
   });
 
+  it("places a File selection at its checkpoint when media time and chart steps differ", () => {
+    const { result } = renderHook(() => usePanelHistoryData("waveform"), {
+      wrapper: wrapperFor(
+        historyData({
+          sourceMode: "file",
+          histSourceList: [{ timestampMs: 100 }, { timestampMs: 410 }, { timestampMs: 650 }],
+          selectedOffset: 0.24,
+          selectedMediaTimestampMs: 410,
+        })
+      ),
+    });
+
+    expect(result.current.selectedHistSteps).toBe(1);
+    expect(result.current.showSelLine).toBe(true);
+  });
+
   it("leaves non-timeline panels on the global history data path", () => {
     const value = historyData({ captureCurrentSnapshot: vi.fn() });
     const { result } = renderHook(() => usePanelHistoryData("spectrum"), {

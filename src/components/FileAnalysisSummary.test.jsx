@@ -85,12 +85,34 @@ describe("File summary", () => {
     expect(screen.getByRole("cell", { name: "1.001 s" })).toBeTruthy();
   });
 
+  it("jumps from a channel peak using its unrounded time and closes the details", () => {
+    const onJumpToTime = vi.fn();
+    render(<FileAnalysisSummary {...props} onJumpToTime={onJumpToTime} />);
+    fireEvent.click(screen.getByRole("button", { name: "True Peak Max details" }));
+    fireEvent.click(
+      screen.getByRole("button", { name: "jump to L True Peak Max at 1.001 seconds" })
+    );
+    expect(onJumpToTime).toHaveBeenCalledWith(1.000625);
+    expect(screen.queryByRole("dialog", { name: "True Peak Max details" })).toBeNull();
+  });
+
+  it("keeps the peak time readable and prompts for restoration when history was released", () => {
+    render(
+      <FileAnalysisSummary {...props} fileSession={{ ...fileSession, historyReleased: true }} />
+    );
+    fireEvent.click(screen.getByRole("button", { name: "True Peak Max details" }));
+    expect(screen.getByRole("cell", { name: "1.001 s" })).toBeTruthy();
+    expect(screen.getByText("Choose Restore History to jump to a time.")).toBeTruthy();
+    expect(screen.queryByRole("button", { name: /jump to/ })).toBeNull();
+  });
+
   it.each([
     ["momentaryMax", "Momentary Max", 24000, "0.100–0.500"],
     ["shortTermMax", "Short-term Max", 24000, "0.000–0.500"],
     ["shortTermMax", "Short-term Max", 144000, "0.000–3.000"],
     ["shortTermMax", "Short-term Max", null, "-"],
   ])("shows the %s range (%s, end frame %s)", (id, label, frame, expected) => {
+    const onJumpToTime = vi.fn();
     const location = frame == null ? null : { framePosition: frame, timeSeconds: frame / 48000 };
     const session = {
       ...fileSession,
@@ -105,12 +127,20 @@ describe("File summary", () => {
       <FileAnalysisSummary
         {...props}
         fileSession={session}
+        onJumpToTime={onJumpToTime}
         summaryMetrics={{ visible: [id], order: [id] }}
       />
     );
     fireEvent.click(screen.getByRole("button", { name: label + " details" }));
     const range = screen.getByText("Loudest Range").parentElement;
     expect(range.textContent).toContain(expected);
+    const jump = screen.queryByRole("button", { name: /jump to.*range end/ });
+    if (location) {
+      fireEvent.click(jump);
+      expect(onJumpToTime).toHaveBeenCalledWith(location.timeSeconds);
+    } else {
+      expect(jump).toBeNull();
+    }
   });
 
   it("keeps successful numbers after settings change and warns only in the details", () => {

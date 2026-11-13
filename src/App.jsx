@@ -39,6 +39,10 @@ import {
   useAgentControlState,
 } from "./agentControl/AgentControlStateContext.jsx";
 import { useSharedTimeViewport } from "./workspace/useSharedTimeViewport.js";
+import { resolveAxisViewport, writeLocalRange } from "./workspace/axisViewports.js";
+import { getHistoryViewport } from "./math/historyMath.js";
+import { nearestTimestampIndex } from "./lib/snapshotResolve.js";
+import { latestHistoryTimestampMs } from "./lib/historyTimestamps.js";
 import { formatVectorscopePairLabel } from "./math/vectorscopePairMath.js";
 import {} from "./math/spectrumChannelOptions.js";
 import { getPeakMeterChannelLabels } from "./math/peakMeterChannelLabels.js";
@@ -166,7 +170,7 @@ function AppContent() {
   const meterRuntime = useMeterRuntime();
   const { notice, selectedOffset, setSelectedOffset, selectSnapshot, showClock } =
     useMeterDisplayState();
-  const { state: workspaceState, setAxisViewport } = useWorkspaceStore();
+  const { state: workspaceState, setAxisViewport, setPanelControlsForPanel } = useWorkspaceStore();
   const {
     visibility: dockAccessoryVisibility,
     hoveredDockPanelId,
@@ -324,6 +328,7 @@ function AppContent() {
 
   const {
     histSourceList,
+    targetTimestampMs,
     loudnessDisplayIndex,
     waveformHistoryIndex,
     visualWaveformHist,
@@ -495,6 +500,7 @@ function AppContent() {
   };
   const historyData = {
     selectedOffset,
+    selectedMediaTimestampMs: targetTimestampMs,
     setSelectedOffset,
     selectSnapshot,
     // The Time Range settings row edits the viewport these describe. It reads the effective values
@@ -626,6 +632,55 @@ function AppContent() {
     currentSettings: { ...currentFileAnalysisSettings(), requests: analysisRequests },
     summaryMetrics: settings.fileSummaryMetrics,
     onSummaryMetricsChange: settings.setFileSummaryMetrics,
+    onJumpToTime:
+      sourceMode === "file" && !activeFileSession?.historyReleased && totalSamples > 0
+        ? (/** @type {number} */ timeSeconds) => {
+            const latest = latestHistoryTimestampMs(histSourceList);
+            const target = Math.max(0, timeSeconds) * 1000;
+            const index = nearestTimestampIndex(histSourceList, target);
+            if (index < 0) return;
+            const steps = totalSamples - 1 - index;
+            selectSnapshot(Math.max(0, latest - target) / 1000);
+
+            let sharedViewportHandled = false;
+            for (const panelId of workspaceState.panelOrder) {
+              const viewport = resolveAxisViewport(workspaceState, panelId, "time");
+              if (
+                !viewport ||
+                !("windowSec" in viewport) ||
+                (viewport.linked && sharedViewportHandled)
+              )
+                continue;
+              if (viewport.linked) sharedViewportHandled = true;
+              const { effectiveOffsetSamples, visibleSamples, maxOffsetSamples } =
+                getHistoryViewport(
+                  totalSamples,
+                  Math.min(viewport.windowSec, totalSamples * HIST_SAMPLE_SEC),
+                  viewport.offsetSec,
+                  HIST_SAMPLE_SEC,
+                  historyRetentionSec
+                );
+              if (
+                steps >= effectiveOffsetSamples &&
+                steps < effectiveOffsetSamples + visibleSamples
+              )
+                continue;
+              const offset = Math.max(
+                0,
+                Math.min(maxOffsetSamples, steps - Math.floor(visibleSamples / 2))
+              );
+              const next = { ...viewport, offsetSec: offset * HIST_SAMPLE_SEC };
+              if (viewport.linked) {
+                setHistoryOffsetSec(next.offsetSec);
+              } else {
+                setPanelControlsForPanel(panelId, {
+                  ...workspaceState.panelControlsById[panelId],
+                  ...writeLocalRange("time", workspaceState.panelsById[panelId].moduleId, next),
+                });
+              }
+            }
+          }
+        : null,
     onSelectFile,
     onReanalyzeFile,
     onRemoveFile,

@@ -31,6 +31,7 @@ import { createContext, useContext } from "react";
  *
  * @typedef {{
  *   selectedOffset: any,
+ *   selectedMediaTimestampMs?: number | null,
  *   setSelectedOffset: any,
  *   selectSnapshot: any,
  *   sourceMode: any,

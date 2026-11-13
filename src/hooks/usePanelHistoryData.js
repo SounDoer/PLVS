@@ -11,6 +11,8 @@ import {
 import { useHistoryData } from "../workspace/AudioDataContext.jsx";
 import { HIST_SAMPLE_SEC } from "./useLoudnessHistory.js";
 import { useHistoryInteraction } from "./useHistoryInteraction.js";
+import { nearestTimestampIndex } from "../lib/snapshotResolve.js";
+import { latestHistoryTimestampMs } from "../lib/historyTimestamps.js";
 
 const TIMELINE_MODULE_IDS = new Set(["loudness", "spectrogram", "waveform"]);
 
@@ -109,10 +111,32 @@ export function usePanelHistoryData(moduleId, axisViewportData = null, controls 
     historyMaxWindowSec
   );
 
+  const fileHistory = historyData?.sourceMode === "file" ? historyData.histSourceList : null;
+  const selectedFileIndex = fileHistory
+    ? nearestTimestampIndex(fileHistory, historyData.selectedMediaTimestampMs)
+    : -1;
   const selectedHistSteps =
-    historyData?.selectedOffset >= 0
-      ? Math.max(0, Math.round(historyData.selectedOffset / HIST_SAMPLE_SEC))
-      : -1;
+    selectedFileIndex >= 0
+      ? totalSamples - 1 - selectedFileIndex
+      : historyData?.selectedOffset >= 0
+        ? Math.max(0, Math.round(historyData.selectedOffset / HIST_SAMPLE_SEC))
+        : -1;
+  const selectTimelineSnapshot = useCallback(
+    (/** @type {number} */ offsetSec) => {
+      if (fileHistory?.length) {
+        const index = fileHistory.length - 1 - Math.round(offsetSec / HIST_SAMPLE_SEC);
+        const row =
+          typeof fileHistory.rowAt === "function" ? fileHistory.rowAt(index) : fileHistory[index];
+        const latest = latestHistoryTimestampMs(fileHistory);
+        if (Number.isFinite(latest) && Number.isFinite(row?.timestampMs)) {
+          historyData.selectSnapshot((latest - row.timestampMs) / 1000);
+          return;
+        }
+      }
+      historyData?.selectSnapshot?.(offsetSec);
+    },
+    [fileHistory, historyData]
+  );
   const hasValidSelection =
     historyData?.selectedOffset >= 0 &&
     totalSamples > 0 &&
@@ -181,7 +205,7 @@ export function usePanelHistoryData(moduleId, axisViewportData = null, controls 
     effectiveOffsetSamples: viewport.effectiveOffsetSamples,
     effectiveOffsetSec: viewport.effectiveOffsetSec,
     setSelectedOffset: historyData?.setSelectedOffset,
-    selectSnapshot: historyData?.selectSnapshot,
+    selectSnapshot: historyData?.selectSnapshot ? selectTimelineSnapshot : undefined,
     setHistoryOffsetSec,
     setHistoryWindowSec,
     setHistoryHudUntilTs,

@@ -53,6 +53,11 @@ decoded channel's maximum and occurrence time. **Loudest Range** shows the start
 Momentary or Short-term window within the track. A settings warning explains which changes need
 reanalyzing without discarding the previous result.
 
+Select a peak time in the details to jump to it, or select a loudest range to jump to its end.
+PLVS selects that point in the browsing timeline and scrolls it into view at the current zoom.
+A peak marked **Before Start** takes you to the first available point. If browsing history has been
+released, choose **Restore History** before jumping.
+
 **Summary Metrics** chooses and orders the displayed readings, including no readings at all.
 Integrated, LRA, and True Peak Max are the defaults. A narrow window puts remaining readings under
 **+N**. The choice is a global preference, independent of Presets and the Stats panel.

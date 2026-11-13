@@ -11,7 +11,7 @@ import { cn } from "../lib/utils.js";
  *   label: string,
  *   target: string,
  *   trigger: import("react").ReactNode,
- *   children: import("react").ReactNode,
+ *   children: import("react").ReactNode | ((close: () => void) => import("react").ReactNode),
  *   className?: string,
  *   align?: "start" | "center" | "end",
  * }} props
@@ -70,7 +70,7 @@ export function FileDetailPopover({ label, target, trigger, children, className,
           if (!returnFocusRef.current) event.preventDefault();
         }}
       >
-        {children}
+        {typeof children === "function" ? children(() => changeMode("closed")) : children}
       </PopoverContent>
     </Popover>
   );
