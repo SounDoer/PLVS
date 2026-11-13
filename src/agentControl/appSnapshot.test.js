@@ -50,6 +50,7 @@ describe("agent-control app snapshots", () => {
         "ui.quickTour.start",
         "ui.quickTour.next",
         "ui.quickTour.back",
+        "ui.action",
         "ui.targets",
         "ui.locate",
         "ui.close",

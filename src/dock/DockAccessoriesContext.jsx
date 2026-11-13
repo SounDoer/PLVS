@@ -34,9 +34,15 @@ import { useDock } from "./DockContext.jsx";
 import { useDockAccessoryBridge } from "./useDockAccessoryBridge.js";
 import { useDockAccessoryVisibility } from "./useDockAccessoryVisibility.js";
 import { DOCK_HEADER_HEIGHT } from "./dockSizing.js";
-import { buildAppStatusItems } from "../lib/appStatus.js";
+import { buildAppStatusItems, statusActionTarget, statusHelpTarget } from "../lib/appStatus.js";
 import { troubleshootingUrl } from "../lib/troubleshooting.js";
-import { openExternalUrl } from "../ipc/openExternal.js";
+import {
+  DOCS_URL,
+  SHARESETS_URL,
+  RELEASES_INDEX_URL,
+  openExternalUrl,
+} from "../ipc/openExternal.js";
+import { dialogueVadEngineOption } from "../lib/dialogueVadEngines.js";
 import { useDevelopmentEventFixtureAdapter } from "../dev/DevelopmentEventFixturesContext.jsx";
 import { developmentStatusItems } from "../dev/developmentStatusFixtureData.js";
 import { createUiNavigationError } from "../uiNavigation/uiNavigationModel.js";
@@ -76,6 +82,7 @@ const STATUS_FIXTURE_NAMES = {
  *   setImportActive: (value: boolean) => void,
  *   statusItems: import("../lib/appStatus.js").AppStatusItem[],
  *   statusOpen: boolean,
+ *   runStatusAction: (action: string, topic?: string) => Promise<{url?: string} | undefined>,
  *   openDockMenu: (view: string) => Promise<void>,
  *   getAccessoryTargets: () => { id: string, rect: any, surface: string }[],
  * }} DockAccessories
@@ -96,6 +103,7 @@ export function DockAccessoriesProvider({ children }) {
   const { updateControls } = useAppLifecycle();
   const { state: workspaceState, setActiveTab, setAxisViewport } = useWorkspaceStore();
   const {
+    dialogueVadEngine,
     historyRetentionSec,
     interfaceSize,
     settingsOpen,
@@ -179,10 +187,11 @@ export function DockAccessoriesProvider({ children }) {
     [docked, exitDockRestoringAttributes, raiseNotice]
   );
   const headerForced = statusFixture
-    ? statusFixture.phase === "capture-failed"
+    ? ["capture-failed", "speaker-layout"].includes(statusFixture.phase)
     : notice?.requiresAttention === true;
   const dockAccessoryVisibility = useDockAccessoryVisibility({
-    preserveOnBlur: Boolean(updateControls.details) || importActive,
+    preserveOnBlur:
+      Boolean(updateControls.details) || importActive || statusFixture?.phase === "speaker-layout",
     active: docked && !dockSuspended,
     edge: dockEdge,
     geometryVersion: dockHeight,
@@ -354,6 +363,55 @@ export function DockAccessoriesProvider({ children }) {
   );
   const statusItems = useMemo(() => JSON.parse(statusKey), [statusKey]);
   useUiStatusReport(statusItems);
+  const runStatusAction = useCallback(
+    async (action, topic) => {
+      if (action === "update") openUpdateDetails();
+      else if (action === "check-update") await updateControls.refreshUpdateCheck();
+      else if (action === "settings") setSettingsOpen(true);
+      else if (action === "help") {
+        const url = troubleshootingUrl(topic);
+        if (url) {
+          await openExternalUrl(url);
+          return { url };
+        }
+      }
+    },
+    [openUpdateDetails, setSettingsOpen, updateControls]
+  );
+  useUiNavigationTarget("statusAction", {
+    run: async (target, closeStatus) => {
+      const item = statusItems.find(
+        (candidate) =>
+          statusHelpTarget(candidate) === target || statusActionTarget(candidate) === target
+      );
+      if (!item) throw createUiNavigationError("uiActionUnavailable", { target });
+      if (target === statusHelpTarget(item)) {
+        if (docked) await closeStatus();
+        return runStatusAction("help", item.helpTopic);
+      }
+      if (item.action === "update" && !updateControls.updateInfo?.update) {
+        throw createUiNavigationError("uiActionUnavailable", { target });
+      }
+      await closeStatus();
+      await runStatusAction(item.action);
+      return { showUpdate: item.action === "update" };
+    },
+  });
+  useUiNavigationTarget("externalHelp", {
+    run: async (target) => {
+      const urls = {
+        "help:docs": DOCS_URL,
+        "help:releases": updateControls.updateInfo?.releaseUrl || RELEASES_INDEX_URL,
+        "help:sharesets": SHARESETS_URL,
+        "help:dialogue-detector": dialogueVadEngineOption(dialogueVadEngine).url,
+      };
+      if (!Object.hasOwn(urls, target))
+        throw createUiNavigationError("uiActionUnavailable", { target });
+      const url = urls[target];
+      await openExternalUrl(url);
+      return { url };
+    },
+  });
   const statusAdapter = (phase) => ({
     canEstablish: () =>
       !statusFixture &&
@@ -562,14 +620,7 @@ export function DockAccessoriesProvider({ children }) {
       } else if (type === "open-update") openUpdateDetails();
       else if (type === "status-action") {
         dockAccessoryVisibility.closeEditor();
-        if (payload.action === "update") openUpdateDetails();
-        else if (payload.action === "check-update") void updateControls.refreshUpdateCheck();
-        else if (payload.action === "help") {
-          const url = troubleshootingUrl(payload.topic);
-          if (url) void openExternalUrl(url);
-        } else if (payload.action === "settings") {
-          setSettingsOpen(true);
-        }
+        void runStatusAction(payload.action, payload.topic);
       } else if (type === "open-editor") {
         setHoveredDockPanelId(null);
         if (payload.view === "device") void refreshInventory();
@@ -733,7 +784,7 @@ export function DockAccessoriesProvider({ children }) {
       toggleAboveFullScreen,
       resetDockLayout,
       openUpdateDetails,
-      updateControls,
+      runStatusAction,
       shortcutActionRef,
     ]
   );
@@ -758,6 +809,7 @@ export function DockAccessoriesProvider({ children }) {
         exportProfileRef,
         setImportActive,
         statusItems,
+        runStatusAction,
         statusOpen: ["details", "speaker-layout"].includes(statusFixture?.phase),
         openDockMenu,
         getAccessoryTargets,

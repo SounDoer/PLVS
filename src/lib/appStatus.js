@@ -1,6 +1,17 @@
+import { troubleshootingUrl } from "./troubleshooting.js";
 import { describeAudioDrop } from "./captureHealth.js";
 
 /** @typedef {{ id: string, kind: string, text: string, details: string, action?: string, helpTopic?: string, phase?: string, requiresAttention?: boolean }} AppStatusItem */
+
+/** @param {AppStatusItem} item */
+export function statusHelpTarget(item) {
+  return troubleshootingUrl(item.helpTopic) ? `status-help:${item.id}:${item.helpTopic}` : null;
+}
+
+/** @param {AppStatusItem} item */
+export function statusActionTarget(item) {
+  return item.action ? `status-action:${item.id}:${item.action}` : null;
+}
 
 /**
  * Current conditions, rather than a history of old notifications.

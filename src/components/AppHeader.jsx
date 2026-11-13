@@ -48,6 +48,7 @@ const TOOLBAR_TRIGGER_OPEN_CLASS =
  *   statusItems?: import("../lib/appStatus.js").AppStatusItem[],
  *   statusOpen?: boolean,
  *   onStatusAction?: (action: string) => void,
+ *   onStatusHelp?: (topic: string) => void,
  *   sourceMode: string,
  *   fileDialogueDetection?: boolean,
  *   onToggleFileDialogueDetection?: () => void,
@@ -99,6 +100,7 @@ export function AppHeader({
   statusItems = [],
   statusOpen = false,
   onStatusAction,
+  onStatusHelp,
   sourceMode,
   fileDialogueDetection = false,
   onToggleFileDialogueDetection,
@@ -170,6 +172,7 @@ export function AppHeader({
         requestedOpen={statusOpen || openMenu === "status"}
         items={statusItems}
         onAction={onStatusAction}
+        onHelp={onStatusHelp}
         onOpenChange={(open) => onMenuOpenChange("status", open)}
       />
       {notice && statusItems.length === 0 ? (

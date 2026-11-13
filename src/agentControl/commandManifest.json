@@ -754,6 +754,47 @@
       }
     },
     {
+      "id": "ui.action",
+      "family": "ui",
+      "path": ["ui", "action"],
+      "usage": "plvs-cli ui action --target <target-id> --expected-revision <n> --expected-ui-generation <n> --json",
+      "summary": "Run a named Status action or open a fixed help destination.",
+      "execution": "runningApp",
+      "operation": "action",
+      "wireMethod": "ui.action",
+      "json": "required",
+      "expectedRevision": "required",
+      "dryRun": false,
+      "outputFile": "none",
+      "positionals": [],
+      "options": [
+        { "name": "--target", "mapsTo": "target", "required": true, "value": { "type": "string" } },
+        {
+          "name": "--expected-revision",
+          "mapsTo": "expectedRevision",
+          "required": true,
+          "value": { "type": "integer" }
+        },
+        {
+          "name": "--expected-ui-generation",
+          "mapsTo": "expectedUiGeneration",
+          "required": true,
+          "value": { "type": "integer" }
+        },
+        { "name": "--json", "required": true, "value": { "type": "boolean" } }
+      ],
+      "wireParams": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["target", "expectedRevision", "expectedUiGeneration"],
+        "properties": {
+          "target": { "type": "string" },
+          "expectedRevision": { "type": "integer", "minimum": 0, "maximum": 9007199254740991 },
+          "expectedUiGeneration": { "type": "integer", "minimum": 0, "maximum": 9007199254740991 }
+        }
+      }
+    },
+    {
       "id": "ui.targets",
       "family": "ui",
       "path": ["ui", "targets"],

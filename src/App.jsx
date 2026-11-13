@@ -172,6 +172,7 @@ function AppContent() {
     hoveredDockPanelId,
     statusItems,
     statusOpen,
+    runStatusAction,
     openDockMenu,
     setSettingsGeometry,
     setSettingsTargets,
@@ -571,11 +572,9 @@ function AppContent() {
     notice,
     statusItems,
     statusOpen,
-    onStatusAction: (action) => {
-      if (action === "update") updateControls.openDetails();
-      else if (action === "check-update") void updateControls.refreshUpdateCheck();
-      else if (action === "settings") setSettingsOpen(true);
-    },
+    runStatusAction,
+    onStatusAction: (action) => void runStatusAction(action),
+    onStatusHelp: (topic) => void runStatusAction("help", topic),
     sourceMode,
     fileDialogueDetection: settings.fileDialogueDetection,
     onToggleFileDialogueDetection: () =>

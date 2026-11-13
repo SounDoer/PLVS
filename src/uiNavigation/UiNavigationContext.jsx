@@ -301,7 +301,9 @@ export function UiNavigationProvider({
           .reverse()
           .find(
             (surface) =>
-              surface.origin !== "navigable" && !countsRef.current.get(surface.surfaceId)?.yields
+              surface.origin !== "navigable" &&
+              !countsRef.current.get(surface.surfaceId)?.yields &&
+              !(kind === "toolbarMenu" && target.menu === "status" && surface.kind === "status")
           );
         if (obstructingSurface) {
           throw createUiNavigationError(obstructingSurface.busy ? "uiBusy" : "uiConflict", {
@@ -505,6 +507,45 @@ export function UiNavigationProvider({
     (panelId) => targetsRef.current.get(`panelGestures:${panelId}`)?.current ?? null,
     []
   );
+  const runNamedAction = useCallback(
+    ({ target, expectedRevision, expectedUiGeneration }) =>
+      enqueueAction(async () => {
+        const currentRevision = getRevision();
+        if (Number.isSafeInteger(currentRevision) && currentRevision !== expectedRevision) {
+          throw createUiNavigationError("revisionConflict", { expectedRevision, currentRevision });
+        }
+        const { uiGeneration, surfaces } = stateRef.current;
+        if (uiGeneration !== expectedUiGeneration) {
+          throw createUiNavigationError("uiGenerationConflict", {
+            expectedUiGeneration,
+            currentUiGeneration: uiGeneration,
+          });
+        }
+        const statusAction = target.startsWith("status-");
+        const top = surfaces.filter((surface) => surface.kind !== "status").at(-1);
+        if (statusAction && (top?.kind !== "toolbarMenu" || top.target.menu !== "status")) {
+          throw createUiNavigationError("uiTargetNotVisible", { target });
+        }
+        const controller = targetsRef.current.get(
+          statusAction ? "statusAction" : "externalHelp"
+        )?.current;
+        if (!controller?.run) throw createUiNavigationError("uiActionUnavailable", { target });
+        const closeStatus = async () => {
+          const close = countsRef.current.get(top?.surfaceId)?.actionsRef.current.close;
+          if (close) {
+            await close();
+            await waitForSurfaceAbsent(top.surfaceId);
+          }
+        };
+        const result = await controller.run(target, closeStatus);
+        if (result?.showUpdate) {
+          const surface = await waitForSurface("update", {});
+          return { surface };
+        }
+        return result?.url ? { url: result.url } : {};
+      }),
+    [enqueueAction, getRevision, waitForSurface, waitForSurfaceAbsent]
+  );
   const inspectUi = useCallback(
     () =>
       projectUiInspection(stateRef.current, {
@@ -534,6 +575,7 @@ export function UiNavigationProvider({
     () => ({
       uiGeneration: state.uiGeneration,
       inspectUi,
+      runNamedAction,
       showSettings,
       showPanelSettings,
       showThemeEditor,
@@ -555,6 +597,7 @@ export function UiNavigationProvider({
       closeSurface,
       cancelSurface,
       inspectUi,
+      runNamedAction,
       showPanelSettings,
       showThemeEditor,
       showLoudnessProfileEditor,

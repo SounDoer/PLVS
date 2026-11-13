@@ -26,11 +26,12 @@ import { layoutsForChannelCount } from "@/math/channelLayoutTable.js";
 import { INTERFACE_SIZE_OPTIONS } from "@/settings/defaults.js";
 import { ThemePicker } from "./ThemePicker.jsx";
 import { SharesetsBrowseButton } from "./SharesetsBrowseButton.jsx";
-import { SHARESETS_URL } from "../ipc/openExternal.js";
+import { DOCS_URL, RELEASES_INDEX_URL, SHARESETS_URL } from "../ipc/openExternal.js";
 import { CopyableTextBlock } from "./CopyableTextBlock.jsx";
 import { UpdatePreferencesSettings } from "./UpdatePreferencesControls.jsx";
 import {
   DIALOGUE_VAD_ENGINE_OPTIONS,
+  dialogueVadEngineOption,
   DEFAULT_DIALOGUE_VAD_ENGINE,
 } from "@/lib/dialogueVadEngines.js";
 import { LinkButton } from "@/components/ui/link-button";
@@ -38,8 +39,6 @@ import { useUiNavigationTarget, useUiSurface } from "@/uiNavigation/UiNavigation
 import { UI_SETTINGS_SECTIONS, createUiNavigationError } from "@/uiNavigation/uiNavigationModel.js";
 import { useDropdownNavigation } from "@/uiNavigation/useDropdownNavigation.js";
 import { IconAction } from "@/components/ui/icon-action";
-const RELEASES_URL = "https://github.com/SounDoer/PLVS/releases";
-const DOCS_URL = "https://plvs.soundoer.com/docs/";
 const AGENT_CONTROL_PROMPT_STARTER =
   "Use PLVS’s built-in Agent Control CLI (`plvs-cli`). First inspect the available capabilities and current app state, then help me...";
 
@@ -314,7 +313,7 @@ export function SettingsContent({
   const historyDropdown = useDropdownNavigation("setting:analysis.historyRetention");
   const dialogueDropdown = useDropdownNavigation("setting:analysis.dialogueVadEngine");
   const layoutDropdown = useDropdownNavigation("setting:channels.layout");
-  const effectiveReleaseUrl = releaseUrl || RELEASES_URL;
+  const effectiveReleaseUrl = releaseUrl || RELEASES_INDEX_URL;
   const updateCheckDisabled = ["checking", "disabled", "managed"].includes(updateStatus);
   let updateStatusText = "Checking...";
   if (updateStatus === "idle") updateStatusText = "Not Checked";
@@ -348,9 +347,7 @@ export function SettingsContent({
   // Without this line the two disagree in silence.
   const agentControlSilent = agentControlEnabled && !agentControlStatus?.listening;
   const agentControlStartError = agentControlStatus?.startError ?? "";
-  const selectedDialogueVadEngine =
-    DIALOGUE_VAD_ENGINE_OPTIONS.find((option) => option.id === dialogueVadEngine) ??
-    DIALOGUE_VAD_ENGINE_OPTIONS[0];
+  const selectedDialogueVadEngine = dialogueVadEngineOption(dialogueVadEngine);
   const channelLayouts = layoutsForChannelCount(channelCount);
   const selectedStandardLayout = channelLayouts.find((layout) => layout.id === selectedLayoutId);
   const showChannelLayoutSelect =

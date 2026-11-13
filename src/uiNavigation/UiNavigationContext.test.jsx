@@ -71,10 +71,22 @@ describe("UiNavigationProvider", () => {
     });
   });
 
-  it("reports status conditions by identity and kind only", () => {
+  it("reports status help and action IDs without notice wording or details", () => {
     const items = [
-      { id: "audio-drop", kind: "warning", text: "Audio Dropped", details: "private" },
-      { id: "update", kind: "update", text: "Update Ready · v1.0.0", phase: "ready" },
+      {
+        id: "audio-drop",
+        kind: "warning",
+        text: "Audio Dropped",
+        details: "private",
+        helpTopic: "audio-dropped",
+      },
+      {
+        id: "update",
+        kind: "update",
+        text: "Update Ready · v1.0.0",
+        phase: "ready",
+        action: "update",
+      },
     ];
     const { result } = renderHook(
       () => {
@@ -85,9 +97,55 @@ describe("UiNavigationProvider", () => {
     );
 
     expect(result.current.inspectUi().status).toEqual([
-      { id: "audio-drop", kind: "warning" },
-      { id: "update", kind: "update" },
+      {
+        id: "audio-drop",
+        kind: "warning",
+        helpTopic: "audio-dropped",
+        helpTarget: "status-help:audio-drop:audio-dropped",
+      },
+      {
+        id: "update",
+        kind: "update",
+        action: "update",
+        actionTarget: "status-action:update:update",
+      },
     ]);
+  });
+
+  it("runs Status actions only with a current open menu and UI generation", async () => {
+    const run = vi.fn(async () => ({ url: "https://plvs.soundoer.com/docs/" }));
+    const { result, rerender } = renderHook(
+      ({ open }) => {
+        useUiNavigationTarget("statusAction", { run });
+        useUiSurface({
+          active: open,
+          kind: "toolbarMenu",
+          origin: "navigable",
+          target: { menu: "status", presentation: "dock" },
+        });
+        return useUiNavigation();
+      },
+      { wrapper, initialProps: { open: false } }
+    );
+    const params = {
+      target: "status-help:notice:system-output-speaker-layout",
+      expectedRevision: 7,
+      expectedUiGeneration: result.current.inspectUi().uiGeneration,
+    };
+    await expect(result.current.runNamedAction(params)).rejects.toMatchObject({
+      reason: "uiTargetNotVisible",
+    });
+    rerender({ open: true });
+    await expect(result.current.runNamedAction(params)).rejects.toMatchObject({
+      reason: "uiGenerationConflict",
+    });
+    await expect(
+      result.current.runNamedAction({
+        ...params,
+        expectedUiGeneration: result.current.inspectUi().uiGeneration,
+      })
+    ).resolves.toEqual({ url: "https://plvs.soundoer.com/docs/" });
+    expect(run).toHaveBeenCalledOnce();
   });
 
   it("tracks the live window form and visibility owned by the app", () => {

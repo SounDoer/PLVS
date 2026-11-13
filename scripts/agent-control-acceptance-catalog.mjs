@@ -157,6 +157,7 @@ const groups = [
       "ui.show.addPanel",
       "ui.show.sourceGroup",
       "ui.show.dropdown",
+      "ui.action",
       "ui.quickTour.start",
       "ui.quickTour.next",
       "ui.quickTour.back",

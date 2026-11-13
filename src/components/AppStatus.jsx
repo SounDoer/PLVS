@@ -10,6 +10,7 @@ import {
 import { Popover, PopoverContent, PopoverTrigger } from "./ui/popover.jsx";
 import { LinkButton } from "./ui/link-button.jsx";
 import { openExternalUrl } from "../ipc/openExternal.js";
+import { statusHelpTarget } from "../lib/appStatus.js";
 import { troubleshootingUrl } from "../lib/troubleshooting.js";
 import { cn } from "../lib/utils.js";
 import { useCallback, useEffect, useState } from "react";
@@ -83,8 +84,9 @@ export function AppStatusList({
                         : "Open Settings"}
                   </LinkButton>
                 ) : null}
-                {troubleshootingUrl(item.helpTopic) ? (
+                {statusHelpTarget(item) ? (
                   <LinkButton
+                    data-ui-target={statusHelpTarget(item)}
                     className="mt-1 flex w-fit items-center gap-1 text-primary"
                     onClick={() => {
                       if (onHelp) onHelp(item.helpTopic);
@@ -132,8 +134,8 @@ export function AppStatusSummary({ items, onClick, ...props }) {
   );
 }
 
-/** @param {{ items: import("../lib/appStatus.js").AppStatusItem[], onAction?: (action: string) => void, onOpenChange?: (open: boolean) => void, requestedOpen?: boolean }} props */
-export function AppStatusPopover({ items, onAction, onOpenChange, requestedOpen = false }) {
+/** @param {{ items: import("../lib/appStatus.js").AppStatusItem[], onAction?: (action: string) => void, onOpenChange?: (open: boolean) => void, requestedOpen?: boolean, onHelp?: (topic: string) => void }} props */
+export function AppStatusPopover({ items, onAction, onHelp, onOpenChange, requestedOpen = false }) {
   const [open, setOpen] = useState(false);
   useEffect(() => {
     setOpen(requestedOpen);
@@ -160,6 +162,7 @@ export function AppStatusPopover({ items, onAction, onOpenChange, requestedOpen 
       >
         <AppStatusList
           items={items}
+          onHelp={onHelp}
           onAction={(action) => {
             changeOpen(false);
             onAction?.(action);

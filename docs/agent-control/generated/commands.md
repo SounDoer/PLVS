@@ -24,6 +24,7 @@ Manifest version `1`. Entries are shown in stable presentation order.
 | `ui.quickTour.start` | `ui quick-tour start` | runningApp / action | required | no | none |
 | `ui.quickTour.next` | `ui quick-tour next` | runningApp / action | required | no | none |
 | `ui.quickTour.back` | `ui quick-tour back` | runningApp / action | required | no | none |
+| `ui.action` | `ui action` | runningApp / action | required | no | none |
 | `ui.targets` | `ui targets` | runningApp / query | none | no | none |
 | `ui.locate` | `ui locate` | runningApp / query | none | no | none |
 | `ui.close` | `ui close` | runningApp / action | required | no | none |
@@ -577,6 +578,32 @@ None.
 | --- | --- | --- | --- |
 | `--expected-revision` | local only | yes | integer; 0 to 9007199254740991 |
 | `--expected-ui-generation` | `expectedUiGeneration` | yes | integer; 0 to 9007199254740991 |
+| `--json` | local only | yes | boolean |
+
+## `ui.action`
+
+Run a named Status action or open a fixed help destination.
+
+- CLI path: `ui action`
+- Execution: `runningApp`; operation: `action`
+- JSON: `required`; expected revision: `required`; dry-run: `false`; output file: `none`
+- Wire method: `ui.action`
+
+```text
+plvs-cli ui action --target <target-id> --expected-revision <n> --expected-ui-generation <n> --json
+```
+
+### Positionals
+
+None.
+
+### Options
+
+| Name | Maps to | Required | Value |
+| --- | --- | --- | --- |
+| `--target` | `target` | yes | string |
+| `--expected-revision` | `expectedRevision` | yes | integer |
+| `--expected-ui-generation` | `expectedUiGeneration` | yes | integer |
 | `--json` | local only | yes | boolean |
 
 ## `ui.targets`

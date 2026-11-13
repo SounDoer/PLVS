@@ -13,6 +13,12 @@ export const DIALOGUE_VAD_ENGINE_OPTIONS = [
   },
 ];
 
+export function dialogueVadEngineOption(id) {
+  return (
+    DIALOGUE_VAD_ENGINE_OPTIONS.find((option) => option.id === id) ?? DIALOGUE_VAD_ENGINE_OPTIONS[0]
+  );
+}
+
 export const DEFAULT_DIALOGUE_VAD_ENGINE = "firered";
 
 const DIALOGUE_VAD_ENGINE_IDS = new Set(DIALOGUE_VAD_ENGINE_OPTIONS.map((option) => option.id));

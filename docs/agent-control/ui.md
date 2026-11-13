@@ -15,17 +15,18 @@ supported close/cancel actions, and only the state needed to navigate it safely.
 feedback text, diagnostics, DOM details, geometry, and other authored content are never returned.
 
 `status` lists the conditions behind the toolbar status entry, in the order it shows them, by
-`id` (`notice`, `audio-drop`, `channel-layout`, `update`) and `kind` only. Their wording and details
-stay out. A change in this list does not advance `uiGeneration`.
+`id` (`notice`, `audio-drop`, `channel-layout`, `update`) and `kind`. Where available, entries also
+include `helpTopic`, `helpTarget`, `action`, and `actionTarget`. Notice wording and details stay
+out. A change in this list does not advance `uiGeneration`, so action IDs encode the current help
+topic or action and are checked again immediately before dispatch.
 
 This is intentionally separate from `app.inspect`. The application snapshot owns durable product
 state and the global `revision`; `ui inspect` owns temporary presentation state. Callers normally
 retain both tokens before navigation.
 
-Development status walkthroughs register a read-only `status` event surface with only its named
-fixture phase. It has no public show command or result action; the exact private fixture reset token
-restores the real status presentation. Measurement values and notice contents remain outside UI
-inspection.
+Development status walkthroughs register a read-only `status` event marker with the named fixture
+phase. Open its toolbar menu with `ui show toolbar-menu --menu status` as for a real notice. The
+private fixture reset token restores the real status presentation.
 
 The public `show` targets are:
 
@@ -81,6 +82,20 @@ ID is never treated as a Dock Panel ID, or the reverse.
 Every CLI request is scoped to one Agent Control instance. With several workbenches running, use
 `instances` and the global `--instance <instance-id>` option. Surface IDs and UI generations belong
 only to that selected instance and must not be reused with another workbench.
+
+## Status actions and fixed help destinations
+
+Use `ui inspect` to read the current Status entries, then open the Status toolbar menu.
+Run `ui action --target <id>` with the revision and UI generation returned by the open
+command. Pass the entry's `helpTarget` for Troubleshooting or `actionTarget` for its in-app
+action. A closed Status menu or a target that no longer applies is refused. Use `ui locate`
+with `helpTarget` to find the rendered Troubleshooting control in the main window or Dock.
+The pointer target for an in-app Status action remains `status-action:<id>`.
+
+Fixed help destinations are `help:docs`, `help:releases`, `help:sharesets`, and
+`help:dialogue-detector`. The last uses the current Dialogue Detection setting. They
+can be opened directly. A successful external action returns the URL accepted by the
+system opener. Browser rendering and scrolling are outside the command result.
 
 ## Two concurrency tokens
 

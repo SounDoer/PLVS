@@ -1,3 +1,5 @@
+import { statusActionTarget, statusHelpTarget } from "../lib/appStatus.js";
+
 export const UI_SETTINGS_SECTIONS = Object.freeze([
   "behavior",
   "shortcuts",
@@ -225,7 +227,16 @@ export const UI_STATUS_IDS = Object.freeze(["notice", "audio-drop", "channel-lay
 export function projectUiStatus(items) {
   return (Array.isArray(items) ? items : [])
     .filter((item) => UI_STATUS_IDS.includes(item?.id))
-    .map((item) => ({ id: item.id, kind: String(item.kind ?? "info") }));
+    .map((item) => {
+      const help = statusHelpTarget(item);
+      const action = statusActionTarget(item);
+      return {
+        id: item.id,
+        kind: String(item.kind ?? "info"),
+        ...(help && { helpTopic: item.helpTopic, helpTarget: help }),
+        ...(action && { action: item.action, actionTarget: action }),
+      };
+    });
 }
 
 export function projectUiInspection(

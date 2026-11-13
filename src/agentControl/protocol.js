@@ -424,13 +424,19 @@ export function normalizeAgentControlRequest(input) {
     };
   }
 
-  if (["ui.show.panelHelp", "ui.show.sourceGroup", "ui.show.dropdown"].includes(input.method)) {
+  if (
+    ["ui.show.panelHelp", "ui.show.sourceGroup", "ui.show.dropdown", "ui.action"].includes(
+      input.method
+    )
+  ) {
     const name =
       input.method === "ui.show.panelHelp"
         ? "panelId"
         : input.method === "ui.show.sourceGroup"
           ? "group"
-          : "control";
+          : input.method === "ui.action"
+            ? "target"
+            : "control";
     const field = unknownField(
       input.params,
       new Set([name, "expectedRevision", "expectedUiGeneration"])
@@ -444,7 +450,7 @@ export function normalizeAgentControlRequest(input) {
     const valid =
       name === "group"
         ? SOURCE_GROUPS.includes(value)
-        : name === "control"
+        : name === "control" || name === "target"
           ? isUiTargetId(value)
           : typeof value === "string" && value.trim() !== "";
     if (!valid) return invalidParams(`$.params.${name}`, `${name} is invalid.`);
