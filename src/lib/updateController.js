@@ -16,6 +16,15 @@ export function releaseUrlForVersion(version) {
     : null;
 }
 
+/**
+ * The newest known update. A later feed check supersedes an older staged package, so the staged
+ * version must not hide it.
+ */
+export function newestUpdateTarget({ ready, candidate, details }) {
+  if (ready && candidate && candidate.version !== ready.version) return candidate;
+  return ready ?? candidate ?? details?.target ?? null;
+}
+
 /** One owner for update decisions. Dependencies keep native handoff and race tests deterministic. */
 export function createUpdateController({
   invoke,
@@ -155,15 +164,31 @@ export function createUpdateController({
       const candidate = await invoke("update_check", { automatic });
       if (automatic && (requestGeneration !== generation || !preferences.autoCheck)) return;
       emit({ candidate, checkStatus: "ok" });
-      // One attempt per scheduled check. Failed transfers wait for Check Now or the next interval.
+      // Details frozen on a version that is not staged keep it. Details offering the staged package
+      // follow a newer version, because staging it replaces and removes that older package.
+      const details = state.details;
+      const supersedable =
+        !details ||
+        (details.origin !== "fixture" &&
+          details.staged &&
+          details.target.id === state.ready?.id &&
+          !transfer);
+      // One attempt per check. Failed transfers wait for Check or the next interval.
       if (
-        automatic &&
         preferences.autoDownload &&
         candidate &&
         candidate.version !== state.ready?.version &&
-        !state.details &&
+        supersedable &&
         !confirming
       ) {
+        if (details) {
+          // Until verification promotes it, the newer target shows download progress and blocks
+          // confirmation, so the older package cannot be installed while it is being replaced.
+          emit({
+            details: { ...details, target: candidate, staged: false },
+            error: failedAttemptError(candidate),
+          });
+        }
         await download(candidate, true);
       }
     } catch {
@@ -177,10 +202,13 @@ export function createUpdateController({
     }
   }
 
-  function openDetails(
-    target = state.ready ?? state.candidate ?? state.details?.target,
-    origin = "manual"
-  ) {
+  function failedAttemptError(target) {
+    return failedAttempt && (!failedAttempt.version || failedAttempt.version === target.version)
+      ? failedAttempt.error
+      : null;
+  }
+
+  function openDetails(target = newestUpdateTarget(state), origin = "manual") {
     if (!available || !target || busy()) return;
     if (state.details) {
       emit({ details: { ...state.details, presentation: ++presentation } });
@@ -197,10 +225,7 @@ export function createUpdateController({
         presentation: ++presentation,
       },
       installStatus: "idle",
-      error:
-        failedAttempt && (!failedAttempt.version || failedAttempt.version === target.version)
-          ? failedAttempt.error
-          : null,
+      error: failedAttemptError(target),
     });
   }
 

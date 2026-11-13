@@ -1,5 +1,9 @@
 import { describe, expect, it, vi } from "vitest";
-import { createUpdateController, releaseUrlForVersion } from "./updateController.js";
+import {
+  createUpdateController,
+  newestUpdateTarget,
+  releaseUrlForVersion,
+} from "./updateController.js";
 import { dockUpdateStatus } from "../dock/dockUpdateStatus.js";
 import { buildAppStatusItems } from "./appStatus.js";
 
@@ -300,6 +304,91 @@ describe("shared update controller", () => {
       packageId: "staged-a",
       startup: false,
     });
+  });
+
+  it("replaces an older staged startup offer with a newer automatic download", async () => {
+    const pending = deferred();
+    const { controller, invoke, prepare } = setup();
+    await controller.setPreferences(prefs);
+    invoke.mockResolvedValueOnce({
+      enabled: true,
+      installationSupported: true,
+      freshSession: true,
+      ready: a,
+    });
+    await controller.initialize({ eligible: true });
+    expect(controller.getSnapshot().details).toMatchObject({ target: a, staged: true });
+
+    invoke.mockResolvedValueOnce(b).mockImplementationOnce(() => pending.promise);
+    const checking = controller.check(true);
+    await vi.waitFor(() => expect(controller.getSnapshot().downloading).toBe(true));
+    expect(invoke).toHaveBeenCalledWith("update_download", { candidateId: "b", automatic: true });
+    expect(controller.getSnapshot().details).toMatchObject({
+      target: b,
+      staged: false,
+      origin: "startup",
+    });
+    // The older package is being replaced, so confirmation waits for the newer one.
+    await controller.confirmInstall();
+    expect(prepare).not.toHaveBeenCalled();
+
+    const ready = { ...b, id: "staged-b" };
+    pending.resolve(ready);
+    await checking;
+    expect(controller.getSnapshot().details).toMatchObject({ target: ready, staged: true });
+    await controller.confirmInstall();
+    expect(invoke).toHaveBeenCalledWith("update_prepare_install", {
+      packageId: "staged-b",
+      startup: true,
+    });
+  });
+
+  it("stages a newer version from Check when automatic downloading is on", async () => {
+    const { controller, invoke } = setup();
+    await controller.setPreferences(prefs);
+    invoke.mockResolvedValueOnce({
+      enabled: true,
+      installationSupported: true,
+      freshSession: false,
+      ready: a,
+    });
+    await controller.initialize({ eligible: true });
+    invoke.mockResolvedValueOnce(b).mockResolvedValueOnce({ ...b, id: "staged-b" });
+    await controller.check();
+    expect(controller.getSnapshot().ready.id).toBe("staged-b");
+    expect(controller.getSnapshot().details).toBeNull();
+  });
+
+  it("does not stage from Check when automatic downloading is off", async () => {
+    const { controller, invoke } = setup();
+    await controller.setPreferences({ ...prefs, autoDownload: false });
+    await controller.initialize();
+    await controller.check();
+    expect(controller.getSnapshot().candidate).toEqual(a);
+    expect(invoke).not.toHaveBeenCalledWith("update_download", expect.anything());
+  });
+
+  it("prefers a newer checked version over an older staged package", () => {
+    expect(newestUpdateTarget({ ready: a, candidate: b, details: null })).toBe(b);
+    expect(newestUpdateTarget({ ready: a, candidate: { ...a, id: "x" }, details: null })).toBe(a);
+    expect(newestUpdateTarget({ ready: null, candidate: b, details: null })).toBe(b);
+    expect(newestUpdateTarget({ ready: null, candidate: null, details: { target: a } })).toBe(a);
+  });
+
+  it("opens details on the newer checked version instead of the older staged package", async () => {
+    const { controller, invoke } = setup();
+    await controller.setPreferences({ ...prefs, autoDownload: false });
+    invoke.mockResolvedValueOnce({
+      enabled: true,
+      installationSupported: true,
+      freshSession: false,
+      ready: a,
+    });
+    await controller.initialize();
+    invoke.mockResolvedValueOnce(b);
+    await controller.check();
+    controller.openDetails();
+    expect(controller.getSnapshot().details).toMatchObject({ target: b, staged: false });
   });
 
   it("offers an eligible cached target only once and skip retains the cache", async () => {

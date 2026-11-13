@@ -116,7 +116,8 @@ does not erase an older verified ready package. Update details identify the sele
 independently of the release notes.
 **Auto Check for Updates** controls startup and twelve-hour checks. **Auto Download Updates** requires checking to be enabled. Turning checking off also turns downloading
 off; turning checking back on leaves downloading off. **Check** remains an explicit action when
-automatic checking is off. Preferences are shared across workbenches and are not imported from a
+automatic checking is off. With **Auto Download Updates** on, **Check** also downloads a newer
+version in the background. Preferences are shared across workbenches and are not imported from a
 configuration profile.
 
 Turning automatic downloading off cancels background work and removes the staged update. A manual
@@ -137,7 +138,9 @@ release download when the installed package predates this support or system tool
 
 Downloaded updates are offered on a later fresh launch. **Skip This Time** or closing details keeps
 the package without installing it. Details keep their selected version even if another check
-finishes. If the selected version is still downloading, details show its progress and temporarily
+finishes, with one exception: when details offer an already downloaded package and automatic
+downloading finds a newer version, details switch to the newer version, which replaces the older
+package. If the selected version is still downloading, details show its progress and temporarily
 disable **Update and Restart**; when verification finishes, the same view becomes **Update Ready**
 without reporting the active download as an error. If that package has been replaced or removed,
 confirmation fails safely and asks you to reopen details. A previously downloaded package can be

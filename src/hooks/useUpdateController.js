@@ -4,6 +4,7 @@ import { listen } from "@tauri-apps/api/event";
 import { relaunch } from "@tauri-apps/plugin-process";
 import {
   createUpdateController,
+  newestUpdateTarget,
   RELEASES_URL,
   UPDATE_CHECK_INTERVAL_MS,
 } from "../lib/updateController.js";
@@ -67,7 +68,7 @@ export function useUpdateController({ preferences, startupEligible }) {
     if (enabledNow && coordinator && state.enabled) void controller.check(true);
   }, [controller, coordinator, state.enabled, preferences?.autoDownload]);
 
-  const target = state.ready ?? state.candidate ?? state.details?.target;
+  const target = newestUpdateTarget(state);
   return {
     ...state,
     updateInfo: {
