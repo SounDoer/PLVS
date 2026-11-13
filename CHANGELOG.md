@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.26.2] - 2026-11-13
+
+### Added
+
+- Queue multiple files for analysis in File Mode, inspect completed results while the queue runs,
+  and cancel or resume the batch. Agent Control can manage the same queue.
+- Jump from a peak time or loudest range in File Summary to its position on the timeline.
+- Open troubleshooting guidance from relevant Status notices. Agent Control can inspect and
+  invoke available Status actions.
+
+### Fixed
+
+- Clearing the spectrogram releases the history it was drawing from.
+
 ## [0.26.1] - 2026-11-13
 
 ### Added
