@@ -632,11 +632,32 @@ impl FrontendEmitter for TauriFrontendEmitter {
 #[derive(Default)]
 pub struct AgentControlState {
   broker: Mutex<Option<Broker>>,
+  /// Whether the main window's bridge is listening. This belongs to the process, not to one
+  /// broker: an endpoint restart installs a new broker while the same frontend keeps listening.
+  frontend_listening: Mutex<bool>,
 }
 
 impl AgentControlState {
+  /// Installs the broker for a newly started endpoint. A frontend that announced itself to the
+  /// previous broker is still listening, so the new one starts ready; otherwise a restart that
+  /// the frontend never sees, such as the handoff to a promoted coordinator, would leave every
+  /// request answered with `frontendNotReady` until the window reloaded.
   pub fn install(&self, broker: Broker) {
+    let listening = *self
+      .frontend_listening
+      .lock()
+      .expect("agent-control state poisoned");
+    if listening {
+      let _ = broker.frontend_ready();
+    }
     *self.broker.lock().expect("agent-control state poisoned") = Some(broker);
+  }
+
+  fn set_frontend_listening(&self, listening: bool) {
+    *self
+      .frontend_listening
+      .lock()
+      .expect("agent-control state poisoned") = listening;
   }
 
   pub fn broker(&self) -> Option<Broker> {
@@ -676,7 +697,9 @@ pub fn agent_control_frontend_ready(
 ) -> Result<(), String> {
   main_broker(window.label(), &state)?
     .frontend_ready()
-    .map_err(|error| error.to_string())
+    .map_err(|error| error.to_string())?;
+  state.set_frontend_listening(true);
+  Ok(())
 }
 
 #[tauri::command]
@@ -684,7 +707,9 @@ pub fn agent_control_frontend_not_ready(
   window: tauri::WebviewWindow,
   state: tauri::State<'_, AgentControlState>,
 ) -> Result<(), String> {
-  main_broker(window.label(), &state)?.frontend_not_ready();
+  let broker = main_broker(window.label(), &state)?;
+  state.set_frontend_listening(false);
+  broker.frontend_not_ready();
   Ok(())
 }
 
@@ -786,6 +811,38 @@ mod tests {
         .dispatch(request("after-unmount"))
         .unwrap_err()
         .reason,
+      BrokerErrorReason::FrontendNotReady
+    );
+  }
+
+  #[test]
+  fn a_restarted_endpoint_stays_ready_for_a_frontend_that_is_still_listening() {
+    let state = AgentControlState::default();
+    let (first, _) = broker(4, Duration::from_secs(1));
+    state.install(first.clone());
+    first.frontend_ready().unwrap();
+    state.set_frontend_listening(true);
+
+    // Coordinator promotion: the endpoint stops and a new broker is installed, unseen by the
+    // frontend, which therefore never announces itself again.
+    first.shutdown();
+    let (second, emitter) = broker(4, Duration::from_secs(1));
+    state.install(second.clone());
+
+    second.dispatch(request("after-handoff")).unwrap();
+    assert_eq!(emitter.requests.lock().unwrap().len(), 1);
+  }
+
+  #[test]
+  fn a_new_endpoint_waits_for_a_frontend_that_is_not_listening() {
+    let state = AgentControlState::default();
+    let (first, _) = broker(4, Duration::from_secs(1));
+    state.install(first);
+    state.set_frontend_listening(false);
+    let (second, _) = broker(4, Duration::from_secs(1));
+    state.install(second.clone());
+    assert_eq!(
+      second.dispatch(request("before-ready")).unwrap_err().reason,
       BrokerErrorReason::FrontendNotReady
     );
   }
