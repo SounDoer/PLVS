@@ -240,7 +240,7 @@ const groups = [
   {
     scenario: "update-check",
     disposition: "external",
-    commands: ["update.check"],
+    commands: ["update.check", "update.install"],
     owner: "update",
   },
   {

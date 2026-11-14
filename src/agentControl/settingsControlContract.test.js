@@ -28,10 +28,14 @@ const RAW_SETTINGS = {
   interfaceSize: DEFAULT_INTERFACE_SIZE,
   historyRetentionSec: DEFAULT_HISTORY_RETENTION_SEC,
   dialogueVadEngine: DEFAULT_DIALOGUE_VAD_ENGINE,
+  updatePreferences: { choiceMade: true, autoCheck: true, autoDownload: false },
 };
 
 const CONTEXT = {
   autostartReady: true,
+  updatesAvailable: true,
+  updateInstallationSupported: true,
+  askToSendCrashReports: true,
   shortcutsReady: true,
   shortcutCapturing: false,
   shortcutRegistrationErrors: {},

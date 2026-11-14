@@ -858,6 +858,27 @@ export function normalizeAgentControlRequest(input) {
     };
   }
 
+  if (input.method === "update.install") {
+    const field = unknownField(input.params, new Set(["version", "expectedRevision"]));
+    if (field) return invalidParams(`$.params.${field}`, `Unknown parameter: ${field}.`);
+    const revisionError = validateExpectedRevision(input.params);
+    if (revisionError) return revisionError;
+    if (
+      typeof input.params.version !== "string" ||
+      !/^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?$/.test(input.params.version)
+    ) {
+      return invalidParams("$.params.version", "version must be a version such as 0.27.0.");
+    }
+    return {
+      ok: true,
+      request: {
+        id: input.id,
+        method: input.method,
+        params: { version: input.params.version, expectedRevision: input.params.expectedRevision },
+      },
+    };
+  }
+
   if (input.method === "window.move") {
     const field = unknownField(input.params, new Set(["monitor", "x", "y", "expectedRevision"]));
     if (field) return invalidParams(`$.params.${field}`, `Unknown parameter: ${field}.`);

@@ -143,6 +143,10 @@ pub enum ControlCommand {
   UpdateCheck {
     expected_revision: u64,
   },
+  UpdateInstall {
+    version: String,
+    expected_revision: u64,
+  },
   UiCancel {
     surface_id: String,
     expected_revision: u64,
@@ -1511,7 +1515,7 @@ fn parse_workbench_args(args: &[String]) -> Result<ControlCommand, String> {
 }
 
 fn parse_update_args(args: &[String]) -> Result<ControlCommand, String> {
-  const USAGE: &str = "Usage:\n  plvs-cli update inspect --json\n  plvs-cli update check --expected-revision <n> --json";
+  const USAGE: &str = "Usage:\n  plvs-cli update inspect --json\n  plvs-cli update check --expected-revision <n> --json\n  plvs-cli update install --version <version> --expected-revision <n> --json";
   if args.iter().any(|arg| is_help(arg)) {
     return Ok(ControlCommand::FamilyHelp("update".to_string()));
   }
@@ -1521,9 +1525,11 @@ fn parse_update_args(args: &[String]) -> Result<ControlCommand, String> {
   let [action, options @ ..] = args else {
     return Err(USAGE.to_string());
   };
-  if action != "check" {
+  if action != "check" && action != "install" {
     return Err(USAGE.to_string());
   }
+  let installing = action == "install";
+  let mut version = None;
   let mut expected_revision = None;
   let mut json = false;
   let mut index = 0;
@@ -1540,11 +1546,29 @@ fn parse_update_args(args: &[String]) -> Result<ControlCommand, String> {
         )?);
         index += 2;
       }
+      "--version" if installing && version.is_none() => {
+        version = Some(
+          options
+            .get(index + 1)
+            .filter(|value| !value.trim().is_empty())
+            .ok_or_else(|| "Missing value for --version.".to_string())?
+            .clone(),
+        );
+        index += 2;
+      }
       value => return Err(format!("Unknown or duplicate update option: {value}")),
     }
   }
   if !json {
-    return Err("The update check action requires --json.".to_string());
+    return Err(format!("The update {action} action requires --json."));
+  }
+  if installing {
+    return Ok(ControlCommand::UpdateInstall {
+      version: version
+        .ok_or_else(|| "The update install action requires --version.".to_string())?,
+      expected_revision: expected_revision
+        .ok_or_else(|| "The update install action requires --expected-revision.".to_string())?,
+    });
   }
   Ok(ControlCommand::UpdateCheck {
     expected_revision: expected_revision
@@ -4247,7 +4271,8 @@ impl ControlFailure {
         | "fileSessionNotFound"
         | "fixtureNotFound"
         | "dockPanelNotFound"
-        | "monitorNotFound",
+        | "monitorNotFound"
+        | "updateNotFound",
       ) => 3,
       (
         _,
@@ -4284,6 +4309,8 @@ impl ControlFailure {
         | "windowHidden"
         | "quitRefused"
         | "workbenchUnavailable"
+        | "updateVersionMismatch"
+        | "updateInstallationUnsupported"
         | "updateUnavailable",
       ) => 4,
       (_, "timeout" | "cancelled" | "uiNotSettled") => 5,
@@ -4340,6 +4367,7 @@ fn command_name(command: &ControlCommand) -> String {
     ControlCommand::WorkbenchLifecycle { method, .. } => method.clone(),
     ControlCommand::UpdateInspect => "update.inspect".to_string(),
     ControlCommand::UpdateCheck { .. } => "update.check".to_string(),
+    ControlCommand::UpdateInstall { .. } => "update.install".to_string(),
     ControlCommand::UiCancel { .. } => "ui.cancel".to_string(),
     ControlCommand::EditorDraftRead { method, .. }
     | ControlCommand::EditorDraftMutation { method, .. } => method.clone(),
@@ -4681,6 +4709,13 @@ fn request_for_command<R: Read>(
     } => serde_json::json!({
       "width": width,
       "height": height,
+      "expectedRevision": expected_revision,
+    }),
+    ControlCommand::UpdateInstall {
+      version,
+      expected_revision,
+    } => serde_json::json!({
+      "version": version,
       "expectedRevision": expected_revision,
     }),
     ControlCommand::WindowMove {
@@ -6340,6 +6375,43 @@ mod tests {
     ]))
     .unwrap();
     assert_eq!(command_name(&moved), "window.move");
+    let install = parse_control_args(&args(&[
+      "update",
+      "install",
+      "--version",
+      "0.27.0",
+      "--expected-revision",
+      "4",
+      "--json",
+    ]))
+    .unwrap();
+    assert_eq!(command_name(&install), "update.install");
+    assert_eq!(
+      request_for_command(&install, &mut Cursor::new([]))
+        .unwrap()
+        .params,
+      serde_json::json!({ "version": "0.27.0", "expectedRevision": 4 })
+    );
+    assert_eq!(
+      parse_control_args(&args(&[
+        "update",
+        "install",
+        "--expected-revision",
+        "4",
+        "--json"
+      ])),
+      Err("The update install action requires --version.".to_string())
+    );
+    assert!(parse_control_args(&args(&[
+      "update",
+      "check",
+      "--version",
+      "0.27.0",
+      "--expected-revision",
+      "4",
+      "--json",
+    ]))
+    .is_err());
     for (action, method) in [
       ("open", "workbench.open"),
       ("quit", "workbench.quit"),
@@ -7039,6 +7111,7 @@ mod tests {
       "module-id" => "spectrum".to_string(),
       "panel-id" => "spectrum".to_string(),
       "monitor-id" => "Display 1".to_string(),
+      "version" => "0.27.0".to_string(),
       "frequency|time" => "frequency".to_string(),
       "preset-id" => "preset-1".to_string(),
       "theme-id" => "custom-1".to_string(),

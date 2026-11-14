@@ -166,8 +166,14 @@ export function AgentControlBridge() {
     commitCaptureDevice,
   } = useSource();
   const { beginDeviceRestartForControl } = meterRuntime;
-  const { updateBusy, updateControls, requestCloseAction, windowVisible, onShowWindow } =
-    useAppLifecycle();
+  const {
+    updateBusy,
+    updateControls,
+    requestCloseAction,
+    windowVisible,
+    onShowWindow,
+    crashReportSetting,
+  } = useAppLifecycle();
   const windowControl = useMemo(
     () => ({
       available: isTauri(),
@@ -421,7 +427,11 @@ export function AgentControlBridge() {
       initialized: updateControls.initialized,
       info: updateControls.updateInfo,
       installStatus: updateControls.installStatus,
+      installationSupported: updateControls.installationSupported === true,
       check: updateControls.refreshUpdateCheck,
+      // About's Install: open the update details for the target, then confirm them.
+      openDetails: updateControls.openDetails,
+      confirmInstall: updateControls.confirmInstall,
     }),
     [updateControls]
   );
@@ -460,6 +470,9 @@ export function AgentControlBridge() {
   const agentControlSettingsContext = useMemo(
     () => ({
       autostartReady: settings.autostartReady,
+      updatesAvailable: updateControls.enabled === true,
+      updateInstallationSupported: updateControls.installationSupported === true,
+      askToSendCrashReports: crashReportSetting.enabled,
       shortcutsReady: settings.shortcutsReady,
       shortcutCapturing: settings.shortcutCapturing,
       shortcutRegistrationErrors: settings.shortcutRegistrationErrors,
@@ -483,6 +496,9 @@ export function AgentControlBridge() {
       fileSessions,
       running,
       settings.autostartReady,
+      updateControls.enabled,
+      updateControls.installationSupported,
+      crashReportSetting.enabled,
       settings.shortcutCapturing,
       settings.shortcutRegistrationErrors,
       settings.shortcutsReady,
@@ -501,6 +517,17 @@ export function AgentControlBridge() {
           await settings.setAutostartEnabledForControl(next.openAtLogin);
           compensation.push(() =>
             settings.setAutostartEnabledForControl(agentControlSettings.openAtLogin)
+          );
+        }
+        if (changed.includes("settings.updates")) {
+          // Settings' Auto Check / Auto Download: persisted before it returns, as the switches are.
+          await settings.setUpdatePreferences(next.updates);
+          compensation.push(() => settings.setUpdatePreferences(agentControlSettings.updates));
+        }
+        if (changed.includes("settings.askToSendCrashReports")) {
+          await crashReportSetting.setEnabled(next.askToSendCrashReports);
+          compensation.push(() =>
+            crashReportSetting.setEnabled(agentControlSettings.askToSendCrashReports)
           );
         }
         if (changed.some((path) => path.startsWith("settings.keyboardShortcuts."))) {
@@ -580,6 +607,7 @@ export function AgentControlBridge() {
     [
       agentControlSettings,
       channelRoles,
+      crashReportSetting,
       onClearRef,
       setDialogueVadEngineForControl,
       setChannelRolesForControl,

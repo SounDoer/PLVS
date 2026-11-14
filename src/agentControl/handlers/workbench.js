@@ -5,6 +5,20 @@ import { assertExpectedRevision } from "./shared.js";
 export const WORKBENCH_OPEN_TIMEOUT_MS = 20000;
 const WORKBENCH_OPEN_POLL_MS = 250;
 
+/** Tauri rejects with strings or plain objects as well as Errors. */
+function failureMessage(error, fallback) {
+  if (typeof error === "string" && error) return error;
+  if (typeof error?.message === "string" && error.message) return error.message;
+  if (error && typeof error === "object") {
+    try {
+      return JSON.stringify(error);
+    } catch {
+      return fallback;
+    }
+  }
+  return fallback;
+}
+
 function requireWorkbench(ctx) {
   const workbenchControl = ctx.live().workbenchControl;
   if (!workbenchControl?.available) {
@@ -77,7 +91,7 @@ async function quitApp(ctx) {
     throw semanticFailure(
       "quitRefused",
       "$.method",
-      error?.message || "Another PLVS workbench refused to quit.",
+      failureMessage(error, "Another PLVS workbench refused to quit."),
       -32012
     );
   }
@@ -109,7 +123,7 @@ async function openWorkbench(ctx) {
     throw semanticFailure(
       "workbenchUnavailable",
       "$.method",
-      error?.message || "PLVS could not open another workbench.",
+      failureMessage(error, "PLVS could not open another workbench."),
       -32012
     );
   }

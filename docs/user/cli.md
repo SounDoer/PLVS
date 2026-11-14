@@ -278,12 +278,13 @@ plvs-cli workbench quit-all --expected-revision <n> --json
 `open` returns the new workbench's `instanceId`; a quit is delivered before the process exits. See
 [Workbench Control](../agent-control/workbench.md).
 
-Update Control reads the update state and runs Check for Updates once; installing stays a user
-action:
+Update Control reads the update state, runs Check for Updates once, and installs a named update
+as About's Install does; Auto Check and Auto Download are ordinary `settings update` fields:
 
 ```powershell
 plvs-cli update inspect --json
 plvs-cli update check --expected-revision <n> --json
+plvs-cli update install --version <version> --expected-revision <n> --json
 ```
 
 See [Update Control](../agent-control/update.md).

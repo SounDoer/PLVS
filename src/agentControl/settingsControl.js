@@ -68,6 +68,16 @@ export function buildPublicSettings(settings, context) {
     dialogueVadEngine: settings.dialogueVadEngine,
     fileDialogueDetection: settings.fileDialogueDetection === true,
     fileSummaryMetrics: normalizeFileSummaryMetrics(settings.fileSummaryMetrics),
+    // The update preferences exist only where Settings shows them: in the workbench that updates
+    // this identity. Elsewhere they are another workbench's, or there are none.
+    updates:
+      context.updatesAvailable === true
+        ? {
+            autoCheck: settings.updatePreferences?.autoCheck === true,
+            autoDownload: settings.updatePreferences?.autoDownload === true,
+          }
+        : null,
+    askToSendCrashReports: context.askToSendCrashReports === true,
     channelLabels: {
       channelCount: context.channelCount,
       mode: context.channelLabelMode,
@@ -155,6 +165,28 @@ export function buildSettingsSchema(settings, context) {
         ])
       ),
     },
+    updates: {
+      type: ["object", "null"],
+      properties: {
+        autoCheck: {
+          type: "boolean",
+          default: false,
+          current: settings.updates?.autoCheck ?? null,
+        },
+        autoDownload: {
+          type: "boolean",
+          default: false,
+          current: settings.updates?.autoDownload ?? null,
+          requires: "autoCheck",
+        },
+      },
+      availability: inspection.availability.updates,
+    },
+    askToSendCrashReports: {
+      type: "boolean",
+      default: true,
+      current: settings.askToSendCrashReports,
+    },
     channelLabels: {
       type: "object",
       properties: {
@@ -186,6 +218,7 @@ export function buildSettingsInspection(settings, context) {
   const autostartWritable = context.autostartReady === true;
   const shortcutWritable = context.shortcutCapturing !== true;
   const channelWritable = settings.channelLabels.channelCount > 0;
+  const updatesWritable = context.updatesAvailable === true;
   return {
     settings,
     runtime: {
@@ -221,6 +254,11 @@ export function buildSettingsInspection(settings, context) {
         writable: channelWritable,
         reason: channelWritable ? null : "noChannels",
       },
+      updates: {
+        writable: updatesWritable,
+        reason: updatesWritable ? null : "updatesUnavailable",
+        autoDownloadWritable: updatesWritable && context.updateInstallationSupported === true,
+      },
     },
   };
 }
@@ -239,6 +277,43 @@ export function planSettingsUpdate(current, patch, context, options = {}) {
     issues.push(issue("invalidOption", "$.closeBehavior", "closeBehavior is not supported."));
   }
 
+  if ("askToSendCrashReports" in patch && typeof patch.askToSendCrashReports !== "boolean") {
+    issues.push(
+      issue("invalidType", "$.askToSendCrashReports", "askToSendCrashReports must be a boolean.")
+    );
+  }
+  let nextUpdates = current.updates;
+  if ("updates" in patch) {
+    if (!isObject(patch.updates)) {
+      issues.push(issue("invalidType", "$.updates", "updates must be an object."));
+    } else {
+      for (const key of Object.keys(patch.updates)) {
+        if (key !== "autoCheck" && key !== "autoDownload") {
+          issues.push(
+            issue("unknownControl", `$.updates.${key}`, `Unknown update control: ${key}.`)
+          );
+        } else if (typeof patch.updates[key] !== "boolean") {
+          issues.push(issue("invalidType", `$.updates.${key}`, `${key} must be a boolean.`));
+        }
+      }
+      if (current.updates) {
+        const autoCheck = patch.updates.autoCheck ?? current.updates.autoCheck;
+        // As in Settings, turning checking off also turns downloading off; downloading needs it.
+        const autoDownload =
+          patch.updates.autoDownload ?? (autoCheck ? current.updates.autoDownload : false);
+        if (autoDownload && !autoCheck) {
+          issues.push(
+            issue(
+              "invalidCombination",
+              "$.updates.autoDownload",
+              "autoDownload requires autoCheck, as Auto Download Updates requires Auto Check."
+            )
+          );
+        }
+        nextUpdates = { autoCheck, autoDownload };
+      }
+    }
+  }
   let nextKeyboardShortcuts = current.keyboardShortcuts;
   if ("keyboardShortcuts" in patch) {
     if (!isObject(patch.keyboardShortcuts)) {
@@ -476,6 +551,30 @@ export function planSettingsUpdate(current, patch, context, options = {}) {
       refusal: { code: "controlUnavailable", reason: "autostartUnavailable" },
     };
   }
+  if ("updates" in patch && context.updatesAvailable !== true) {
+    return {
+      settings: current,
+      changed: [],
+      effects: [],
+      warnings: [],
+      issues: [],
+      refusal: { code: "controlUnavailable", reason: "updatesUnavailable" },
+    };
+  }
+  if (
+    nextUpdates?.autoDownload === true &&
+    current.updates?.autoDownload !== true &&
+    context.updateInstallationSupported !== true
+  ) {
+    return {
+      settings: current,
+      changed: [],
+      effects: [],
+      warnings: [],
+      issues: [],
+      refusal: { code: "controlUnavailable", reason: "updateInstallationUnsupported" },
+    };
+  }
   if ("keyboardShortcuts" in patch && context.shortcutCapturing === true) {
     return {
       settings: current,
@@ -538,10 +637,21 @@ export function planSettingsUpdate(current, patch, context, options = {}) {
         }
       : {}),
     ...(Object.hasOwn(patch, "channelLabels") ? { channelLabels: nextChannelLabels } : {}),
+    ...(Object.hasOwn(patch, "updates") ? { updates: nextUpdates } : {}),
+    ...(Object.hasOwn(patch, "askToSendCrashReports")
+      ? { askToSendCrashReports: patch.askToSendCrashReports }
+      : {}),
   };
   const changed = [];
   changedValue(changed, "settings.openAtLogin", current.openAtLogin, settings.openAtLogin);
   changedValue(changed, "settings.closeBehavior", current.closeBehavior, settings.closeBehavior);
+  changedValue(changed, "settings.updates", current.updates, settings.updates);
+  changedValue(
+    changed,
+    "settings.askToSendCrashReports",
+    current.askToSendCrashReports,
+    settings.askToSendCrashReports
+  );
   for (const { id } of KEYBOARD_SHORTCUT_ACTIONS) {
     changedValue(
       changed,

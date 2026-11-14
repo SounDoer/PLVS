@@ -1399,6 +1399,44 @@
       }
     },
     {
+      "id": "update.install",
+      "family": "update",
+      "path": ["update", "install"],
+      "usage": "plvs-cli update install --version <version> --expected-revision <n> --json",
+      "summary": "Install the named update version as About's Install does, then relaunch.",
+      "execution": "runningApp",
+      "operation": "action",
+      "wireMethod": "update.install",
+      "json": "required",
+      "expectedRevision": "required",
+      "dryRun": false,
+      "outputFile": "none",
+      "positionals": [],
+      "options": [
+        {
+          "name": "--version",
+          "mapsTo": "version",
+          "required": true,
+          "value": { "type": "string" }
+        },
+        {
+          "name": "--expected-revision",
+          "required": true,
+          "value": { "type": "integer", "minimum": 0, "maximum": 9007199254740991 }
+        },
+        { "name": "--json", "required": true, "value": { "type": "boolean" } }
+      ],
+      "wireParams": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["version", "expectedRevision"],
+        "properties": {
+          "version": { "type": "string" },
+          "expectedRevision": { "type": "integer", "minimum": 0, "maximum": 9007199254740991 }
+        }
+      }
+    },
+    {
       "id": "pointer.move",
       "family": "pointer",
       "path": ["pointer", "move"],

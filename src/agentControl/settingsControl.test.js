@@ -90,6 +90,8 @@ describe("Settings Control", () => {
       dialogueVadEngine: "silero",
       fileDialogueDetection: false,
       fileSummaryMetrics: normalizeFileSummaryMetrics(null),
+      updates: null,
+      askToSendCrashReports: false,
       channelLabels: {
         channelCount: 2,
         mode: "custom",
@@ -197,6 +199,7 @@ describe("Settings Control", () => {
         openAtLogin: { writable: true, reason: null },
         keyboardShortcuts: { writable: true, reason: null },
         channelLabels: { writable: true, reason: null },
+        updates: { writable: false, reason: "updatesUnavailable", autoDownloadWritable: false },
       },
     });
   });
@@ -395,5 +398,80 @@ describe("Settings Control", () => {
       { ...context, sourceMode: "file" }
     );
     expect(relabeled.warnings).toContainEqual({ code: "fileReanalysisRequired" });
+  });
+
+  describe("update and crash-report preferences", () => {
+    const context = {
+      autostartReady: true,
+      updatesAvailable: true,
+      updateInstallationSupported: true,
+      askToSendCrashReports: true,
+      channelCount: 2,
+      channelLabelMode: "auto",
+      channelLabelRoles: ["L", "R"],
+      channelAutoRoles: ["L", "R"],
+    };
+    const current = (updatePreferences, overrides = {}) =>
+      buildPublicSettings(
+        {
+          closeAction: "tray",
+          keyboardShortcuts: {},
+          updatePreferences: { choiceMade: true, ...updatePreferences },
+        },
+        { ...context, ...overrides }
+      );
+
+    it("turns Auto Download off with Auto Check, as Settings does", () => {
+      const planned = planSettingsUpdate(
+        current({ autoCheck: true, autoDownload: true }),
+        { updates: { autoCheck: false } },
+        context
+      );
+      expect(planned.issues).toEqual([]);
+      expect(planned.settings.updates).toEqual({ autoCheck: false, autoDownload: false });
+      expect(planned.changed).toEqual(["settings.updates"]);
+    });
+
+    it("rejects Auto Download without Auto Check", () => {
+      const planned = planSettingsUpdate(
+        current({ autoCheck: false, autoDownload: false }),
+        { updates: { autoDownload: true } },
+        context
+      );
+      expect(planned.issues).toMatchObject([
+        { code: "invalidCombination", path: "$.updates.autoDownload" },
+      ]);
+    });
+
+    it("refuses update preferences where this workbench does not own them", () => {
+      const planned = planSettingsUpdate(
+        current({}, { updatesAvailable: false }),
+        { updates: { autoCheck: true } },
+        { ...context, updatesAvailable: false }
+      );
+      expect(planned.refusal).toEqual({ code: "controlUnavailable", reason: "updatesUnavailable" });
+    });
+
+    it("refuses Auto Download on a copy that cannot stage updates", () => {
+      const planned = planSettingsUpdate(
+        current({ autoCheck: true, autoDownload: false }),
+        { updates: { autoDownload: true } },
+        { ...context, updateInstallationSupported: false }
+      );
+      expect(planned.refusal).toEqual({
+        code: "controlUnavailable",
+        reason: "updateInstallationUnsupported",
+      });
+    });
+
+    it("changes the Crash Report Prompt", () => {
+      const planned = planSettingsUpdate(
+        current({ autoCheck: true }),
+        { askToSendCrashReports: false },
+        context
+      );
+      expect(planned.settings.askToSendCrashReports).toBe(false);
+      expect(planned.changed).toEqual(["settings.askToSendCrashReports"]);
+    });
   });
 });

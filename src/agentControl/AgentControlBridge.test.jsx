@@ -143,6 +143,7 @@ vi.mock("../hooks/AppLifecycleContext.jsx", () => ({
   useAppLifecycle: () => ({
     updateBusy: false,
     updateControls: { openDetails: () => {}, confirmInstall: () => {} },
+    crashReportSetting: { enabled: true, setEnabled: async () => {} },
     requestCloseAction: async () => true,
   }),
 }));

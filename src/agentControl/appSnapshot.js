@@ -180,7 +180,13 @@ export function buildAgentControlCapabilities(runtime, revision) {
           }
         : {}),
       ...(hasMethod("update.inspect")
-        ? { update: { inspect: true, check: hasMethod("update.check") } }
+        ? {
+            update: {
+              inspect: true,
+              check: hasMethod("update.check"),
+              install: hasMethod("update.install"),
+            },
+          }
         : {}),
       ...(visual
         ? {

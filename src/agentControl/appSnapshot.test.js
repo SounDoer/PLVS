@@ -69,6 +69,7 @@ describe("agent-control app snapshots", () => {
         "workbench.quitAll",
         "update.inspect",
         "update.check",
+        "update.install",
         "pointer.move",
         "measurement.describe",
         "measurement.inspect",

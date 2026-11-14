@@ -12,6 +12,7 @@ function sampleForProperty(entry, name, schema) {
     durationMs: entry.id === "panel.holdSlow" ? 100 : 600,
     expectedRevision: 0,
     expectedUiGeneration: 0,
+    version: "0.27.0",
     kind: entry.family === "editor-draft" ? "theme" : "frequency",
     layout: entry.id === "dock.layout.apply" ? { panels: [] } : {},
     moduleId: "spectrum",

@@ -28,7 +28,8 @@ runtime state, reported by `settings inspect` rather than documented here.
 
 The public fields correspond to Open at Login, Close Behavior, the configurable keyboard shortcuts,
 Interface Size, History Length, the Dialogue Detection engine, the File toolbar's Dialogue Detection
-switch, File Summary Metrics, and channel-role labels.
+switch, File Summary Metrics, channel-role labels, Auto Check and Auto Download Updates, and the
+Crash Report Prompt.
 
 The following are intentionally outside Settings Control:
 
@@ -61,6 +62,23 @@ swallowed by the GUI-oriented hook.
 `closeBehavior` accepts exactly `ask`, `tray`, or `quit`, with `ask` as the default. It changes only
 what a future close request does and never immediately hides or quits the app. Both fields remain
 available while a draft editor is open.
+
+## Updates and crash reports
+
+`updates` is `{ autoCheck, autoDownload }` in the workbench that updates this app identity, the one
+whose Settings shows the switches, and null elsewhere: in another workbench, whose coordinator owns
+the preferences, and in identities that do not update themselves, such as the dev app. Writing it
+there fails with `controlUnavailable` and `reason: updatesUnavailable`. The rules are the
+switches': turning `autoCheck` off also turns `autoDownload` off, `autoDownload: true` without
+`autoCheck` is an `invalidCombination` issue, and turning `autoDownload` on in a copy that cannot
+stage updates (`availability.updates.autoDownloadWritable` false, such as a Portable copy) fails
+with `reason: updateInstallationUnsupported`. A change is saved before the command returns, records
+the update choice as made, and takes effect as a switch change does: turning `autoDownload` on
+checks now, and turning either off cancels and removes a staged automatic download.
+
+`askToSendCrashReports` is the Crash Report Prompt. It decides only whether PLVS asks before sending
+a saved report after a crash; it never sends one. A pending prompt is answered through UI
+Navigation, not here.
 
 ## Keyboard shortcuts
 
@@ -228,5 +246,6 @@ Settings support through `app.capabilities` result fields `methods` and `feature
 and dynamic option lists are not capability data. The frontend/RPC `methods` list may remain as
 internal compatibility data, but public consumers must not use it for capability selection.
 
-- Update preferences, first-launch update consent, package downloads, and installation. These
-  remain explicit GUI actions; configuration import does not grant update consent.
+- First-launch update consent, package downloads, and installation. Consent is the first-run setup
+  dialog's; installation belongs to [Update Control](update.md). Configuration import does not grant
+  update consent.

@@ -43,6 +43,7 @@ Manifest version `1`. Entries are shown in stable presentation order.
 | `workbench.quitAll` | `workbench quit-all` | runningApp / action | required | no | none |
 | `update.inspect` | `update inspect` | runningApp / query | none | no | none |
 | `update.check` | `update check` | runningApp / action | required | no | none |
+| `update.install` | `update install` | runningApp / action | required | no | none |
 | `pointer.move` | `pointer move` | runningApp / action | required | no | none |
 | `measurement.describe` | `measurement describe` | runningApp / query | none | no | none |
 | `measurement.inspect` | `measurement inspect` | runningApp / query | none | no | none |
@@ -1061,6 +1062,31 @@ None.
 
 | Name | Maps to | Required | Value |
 | --- | --- | --- | --- |
+| `--expected-revision` | local only | yes | integer; 0 to 9007199254740991 |
+| `--json` | local only | yes | boolean |
+
+## `update.install`
+
+Install the named update version as About's Install does, then relaunch.
+
+- CLI path: `update install`
+- Execution: `runningApp`; operation: `action`
+- JSON: `required`; expected revision: `required`; dry-run: `false`; output file: `none`
+- Wire method: `update.install`
+
+```text
+plvs-cli update install --version <version> --expected-revision <n> --json
+```
+
+### Positionals
+
+None.
+
+### Options
+
+| Name | Maps to | Required | Value |
+| --- | --- | --- | --- |
+| `--version` | `version` | yes | string |
 | `--expected-revision` | local only | yes | integer; 0 to 9007199254740991 |
 | `--json` | local only | yes | boolean |
 

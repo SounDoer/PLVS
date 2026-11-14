@@ -32,6 +32,8 @@ describe("Settings surface authority catalogue", () => {
       "fileDialogueDetection",
       "fileSummaryMetrics",
       "channelLabels",
+      "updates",
+      "askToSendCrashReports",
     ]);
   });
 
