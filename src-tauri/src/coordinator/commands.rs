@@ -9,6 +9,9 @@ use super::write_json_atomic;
 use fs4::{FileExt, TryLockError};
 use serde::{Deserialize, Serialize};
 
+/// How long a stale instance's acknowledgement is kept for an issuer that may still be waiting.
+/// Well above the frontend's 10-second coordinated-operation wait.
+const ACKNOWLEDGEMENT_RETENTION: Duration = Duration::from_secs(60);
 const COMMAND_SCHEMA_VERSION: u32 = 1;
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -338,7 +341,15 @@ impl RuntimeCommandMailbox {
         .ok()
         .and_then(|bytes| serde_json::from_slice::<RuntimeCommandAck>(&bytes).ok())
         .is_some_and(|ack| ack.instance_id == instance_id);
-      if belongs_to_instance {
+      // An instance that acknowledges a quit exits at once, so it can be stale before the issuer
+      // reads its answer. The acknowledgement belongs to the issuer, which removes it on read;
+      // only one nobody can still be waiting for is garbage.
+      let unread_by_a_live_wait = fs::metadata(&path)
+        .and_then(|metadata| metadata.modified())
+        .ok()
+        .and_then(|modified| modified.elapsed().ok())
+        .is_none_or(|age| age < ACKNOWLEDGEMENT_RETENTION);
+      if belongs_to_instance && !unread_by_a_live_wait {
         match fs::remove_file(path) {
           Ok(()) => {}
           Err(error) if error.kind() == std::io::ErrorKind::NotFound => {}
@@ -360,7 +371,7 @@ impl RuntimeCommandMailbox {
       .join(format!("{instance_id}.json"))
   }
 
-  fn ack_path(&self, command_id: &str) -> PathBuf {
+  pub(crate) fn ack_path(&self, command_id: &str) -> PathBuf {
     self
       .directory
       .join("acks")
@@ -585,7 +596,7 @@ mod tests {
   }
 
   #[test]
-  fn stale_instance_cleanup_removes_its_pending_commands_and_acknowledgements() {
+  fn stale_instance_cleanup_removes_its_pending_commands_and_old_acknowledgements() {
     let root = test_root("stale-instance-cleanup");
     let _ = fs::remove_dir_all(&root);
     let mailbox = RuntimeCommandMailbox::open(&root).unwrap();
@@ -594,12 +605,39 @@ mod tests {
     let command = mailbox.poll("instance-a").unwrap().unwrap();
     mailbox.acknowledge(&command, "completed", None).unwrap();
     assert!(mailbox.ack_path(&first.command_id).is_file());
+    fs::File::options()
+      .write(true)
+      .open(mailbox.ack_path(&first.command_id))
+      .unwrap()
+      .set_modified(std::time::SystemTime::now() - ACKNOWLEDGEMENT_RETENTION * 2)
+      .unwrap();
 
     mailbox.discard_instance("instance-a").unwrap();
 
     assert!(!mailbox.ack_path(&first.command_id).exists());
     assert!(mailbox.poll("instance-a").unwrap().is_none());
     assert!(mailbox.poll("instance-b").unwrap().is_some());
+    let _ = fs::remove_dir_all(root);
+  }
+
+  #[test]
+  fn an_instance_that_exits_after_acknowledging_still_answers_the_waiting_issuer() {
+    let root = test_root("ack-after-exit");
+    let _ = fs::remove_dir_all(&root);
+    let mailbox = RuntimeCommandMailbox::open(&root).unwrap();
+    let issued = mailbox
+      .issue("instance-a", "operation-a", "commitGlobal")
+      .unwrap();
+    let command = mailbox.poll("instance-a").unwrap().unwrap();
+    mailbox.acknowledge(&command, "completed", None).unwrap();
+
+    // The instance exits after acknowledging; stale-instance cleanup runs before the issuer reads.
+    mailbox.discard_instance("instance-a").unwrap();
+
+    let acknowledgements = mailbox
+      .wait_for(&[issued], Duration::from_millis(100))
+      .unwrap();
+    assert_eq!(acknowledgements[0].outcome, "completed");
     let _ = fs::remove_dir_all(root);
   }
 

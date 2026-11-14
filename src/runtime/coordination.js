@@ -64,6 +64,19 @@ async function recoverExpiredPreparations(current, prepared) {
   }
 }
 
+/** Native commands reject with plain objects as well as Errors; keep their message readable. */
+export function failureDetail(error) {
+  if (typeof error === "string" || error instanceof Error) return String(error);
+  if (typeof error?.message === "string" && error.message) {
+    return typeof error.code === "string" ? `${error.code}: ${error.message}` : error.message;
+  }
+  try {
+    return JSON.stringify(error) ?? String(error);
+  } catch {
+    return String(error);
+  }
+}
+
 async function handleRuntimeCommand(command, prepared) {
   const current = lifecycle;
   if (!current) return;
@@ -140,7 +153,7 @@ async function handleRuntimeCommand(command, prepared) {
       await exit(0);
     }
   } catch (error) {
-    await acknowledge(command, "failed", String(error)).catch(() => {});
+    await acknowledge(command, "failed", failureDetail(error)).catch(() => {});
   }
 }
 
