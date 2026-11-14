@@ -7,8 +7,14 @@ The PLVS render and preparation tools use the sibling PLVS-Website checkout. Set
 The homepage images that show PLVS are rendered, not captured: the app's own React panels, fed by
 committed fixtures that the production meter pipeline measured offline, drawn in headless
 Chromium. The same command reproduces the same pixels on any supported machine; no audio device,
-display scaling or idle machine is involved. The homepage and README share
+display scaling or idle machine is involved. The homepage hero is
 `website/assets/landing-hero.webp`.
+
+The README header is a separate collage of these screenshots (hero, Dock, Themes, Loudness
+Profiles and Presets), published as `assets/plvs-collage.png` in the `SounDoer/SounDoer` profile
+repository and shared by the profile README. Maintainers render it from the
+`profile-collage-20261114` project in PLVS-Promo; after the homepage screenshots change, render it
+again and replace that file.
 
 What the images are: real PLVS panels and real measurements of real audio, at a fixed moment.
 What they are not: screenshots of a running app. Window chrome, OS fonts and LIVE scheduling are

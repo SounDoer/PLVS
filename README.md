@@ -8,7 +8,7 @@
 [![Downloads](https://img.shields.io/github/downloads/SounDoer/PLVS/total?style=flat-square)](https://github.com/SounDoer/PLVS/releases)
 
 <p align="center">
-  <img src="https://raw.githubusercontent.com/SounDoer/PLVS-Website/main/website/assets/landing-hero.webp" alt="PLVS workspace with live metering panels" width="100%"/>
+  <img src="https://raw.githubusercontent.com/SounDoer/SounDoer/main/assets/plvs-collage.png" alt="PLVS workspace with the Dock, Themes, Loudness Profiles and Presets" width="100%"/>
 </p>
 
 ## What is PLVS?
