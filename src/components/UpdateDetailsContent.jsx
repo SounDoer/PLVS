@@ -20,6 +20,47 @@ export function UpdateDetailsHeader({ ready, targetVersion, currentVersion, acce
 }
 
 /** Shared content for the normal dialog and the Dock accessory; owns no update or window state. */
+export function updateDetailsChoices({
+  installStatus,
+  downloading,
+  installationSupported,
+  manualDownloadUrl,
+  onConfirm,
+  onCancel,
+  onRestart,
+  openExternalUrl,
+}) {
+  return [
+    { id: "cancel", label: "Cancel", run: onCancel },
+    {
+      id:
+        installStatus === "restart-error"
+          ? "restart"
+          : installationSupported
+            ? "install"
+            : "download",
+      label:
+        installStatus === "restart-error"
+          ? "Restart"
+          : installationSupported
+            ? "Update and Restart"
+            : "Download Manually",
+      disabled: downloading,
+      afterDelivery: installationSupported || installStatus === "restart-error",
+      run: installStatus === "restart-error" ? onRestart : onConfirm,
+    },
+    ...(installStatus === "install-error" && manualDownloadUrl
+      ? [
+          {
+            id: "download",
+            label: "Download Manually",
+            run: () => openExternalUrl(manualDownloadUrl),
+          },
+        ]
+      : []),
+  ];
+}
+
 export function UpdateDetailsContent({
   releaseNotes = "",
   targetVersion = null,

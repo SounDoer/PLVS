@@ -119,7 +119,7 @@ low-frequency navigation fact changes. It does not advance for typing, hover, po
 animation frames, raw scroll position, tooltips, measurement frames, or update progress ticks.
 Transient UI changes do not advance the global revision.
 
-`ui show`, `ui close`, and `ui cancel` require both expected tokens. A mismatch fails before the requested
+`ui show`, `ui close`, `ui cancel`, and `ui decide` require both expected tokens. A mismatch fails before the requested
 transition. If revealing Panel Settings activates another Workspace tab, that durable Workspace
 change follows the existing business path and advances the global revision normally; the resulting
 UI transition also advances `uiGeneration`.
@@ -161,18 +161,28 @@ inspect and treat absence of the surface they opened as already clean.
 
 `ui cancel <surface-id>` invokes the exact surface's current Cancel or Escape intent. Clean editors
 close normally. Dirty editors open their real discard confirmation and keep the draft until the
-user chooses what to do. The only command that can confirm one is the narrow `editor-draft discard`
-operation: it requires the exact linked editor and decision surface IDs plus current revision, UI
-generation, and draft generation. Feedback Cancel closes the unsent draft without reading
-diagnostics or sending a request.
+user chooses what to do. The linked `editor-draft discard` command also checks the original
+draft generation. Feedback Cancel closes the unsent draft without reading diagnostics or sending
+a request.
 
-Real update, crash-report, close-confirmation, library-conflict, transfer, and nested discard/reset
-decisions appear in `ui inspect` only after their actual owner mounts them. They have
-`origin: event` or `origin: nested`, redact payloads and authored values, and advertise only a safe
-Close/Cancel action when the visible UI permits it. Busy phases advertise no dismissal. There is no
-public command to synthesize these surfaces and no generic Save, Send, Confirm, Install, Import,
-Export, Apply, or Retry operation. See [Editor Draft Control](editor-drafts.md) for the one linked
-discard exception.
+## Answer a dialog
+
+Read the top surface in `ui inspect` and use its exact ID and one of its enabled choice IDs:
+
+```text
+plvs-cli ui decide --surface-id <surface-id> --choice <id> --expected-revision <n> --expected-ui-generation <n> --json
+```
+
+Choices follow the mounted dialog's buttons and state. A different, covered, or busy dialog
+cannot consume the choice. Actions that can close or restart PLVS are accepted for execution
+after the CLI receives its response. Inspect again to observe the outcome.
+
+The audio track picker exposes one `track:<index>` choice for each track the probe found. The
+existing path-based commands can still select a track before opening a picker. For Feedback,
+inspect and fill the draft with [Editor Draft Control](editor-drafts.md). Its `send` choice supports
+`--dry-run`, which returns the submission payload in `result.preview` without posting it. A real
+Feedback or crash report Send transmits data to the service. Crash report `later` dismisses the
+prompt without transmitting or deleting the saved report.
 
 The Quick Tour card is observed the same way. While its invitation or a step is on screen it is a
 `quickTour` event surface with target `{ phase, step }`: `phase` is `invitation` or `tour`, and

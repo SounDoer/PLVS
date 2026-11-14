@@ -28,6 +28,7 @@ Manifest version `1`. Entries are shown in stable presentation order.
 | `ui.action` | `ui action` | runningApp / action | required | no | none |
 | `ui.targets` | `ui targets` | runningApp / query | none | no | none |
 | `ui.locate` | `ui locate` | runningApp / query | none | no | none |
+| `ui.decide` | `ui decide` | runningApp / action | required | yes | none |
 | `ui.close` | `ui close` | runningApp / action | required | no | none |
 | `ui.cancel` | `ui cancel` | runningApp / action | required | no | none |
 | `window.inspect` | `window inspect` | runningApp / query | none | no | none |
@@ -105,6 +106,7 @@ Manifest version `1`. Entries are shown in stable presentation order.
 | `loudnessProfile.export` | `loudness-profile export` | runningApp / query | none | no | optional |
 | `loudnessProfile.import` | `loudness-profile import` | runningApp / mutation | required | yes | none |
 | `config.export` | `config export` | runningApp / query | none | no | optional |
+| `config.reset` | `config reset` | runningApp / mutation | required | yes | none |
 | `config.import` | `config import` | runningApp / mutation | required | yes | none |
 | `settings.describe` | `settings describe` | runningApp / query | none | no | none |
 | `settings.inspect` | `settings inspect` | runningApp / query | none | no | none |
@@ -695,6 +697,34 @@ None.
 | --- | --- | --- | --- |
 | `--target` | `target` | yes | string |
 | `--json` | local only | yes | boolean |
+
+## `ui.decide`
+
+Answer one exact UI surface using a declared choice.
+
+- CLI path: `ui decide`
+- Execution: `runningApp`; operation: `action`
+- JSON: `required`; expected revision: `required`; dry-run: `true`; output file: `none`
+- Wire method: `ui.decide`
+
+```text
+plvs-cli ui decide --surface-id <surface-id> --choice <id> --expected-revision <n> --expected-ui-generation <n> --json [--dry-run]
+```
+
+### Positionals
+
+None.
+
+### Options
+
+| Name | Maps to | Required | Value |
+| --- | --- | --- | --- |
+| `--surface-id` | `surfaceId` | yes | string |
+| `--choice` | `choice` | yes | string |
+| `--expected-revision` | local only | yes | integer; 0 to 9007199254740991 |
+| `--expected-ui-generation` | `expectedUiGeneration` | yes | integer; 0 to 9007199254740991 |
+| `--json` | local only | yes | boolean |
+| `--dry-run` | `dryRun` | no | boolean |
 
 ## `ui.close`
 
@@ -2726,6 +2756,32 @@ None.
 | `--json` | local only | yes | boolean |
 | `--out` | local only | no | string |
 
+## `config.reset`
+
+Reset the configuration and restart PLVS.
+
+- CLI path: `config reset`
+- Execution: `runningApp`; operation: `mutation`
+- JSON: `required`; expected revision: `required`; dry-run: `true`; output file: `none`
+- Wire method: `config.reset`
+- Schema references: `agentControl.revision`
+
+```text
+plvs-cli config reset --expected-revision <n> --json [--dry-run]
+```
+
+### Positionals
+
+None.
+
+### Options
+
+| Name | Maps to | Required | Value |
+| --- | --- | --- | --- |
+| `--expected-revision` | `expectedRevision` | yes | integer; 0 to inf |
+| `--json` | local only | yes | boolean |
+| `--dry-run` | `dryRun` | no | boolean |
+
 ## `config.import`
 
 Import the complete public configuration.
@@ -3993,14 +4049,14 @@ Describe the closed semantic operations supported by an editor draft kind.
 - Wire method: `editorDraft.describe`
 
 ```text
-plvs-cli editor-draft describe <theme|loudness-profile> --json
+plvs-cli editor-draft describe <theme|loudness-profile|feedback> --json
 ```
 
 ### Positionals
 
 | Name | Maps to | Required | Value |
 | --- | --- | --- | --- |
-| `kind` | local only | yes | string; one of "theme", "loudness-profile" |
+| `kind` | local only | yes | string; one of "theme", "loudness-profile", "feedback" |
 
 ### Options
 
@@ -4018,14 +4074,14 @@ Inspect the exact currently mounted editor draft and concurrency tokens.
 - Wire method: `editorDraft.inspect`
 
 ```text
-plvs-cli editor-draft inspect <theme|loudness-profile> <surface-id> --json
+plvs-cli editor-draft inspect <theme|loudness-profile|feedback> <surface-id> --json
 ```
 
 ### Positionals
 
 | Name | Maps to | Required | Value |
 | --- | --- | --- | --- |
-| `kind` | local only | yes | string; one of "theme", "loudness-profile" |
+| `kind` | local only | yes | string; one of "theme", "loudness-profile", "feedback" |
 | `surface-id` | `surfaceId` | yes | string |
 
 ### Options
@@ -4045,14 +4101,14 @@ Apply one closed atomic semantic transaction to the exact mounted draft.
 - Schema references: `editorDraft.patch`, `agentControl.revision`, `agentControl.uiGeneration`, `editorDraft.generation`
 
 ```text
-plvs-cli editor-draft patch <theme|loudness-profile> <surface-id> <file|-> --expected-revision <n> --expected-ui-generation <n> --expected-draft-generation <n> --json
+plvs-cli editor-draft patch <theme|loudness-profile|feedback> <surface-id> <file|-> --expected-revision <n> --expected-ui-generation <n> --expected-draft-generation <n> --json
 ```
 
 ### Positionals
 
 | Name | Maps to | Required | Value |
 | --- | --- | --- | --- |
-| `kind` | local only | yes | string; one of "theme", "loudness-profile" |
+| `kind` | local only | yes | string; one of "theme", "loudness-profile", "feedback" |
 | `surface-id` | `surfaceId` | yes | string |
 | `file` | `patch` | yes | string |
 

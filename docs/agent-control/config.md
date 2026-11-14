@@ -55,3 +55,11 @@ The successful response is not merely queued. Rust flushes the named-pipe respon
 the CLI has read every buffered byte; only then does the frontend relaunch PLVS. The revision in the
 result belongs to the ending process. Rediscover the relaunched app and call `inspect` rather than
 comparing revisions across the two sessions.
+
+## Reset
+
+`config reset --expected-revision <n> --json [--dry-run]` runs the Settings reset and restarts
+PLVS after the CLI receives the result. The command refuses a blocking editor before writing.
+Dry-run reports `wouldRelaunch: true` and leaves the data and process intact. A real reset clears
+the profile domains and resets first-run starter preferences while preserving the local Agent
+Control switch.

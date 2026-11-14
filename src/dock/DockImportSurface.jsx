@@ -5,7 +5,7 @@ import { useDockImportWindow } from "./useDockImportWindow.js";
 import { listenDockAccessoryAction } from "../ipc/dockAccessoryEvents.js";
 import { normalizeAccessoryAction } from "./accessoryProtocol.js";
 import { isTauri } from "../ipc/env.js";
-import { isSingleExistingReview } from "../components/ItemPickerDialog.jsx";
+import { isExistingReview, isSingleExistingReview } from "../components/ItemPickerDialog.jsx";
 import { useUiSurface } from "../uiNavigation/UiNavigationContext.jsx";
 import { useAppLifecycle } from "../hooks/AppLifecycleContext.jsx";
 
@@ -130,49 +130,50 @@ export function DockImportSurface({ pack, settings, loudnessProfile, presets }) 
     (geometry) => setPresentedKey(geometry?.visible ? key : null),
     [key]
   );
+  function runImportAction(type, requestedKey = key) {
+    if (requestedKey !== key || handled.current === key) return;
+    if (type === "import-confirm" && mode === "review") {
+      handled.current = key;
+      // Parsing succeeded; subsequent status belongs to the completion flow, not paste errors.
+      setRequested(false);
+      setStatusMessage("");
+      return pack.confirmImport();
+    } else if (type === "import-dismiss") {
+      handled.current = key;
+      if (mode === "review") pack.cancelImport();
+      if (mode === "complete") pack.dismissCompletion();
+      setRequested(false);
+      setStatusMessage("");
+    } else if (
+      type === "import-action" &&
+      (mode === "complete" || (mode === "review" && isSingleExistingReview(pack.review)))
+    ) {
+      handled.current = key;
+      if (mode === "review") setRequested(false);
+      const runAction = mode === "review" ? pack.runReviewAction : pack.runCompletionAction;
+      return runAction(async (type, id) => {
+        if (type === "themes") {
+          settings.setFixedThemeIdFromPicker(id);
+          return true;
+        }
+        if (type === "loudness") {
+          if (loudnessProfile.draftBlocksLibraryActions) return false;
+          loudnessProfile.select(`profile:${id}`);
+          return true;
+        }
+        return presets.apply(id);
+      }).finally(() => {
+        handled.current = null;
+      });
+    }
+  }
   const dockWindow = useDockImportWindow({
     active: visible,
     prepare: visible,
     edge: dockEdge,
     payload,
     onGeometry,
-    onAction: ({ type, payload: actionPayload }) => {
-      if (actionPayload.key !== key || handled.current === key) return;
-      if (type === "import-confirm" && mode === "review") {
-        handled.current = key;
-        // Parsing succeeded; subsequent status belongs to the completion flow, not paste errors.
-        setRequested(false);
-        setStatusMessage("");
-        pack.confirmImport();
-      } else if (type === "import-dismiss") {
-        handled.current = key;
-        if (mode === "review") pack.cancelImport();
-        if (mode === "complete") pack.dismissCompletion();
-        setRequested(false);
-        setStatusMessage("");
-      } else if (
-        type === "import-action" &&
-        (mode === "complete" || (mode === "review" && isSingleExistingReview(pack.review)))
-      ) {
-        handled.current = key;
-        if (mode === "review") setRequested(false);
-        const runAction = mode === "review" ? pack.runReviewAction : pack.runCompletionAction;
-        void runAction(async (type, id) => {
-          if (type === "themes") {
-            settings.setFixedThemeIdFromPicker(id);
-            return true;
-          }
-          if (type === "loudness") {
-            if (loudnessProfile.draftBlocksLibraryActions) return false;
-            loudnessProfile.select(`profile:${id}`);
-            return true;
-          }
-          return presets.apply(id);
-        }).finally(() => {
-          handled.current = null;
-        });
-      }
-    },
+    onAction: ({ type, payload: actionPayload }) => runImportAction(type, actionPayload.key),
   });
   useUiSurface({
     active: visible && presentedKey === key && mode === "review",
@@ -180,6 +181,15 @@ export function DockImportSurface({ pack, settings, loudnessProfile, presets }) 
     kind: "importReview",
     origin: "nested",
     developmentFixture: "import-review.pending",
+    busy: pack.busy,
+    choices: [
+      { id: "cancel", label: "Cancel", run: () => runImportAction("import-dismiss") },
+      ...(isSingleExistingReview(pack.review)
+        ? [{ id: "apply", label: "Use Saved Item", run: () => runImportAction("import-action") }]
+        : isExistingReview(pack.review)
+          ? []
+          : [{ id: "import", label: "Import", run: () => runImportAction("import-confirm") }]),
+    ],
     blocking: false,
     dismissible: true,
     supportedActions: ["cancel"],
@@ -192,6 +202,13 @@ export function DockImportSurface({ pack, settings, loudnessProfile, presets }) 
     kind: "importComplete",
     origin: "nested",
     developmentFixture: "import-complete.pending",
+    busy: pack.busy,
+    choices: [
+      { id: "done", label: "Done", run: () => runImportAction("import-dismiss") },
+      ...(pack.completion?.itemPlan?.length === 1
+        ? [{ id: "apply", label: "Use Imported Item", run: () => runImportAction("import-action") }]
+        : []),
+    ],
     blocking: false,
     dismissible: true,
     supportedActions: ["close"],

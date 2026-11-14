@@ -216,6 +216,34 @@ export function ItemPickerDialog({
     dismissible: !statistics || !busy,
     supportedActions: statistics && busy ? [] : mode === "complete" ? ["close"] : ["cancel"],
     target: { phase: mode },
+    choices: [
+      {
+        id: mode === "complete" || allExisting ? "done" : onBack ? "back" : "cancel",
+        label: mode === "complete" || allExisting ? "Done" : onBack ? "Back" : "Cancel",
+        run: onBack ?? handleDismiss,
+      },
+      ...(mode === "pick"
+        ? [
+            ...items.map((item, index) => ({
+              id: `toggle:${index}`,
+              label: item.name ?? item.fileName ?? `Item ${index + 1}`,
+              disabled: item.disabled,
+              selected: selected.has(item.id),
+              run: () => toggle(item.id),
+            })),
+            {
+              id: "export",
+              label: statistics ? "Export CSV…" : "Export",
+              disabled: selectedIds.length === 0,
+              run: () => onExport(selectedIds),
+            },
+          ]
+        : singleCompletion || existingReview
+          ? [{ id: "apply", label: COMPLETION_ACTION_LABEL[type], run: onAction, disabled: busy }]
+          : mode === "review" && !allExisting
+            ? [{ id: "import", label: "Import", run: onConfirm, disabled: busy }]
+            : []),
+    ],
     onClose: handleDismiss,
     onCancel: handleDismiss,
   });

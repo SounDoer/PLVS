@@ -36,6 +36,11 @@ const PROFILE_OPERATIONS = Object.freeze([
   "removeRule",
   "reorderRules",
 ]);
+const FEEDBACK_FIELDS = {
+  setContent: { field: "content", type: "string" },
+  setEmail: { field: "email", type: "string" },
+  setAttachDiagnostics: { field: "attachDiagnostics", type: "boolean" },
+};
 const MAX_PATCH_OPERATIONS = 64;
 const SIMPLE_PALETTE_KEYS = Object.freeze({
   status: STATUS_COLOR_KEYS,
@@ -142,6 +147,7 @@ function conflictingTarget(claimed, target) {
 }
 
 function operationTargets(kind, operation) {
+  if (kind === "feedback") return [operation.op].filter((op) => Object.hasOwn(FEEDBACK_FIELDS, op));
   if (kind === "theme") {
     switch (operation.op) {
       case "setName":
@@ -208,6 +214,21 @@ function detectOperationConflicts(kind, operations, issues) {
 }
 
 export function describeEditorDraft(kind) {
+  if (kind === "feedback") {
+    return {
+      kind,
+      save: false,
+      history: { undo: false, redo: false },
+      operations: Object.keys(FEEDBACK_FIELDS),
+      operationSchemas: Object.fromEntries(
+        Object.entries(FEEDBACK_FIELDS).map(([op, { field, type }]) => [
+          op,
+          operationSchema(op, { [field]: { type } }),
+        ])
+      ),
+      maximumOperations: MAX_PATCH_OPERATIONS,
+    };
+  }
   if (kind === "theme") {
     return {
       kind,
@@ -473,6 +494,24 @@ function applyProfileOperation(document, operation, index, issues) {
   }
 }
 
+function applyFeedbackOperation(document, operation, index, issues) {
+  const path = `$.operations[${index}]`;
+  const definition = Object.hasOwn(FEEDBACK_FIELDS, operation.op)
+    ? FEEDBACK_FIELDS[operation.op]
+    : null;
+  if (!definition) {
+    issues.push(issue("invalidOperation", `${path}.op`, "Unknown Feedback operation."));
+    return document;
+  }
+  const { field, type } = definition;
+  unknownFields(operation, new Set(["op", field]), path, issues);
+  if (typeof operation[field] !== type) {
+    issues.push(issue("invalidValue", `${path}.${field}`, `${field} must be a ${type}.`));
+    return document;
+  }
+  return { ...document, [field]: operation[field] };
+}
+
 export function planEditorDraftPatch(kind, currentDocument, input) {
   const issues = [];
   if (!plainObject(input)) {
@@ -513,13 +552,22 @@ export function planEditorDraftPatch(kind, currentDocument, input) {
         ? applyThemeOperation(next, operation, index, issues)
         : kind === "loudnessProfile"
           ? applyProfileOperation(next, operation, index, issues)
-          : next;
+          : kind === "feedback"
+            ? applyFeedbackOperation(next, operation, index, issues)
+            : next;
   });
-  if (kind !== "theme" && kind !== "loudnessProfile") {
+  if (!["theme", "loudnessProfile", "feedback"].includes(kind)) {
     issues.push(issue("invalidEditorKind", "$.kind", "Unknown editor draft kind."));
   }
   if (issues.length > 0) return { document: currentDocument, changed: false, issues };
 
+  if (kind === "feedback") {
+    return {
+      document: next,
+      changed: JSON.stringify(next) !== JSON.stringify(currentDocument),
+      issues: [],
+    };
+  }
   try {
     const { id, ...authoring } = next;
     const validated =

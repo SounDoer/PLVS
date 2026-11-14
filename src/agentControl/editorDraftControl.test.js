@@ -30,7 +30,7 @@ describe("semantic editor draft control", () => {
       references: ["core.primaryData", "core.secondaryData"],
     });
     expect(description.overrideRoles.some(({ id }) => id === "data.primary")).toBe(false);
-    expect(description.operationSchemas.setCoreColor).toEqual({
+    expect(description.operationSchemas["setCoreColor"]).toEqual({
       required: ["op", "key", "color"],
       properties: {
         op: { const: "setCoreColor" },

@@ -1,3 +1,4 @@
+import { flushSync } from "react-dom";
 import {
   createContext,
   useCallback,
@@ -238,6 +239,82 @@ export function UiNavigationProvider({
         };
       }),
     [enqueueAction, getRevision, waitForSurfaceChanged]
+  );
+  const decideSurface = useCallback(
+    ({
+      surfaceId,
+      choice,
+      expectedRevision,
+      expectedUiGeneration,
+      dryRun = false,
+      delivered = false,
+    }) =>
+      enqueueAction(async () => {
+        const currentRevision = getRevision();
+        if (Number.isSafeInteger(currentRevision) && expectedRevision !== currentRevision) {
+          throw Object.assign(new Error("The Agent Control revision changed."), {
+            reason: "revisionConflict",
+            details: { expectedRevision, currentRevision },
+          });
+        }
+        const { uiGeneration, surfaces } = stateRef.current;
+        if (expectedUiGeneration !== uiGeneration) {
+          throw createUiNavigationError("uiGenerationConflict", {
+            expectedUiGeneration,
+            currentUiGeneration: uiGeneration,
+          });
+        }
+        const surface = surfaces.find((candidate) => candidate.surfaceId === surfaceId);
+        const entry = countsRef.current.get(surfaceId);
+        if (!surface || !entry?.count) {
+          throw createUiNavigationError("uiSurfaceNotFound", { surfaceId });
+        }
+        const details = { surfaceId, kind: surface.kind, action: choice };
+        const top = [...surfaces]
+          .reverse()
+          .find(
+            (candidate) =>
+              candidate.kind !== "status" && !countsRef.current.get(candidate.surfaceId)?.yields
+          );
+        if (top?.surfaceId !== surfaceId) throw createUiNavigationError("uiConflict", details);
+        if (surface.busy || entry.actionPending) throw createUiNavigationError("uiBusy", details);
+        const selected = entry.actionsRef.current.choices?.find((option) => option.id === choice);
+        if (!selected || selected.disabled || (dryRun && !selected.preview)) {
+          throw createUiNavigationError("uiActionUnavailable", details);
+        }
+        const result = { surfaceId, choice, changed: !dryRun };
+        if (dryRun) return { ...result, dryRun: true, preview: await selected.preview() };
+
+        if (selected.afterDelivery && !delivered) {
+          return {
+            ...result,
+            accepted: true,
+            afterResponse: () =>
+              decideSurface({
+                surfaceId,
+                choice,
+                expectedRevision,
+                expectedUiGeneration,
+                delivered: true,
+              }),
+          };
+        }
+
+        entry.actionPending = true;
+        try {
+          /** @type {any} */
+          let pending;
+          flushSync(() => {
+            pending = selected.run();
+          });
+          const outcome = await pending;
+          return { ...result, ...(outcome ? { outcome } : {}) };
+        } finally {
+          const current = countsRef.current.get(surfaceId);
+          if (current) current.actionPending = false;
+        }
+      }),
+    [enqueueAction, getRevision]
   );
   const waitForSurface = useCallback(
     async (kind, target) => {
@@ -620,11 +697,13 @@ export function UiNavigationProvider({
       showDropdown,
       closeSurface,
       cancelSurface,
+      decideSurface,
       updateEnvironment,
     }),
     [
       closeSurface,
       cancelSurface,
+      decideSurface,
       inspectUi,
       runNamedAction,
       showPanelSettings,
@@ -688,6 +767,7 @@ export function useUiSurface({
   lifetimeKey = undefined,
   onClose = undefined,
   onCancel = undefined,
+  choices = undefined,
   // Read only by scripts/developmentFixtureCoverage.test.js: every event surface names the
   // development fixture that can show it, or { none: "<reason>" }.
   developmentFixture: _developmentFixture = undefined,
@@ -707,19 +787,38 @@ export function useUiSurface({
   wasActiveRef.current = active;
   if (active) lifetimeKeyRef.current = lifetimeKey;
   const surfaceId = surfaceIdRef.current;
-  const descriptorKey = JSON.stringify(descriptor);
-  const actionsRef = useRef({ close: onClose, cancel: onCancel });
-  actionsRef.current = { close: onClose, cancel: onCancel };
+  const publicDescriptor = {
+    ...descriptor,
+    ...(Array.isArray(choices)
+      ? {
+          choices: choices.map(({ id, label, disabled, preview, selected, afterDelivery }) => ({
+            id,
+            label,
+            ...(disabled && { disabled: true }),
+            ...(selected !== undefined && { selected }),
+            ...(afterDelivery && { afterDelivery: true }),
+            ...(preview && { dryRun: true }),
+          })),
+        }
+      : {}),
+  };
+  const descriptorKey = JSON.stringify(publicDescriptor);
+  const actionsRef = useRef(null);
+  actionsRef.current = {
+    close: onClose,
+    cancel: onCancel,
+    choices: Array.isArray(choices) ? choices : [],
+  };
 
   useEffect(() => {
     if (!active || !registry) return undefined;
-    return registry.registerUiSurface(surfaceId, descriptor, actionsRef);
+    return registry.registerUiSurface(surfaceId, publicDescriptor, actionsRef);
     // Registration owns the lifetime. Descriptor changes are handled by the update effect below.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [active, registry, surfaceId]);
 
   useEffect(() => {
-    if (active) registry?.updateUiSurface(surfaceId, descriptor);
+    if (active) registry?.updateUiSurface(surfaceId, publicDescriptor);
     // The serialized public observation is the update boundary, not the caller's object identity.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [active, descriptorKey, registry, surfaceId]);

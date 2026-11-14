@@ -79,6 +79,12 @@ export function CrashReportDialog({
     dismissible: !busy,
     supportedActions: busy ? [] : ["close"],
     target: { phase: error ? "error" : busy ? "busy" : "decision" },
+    choices: [
+      { id: "later", label: "Later", run: onClose },
+      { id: "disable-asking", label: "Don't Ask Again", run: handleDisableAsking },
+      { id: "discard", label: "Don't Send", run: handleDiscard },
+      { id: "send", label: "Send", run: handleSend, disabled: emailInvalid },
+    ],
     onClose,
   });
 

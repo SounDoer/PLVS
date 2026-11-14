@@ -884,6 +884,34 @@ mod tests {
   }
 
   #[test]
+  fn reset_preserves_agent_control_consent_after_reopen() {
+    use crate::agent_control::toggle::ENABLED_KEY;
+    use crate::persistence::WorkspacePersistenceSession;
+
+    let root =
+      std::env::temp_dir().join(format!("plvs-reset-agent-control-{}", std::process::id()));
+    let session = WorkspacePersistenceSession::open(&root, "default").unwrap();
+    session
+      .library()
+      .set_global_preference(ENABLED_KEY, 0, &json!(true))
+      .unwrap();
+    reset_session(&session).unwrap();
+    drop(session);
+
+    let reopened = WorkspacePersistenceSession::open(&root, "default").unwrap();
+    assert_eq!(
+      reopened
+        .hydrate()
+        .unwrap()
+        .global_preferences
+        .get(ENABLED_KEY),
+      Some(&json!(true))
+    );
+    drop(reopened);
+    std::fs::remove_dir_all(root).unwrap();
+  }
+
+  #[test]
   fn only_reset_forgets_that_the_starter_items_were_seeded() {
     let root = std::env::temp_dir().join(format!("plvs-reset-seed-marker-{}", std::process::id()));
     let session = crate::persistence::WorkspacePersistenceSession::open(&root, "default").unwrap();

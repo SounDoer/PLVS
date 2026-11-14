@@ -456,6 +456,7 @@ export function DockAccessoriesProvider({ children }) {
     blocking: false,
     dismissible: false,
     supportedActions: [],
+    choices: { none: "This fixture reports status. Its actions use named status targets." },
     target: { phase: statusFixture?.phase },
   });
   const activePreset = presets.list.find((preset) => preset.id === presets.activeId);

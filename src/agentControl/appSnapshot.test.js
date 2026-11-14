@@ -54,6 +54,7 @@ describe("agent-control app snapshots", () => {
         "ui.action",
         "ui.targets",
         "ui.locate",
+        "ui.decide",
         "ui.close",
         "ui.cancel",
         "window.inspect",
@@ -131,6 +132,7 @@ describe("agent-control app snapshots", () => {
         "loudnessProfile.export",
         "loudnessProfile.import",
         "config.export",
+        "config.reset",
         "config.import",
         "settings.describe",
         "settings.inspect",
@@ -182,7 +184,7 @@ describe("agent-control app snapshots", () => {
       ],
       features: {
         editorDraft: {
-          kinds: ["theme", "loudness-profile"],
+          kinds: ["theme", "loudness-profile", "feedback"],
           describe: true,
           inspect: true,
           patch: true,

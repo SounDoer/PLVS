@@ -68,7 +68,8 @@ async function surfaceDeclarations() {
     for (const { line, text } of surfaceDescriptors(source)) {
       const where = `${relative(root, file).replaceAll("\\", "/")}:${line}`;
       const origin = text.match(/\borigin:\s*([^,\n]+)/)?.[1].trim();
-      declarations.push({ where, origin, fixtures: fixtureValues(source, text) });
+      const choices = text.match(/^    +choices:[ \t]*(.+)$/m)?.[1];
+      declarations.push({ where, origin, fixtures: fixtureValues(source, text), choices });
     }
   }
   return declarations;
@@ -114,6 +115,18 @@ describe("development event fixture coverage", () => {
     for (const name of DEVELOPMENT_EVENT_FIXTURE_NAMES) {
       if (!declared.has(name)) problems.push(`${name} is not declared by any surface.`);
     }
+    expect(problems).toEqual([]);
+  });
+
+  it("requires every event and nested surface to declare choices or give a reason", async () => {
+    const declarations = await surfaceDeclarations();
+    const problems = declarations
+      .filter(({ origin }) => origin === '"event"' || origin === '"nested"')
+      .filter(
+        ({ choices }) =>
+          !choices || !/^(?:\[(?!\s*\])|[a-z][\w]*\(|\{ none: "[^"]{8,}" \})/.test(choices)
+      )
+      .map(({ where }) => where);
     expect(problems).toEqual([]);
   });
 

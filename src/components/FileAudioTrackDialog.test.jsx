@@ -1,7 +1,7 @@
 /** @vitest-environment jsdom */
-import { fireEvent, render, screen } from "@testing-library/react";
+import { act, fireEvent, render, screen } from "@testing-library/react";
 import { expect, it, vi } from "vitest";
-import { UiNavigationProvider } from "../uiNavigation/UiNavigationContext.jsx";
+import { UiNavigationProvider, useUiNavigation } from "../uiNavigation/UiNavigationContext.jsx";
 import { FileAudioTrackDialog } from "./FileAudioTrackDialog.jsx";
 import { BlockingEditorsProvider } from "../hooks/BlockingEditorsContext.jsx";
 const english = {
@@ -62,4 +62,50 @@ it("cancels without confirming or changing a result", () => {
   fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
   expect(onCancel).toHaveBeenCalledOnce();
   expect(onConfirm).not.toHaveBeenCalled();
+});
+
+it("answers a mounted audio track picker using its actual stream index", async () => {
+  const tracks = [
+    { index: 2, codec: "aac" },
+    { index: 7, codec: "aac" },
+  ];
+  const onConfirm = vi.fn();
+  const harness = /** @type {{ navigation?: ReturnType<typeof useUiNavigation> }} */ ({});
+  function Picker() {
+    harness.navigation = useUiNavigation();
+    return (
+      <FileAudioTrackDialog
+        selection={{
+          probe: {
+            path: "/tmp/example.mkv",
+            fileName: "example.mkv",
+            selectedTrack: tracks[0],
+            audioTracks: tracks,
+          },
+        }}
+        onConfirm={onConfirm}
+        onCancel={vi.fn()}
+      />
+    );
+  }
+  render(
+    <BlockingEditorsProvider>
+      <UiNavigationProvider getRevision={() => 3}>
+        <Picker />
+      </UiNavigationProvider>
+    </BlockingEditorsProvider>
+  );
+  const navigation = harness.navigation;
+  if (!navigation) throw new Error("Expected the UI navigation provider to mount.");
+  const { uiGeneration, surfaces } = navigation.inspectUi();
+  expect(surfaces[0].choices.map(({ id }) => id)).toEqual(["cancel", "track:2", "track:7"]);
+  await act(() =>
+    navigation.decideSurface({
+      surfaceId: surfaces[0].surfaceId,
+      choice: "track:7",
+      expectedRevision: 3,
+      expectedUiGeneration: uiGeneration,
+    })
+  );
+  expect(onConfirm).toHaveBeenCalledExactlyOnceWith(7);
 });

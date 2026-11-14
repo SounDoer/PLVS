@@ -41,9 +41,31 @@ export function useFeedbackDraft({ active = true, onClose, onDirtyChange = () =>
     if (active) onDirtyChange(dirty);
   }, [active, dirty, onDirtyChange]);
 
-  const emailInvalid = emailTouched && email.trim() !== "" && !EMAIL_RE.test(email);
+  const trimmedEmail = email.trim();
+  const invalidAddress = trimmedEmail !== "" && !EMAIL_RE.test(trimmedEmail);
+  const emailInvalid = emailTouched && invalidAddress;
   const busy = status === "preparing" || status === "sending";
-  const canSubmit = content.trim().length > 0 && !emailInvalid && !busy;
+  const canSubmit = content.trim().length > 0 && !invalidAddress && !busy && status !== "sent";
+  const document = { content, email, attachDiagnostics };
+  const key = JSON.stringify(document);
+  const [draft, setDraft] = useState(() => ({ key, generation: 0 }));
+  if (key !== draft.key) setDraft({ key, generation: draft.generation + 1 });
+
+  function inspectDraft() {
+    return { document, dirty, draftGeneration: draft.generation };
+  }
+
+  function commitDraftDocument(next) {
+    if (!mountedRef.current || busy || status === "sent") {
+      throw Object.assign(new Error("The Feedback draft is busy."), {
+        code: "draftActionUnavailable",
+      });
+    }
+    setContent(next.content);
+    setEmail(next.email);
+    setEmailTouched(true);
+    setAttachDiagnostics(next.attachDiagnostics);
+  }
 
   const isCurrent = (session) => mountedRef.current && sessionRef.current === session;
 
@@ -68,29 +90,52 @@ export function useFeedbackDraft({ active = true, onClose, onDirtyChange = () =>
     }
   }
 
+  function submissionPayload(diagnostics) {
+    return {
+      content: content.trim(),
+      ...(trimmedEmail && { email: trimmedEmail }),
+      ...(attachDiagnostics && { diagnostics }),
+    };
+  }
+
+  async function prepareSubmission(session, rememberDiagnostics) {
+    const diagnostics = attachDiagnostics
+      ? (diagnosticsPreview ??
+        (rememberDiagnostics
+          ? await prepareDiagnostics(false, session)
+          : await readFeedbackDiagnostics(frontendDiagnostics())))
+      : undefined;
+    return submissionPayload(diagnostics);
+  }
+
+  async function previewSubmission() {
+    try {
+      return await prepareSubmission(sessionRef.current, false);
+    } catch {
+      throw Object.assign(new Error("Could not prepare Feedback diagnostics."), {
+        reason: "uiActionUnavailable",
+      });
+    }
+  }
+
   async function handleSubmit() {
     const session = sessionRef.current;
     if (!mountedRef.current || !canSubmit || operationRef.current === session) return;
     operationRef.current = session;
     try {
-      let diagnostics;
-      if (attachDiagnostics) {
-        setStatus("preparing");
-        try {
-          diagnostics = await prepareDiagnostics(false, session);
-        } catch {
-          if (isCurrent(session)) setStatus("diagnostics-error");
-          return;
-        }
+      if (attachDiagnostics) setStatus("preparing");
+      let payload;
+      try {
+        payload = attachDiagnostics
+          ? await prepareSubmission(session, true)
+          : submissionPayload(undefined);
+      } catch {
+        if (isCurrent(session)) setStatus("diagnostics-error");
+        return { submitted: false, status: "diagnostics-error" };
       }
-      if (!isCurrent(session)) return;
+      if (!isCurrent(session)) return { submitted: false, status: "cancelled" };
       setStatus("sending");
-      const trimmedEmail = email.trim();
-      const ok = await submitFeedback({
-        content: content.trim(),
-        email: trimmedEmail || undefined,
-        ...(attachDiagnostics ? { diagnostics } : {}),
-      });
+      const ok = await submitFeedback(payload);
       if (!isCurrent(session)) return;
       if (ok) {
         setStatus("sent");
@@ -98,6 +143,7 @@ export function useFeedbackDraft({ active = true, onClose, onDirtyChange = () =>
       } else {
         setStatus("error");
       }
+      return { submitted: ok, status: ok ? "sent" : "error" };
     } finally {
       if (operationRef.current === session) operationRef.current = null;
     }
@@ -138,5 +184,8 @@ export function useFeedbackDraft({ active = true, onClose, onDirtyChange = () =>
     canSubmit,
     previewDiagnostics,
     handleSubmit,
+    previewSubmission,
+    inspectDraft,
+    commitDraftDocument,
   };
 }

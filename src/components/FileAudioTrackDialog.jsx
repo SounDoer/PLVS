@@ -36,6 +36,16 @@ function TrackSelection({ selection, onConfirm, onCancel }) {
     dismissible: true,
     supportedActions: ["cancel"],
     target: {},
+    choices: [
+      { id: "cancel", label: "Cancel", run: onCancel },
+      ...probe.audioTracks.map((track) => ({
+        id: `track:${track.index}`,
+        label: [`Track ${track.index}`, formatLanguage(track.language), track.title]
+          .filter(Boolean)
+          .join(" · "),
+        run: () => onConfirm(track.index),
+      })),
+    ],
     onCancel,
   });
   return (

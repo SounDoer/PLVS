@@ -6,7 +6,12 @@ import {
   respondToAgentControlRequest,
 } from "../ipc/agentControlEvents.js";
 import { flushPersistence } from "../persistence/index.js";
-import { exportProfile, importProfile, reloadAfterProfileChange } from "../persistence/profile.js";
+import {
+  exportProfile,
+  importProfile,
+  reloadAfterProfileChange,
+  resetProfile,
+} from "../persistence/profile.js";
 import { normalizeImportedProfile } from "../persistence/profileShape.js";
 import { agentControlRpcError } from "./protocol.js";
 import { createRevisionClock } from "./bridge/revisionClock.js";
@@ -161,6 +166,7 @@ import { themeStateSignature, loudnessProfileStateSignature } from "./bridge/sig
  *   pointerControl?: any,
  *   flush?: (...args: any[]) => any,
  *   exportConfiguration?: (...args: any[]) => any,
+ *   resetConfiguration?: (...args: any[]) => any,
  *   importConfiguration?: (...args: any[]) => any,
  *   normalizeConfiguration?: (...args: any[]) => any,
  *   relaunchAfterConfigurationChange?: (...args: any[]) => any,
@@ -206,6 +212,7 @@ export function useAgentControlBridge({
   flush = flushPersistence,
   exportConfiguration = exportProfile,
   importConfiguration = importProfile,
+  resetConfiguration = resetProfile,
   normalizeConfiguration = normalizeImportedProfile,
   relaunchAfterConfigurationChange = reloadAfterProfileChange,
 }) {
@@ -272,6 +279,7 @@ export function useAgentControlBridge({
     flush,
     exportConfiguration,
     importConfiguration,
+    resetConfiguration,
     normalizeConfiguration,
     relaunchAfterConfigurationChange,
   };

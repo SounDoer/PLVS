@@ -47,7 +47,7 @@ export async function settleEditorDraftObservation({
 /** @param {import("../bridge/types.js").BridgeContext} ctx */
 async function describe(ctx) {
   const { request, requestId, clock } = ctx;
-  const kind = request.params.kind === "loudness-profile" ? "loudnessProfile" : "theme";
+  const kind = request.params.kind === "loudness-profile" ? "loudnessProfile" : request.params.kind;
   return {
     requestId,
     result: {
@@ -61,7 +61,7 @@ async function describe(ctx) {
 async function inspect(ctx) {
   const { request, requestId, clock } = ctx;
   const { uiNavigation, editorDraft } = ctx.snap;
-  const kind = request.params.kind === "loudness-profile" ? "loudnessProfile" : "theme";
+  const kind = request.params.kind === "loudness-profile" ? "loudnessProfile" : request.params.kind;
   if (!editorDraft?.inspect || !uiNavigation?.inspectUi) {
     throw semanticFailure(
       "surfaceUnavailable",
@@ -112,7 +112,7 @@ async function inspect(ctx) {
 async function act(ctx) {
   const { request, requestId, clock, flush, live } = ctx;
   const { uiNavigation, editorDraft } = ctx.snap;
-  const kind = request.params.kind === "loudness-profile" ? "loudnessProfile" : "theme";
+  const kind = request.params.kind === "loudness-profile" ? "loudnessProfile" : request.params.kind;
   const currentRevision = clock.current();
   if (request.params.expectedRevision !== currentRevision) {
     throw semanticFailure(

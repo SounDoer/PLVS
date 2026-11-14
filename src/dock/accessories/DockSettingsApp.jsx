@@ -301,7 +301,15 @@ function SettingsSession({ surface, payload, model, send: sendToMain, onError })
           throw new Error("The requested Settings control is unavailable.");
         await controller[request.method](request.target);
       } else if (request.kind === "surface") {
-        const callback = surfaces.current.get(request.key)?.actions.current[request.method];
+        const actions = surfaces.current.get(request.key)?.actions.current;
+        if (request.method === "decide") {
+          const choice = actions?.choices?.find((item) => item.id === request.target.choice);
+          const callback = request.target.dryRun ? choice?.preview : choice?.run;
+          if (!callback || choice.disabled)
+            throw new Error("The requested Settings choice is unavailable.");
+          return callback();
+        }
+        const callback = actions?.[request.method];
         if (!callback) throw new Error("The requested Settings surface is unavailable.");
         await callback();
       } else if (request.kind === "decision") {
@@ -311,7 +319,7 @@ function SettingsSession({ surface, payload, model, send: sendToMain, onError })
       }
     };
     void execute().then(
-      () => send("settings-ui-result", { id: request.id }),
+      (result) => send("settings-ui-result", { id: request.id, result }),
       (error) =>
         send("settings-ui-result", {
           id: request.id,

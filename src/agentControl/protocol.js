@@ -216,8 +216,8 @@ export function normalizeAgentControlRequest(input) {
       input.method === "editorDraft.describe" ? new Set(["kind"]) : new Set(["kind", "surfaceId"]);
     const field = unknownField(input.params, allowed);
     if (field) return invalidParams(`$.params.${field}`, `Unknown parameter: ${field}.`);
-    if (!["theme", "loudness-profile"].includes(input.params.kind)) {
-      return invalidParams("$.params.kind", "kind must be theme or loudness-profile.");
+    if (!["theme", "loudness-profile", "feedback"].includes(input.params.kind)) {
+      return invalidParams("$.params.kind", "kind must be theme, loudness-profile or feedback.");
     }
     if (
       input.method === "editorDraft.inspect" &&
@@ -263,7 +263,10 @@ export function normalizeAgentControlRequest(input) {
     ]);
     const field = unknownField(input.params, allowed);
     if (field) return invalidParams(`$.params.${field}`, `Unknown parameter: ${field}.`);
-    if (!["theme", "loudness-profile"].includes(input.params.kind)) {
+    if (
+      !["theme", "loudness-profile"].includes(input.params.kind) &&
+      !(input.method === "editorDraft.patch" && input.params.kind === "feedback")
+    ) {
       return invalidParams("$.params.kind", "kind must be theme or loudness-profile.");
     }
     if (!/^ui-[a-z0-9-]{16,60}$/.test(input.params.surfaceId ?? "")) {
@@ -583,6 +586,28 @@ export function normalizeAgentControlRequest(input) {
         },
       },
     };
+  }
+
+  if (input.method === "ui.decide") {
+    const field = unknownField(
+      input.params,
+      new Set(["surfaceId", "choice", "expectedRevision", "expectedUiGeneration", "dryRun"])
+    );
+    if (field) return invalidParams(`$.params.${field}`, `Unknown parameter: ${field}.`);
+    const tokenError =
+      validateExpectedRevision(input.params) ?? validateExpectedUiGeneration(input.params);
+    if (tokenError) return tokenError;
+    const { surfaceId, choice, dryRun } = input.params;
+    if (typeof surfaceId !== "string" || !/^ui-[a-z0-9-]{16,60}$/.test(surfaceId)) {
+      return invalidParams("$.params.surfaceId", "surfaceId must be an exact UI surface ID.");
+    }
+    if (typeof choice !== "string" || !/^[a-z0-9][a-zA-Z0-9:_-]{0,127}$/.test(choice)) {
+      return invalidParams("$.params.choice", "choice must be a declared choice ID.");
+    }
+    if (dryRun !== undefined && typeof dryRun !== "boolean") {
+      return invalidParams("$.params.dryRun", "dryRun must be a boolean.");
+    }
+    return { ok: true, request: { id: input.id, method: input.method, params: input.params } };
   }
 
   if (
@@ -1034,6 +1059,17 @@ export function normalizeAgentControlRequest(input) {
         },
       },
     };
+  }
+
+  if (input.method === "config.reset") {
+    const field = unknownField(input.params, new Set(["expectedRevision", "dryRun"]));
+    if (field) return invalidParams(`$.params.${field}`, `Unknown parameter: ${field}.`);
+    const revisionError = validateExpectedRevision(input.params);
+    if (revisionError) return revisionError;
+    if (input.params.dryRun !== undefined && typeof input.params.dryRun !== "boolean") {
+      return invalidParams("$.params.dryRun", "dryRun must be a boolean.");
+    }
+    return { ok: true, request: { id: input.id, method: input.method, params: input.params } };
   }
 
   if (input.method === "config.import") {

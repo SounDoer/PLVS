@@ -1,4 +1,8 @@
-import { UpdateDetailsContent, UpdateDetailsHeader } from "./UpdateDetailsContent.jsx";
+import {
+  UpdateDetailsContent,
+  UpdateDetailsHeader,
+  updateDetailsChoices,
+} from "./UpdateDetailsContent.jsx";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { useUiSurface } from "../uiNavigation/UiNavigationContext.jsx";
 
@@ -9,6 +13,7 @@ const DETAILS_FIXTURES = {
 
 export function UpdateDialog({
   open,
+  targetId = null,
   tutorialPreview = false,
   currentVersion,
   targetVersion = null,
@@ -32,6 +37,17 @@ export function UpdateDialog({
 
   useUiSurface({
     active: open,
+    lifetimeKey: targetId,
+    choices: updateDetailsChoices({
+      installStatus,
+      downloading,
+      installationSupported,
+      manualDownloadUrl,
+      onConfirm,
+      onCancel: handleDismiss,
+      onRestart,
+      openExternalUrl,
+    }),
     kind: "update",
     origin: "event",
     developmentFixture: DETAILS_FIXTURES[tutorialPreview ? "tutorial" : "event"],

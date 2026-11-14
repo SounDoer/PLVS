@@ -65,6 +65,10 @@ export function LibraryConflictDialog() {
     busy,
     dismissible: false,
     supportedActions: [],
+    choices: [
+      { id: "reload", label: "Reload", run: () => resolve("reload") },
+      { id: "copy", label: "Save as Copy", run: () => resolve("copy") },
+    ],
     target: { phase: error ? "error" : busy ? "busy" : "decision" },
   });
   return (

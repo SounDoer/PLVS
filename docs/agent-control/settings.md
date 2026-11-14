@@ -17,8 +17,7 @@ Command syntax and arguments are in [`generated/commands.md`](generated/commands
 There is no generic `settings reset`. Individual GUI resets and a destructive whole-configuration
 reset do not share one semantic boundary, and explicit updates can restore ordinary defaults.
 Portable whole-configuration export and import are implemented by
-[Configuration Transfer](config.md); there is currently no public whole-configuration reset
-command.
+[Configuration Transfer](config.md); `config reset` uses the same restart handshake as import.
 
 ## Public scope
 
@@ -43,7 +42,7 @@ The following are intentionally outside Settings Control:
 - Focus View, surface opacity, glass, window geometry, and Dock; these are working-scene state captured
   by Presets rather than ordinary global Settings.
 - Portable configuration export and import, which belong to
-  [Configuration Transfer](config.md), and whole-configuration reset, which has no public command.
+  [Configuration Transfer](config.md), and whole-configuration reset.
 - Fixed, non-configurable keyboard shortcuts.
 
 `settings update` is atomic. If any included field is invalid or unavailable, no other field in the

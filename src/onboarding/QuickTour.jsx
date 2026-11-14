@@ -325,6 +325,7 @@ export function QuickTour({
       phase: phase === "invitation" ? "invitation" : "tour",
       step: phase === "active" ? step + 1 : null,
     },
+    choices: { none: "Quick Tour uses ui quick-tour commands and ui close." },
     onClose: () => close(),
   });
 

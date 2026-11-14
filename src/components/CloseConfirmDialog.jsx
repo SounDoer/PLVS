@@ -44,7 +44,7 @@ export function CloseConfirmDialog({
     const d = dontAsk;
     setAction("quit");
     setDontAsk(false);
-    onConfirm(a, d);
+    return onConfirm(a, d);
   }
 
   function handleCancel() {
@@ -62,7 +62,14 @@ export function CloseConfirmDialog({
     busy,
     dismissible: !busy,
     supportedActions: busy ? [] : ["cancel"],
-    target: { phase: error ? "error" : "decision" },
+    target: { phase: error ? "error" : "decision", intent: error ? undefined : action },
+    generationKey: dontAsk,
+    choices: [
+      { id: "cancel", label: "Cancel", run: handleCancel },
+      error
+        ? { id: "retry", label: "Retry", run: onRetry, afterDelivery: true }
+        : { id: "confirm", label: "Confirm", run: handleConfirm, afterDelivery: true },
+    ],
     onCancel: handleCancel,
   });
 

@@ -177,6 +177,7 @@ const groups = [
       "ui.quickTour.next",
       "ui.quickTour.back",
       "ui.cancel",
+      "ui.decide",
       "editorDraft.patch",
       "editorDraft.undo",
       "editorDraft.redo",
@@ -251,7 +252,7 @@ const groups = [
   {
     scenario: "configuration-relaunch",
     disposition: "external",
-    commands: ["config.import"],
+    commands: ["config.import", "config.reset"],
     owner: "update",
   },
 ];

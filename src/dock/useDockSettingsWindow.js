@@ -110,6 +110,15 @@ export function useDockSettingsWindow(options) {
             current: {
               close: () => requestUi("surface", item.id, "close"),
               cancel: () => requestUi("surface", item.id, "cancel"),
+              choices: item.descriptor.choices?.map((choice) => ({
+                ...choice,
+                run: () => requestUi("surface", item.id, "decide", { choice: choice.id }),
+                ...(choice.dryRun && {
+                  preview: () =>
+                    requestUi("surface", item.id, "decide", { choice: choice.id, dryRun: true }),
+                }),
+                afterDelivery: choice.afterDelivery,
+              })),
             },
           })
         );
@@ -240,7 +249,7 @@ export function useDockSettingsWindow(options) {
           pending.current.delete(value.id);
           if (value.error)
             request.reject(Object.assign(new Error(value.error.message), value.error));
-          else request.resolve();
+          else request.resolve(value.result);
           return;
         }
         if (action.type === "settings-action") {

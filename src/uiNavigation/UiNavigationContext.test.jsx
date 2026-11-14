@@ -71,6 +71,50 @@ describe("UiNavigationProvider", () => {
     });
   });
 
+  it("answers only an enabled choice on the exact top surface and previews without invoking it", async () => {
+    const send = vi.fn();
+    const preview = vi.fn(async () => ({ content: "example" }));
+    const { result, rerender } = renderHook(
+      ({ covered }) => {
+        const surfaceId = useUiSurface({
+          kind: "feedback",
+          origin: "navigable",
+          choices: [{ id: "send", label: "Send", run: send, preview }],
+        });
+        useUiSurface({ active: covered, kind: "confirmation", origin: "nested" });
+        return { surfaceId, navigation: useUiNavigation() };
+      },
+      { wrapper, initialProps: { covered: true } }
+    );
+    const decide = (params = {}) =>
+      result.current.navigation.decideSurface({
+        surfaceId: result.current.surfaceId,
+        choice: "send",
+        expectedRevision: 7,
+        expectedUiGeneration: result.current.navigation.uiGeneration,
+        ...params,
+      });
+
+    await expect(decide()).rejects.toMatchObject({ reason: "uiConflict" });
+    await act(async () => rerender({ covered: false }));
+    await expect(decide({ expectedRevision: 6 })).rejects.toMatchObject({
+      reason: "revisionConflict",
+    });
+    await expect(decide({ expectedUiGeneration: 0 })).rejects.toMatchObject({
+      reason: "uiGenerationConflict",
+    });
+    await expect(decide({ choice: "unknown" })).rejects.toMatchObject({
+      reason: "uiActionUnavailable",
+    });
+    await expect(decide({ dryRun: true })).resolves.toMatchObject({
+      changed: false,
+      preview: { content: "example" },
+    });
+    expect(send).not.toHaveBeenCalled();
+    await decide();
+    expect(send).toHaveBeenCalledOnce();
+  });
+
   it("reports status help and action IDs without notice wording or details", () => {
     const items = [
       {

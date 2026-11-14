@@ -47,7 +47,7 @@ export function ConfirmDialog({
   const cancel = () => onOpenChange(false);
   const confirm = () => {
     onOpenChange(false);
-    onConfirm();
+    return onConfirm();
   };
   const decisionSurfaceId = useUiSurface({
     active: open,
@@ -70,6 +70,10 @@ export function ConfirmDialog({
           editorSurfaceId: editorDraftDecision.editorSurfaceId,
         }
       : { phase: "decision" },
+    choices: [
+      { id: "cancel", label: cancelLabel, run: cancel },
+      { id: "confirm", label: confirmLabel, run: confirm, afterDelivery: true },
+    ],
     onCancel: cancel,
   });
   useEditorDraftDecision({

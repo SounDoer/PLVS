@@ -319,6 +319,7 @@ plvs-cli ui show dropdown --control <target-id> --expected-revision <n> --expect
 plvs-cli ui quick-tour <start|next|back> --expected-revision <n> --expected-ui-generation <n> --json
 plvs-cli ui targets --json
 plvs-cli ui locate --target <target-id> --json
+plvs-cli ui decide --surface-id <surface-id> --choice <id> --expected-revision <n> --expected-ui-generation <n> --json [--dry-run]
 plvs-cli ui close <surface-id> --expected-revision <n> --expected-ui-generation <n> --json
 plvs-cli ui cancel <surface-id> --expected-revision <n> --expected-ui-generation <n> --json
 ```
@@ -335,6 +336,11 @@ only the exact linked `editor-draft discard` command can confirm that decision. 
 decisions are inspectable but cannot be fabricated. See [UI Navigation](../agent-control/ui.md) for
 two-token concurrency, Panel behavior in normal/Fullscreen/Dock forms, multi-workbench selection,
 safety, and errors.
+
+Read `choices` in `ui inspect` before answering an open dialog with `ui decide`. Use
+`editor-draft describe feedback` to discover operations for the Feedback draft, then use
+`ui decide --choice send --dry-run` with its surface ID and the current UI tokens to preview the
+payload. Send without `--dry-run` submits Feedback from any app identity.
 
 Editor Draft Control operates on the in-memory document of an already open Theme or Loudness
 Profile editor:
@@ -439,6 +445,7 @@ Everything configuration export uses the same `.plvsconfig` document as Settings
 ```powershell
 plvs-cli config export --json [--out <file>]
 plvs-cli config import <file|-> --expected-revision <n> --json [--dry-run]
+plvs-cli config reset --expected-revision <n> --json [--dry-run]
 ```
 
 Configuration import validates or replaces the complete setup. A real import relaunches PLVS only

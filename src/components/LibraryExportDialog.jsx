@@ -56,6 +56,15 @@ export function LibraryExportDialog({
     dismissible: true,
     supportedActions: ["cancel"],
     target: { phase: "chooseType" },
+    choices: [
+      { id: "cancel", label: "Cancel", run: close },
+      ...LIBRARY_TYPES.map(({ type, label }) => ({
+        id: type,
+        label,
+        disabled: !itemsByType[type]?.length,
+        run: () => setSelectedType(type),
+      })),
+    ],
     onCancel: close,
   });
 

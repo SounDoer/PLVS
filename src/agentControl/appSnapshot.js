@@ -81,7 +81,7 @@ export function buildAgentControlCapabilities(runtime, revision) {
       ...(hasMethod("editorDraft.describe")
         ? {
             editorDraft: {
-              kinds: ["theme", "loudness-profile"],
+              kinds: ["theme", "loudness-profile", "feedback"],
               describe: true,
               inspect: hasMethod("editorDraft.inspect"),
               patch: hasMethod("editorDraft.patch"),
@@ -97,6 +97,7 @@ export function buildAgentControlCapabilities(runtime, revision) {
             uiNavigation: {
               inspect: true,
               close: hasMethod("ui.close"),
+              decide: hasMethod("ui.decide"),
               targets: hasMethod("ui.targets"),
               locate: hasMethod("ui.locate"),
               quickTour: hasMethod("ui.quickTour.start")

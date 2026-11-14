@@ -887,6 +887,99 @@
       }
     },
     {
+      "id": "ui.decide",
+      "family": "ui",
+      "path": ["ui", "decide"],
+      "usage": "plvs-cli ui decide --surface-id <surface-id> --choice <id> --expected-revision <n> --expected-ui-generation <n> --json [--dry-run]",
+      "summary": "Answer one exact UI surface using a declared choice.",
+      "execution": "runningApp",
+      "operation": "action",
+      "wireMethod": "ui.decide",
+      "json": "required",
+      "expectedRevision": "required",
+      "dryRun": true,
+      "outputFile": "none",
+      "positionals": [],
+      "options": [
+        {
+          "name": "--surface-id",
+          "mapsTo": "surfaceId",
+          "required": true,
+          "value": {
+            "type": "string"
+          }
+        },
+        {
+          "name": "--choice",
+          "mapsTo": "choice",
+          "required": true,
+          "value": {
+            "type": "string"
+          }
+        },
+        {
+          "name": "--expected-revision",
+          "required": true,
+          "value": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          }
+        },
+        {
+          "name": "--expected-ui-generation",
+          "mapsTo": "expectedUiGeneration",
+          "required": true,
+          "value": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          }
+        },
+        {
+          "name": "--json",
+          "required": true,
+          "value": {
+            "type": "boolean"
+          }
+        },
+        {
+          "name": "--dry-run",
+          "mapsTo": "dryRun",
+          "required": false,
+          "value": {
+            "type": "boolean"
+          }
+        }
+      ],
+      "wireParams": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["surfaceId", "choice", "expectedRevision", "expectedUiGeneration"],
+        "properties": {
+          "surfaceId": {
+            "type": "string"
+          },
+          "expectedRevision": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          },
+          "expectedUiGeneration": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          },
+          "choice": {
+            "type": "string"
+          },
+          "dryRun": {
+            "type": "boolean"
+          }
+        }
+      }
+    },
+    {
       "id": "ui.close",
       "family": "ui",
       "path": ["ui", "close"],
@@ -4986,6 +5079,60 @@
       }
     },
     {
+      "id": "config.reset",
+      "family": "config",
+      "path": ["config", "reset"],
+      "usage": "plvs-cli config reset --expected-revision <n> --json [--dry-run]",
+      "summary": "Reset the configuration and restart PLVS.",
+      "execution": "runningApp",
+      "operation": "mutation",
+      "wireMethod": "config.reset",
+      "json": "required",
+      "expectedRevision": "required",
+      "dryRun": true,
+      "outputFile": "none",
+      "positionals": [],
+      "options": [
+        {
+          "name": "--expected-revision",
+          "required": true,
+          "value": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "mapsTo": "expectedRevision"
+        },
+        {
+          "name": "--json",
+          "required": true,
+          "value": {
+            "type": "boolean"
+          }
+        },
+        {
+          "name": "--dry-run",
+          "required": false,
+          "value": {
+            "type": "boolean"
+          },
+          "mapsTo": "dryRun"
+        }
+      ],
+      "wireParams": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["expectedRevision"],
+        "properties": {
+          "expectedRevision": {
+            "schemaRef": "agentControl.revision"
+          },
+          "dryRun": {
+            "type": "boolean"
+          }
+        }
+      }
+    },
+    {
       "id": "config.import",
       "family": "config",
       "path": ["config", "import"],
@@ -7783,7 +7930,7 @@
       "id": "editorDraft.describe",
       "family": "editor-draft",
       "path": ["editor-draft", "describe"],
-      "usage": "plvs-cli editor-draft describe <theme|loudness-profile> --json",
+      "usage": "plvs-cli editor-draft describe <theme|loudness-profile|feedback> --json",
       "summary": "Describe the closed semantic operations supported by an editor draft kind.",
       "execution": "runningApp",
       "operation": "query",
@@ -7798,7 +7945,7 @@
           "required": true,
           "value": {
             "type": "string",
-            "enum": ["theme", "loudness-profile"]
+            "enum": ["theme", "loudness-profile", "feedback"]
           }
         }
       ],
@@ -7816,7 +7963,7 @@
         "properties": {
           "kind": {
             "type": "string",
-            "enum": ["theme", "loudness-profile"]
+            "enum": ["theme", "loudness-profile", "feedback"]
           }
         }
       }
@@ -7825,7 +7972,7 @@
       "id": "editorDraft.inspect",
       "family": "editor-draft",
       "path": ["editor-draft", "inspect"],
-      "usage": "plvs-cli editor-draft inspect <theme|loudness-profile> <surface-id> --json",
+      "usage": "plvs-cli editor-draft inspect <theme|loudness-profile|feedback> <surface-id> --json",
       "summary": "Inspect the exact currently mounted editor draft and concurrency tokens.",
       "execution": "runningApp",
       "operation": "query",
@@ -7840,7 +7987,7 @@
           "required": true,
           "value": {
             "type": "string",
-            "enum": ["theme", "loudness-profile"]
+            "enum": ["theme", "loudness-profile", "feedback"]
           }
         },
         {
@@ -7864,7 +8011,7 @@
         "properties": {
           "kind": {
             "type": "string",
-            "enum": ["theme", "loudness-profile"]
+            "enum": ["theme", "loudness-profile", "feedback"]
           },
           "surfaceId": { "type": "string" }
         }
@@ -7874,7 +8021,7 @@
       "id": "editorDraft.patch",
       "family": "editor-draft",
       "path": ["editor-draft", "patch"],
-      "usage": "plvs-cli editor-draft patch <theme|loudness-profile> <surface-id> <file|-> --expected-revision <n> --expected-ui-generation <n> --expected-draft-generation <n> --json",
+      "usage": "plvs-cli editor-draft patch <theme|loudness-profile|feedback> <surface-id> <file|-> --expected-revision <n> --expected-ui-generation <n> --expected-draft-generation <n> --json",
       "summary": "Apply one closed atomic semantic transaction to the exact mounted draft.",
       "execution": "runningApp",
       "operation": "mutation",
@@ -7887,7 +8034,7 @@
         {
           "name": "kind",
           "required": true,
-          "value": { "type": "string", "enum": ["theme", "loudness-profile"] }
+          "value": { "type": "string", "enum": ["theme", "loudness-profile", "feedback"] }
         },
         {
           "name": "surface-id",
@@ -7930,7 +8077,7 @@
           "expectedDraftGeneration"
         ],
         "properties": {
-          "kind": { "type": "string", "enum": ["theme", "loudness-profile"] },
+          "kind": { "type": "string", "enum": ["theme", "loudness-profile", "feedback"] },
           "surfaceId": { "type": "string" },
           "patch": { "schemaRef": "editorDraft.patch" },
           "expectedRevision": { "schemaRef": "agentControl.revision" },

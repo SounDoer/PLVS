@@ -178,6 +178,8 @@ function projectSurface(surface) {
       ),
     ].sort()
   );
+  if (surface.generationKey !== undefined) projected.generationKey = surface.generationKey;
+  if (surface.choices) projected.choices = Object.freeze(surface.choices.map(Object.freeze));
   projected.target = Object.freeze(projectTarget(surface.target));
   return Object.freeze(projected);
 }

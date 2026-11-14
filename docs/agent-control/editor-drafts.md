@@ -1,11 +1,11 @@
 # Editor Draft Control
 
 Editor Draft Control safely inspects and changes the in-memory document owned by a currently open
-Theme Editor or Loudness Profile Editor. It is an authoring-session API: Patch, Undo, Redo, and Discard never Save a document, change the selected library
+Theme Editor, Loudness Profile Editor, or Feedback dialog. It is an authoring-session API: Patch, Undo, Redo, and Discard never Save a document, change the selected library
 item, dirty a Preset, or write persistence. Explicit Save commits the exact draft through its existing
 editor owner, including the GUI's selection and Preset effects.
 
-Use `editor-draft describe <theme|loudness-profile>` to discover the closed operation vocabulary.
+Use `editor-draft describe <theme|loudness-profile|feedback>` to discover the closed operation vocabulary.
 The Theme description is derived from the Core keys, palette presets, and editor-visible Theme Role
 Registry entries. The Profile description is derived from ruleable metrics and their display
 precision. Arbitrary object paths, React state, DOM selectors, clicks, and keystrokes are not
@@ -21,7 +21,7 @@ availability, and three independent concurrency tokens:
 - `uiGeneration` covers the mounted surface stack and public UI descriptors;
 - `draftGeneration` covers accepted semantic changes inside this one editor lifetime.
 
-Opening an editor starts its draft generation at zero. A changed atomic Patch or successful
+Read the starting draft generation when opening an editor. A changed atomic Patch or successful
 Undo/Redo advances it once. A semantic no-op advances nothing. Draft changes do not impersonate a
 durable write, so they do not advance the global revision. Closing and reopening creates a new
 surface identity; a retained ID can never address the replacement editor.
@@ -55,8 +55,8 @@ and preview intact.
 
 Only then may `editor-draft discard` name both the original editor surface and that linked decision
 surface. The command verifies the decision is topmost, still belongs to the exact editor, and the
-three generations are current, then invokes the confirmation's existing callback. There is no
-generic Confirm command, and another confirmation can never be invoked through this family.
+three generations are current, then invokes the confirmation's existing callback. Other dialog
+choices are available through [UI Navigation](ui.md#answer-a-dialog).
 
 Stable family errors include `editorDraftNotFound`, `editorDraftKindMismatch`,
 `draftGenerationConflict`, `draftStale`, `invalidDraftPatch`, `draftActionUnavailable`,
@@ -90,3 +90,12 @@ A flush failure is `persistenceFailed` with `stateCommitted: true`, `savedId`, a
 Inspect the saved resource and UI after either error; never blindly repeat Save. A lost-response
 replay cannot save a replacement editor using the old surface ID or tokens. This command does not
 provide a generic Save/Confirm operation for other UI surfaces.
+
+## Feedback
+
+Use `editor-draft describe feedback`, `editor-draft inspect feedback <surface-id>`, and
+`editor-draft patch feedback <surface-id> <file|->`. The operations are `setContent` with a
+`content` string, `setEmail` with an `email` string, and `setAttachDiagnostics` with an
+`attachDiagnostics` boolean. Use an empty email string to omit it. Feedback offers Send and
+Cancel through UI Navigation. Send supports `--dry-run` and a real send uses the same endpoint
+as the Feedback dialog in every app identity.

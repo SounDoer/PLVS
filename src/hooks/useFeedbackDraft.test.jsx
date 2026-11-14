@@ -86,6 +86,27 @@ describe("Feedback owner lifetime", () => {
     expect(result.current.status).toBe("idle");
   });
 
+  it("previews the submission payload without sending or changing the draft", async () => {
+    readFeedbackDiagnostics.mockResolvedValue({ logs: "local diagnostics" });
+    const { result } = renderHook(() => useFeedbackDraft({ onClose: vi.fn() }));
+    act(() =>
+      result.current.commitDraftDocument({
+        content: "  A report  ",
+        email: "  feedback@example.invalid  ",
+        attachDiagnostics: true,
+      })
+    );
+    const before = result.current.inspectDraft();
+    expect(await result.current.previewSubmission()).toEqual({
+      content: "A report",
+      email: "feedback@example.invalid",
+      diagnostics: { logs: "local diagnostics" },
+    });
+    expect(result.current.inspectDraft()).toEqual(before);
+    expect(result.current.diagnosticsPreview).toBeNull();
+    expect(submitFeedback).not.toHaveBeenCalled();
+  });
+
   it("deduplicates submission before React has rendered the busy state", async () => {
     let resolve;
     submitFeedback.mockReturnValue(

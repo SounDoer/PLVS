@@ -376,16 +376,34 @@ export function AppSettingsOverlays({
     matches: () => feedbackOpen,
     show: openFeedback,
   });
-  useUiSurface({
+  const feedbackSurfaceId = useUiSurface({
     active: feedbackOpen && presented,
     kind: "feedback",
     origin: "navigable",
     blocking: true,
     dirty: feedbackDirty,
-    dismissible: true,
-    supportedActions: ["cancel"],
-    target: { phase: "editing" },
+    busy: feedback.busy,
+    dismissible: !feedback.busy,
+    supportedActions: feedback.busy ? [] : ["cancel"],
+    target: { phase: feedback.status === "idle" ? "editing" : feedback.status },
+    generationKey: feedback.inspectDraft().draftGeneration,
+    choices: [
+      { id: "cancel", label: "Cancel", run: cancelFeedback },
+      {
+        id: "send",
+        label: "Send",
+        disabled: !feedback.canSubmit,
+        run: feedback.handleSubmit,
+        preview: feedback.previewSubmission,
+      },
+    ],
     onCancel: cancelFeedback,
+  });
+  useEditorDraftSurface({
+    active: feedbackOpen && presented,
+    kind: "feedback",
+    surfaceId: feedbackSurfaceId,
+    controller: feedback,
   });
 
   const views = {
@@ -584,6 +602,7 @@ export function AppSettingsOverlays({
 
       <UpdateDialog
         open={updateDialogOpen}
+        targetId={selectedUpdate?.update?.version}
         currentVersion={appVersion}
         targetVersion={selectedUpdate?.update?.version}
         manualDownloadUrl={

@@ -7,6 +7,7 @@ import { useCoordinatorRole } from "../lib/runtimeRole.js";
 import { sliceChangelogSince } from "../lib/changelogAggregate.js";
 import { releaseUrlForVersion } from "../lib/updateController.js";
 import { openExternalUrl } from "../ipc/openExternal.js";
+import { updateDetailsChoices } from "./UpdateDetailsContent.jsx";
 import { UpdateDialog } from "./UpdateDialog.jsx";
 import { UpdateSetupContent } from "./UpdatePreferencesControls.jsx";
 import { Dialog, DialogContent, DialogTitle } from "./ui/dialog";
@@ -131,6 +132,12 @@ export function UpdateSurfaces({ currentVersion }) {
   }, [docked, payload.key, dockWindow.error, exitDockRestoringAttributes]);
   useUiSurface({
     active: setup,
+    choices: [
+      { id: "save", label: "Save", run: save },
+      ...(!firstRunSetup
+        ? [{ id: "cancel", label: "Cancel", run: () => setSetupFixtureId(null) }]
+        : []),
+    ],
     kind: "update",
     origin: "event",
     developmentFixture: "update-preferences.pending",
@@ -145,6 +152,13 @@ export function UpdateSurfaces({ currentVersion }) {
   });
   useUiSurface({
     active: docked && Boolean(updates.details),
+    choices: updateDetailsChoices({
+      ...payload,
+      onConfirm: () => updates.confirmInstall(payload.targetId),
+      onRestart: () => updates.confirmInstall(payload.targetId),
+      onCancel: updates.dismissDetails,
+      openExternalUrl,
+    }),
     kind: "update",
     origin: "event",
     developmentFixture: "update.available",
@@ -231,6 +245,7 @@ export function UpdateSurfaces({ currentVersion }) {
       </Dialog>
       <UpdateDialog
         open={Boolean(updates.details)}
+        targetId={payload.key}
         tutorialPreview={updates.details?.target.preview === true}
         currentVersion={currentVersion}
         targetVersion={updates.details?.target.version}
@@ -244,9 +259,9 @@ export function UpdateSurfaces({ currentVersion }) {
         installStatus={updates.installStatus}
         downloading={updates.downloading}
         downloadProgress={updates.downloadProgress}
-        onConfirm={() => void updates.confirmInstall()}
+        onConfirm={() => updates.confirmInstall(payload.targetId)}
         onCancel={updates.dismissDetails}
-        onRestart={() => void updates.confirmInstall()}
+        onRestart={() => updates.confirmInstall(payload.targetId)}
         installationSupported={installationShown}
         error={updates.error}
         openExternalUrl={openExternalUrl}

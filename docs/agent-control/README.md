@@ -85,6 +85,12 @@ Deciding that a control stays out of Agent Control is a normal outcome; record i
 `INTERNAL_ONLY_CONTROLS` in the coverage test, with the reason. What the guards forbid is leaving
 the question unanswered.
 
+Every event or nested `useUiSurface` registration also declares `choices` as a list of
+dialog response IDs and callbacks, or `{ none: "<reason>" }`. The surface coverage test checks
+the declaration alongside the development fixture. Route callbacks through the same owner as
+the corresponding button. Keep UI observation serializable and advertise disabled choices as
+unavailable.
+
 ## Application-wide methods
 
 ### Private development controls

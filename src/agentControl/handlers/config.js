@@ -16,10 +16,15 @@ async function exportConfig(ctx) {
 }
 
 /** @param {import("../bridge/types.js").BridgeContext} ctx */
-async function importConfig(ctx) {
+async function changeConfig(ctx) {
   const { request, requestId, clock } = ctx;
-  const { presets, importConfiguration, normalizeConfiguration, relaunchAfterConfigurationChange } =
-    ctx.snap;
+  const {
+    presets,
+    importConfiguration,
+    resetConfiguration,
+    normalizeConfiguration,
+    relaunchAfterConfigurationChange,
+  } = ctx.snap;
   const currentRevision = clock.current();
   if (request.params.expectedRevision !== currentRevision) {
     throw semanticFailure(
@@ -32,9 +37,10 @@ async function importConfig(ctx) {
   }
   presets.assertSceneOperationAllowed(request.method);
 
+  const reset = request.method === "config.reset";
   let configuration;
   try {
-    configuration = normalizeConfiguration(request.params.configuration);
+    if (!reset) configuration = normalizeConfiguration(request.params.configuration);
   } catch (error) {
     if (!(error instanceof ProfileValidationError)) throw error;
     throw semanticFailure("invalidConfiguration", "$.params.configuration", error.message, -32602);
@@ -48,18 +54,19 @@ async function importConfig(ctx) {
         revision: currentRevision,
         changed: true,
         relaunch: false,
-        configuration,
+        ...(reset ? { wouldRelaunch: true } : { configuration }),
       },
     };
   }
 
   try {
-    await importConfiguration(configuration);
+    if (reset) await resetConfiguration();
+    else await importConfiguration(configuration);
   } catch (error) {
     throw semanticFailure(
       "persistenceFailed",
       "$",
-      `Configuration import failed: ${error?.message || String(error)}`,
+      `Configuration ${reset ? "reset" : "import"} failed: ${error?.message || String(error)}`,
       -32030
     );
   }
@@ -79,5 +86,6 @@ async function importConfig(ctx) {
 /** @type {Record<string, import("../bridge/types.js").HandlerEntry>} */
 export const configHandlers = {
   "config.export": { run: exportConfig },
-  "config.import": { run: importConfig },
+  "config.import": { run: changeConfig },
+  "config.reset": { run: changeConfig },
 };

@@ -90,45 +90,49 @@ async function navigate(ctx) {
   }
   try {
     const actionResult =
-      request.method === "ui.action"
-        ? await uiNavigation.runNamedAction(request.params)
-        : request.method === "ui.show.settings"
-          ? await uiNavigation.showSettings(request.params)
-          : request.method === "ui.show.panelSettings"
-            ? await uiNavigation.showPanelSettings(request.params)
-            : request.method === "ui.show.themeEditor"
-              ? await uiNavigation.showThemeEditor(request.params)
-              : request.method === "ui.show.loudnessProfileEditor"
-                ? await uiNavigation.showLoudnessProfileEditor(request.params)
-                : request.method === "ui.show.feedback"
-                  ? await uiNavigation.showFeedback(request.params)
-                  : request.method === "ui.show.toolbarMenu"
-                    ? await uiNavigation.showToolbarMenu(request.params)
-                    : request.method === "ui.show.dockToolbar"
-                      ? await uiNavigation.showDockToolbar(request.params)
-                      : request.method === "ui.show.panelHelp"
-                        ? await uiNavigation.showPanelHelp(request.params)
-                        : request.method === "ui.show.panelFullscreen"
-                          ? await uiNavigation.showPanelFullscreen(request.params)
-                          : request.method === "ui.show.addPanel"
-                            ? await uiNavigation.showAddPanel(request.params)
-                            : request.method === "ui.show.sourceGroup"
-                              ? await uiNavigation.showSourceGroup(request.params)
-                              : request.method === "ui.show.dropdown"
-                                ? await uiNavigation.showDropdown(request.params)
-                                : request.method.startsWith("ui.quickTour.")
-                                  ? await uiNavigation.stepQuickTour({
-                                      ...request.params,
-                                      action: request.method.slice("ui.quickTour.".length),
-                                    })
-                                  : request.method === "ui.close"
-                                    ? await uiNavigation.closeSurface(request.params)
-                                    : await uiNavigation.cancelSurface(request.params);
+      request.method === "ui.decide"
+        ? await uiNavigation.decideSurface(request.params)
+        : request.method === "ui.action"
+          ? await uiNavigation.runNamedAction(request.params)
+          : request.method === "ui.show.settings"
+            ? await uiNavigation.showSettings(request.params)
+            : request.method === "ui.show.panelSettings"
+              ? await uiNavigation.showPanelSettings(request.params)
+              : request.method === "ui.show.themeEditor"
+                ? await uiNavigation.showThemeEditor(request.params)
+                : request.method === "ui.show.loudnessProfileEditor"
+                  ? await uiNavigation.showLoudnessProfileEditor(request.params)
+                  : request.method === "ui.show.feedback"
+                    ? await uiNavigation.showFeedback(request.params)
+                    : request.method === "ui.show.toolbarMenu"
+                      ? await uiNavigation.showToolbarMenu(request.params)
+                      : request.method === "ui.show.dockToolbar"
+                        ? await uiNavigation.showDockToolbar(request.params)
+                        : request.method === "ui.show.panelHelp"
+                          ? await uiNavigation.showPanelHelp(request.params)
+                          : request.method === "ui.show.panelFullscreen"
+                            ? await uiNavigation.showPanelFullscreen(request.params)
+                            : request.method === "ui.show.addPanel"
+                              ? await uiNavigation.showAddPanel(request.params)
+                              : request.method === "ui.show.sourceGroup"
+                                ? await uiNavigation.showSourceGroup(request.params)
+                                : request.method === "ui.show.dropdown"
+                                  ? await uiNavigation.showDropdown(request.params)
+                                  : request.method.startsWith("ui.quickTour.")
+                                    ? await uiNavigation.stepQuickTour({
+                                        ...request.params,
+                                        action: request.method.slice("ui.quickTour.".length),
+                                      })
+                                    : request.method === "ui.close"
+                                      ? await uiNavigation.closeSurface(request.params)
+                                      : await uiNavigation.cancelSurface(request.params);
+    const { afterResponse, ...result } = actionResult ?? {};
     const ui = uiNavigation.inspectUi();
     return {
       requestId,
+      ...(afterResponse && { awaitDelivery: true, afterResponse }),
       result: {
-        ...actionResult,
+        ...result,
         changed: actionResult?.changed !== false,
         action: actionResult?.action ?? request.method,
         revision: clock.current(),
@@ -173,6 +177,7 @@ export const uiHandlers = {
   "ui.quickTour.back": { run: navigate },
   "ui.targets": { run: targets },
   "ui.locate": { run: locate },
+  "ui.decide": { run: navigate },
   "ui.close": { run: navigate },
   "ui.cancel": { run: navigate },
 };

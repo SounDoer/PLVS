@@ -114,6 +114,13 @@ pub enum ControlCommand {
     duration_ms: Option<u64>,
     expected_revision: u64,
   },
+  UiDecide {
+    surface_id: String,
+    choice: String,
+    expected_revision: u64,
+    expected_ui_generation: u64,
+    dry_run: bool,
+  },
   UiClose {
     surface_id: String,
     expected_revision: u64,
@@ -350,6 +357,10 @@ pub enum ControlCommand {
   },
   ConfigExport {
     out: Option<String>,
+  },
+  ConfigReset {
+    expected_revision: Option<u64>,
+    dry_run: bool,
   },
   ConfigImport {
     input: String,
@@ -734,8 +745,8 @@ fn parse_editor_draft_args(args: &[String]) -> Result<ControlCommand, String> {
     _ => None,
   };
   if let Some((action, kind, surface_id)) = read {
-    if !matches!(kind.as_str(), "theme" | "loudness-profile") {
-      return Err("Editor draft kind must be theme or loudness-profile.".to_string());
+    if !matches!(kind.as_str(), "theme" | "loudness-profile" | "feedback") {
+      return Err("Editor draft kind is unavailable for this command.".to_string());
     }
     if surface_id
       .as_ref()
@@ -825,8 +836,10 @@ fn parse_editor_draft_args(args: &[String]) -> Result<ControlCommand, String> {
     return Err("Editor draft mutation positionals are invalid.".to_string());
   }
   let kind = positionals.remove(0);
-  if !matches!(kind.as_str(), "theme" | "loudness-profile") {
-    return Err("Editor draft kind must be theme or loudness-profile.".to_string());
+  if !(matches!(kind.as_str(), "theme" | "loudness-profile")
+    || (kind == "feedback" && action == "patch"))
+  {
+    return Err("Editor draft kind is unavailable for this command.".to_string());
   }
   if matches!(action.as_str(), "undo" | "redo") && kind != "theme" {
     return Err("Editor draft history is available only for theme.".to_string());
@@ -965,7 +978,7 @@ fn parse_ui_safe_integer(raw: Option<&String>, option: &str) -> Result<u64, Stri
 }
 
 fn parse_ui_args(args: &[String]) -> Result<ControlCommand, String> {
-  const USAGE: &str = "Usage:\n  plvs-cli ui inspect <--json|--format text>\n  plvs-cli ui show settings --section <section> --expected-revision <n> --expected-ui-generation <n> --json\n  plvs-cli ui show panel-settings --panel-id <id> --expected-revision <n> --expected-ui-generation <n> --json\n  plvs-cli ui show theme-editor --mode <create|edit|customize|duplicate> [--theme-id <id>] [--page <core|palettes|advanced>] --expected-revision <n> --expected-ui-generation <n> --json\n  plvs-cli ui show loudness-profile-editor --mode <create|edit> [--profile-id <id>] --expected-revision <n> --expected-ui-generation <n> --json\n  plvs-cli ui show feedback --expected-revision <n> --expected-ui-generation <n> --json\n  plvs-cli ui show toolbar-menu --menu <sources|loudness-profile|panels|views|presets|status> --expected-revision <n> --expected-ui-generation <n> --json\n  plvs-cli ui show dock-toolbar --expected-revision <n> --expected-ui-generation <n> --json\n  plvs-cli ui show panel-help --panel-id <id> --expected-revision <n> --expected-ui-generation <n> --json\n  plvs-cli ui show panel-fullscreen --panel-id <id> --expected-revision <n> --expected-ui-generation <n> --json\n  plvs-cli ui show add-panel --expected-revision <n> --expected-ui-generation <n> --json\n  plvs-cli ui show source-group --group <output|input|applications> --expected-revision <n> --expected-ui-generation <n> --json\n  plvs-cli ui show dropdown --control <target-id> --expected-revision <n> --expected-ui-generation <n> --json\n  plvs-cli ui quick-tour <start|next|back> --expected-revision <n> --expected-ui-generation <n> --json\n  plvs-cli ui action --target <target-id> --expected-revision <n> --expected-ui-generation <n> --json\n  plvs-cli ui targets --json\n  plvs-cli ui locate --target <target-id> --json\n  plvs-cli ui close <surface-id> --expected-revision <n> --expected-ui-generation <n> --json\n  plvs-cli ui cancel <surface-id> --expected-revision <n> --expected-ui-generation <n> --json";
+  const USAGE: &str = "Usage:\n  plvs-cli ui inspect <--json|--format text>\n  plvs-cli ui show settings --section <section> --expected-revision <n> --expected-ui-generation <n> --json\n  plvs-cli ui show panel-settings --panel-id <id> --expected-revision <n> --expected-ui-generation <n> --json\n  plvs-cli ui show theme-editor --mode <create|edit|customize|duplicate> [--theme-id <id>] [--page <core|palettes|advanced>] --expected-revision <n> --expected-ui-generation <n> --json\n  plvs-cli ui show loudness-profile-editor --mode <create|edit> [--profile-id <id>] --expected-revision <n> --expected-ui-generation <n> --json\n  plvs-cli ui show feedback --expected-revision <n> --expected-ui-generation <n> --json\n  plvs-cli ui show toolbar-menu --menu <sources|loudness-profile|panels|views|presets|status> --expected-revision <n> --expected-ui-generation <n> --json\n  plvs-cli ui show dock-toolbar --expected-revision <n> --expected-ui-generation <n> --json\n  plvs-cli ui show panel-help --panel-id <id> --expected-revision <n> --expected-ui-generation <n> --json\n  plvs-cli ui show panel-fullscreen --panel-id <id> --expected-revision <n> --expected-ui-generation <n> --json\n  plvs-cli ui show add-panel --expected-revision <n> --expected-ui-generation <n> --json\n  plvs-cli ui show source-group --group <output|input|applications> --expected-revision <n> --expected-ui-generation <n> --json\n  plvs-cli ui show dropdown --control <target-id> --expected-revision <n> --expected-ui-generation <n> --json\n  plvs-cli ui quick-tour <start|next|back> --expected-revision <n> --expected-ui-generation <n> --json\n  plvs-cli ui action --target <target-id> --expected-revision <n> --expected-ui-generation <n> --json\n  plvs-cli ui targets --json\n  plvs-cli ui locate --target <target-id> --json\n  plvs-cli ui decide --surface-id <surface-id> --choice <id> --expected-revision <n> --expected-ui-generation <n> --json [--dry-run]\n  plvs-cli ui close <surface-id> --expected-revision <n> --expected-ui-generation <n> --json\n  plvs-cli ui cancel <surface-id> --expected-revision <n> --expected-ui-generation <n> --json";
   if args.iter().any(|arg| is_help(arg)) {
     return Ok(ControlCommand::FamilyHelp("ui".to_string()));
   }
@@ -1003,6 +1016,7 @@ fn parse_ui_args(args: &[String]) -> Result<ControlCommand, String> {
       ("quick-tour", 2)
     }
     [action, ..] if action == "action" => ("action", 1),
+    [decide, ..] if decide == "decide" => ("decide", 1),
     [close, ..] if close == "close" => ("close", 1),
     [cancel, ..] if cancel == "cancel" => ("cancel", 1),
     _ => return Err(USAGE.to_string()),
@@ -1010,6 +1024,8 @@ fn parse_ui_args(args: &[String]) -> Result<ControlCommand, String> {
   let mut section = None;
   let mut panel_id = None;
   let mut surface_id = None;
+  let mut choice = None;
+  let mut dry_run = false;
   let mut mode = None;
   let mut theme_id = None;
   let mut profile_id = None;
@@ -1025,6 +1041,28 @@ fn parse_ui_args(args: &[String]) -> Result<ControlCommand, String> {
     match option {
       "--json" if !json => {
         json = true;
+        index += 1;
+      }
+      "--surface-id" if kind == "decide" && surface_id.is_none() => {
+        surface_id = Some(
+          args
+            .get(index + 1)
+            .ok_or("Missing value for --surface-id.")?
+            .clone(),
+        );
+        index += 2;
+      }
+      "--choice" if kind == "decide" && choice.is_none() => {
+        choice = Some(
+          args
+            .get(index + 1)
+            .ok_or("Missing value for --choice.")?
+            .clone(),
+        );
+        index += 2;
+      }
+      "--dry-run" if kind == "decide" && !dry_run => {
+        dry_run = true;
         index += 1;
       }
       "--section" if kind == "settings" && section.is_none() => {
@@ -1333,7 +1371,7 @@ fn parse_ui_args(args: &[String]) -> Result<ControlCommand, String> {
       expected_revision,
       expected_ui_generation,
     }),
-    "close" | "cancel" => {
+    "close" | "cancel" | "decide" => {
       let surface_id =
         surface_id.ok_or_else(|| format!("The UI {kind} action requires a surface ID."))?;
       let entropy = surface_id.strip_prefix("ui-").unwrap_or("");
@@ -1346,7 +1384,24 @@ fn parse_ui_args(args: &[String]) -> Result<ControlCommand, String> {
           "The UI {kind} action requires an exact UI surface ID."
         ));
       }
-      if kind == "close" {
+      if kind == "decide" {
+        let choice = choice.ok_or("The UI decide action requires --choice.")?;
+        if !(1..=128).contains(&choice.len())
+          || !choice.as_bytes()[0].is_ascii_lowercase() && !choice.as_bytes()[0].is_ascii_digit()
+          || !choice
+            .bytes()
+            .all(|value| value.is_ascii_alphanumeric() || b":_-".contains(&value))
+        {
+          return Err("The UI decide action requires a valid choice ID.".to_string());
+        }
+        Ok(ControlCommand::UiDecide {
+          surface_id,
+          choice,
+          expected_revision,
+          expected_ui_generation,
+          dry_run,
+        })
+      } else if kind == "close" {
         Ok(ControlCommand::UiClose {
           surface_id,
           expected_revision,
@@ -2359,8 +2414,18 @@ fn parse_config_args(args: &[String]) -> Result<ControlCommand, String> {
     return Ok(ControlCommand::FamilyHelp("config".to_string()));
   }
   let [action, rest @ ..] = args else {
-    return Err("Usage: plvs-cli config <export|import> ... --json".to_string());
+    return Err("Usage: plvs-cli config <export|import|reset> ... --json".to_string());
   };
+  if action == "reset" {
+    let (expected_revision, dry_run, json) = parse_mutation_flags(rest, "config reset")?;
+    if !json {
+      return Err("The config reset command requires --json.".to_string());
+    }
+    return Ok(ControlCommand::ConfigReset {
+      expected_revision,
+      dry_run,
+    });
+  }
   if action == "import" {
     let Some(input) = rest.first() else {
       return Err(
@@ -4359,6 +4424,7 @@ fn command_name(command: &ControlCommand) -> String {
     ControlCommand::UiLocate { .. } => "ui.locate".to_string(),
     ControlCommand::PointerMove { .. } => "pointer.move".to_string(),
     ControlCommand::PanelGesture { method, .. } => method.clone(),
+    ControlCommand::UiDecide { .. } => "ui.decide".to_string(),
     ControlCommand::UiClose { .. } => "ui.close".to_string(),
     ControlCommand::WindowInspect => "window.inspect".to_string(),
     ControlCommand::WindowResize { .. } => "window.resize".to_string(),
@@ -4415,6 +4481,7 @@ fn command_name(command: &ControlCommand) -> String {
     ControlCommand::LoudnessProfileDescribe { .. } => "loudnessProfile.describe".to_string(),
     ControlCommand::LoudnessProfileMutation { method, .. } => method.clone(),
     ControlCommand::ConfigExport { .. } => "config.export".to_string(),
+    ControlCommand::ConfigReset { .. } => "config.reset".to_string(),
     ControlCommand::ConfigImport { .. } => "config.import".to_string(),
     ControlCommand::SettingsDescribe => "settings.describe".to_string(),
     ControlCommand::SettingsInspect => "settings.inspect".to_string(),
@@ -4688,6 +4755,19 @@ fn request_for_command<R: Read>(
       "expectedRevision": expected_revision,
       "expectedUiGeneration": expected_ui_generation,
     }),
+    ControlCommand::UiDecide {
+      surface_id,
+      choice,
+      expected_revision,
+      expected_ui_generation,
+      dry_run,
+    } => serde_json::json!({
+      "surfaceId": surface_id,
+      "choice": choice,
+      "expectedRevision": expected_revision,
+      "expectedUiGeneration": expected_ui_generation,
+      "dryRun": dry_run,
+    }),
     ControlCommand::UiClose {
       surface_id,
       expected_revision,
@@ -4921,6 +5001,13 @@ fn request_for_command<R: Read>(
       }
       Value::Object(params)
     }
+    ControlCommand::ConfigReset {
+      expected_revision,
+      dry_run,
+    } => serde_json::json!({
+      "expectedRevision": expected_revision,
+      "dryRun": dry_run,
+    }),
     ControlCommand::ConfigImport {
       input,
       expected_revision,
@@ -7127,6 +7214,7 @@ mod tests {
       "section" => "appearance".to_string(),
       "sources|loudness-profile|panels|views|presets|status" => "presets".to_string(),
       "surface-id" => format!("ui-{}", "a".repeat(16)),
+      "theme|loudness-profile|feedback" => "theme".to_string(),
       "theme|loudness-profile" => "theme".to_string(),
       "create|edit|customize|duplicate" | "create|edit" => "create".to_string(),
       "id" => "stats".to_string(),
