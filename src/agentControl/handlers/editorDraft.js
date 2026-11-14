@@ -9,6 +9,7 @@ export async function settleEditorDraftObservation({
   surfaceId,
   decisionSurfaceId = null,
   discarded = false,
+  previousDraftGeneration = null,
 }) {
   const startedAt = Date.now();
   while (Date.now() - startedAt <= SETTLEMENT_TIMEOUT_MS) {
@@ -23,6 +24,9 @@ export async function settleEditorDraftObservation({
       const surface = ui.surfaces.find((candidate) => candidate.surfaceId === surfaceId);
       if (
         surface &&
+        snapshot.draftGeneration !== previousDraftGeneration &&
+        (surface.generationKey === undefined ||
+          surface.generationKey === snapshot.draftGeneration) &&
         (surface.dirty === true) === (snapshot.dirty === true) &&
         (surface.stale === true) === (snapshot.stale === true)
       ) {
@@ -302,6 +306,7 @@ async function act(ctx) {
           uiNavigation,
           kind,
           surfaceId: request.params.surfaceId,
+          previousDraftGeneration: before.draftGeneration,
         })
       : { ui: uiBefore, snapshot: before };
     const uiAfter = settled.ui;
