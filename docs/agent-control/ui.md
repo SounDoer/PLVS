@@ -167,11 +167,8 @@ a request.
 
 ## Answer a dialog
 
-Read the top surface in `ui inspect` and use its exact ID and one of its enabled choice IDs:
-
-```text
-plvs-cli ui decide --surface-id <surface-id> --choice <id> --expected-revision <n> --expected-ui-generation <n> --json
-```
+Read the top surface in `ui inspect` and pass its exact surface ID and an enabled choice ID
+to [`ui decide`](generated/commands.md#uidecide).
 
 Choices follow the mounted dialog's buttons and state. A different, covered, or busy dialog
 cannot consume the choice. Actions that can close or restart PLVS are accepted for execution
