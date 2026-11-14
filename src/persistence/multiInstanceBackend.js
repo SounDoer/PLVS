@@ -365,14 +365,23 @@ export function createMultiInstanceBackend() {
           seed.globalPreferences = clone(nextGlobals);
           metadata.globalPreferenceRevisions = clone(hydrated.globalPreferenceRevisions || {});
           const settings = cache.get("plvs:settings") || {};
+          // Every identity-wide preference this workbench caches in its settings must follow a
+          // peer's write. A stale cached value would be written back by this workbench's next
+          // settings save, silently reverting the peer's change.
+          const sharedAskToSend = Object.hasOwn(nextGlobals, "askToSendCrashReports");
           if (
             signature(settings.updatePreferences) !== signature(nextGlobals.updatePreferences) ||
-            signature(settings.quickTour) !== signature(nextGlobals.quickTour)
+            signature(settings.quickTour) !== signature(nextGlobals.quickTour) ||
+            (sharedAskToSend &&
+              settings.askToSendCrashReports !== nextGlobals.askToSendCrashReports)
           ) {
             cache.set("plvs:settings", {
               ...settings,
               updatePreferences: clone(nextGlobals.updatePreferences),
               quickTour: clone(nextGlobals.quickTour),
+              ...(sharedAskToSend
+                ? { askToSendCrashReports: nextGlobals.askToSendCrashReports }
+                : {}),
             });
             notify("plvs:settings", { origin: "remote" });
           }

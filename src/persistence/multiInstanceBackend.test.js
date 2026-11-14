@@ -97,6 +97,40 @@ describe("multiInstanceBackend", () => {
     seed();
   });
 
+  it("follows a peer's Crash Report Prompt so a later save cannot revert it", async () => {
+    window.__PLVS_INITIAL_STATE__["plvs:settings"].askToSendCrashReports = true;
+    invoke.mockResolvedValueOnce({
+      presets: {
+        list: [
+          { id: "one", name: "One" },
+          { id: "two", name: "Two" },
+        ],
+      },
+      themes: { themes: {}, order: [] },
+      settings: { loudnessProfiles: { profiles: [{ id: "broadcast", name: "Broadcast" }] } },
+      globalPreferences: { askToSendCrashReports: false },
+      globalPreferenceRevisions: { askToSendCrashReports: 6 },
+      libraryItemRevisions: {
+        preset: { one: 3, two: 4 },
+        theme: {},
+        loudnessProfile: { broadcast: 2 },
+      },
+      libraryCollectionRevisions: { preset: 7, theme: 0, loudnessProfile: 2 },
+    });
+    const { createMultiInstanceBackend } = await import("./multiInstanceBackend.js");
+    const backend = createMultiInstanceBackend();
+    await backend.refresh();
+    expect(backend.get("plvs:settings").askToSendCrashReports).toBe(false);
+
+    invoke.mockResolvedValue(undefined);
+    backend.set("plvs:settings", { ...backend.get("plvs:settings"), referenceLufs: -24 });
+    await backend.flush();
+    expect(invoke).not.toHaveBeenCalledWith(
+      "persistence_save_global_preferences",
+      expect.objectContaining({ values: { askToSendCrashReports: true } })
+    );
+  });
+
   it("persists an active Preset change only to the owning workspace", async () => {
     const { createMultiInstanceBackend } = await import("./multiInstanceBackend.js");
     const backend = createMultiInstanceBackend();
