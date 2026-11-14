@@ -32,6 +32,7 @@ import { resolvePanelDisplayName, resolvePanelModuleId } from "./panelInstances.
 import { resolvePanelDefinition } from "./registry.jsx";
 import { getPanelControls } from "./panelControlInstances.js";
 import { IconAction } from "@/components/ui/icon-action";
+import { useUiNavigationTarget } from "../uiNavigation/UiNavigationContext.jsx";
 
 // ---------------------------------------------------------------------------
 // TabPill
@@ -310,13 +311,30 @@ export function LeafView({ node, path, style }) {
     return snapshots;
   }
 
-  function handlePinClick(e) {
-    e.stopPropagation();
+  function togglePin() {
     if (!activeTab) return;
     setPanelPinned(activeTab, isActivePinned ? null : getCurrentLeafSize(), {
       splitSnapshots: getSplitSnapshots(),
     });
   }
+
+  function handlePinClick(e) {
+    e.stopPropagation();
+    togglePin();
+  }
+
+  // Agent Control reaches the header's Pin and Fullscreen through the same functions as the
+  // buttons, so a pin measures the rendered size exactly as a click does.
+  useUiNavigationTarget(
+    "panelPin",
+    activeTab ?? "",
+    activeTab ? { pinned: isActivePinned, toggle: togglePin } : {}
+  );
+  useUiNavigationTarget(
+    "panelFullscreen",
+    activeTab ?? "",
+    activeTab ? { show: () => setFullscreen(activeTab) } : {}
+  );
 
   return (
     <div

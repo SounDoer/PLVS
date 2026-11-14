@@ -18,6 +18,7 @@ Manifest version `1`. Entries are shown in stable presentation order.
 | `ui.show.toolbarMenu` | `ui show toolbar-menu` | runningApp / action | required | no | none |
 | `ui.show.dockToolbar` | `ui show dock-toolbar` | runningApp / action | required | no | none |
 | `ui.show.panelHelp` | `ui show panel-help` | runningApp / action | required | no | none |
+| `ui.show.panelFullscreen` | `ui show panel-fullscreen` | runningApp / action | required | no | none |
 | `ui.show.addPanel` | `ui show add-panel` | runningApp / action | required | no | none |
 | `ui.show.sourceGroup` | `ui show source-group` | runningApp / action | required | no | none |
 | `ui.show.dropdown` | `ui show dropdown` | runningApp / action | required | no | none |
@@ -31,8 +32,15 @@ Manifest version `1`. Entries are shown in stable presentation order.
 | `ui.cancel` | `ui cancel` | runningApp / action | required | no | none |
 | `window.inspect` | `window inspect` | runningApp / query | none | no | none |
 | `window.resize` | `window resize` | runningApp / action | required | no | none |
+| `window.move` | `window move` | runningApp / action | required | no | none |
 | `window.hide` | `window hide` | runningApp / action | required | no | none |
 | `window.show` | `window show` | runningApp / action | required | no | none |
+| `window.maximize` | `window maximize` | runningApp / action | required | no | none |
+| `window.unmaximize` | `window unmaximize` | runningApp / action | required | no | none |
+| `window.minimize` | `window minimize` | runningApp / action | required | no | none |
+| `workbench.open` | `workbench open` | runningApp / action | required | no | none |
+| `workbench.quit` | `workbench quit` | runningApp / action | required | no | none |
+| `workbench.quitAll` | `workbench quit-all` | runningApp / action | required | no | none |
 | `update.inspect` | `update inspect` | runningApp / query | none | no | none |
 | `update.check` | `update check` | runningApp / action | required | no | none |
 | `pointer.move` | `pointer move` | runningApp / action | required | no | none |
@@ -60,6 +68,8 @@ Manifest version `1`. Entries are shown in stable presentation order.
 | `panel.update` | `panel update` | runningApp / mutation | required | yes | none |
 | `panel.reset` | `panel reset` | runningApp / mutation | required | yes | none |
 | `panel.holdSlow` | `panel hold-slow` | runningApp / action | required | no | none |
+| `panel.pin` | `panel pin` | runningApp / action | required | no | none |
+| `panel.unpin` | `panel unpin` | runningApp / action | required | no | none |
 | `preset.list` | `preset list` | runningApp / query | none | no | none |
 | `preset.describe` | `preset describe` | runningApp / query | none | no | none |
 | `preset.rename` | `preset rename` | runningApp / mutation | required | yes | none |
@@ -434,6 +444,32 @@ None.
 | `--expected-ui-generation` | `expectedUiGeneration` | yes | integer; 0 to 9007199254740991 |
 | `--json` | local only | yes | boolean |
 
+## `ui.show.panelFullscreen`
+
+Show one panel in Fullscreen as its header's Fullscreen button does; close the surface to exit.
+
+- CLI path: `ui show panel-fullscreen`
+- Execution: `runningApp`; operation: `action`
+- JSON: `required`; expected revision: `required`; dry-run: `false`; output file: `none`
+- Wire method: `ui.show.panelFullscreen`
+
+```text
+plvs-cli ui show panel-fullscreen --panel-id <id> --expected-revision <n> --expected-ui-generation <n> --json
+```
+
+### Positionals
+
+None.
+
+### Options
+
+| Name | Maps to | Required | Value |
+| --- | --- | --- | --- |
+| `--panel-id` | `panelId` | yes | string |
+| `--expected-revision` | local only | yes | integer; 0 to 9007199254740991 |
+| `--expected-ui-generation` | `expectedUiGeneration` | yes | integer; 0 to 9007199254740991 |
+| `--json` | local only | yes | boolean |
+
 ## `ui.show.addPanel`
 
 Open the Panels menu's Add Panel list as its button does.
@@ -762,6 +798,33 @@ None.
 | `--expected-revision` | local only | yes | integer; 0 to 9007199254740991 |
 | `--json` | local only | yes | boolean |
 
+## `window.move`
+
+Place the normal window's top-left corner at a CSS-pixel offset from a monitor's work area.
+
+- CLI path: `window move`
+- Execution: `runningApp`; operation: `action`
+- JSON: `required`; expected revision: `required`; dry-run: `false`; output file: `none`
+- Wire method: `window.move`
+
+```text
+plvs-cli window move --monitor <monitor-id> --x <css-px> --y <css-px> --expected-revision <n> --json
+```
+
+### Positionals
+
+None.
+
+### Options
+
+| Name | Maps to | Required | Value |
+| --- | --- | --- | --- |
+| `--monitor` | `monitor` | yes | string |
+| `--x` | `x` | yes | integer; 0 to 7680 |
+| `--y` | `y` | yes | integer; 0 to 7680 |
+| `--expected-revision` | local only | yes | integer; 0 to 9007199254740991 |
+| `--json` | local only | yes | boolean |
+
 ## `window.hide`
 
 Hide the window as the tray's Hide does.
@@ -797,6 +860,150 @@ Show and focus the window as the tray's Show does.
 
 ```text
 plvs-cli window show --expected-revision <n> --json
+```
+
+### Positionals
+
+None.
+
+### Options
+
+| Name | Maps to | Required | Value |
+| --- | --- | --- | --- |
+| `--expected-revision` | local only | yes | integer; 0 to 9007199254740991 |
+| `--json` | local only | yes | boolean |
+
+## `window.maximize`
+
+Maximize the normal window as the title bar does.
+
+- CLI path: `window maximize`
+- Execution: `runningApp`; operation: `action`
+- JSON: `required`; expected revision: `required`; dry-run: `false`; output file: `none`
+- Wire method: `window.maximize`
+
+```text
+plvs-cli window maximize --expected-revision <n> --json
+```
+
+### Positionals
+
+None.
+
+### Options
+
+| Name | Maps to | Required | Value |
+| --- | --- | --- | --- |
+| `--expected-revision` | local only | yes | integer; 0 to 9007199254740991 |
+| `--json` | local only | yes | boolean |
+
+## `window.unmaximize`
+
+Restore a maximized normal window as the title bar does.
+
+- CLI path: `window unmaximize`
+- Execution: `runningApp`; operation: `action`
+- JSON: `required`; expected revision: `required`; dry-run: `false`; output file: `none`
+- Wire method: `window.unmaximize`
+
+```text
+plvs-cli window unmaximize --expected-revision <n> --json
+```
+
+### Positionals
+
+None.
+
+### Options
+
+| Name | Maps to | Required | Value |
+| --- | --- | --- | --- |
+| `--expected-revision` | local only | yes | integer; 0 to 9007199254740991 |
+| `--json` | local only | yes | boolean |
+
+## `window.minimize`
+
+Minimize the normal window as the title bar does.
+
+- CLI path: `window minimize`
+- Execution: `runningApp`; operation: `action`
+- JSON: `required`; expected revision: `required`; dry-run: `false`; output file: `none`
+- Wire method: `window.minimize`
+
+```text
+plvs-cli window minimize --expected-revision <n> --json
+```
+
+### Positionals
+
+None.
+
+### Options
+
+| Name | Maps to | Required | Value |
+| --- | --- | --- | --- |
+| `--expected-revision` | local only | yes | integer; 0 to 9007199254740991 |
+| `--json` | local only | yes | boolean |
+
+## `workbench.open`
+
+Open one more workbench as launching PLVS again does, and return its instance.
+
+- CLI path: `workbench open`
+- Execution: `runningApp`; operation: `action`
+- JSON: `required`; expected revision: `required`; dry-run: `false`; output file: `none`
+- Wire method: `workbench.open`
+
+```text
+plvs-cli workbench open --expected-revision <n> --json
+```
+
+### Positionals
+
+None.
+
+### Options
+
+| Name | Maps to | Required | Value |
+| --- | --- | --- | --- |
+| `--expected-revision` | local only | yes | integer; 0 to 9007199254740991 |
+| `--json` | local only | yes | boolean |
+
+## `workbench.quit`
+
+Quit this workbench as the Tray's Quit Workbench does; with one workbench, quit PLVS.
+
+- CLI path: `workbench quit`
+- Execution: `runningApp`; operation: `action`
+- JSON: `required`; expected revision: `required`; dry-run: `false`; output file: `none`
+- Wire method: `workbench.quit`
+
+```text
+plvs-cli workbench quit --expected-revision <n> --json
+```
+
+### Positionals
+
+None.
+
+### Options
+
+| Name | Maps to | Required | Value |
+| --- | --- | --- | --- |
+| `--expected-revision` | local only | yes | integer; 0 to 9007199254740991 |
+| `--json` | local only | yes | boolean |
+
+## `workbench.quitAll`
+
+Quit every workbench as the Tray's Quit PLVS does, keeping the restore set.
+
+- CLI path: `workbench quit-all`
+- Execution: `runningApp`; operation: `action`
+- JSON: `required`; expected revision: `required`; dry-run: `false`; output file: `none`
+- Wire method: `workbench.quitAll`
+
+```text
+plvs-cli workbench quit-all --expected-revision <n> --json
 ```
 
 ### Positionals
@@ -1516,6 +1723,56 @@ None.
 | --- | --- | --- | --- |
 | `--panel-id` | `panelId` | yes | string |
 | `--duration-ms` | `durationMs` | yes | integer; 100 to 10000 |
+| `--expected-revision` | local only | yes | integer; 0 to 9007199254740991 |
+| `--json` | local only | yes | boolean |
+
+## `panel.pin`
+
+Lock a panel at its rendered size, as the header's Pin button does.
+
+- CLI path: `panel pin`
+- Execution: `runningApp`; operation: `action`
+- JSON: `required`; expected revision: `required`; dry-run: `false`; output file: `none`
+- Wire method: `panel.pin`
+
+```text
+plvs-cli panel pin --panel-id <id> --expected-revision <n> --json
+```
+
+### Positionals
+
+None.
+
+### Options
+
+| Name | Maps to | Required | Value |
+| --- | --- | --- | --- |
+| `--panel-id` | `panelId` | yes | string |
+| `--expected-revision` | local only | yes | integer; 0 to 9007199254740991 |
+| `--json` | local only | yes | boolean |
+
+## `panel.unpin`
+
+Release a panel's pinned size, as the header's Unpin button does.
+
+- CLI path: `panel unpin`
+- Execution: `runningApp`; operation: `action`
+- JSON: `required`; expected revision: `required`; dry-run: `false`; output file: `none`
+- Wire method: `panel.unpin`
+
+```text
+plvs-cli panel unpin --panel-id <id> --expected-revision <n> --json
+```
+
+### Positionals
+
+None.
+
+### Options
+
+| Name | Maps to | Required | Value |
+| --- | --- | --- | --- |
+| `--panel-id` | `panelId` | yes | string |
 | `--expected-revision` | local only | yes | integer; 0 to 9007199254740991 |
 | `--json` | local only | yes | boolean |
 

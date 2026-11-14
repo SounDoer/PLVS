@@ -471,6 +471,17 @@ export function UiNavigationProvider({
       ),
     [showTarget]
   );
+  const showPanelFullscreen = useCallback(
+    ({ panelId, expectedRevision, expectedUiGeneration }) =>
+      showTarget(
+        "panelFullscreen",
+        { panelId },
+        "ui.show.panel-fullscreen",
+        expectedRevision,
+        expectedUiGeneration
+      ),
+    [showTarget]
+  );
   const showAddPanel = useCallback(
     ({ expectedRevision, expectedUiGeneration }) =>
       showTarget("addPanel", {}, "ui.show.add-panel", expectedRevision, expectedUiGeneration),
@@ -507,6 +518,22 @@ export function UiNavigationProvider({
     (panelId) => targetsRef.current.get(`panelGestures:${panelId}`)?.current ?? null,
     []
   );
+  /**
+   * The Pin button a panel shows now. While Fullscreen is shown that is the overlay's, which only
+   * unpins the shown panel; every other panel has none.
+   */
+  const getPanelPin = useCallback((panelId) => {
+    const fullscreen = targetsRef.current.get("fullscreenPin")?.current;
+    if (fullscreen?.panelId) {
+      if (fullscreen.panelId !== panelId) return { fullscreen: true, pinned: null, toggle: null };
+      return {
+        fullscreen: true,
+        pinned: fullscreen.pinned,
+        toggle: fullscreen.pinned ? fullscreen.unpin : null,
+      };
+    }
+    return targetsRef.current.get(`panelPin:${panelId}`)?.current ?? null;
+  }, []);
   const runNamedAction = useCallback(
     ({ target, expectedRevision, expectedUiGeneration }) =>
       enqueueAction(async () => {
@@ -585,7 +612,9 @@ export function UiNavigationProvider({
       showDockToolbar,
       stepQuickTour,
       getPanelGestures,
+      getPanelPin,
       showPanelHelp,
+      showPanelFullscreen,
       showAddPanel,
       showSourceGroup,
       showDropdown,
@@ -607,7 +636,9 @@ export function UiNavigationProvider({
       showDockToolbar,
       stepQuickTour,
       getPanelGestures,
+      getPanelPin,
       showPanelHelp,
+      showPanelFullscreen,
       showAddPanel,
       showSourceGroup,
       showDropdown,

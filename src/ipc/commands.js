@@ -107,6 +107,29 @@ export function applyWindowBounds(bounds) {
 }
 
 /**
+ * Places the main window on a monitor for Agent Control; offsets and size are CSS px.
+ * @param {{ monitor: string, x: number, y: number, width: number, height: number }} target
+ */
+export function moveMainWindow({ monitor, x, y, width, height }) {
+  return invoke("move_main_window", { monitor, x, y, width, height });
+}
+
+/** Opens one additional workbench as a second launch does. */
+export function openAdditionalWorkbench() {
+  return invoke("runtime_open_workbench");
+}
+
+/** The live workbenches of this app identity, as the Tray lists them. */
+export function listRuntimeInstances() {
+  return invoke("runtime_list_instances");
+}
+
+/** @param {"maximize" | "unmaximize" | "minimize"} state */
+export function setMainWindowState(state) {
+  return invoke("set_main_window_state", { state });
+}
+
+/**
  * Moves the system pointer to a point in CSS pixels inside the main WebView. It never presses.
  * @param {{ x: number, y: number, durationMs: number, webviewScale: number, windowLabel?: string }} request
  */

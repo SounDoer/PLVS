@@ -30,8 +30,8 @@ an assumed stereo L/R topology, and channel schemas report `channelTopology.stat
 `detected`.
 
 `app.inspect` returns panels as an array in `panelOrder`. Each entry contains `id`, `moduleId`,
-`title`, complete public `controls`, effective read-only `axes`, and module-specific `analysis` —
-the same panel shape a successful update returns, without the schema.
+`title`, `pinned`, complete public `controls`, effective read-only `axes`, and module-specific
+`analysis` — the same panel shape a successful update returns, without the schema.
 
 ## Update and reset
 
@@ -62,6 +62,16 @@ recording; see [Axis Control](axes.md#paced-changes) for the rules, which are sh
 on a Vectorscope in Lissajous mode, for the given time, then releases it, through the same handlers
 as pressing and holding the chart. It is `controlUnavailable` in a Snapshot or another mode, leaves
 the revision unchanged, and keeps the command queue busy while it holds.
+
+## Pin
+
+`panel pin --panel-id` and `panel unpin --panel-id` press the panel header's Pin button. Pin locks
+the size the panel is rendered at when the command runs, so it takes no size: set the size with
+`workspace apply` first, then pin. Only the rendered tab of a Workspace slot can be pinned, as only
+it shows the button; another tab, or a panel in Dock, is `controlUnavailable`. A panel already in
+the requested state returns `changed: false` without touching the layout. A real change advances
+the revision once, is persisted before the command returns, and reports
+`{ revision, changed, panelId, pinned }`. `app.inspect` reports each panel's `pinned` state.
 
 ## Errors and warnings
 

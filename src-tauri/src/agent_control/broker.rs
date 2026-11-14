@@ -21,6 +21,10 @@ const MEASUREMENT_WAIT_UNTIL_METHOD: &str = "measurement.waitUntil";
 const VISUAL_RECORDING_WAIT_METHOD: &str = "visual.recording.wait";
 const VISUAL_RECORDING_STOP_METHOD: &str = "visual.recording.stop";
 const VISUAL_RECORDING_STOP_TIMEOUT: Duration = Duration::from_secs(10);
+/// Quit PLVS waits for every workbench to stop and save, and Open Workbench for a new process to
+/// register; both answer outside the serialized queue within this budget.
+const WORKBENCH_LIFECYCLE_METHODS: [&str; 2] = ["workbench.quitAll", "workbench.open"];
+const WORKBENCH_LIFECYCLE_TIMEOUT: Duration = Duration::from_secs(25);
 const DEVELOPMENT_PERFORMANCE_STALL_METHOD: &str = "dev.performance.stall";
 const MIN_DEVELOPMENT_PERFORMANCE_STALL_MS: u64 = 100;
 const MAX_DEVELOPMENT_PERFORMANCE_STALL_MS: u64 = 30_000;
@@ -51,6 +55,9 @@ pub fn frontend_budget(request: &JsonRpcRequest) -> Duration {
 fn extended_budget(request: &JsonRpcRequest) -> Option<Duration> {
   if request.method == VISUAL_RECORDING_STOP_METHOD {
     return Some(VISUAL_RECORDING_STOP_TIMEOUT);
+  }
+  if WORKBENCH_LIFECYCLE_METHODS.contains(&request.method.as_str()) {
+    return Some(WORKBENCH_LIFECYCLE_TIMEOUT);
   }
   if request.method == DEVELOPMENT_PERFORMANCE_STALL_METHOD {
     let milliseconds = request
@@ -885,6 +892,16 @@ mod tests {
       )),
       VISUAL_RECORDING_STOP_TIMEOUT
     );
+    for method in WORKBENCH_LIFECYCLE_METHODS {
+      assert_eq!(
+        frontend_budget(&wait_request(
+          "workbench",
+          method,
+          json!({ "expectedRevision": 0 })
+        )),
+        WORKBENCH_LIFECYCLE_TIMEOUT
+      );
+    }
     assert_eq!(
       frontend_budget(&wait_request(
         "development-stall",

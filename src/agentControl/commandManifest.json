@@ -512,6 +512,51 @@
       }
     },
     {
+      "id": "ui.show.panelFullscreen",
+      "family": "ui",
+      "path": ["ui", "show", "panel-fullscreen"],
+      "usage": "plvs-cli ui show panel-fullscreen --panel-id <id> --expected-revision <n> --expected-ui-generation <n> --json",
+      "summary": "Show one panel in Fullscreen as its header's Fullscreen button does; close the surface to exit.",
+      "execution": "runningApp",
+      "operation": "action",
+      "wireMethod": "ui.show.panelFullscreen",
+      "json": "required",
+      "expectedRevision": "required",
+      "dryRun": false,
+      "outputFile": "none",
+      "positionals": [],
+      "options": [
+        {
+          "name": "--panel-id",
+          "mapsTo": "panelId",
+          "required": true,
+          "value": { "type": "string" }
+        },
+        {
+          "name": "--expected-revision",
+          "required": true,
+          "value": { "type": "integer", "minimum": 0, "maximum": 9007199254740991 }
+        },
+        {
+          "name": "--expected-ui-generation",
+          "mapsTo": "expectedUiGeneration",
+          "required": true,
+          "value": { "type": "integer", "minimum": 0, "maximum": 9007199254740991 }
+        },
+        { "name": "--json", "required": true, "value": { "type": "boolean" } }
+      ],
+      "wireParams": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["panelId", "expectedRevision", "expectedUiGeneration"],
+        "properties": {
+          "panelId": { "type": "string" },
+          "expectedRevision": { "type": "integer", "minimum": 0, "maximum": 9007199254740991 },
+          "expectedUiGeneration": { "type": "integer", "minimum": 0, "maximum": 9007199254740991 }
+        }
+      }
+    },
+    {
       "id": "ui.show.addPanel",
       "family": "ui",
       "path": ["ui", "show", "add-panel"],
@@ -1001,6 +1046,58 @@
       }
     },
     {
+      "id": "window.move",
+      "family": "window",
+      "path": ["window", "move"],
+      "usage": "plvs-cli window move --monitor <monitor-id> --x <css-px> --y <css-px> --expected-revision <n> --json",
+      "summary": "Place the normal window's top-left corner at a CSS-pixel offset from a monitor's work area.",
+      "execution": "runningApp",
+      "operation": "action",
+      "wireMethod": "window.move",
+      "json": "required",
+      "expectedRevision": "required",
+      "dryRun": false,
+      "outputFile": "none",
+      "positionals": [],
+      "options": [
+        {
+          "name": "--monitor",
+          "mapsTo": "monitor",
+          "required": true,
+          "value": { "type": "string" }
+        },
+        {
+          "name": "--x",
+          "mapsTo": "x",
+          "required": true,
+          "value": { "type": "integer", "minimum": 0, "maximum": 7680 }
+        },
+        {
+          "name": "--y",
+          "mapsTo": "y",
+          "required": true,
+          "value": { "type": "integer", "minimum": 0, "maximum": 7680 }
+        },
+        {
+          "name": "--expected-revision",
+          "required": true,
+          "value": { "type": "integer", "minimum": 0, "maximum": 9007199254740991 }
+        },
+        { "name": "--json", "required": true, "value": { "type": "boolean" } }
+      ],
+      "wireParams": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["monitor", "x", "y", "expectedRevision"],
+        "properties": {
+          "monitor": { "type": "string" },
+          "x": { "type": "integer", "minimum": 0, "maximum": 7680 },
+          "y": { "type": "integer", "minimum": 0, "maximum": 7680 },
+          "expectedRevision": { "type": "integer", "minimum": 0, "maximum": 9007199254740991 }
+        }
+      }
+    },
+    {
       "id": "window.hide",
       "family": "window",
       "path": ["window", "hide"],
@@ -1040,6 +1137,192 @@
       "execution": "runningApp",
       "operation": "action",
       "wireMethod": "window.show",
+      "json": "required",
+      "expectedRevision": "required",
+      "dryRun": false,
+      "outputFile": "none",
+      "positionals": [],
+      "options": [
+        {
+          "name": "--expected-revision",
+          "required": true,
+          "value": { "type": "integer", "minimum": 0, "maximum": 9007199254740991 }
+        },
+        { "name": "--json", "required": true, "value": { "type": "boolean" } }
+      ],
+      "wireParams": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["expectedRevision"],
+        "properties": {
+          "expectedRevision": { "type": "integer", "minimum": 0, "maximum": 9007199254740991 }
+        }
+      }
+    },
+    {
+      "id": "window.maximize",
+      "family": "window",
+      "path": ["window", "maximize"],
+      "usage": "plvs-cli window maximize --expected-revision <n> --json",
+      "summary": "Maximize the normal window as the title bar does.",
+      "execution": "runningApp",
+      "operation": "action",
+      "wireMethod": "window.maximize",
+      "json": "required",
+      "expectedRevision": "required",
+      "dryRun": false,
+      "outputFile": "none",
+      "positionals": [],
+      "options": [
+        {
+          "name": "--expected-revision",
+          "required": true,
+          "value": { "type": "integer", "minimum": 0, "maximum": 9007199254740991 }
+        },
+        { "name": "--json", "required": true, "value": { "type": "boolean" } }
+      ],
+      "wireParams": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["expectedRevision"],
+        "properties": {
+          "expectedRevision": { "type": "integer", "minimum": 0, "maximum": 9007199254740991 }
+        }
+      }
+    },
+    {
+      "id": "window.unmaximize",
+      "family": "window",
+      "path": ["window", "unmaximize"],
+      "usage": "plvs-cli window unmaximize --expected-revision <n> --json",
+      "summary": "Restore a maximized normal window as the title bar does.",
+      "execution": "runningApp",
+      "operation": "action",
+      "wireMethod": "window.unmaximize",
+      "json": "required",
+      "expectedRevision": "required",
+      "dryRun": false,
+      "outputFile": "none",
+      "positionals": [],
+      "options": [
+        {
+          "name": "--expected-revision",
+          "required": true,
+          "value": { "type": "integer", "minimum": 0, "maximum": 9007199254740991 }
+        },
+        { "name": "--json", "required": true, "value": { "type": "boolean" } }
+      ],
+      "wireParams": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["expectedRevision"],
+        "properties": {
+          "expectedRevision": { "type": "integer", "minimum": 0, "maximum": 9007199254740991 }
+        }
+      }
+    },
+    {
+      "id": "window.minimize",
+      "family": "window",
+      "path": ["window", "minimize"],
+      "usage": "plvs-cli window minimize --expected-revision <n> --json",
+      "summary": "Minimize the normal window as the title bar does.",
+      "execution": "runningApp",
+      "operation": "action",
+      "wireMethod": "window.minimize",
+      "json": "required",
+      "expectedRevision": "required",
+      "dryRun": false,
+      "outputFile": "none",
+      "positionals": [],
+      "options": [
+        {
+          "name": "--expected-revision",
+          "required": true,
+          "value": { "type": "integer", "minimum": 0, "maximum": 9007199254740991 }
+        },
+        { "name": "--json", "required": true, "value": { "type": "boolean" } }
+      ],
+      "wireParams": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["expectedRevision"],
+        "properties": {
+          "expectedRevision": { "type": "integer", "minimum": 0, "maximum": 9007199254740991 }
+        }
+      }
+    },
+    {
+      "id": "workbench.open",
+      "family": "workbench",
+      "path": ["workbench", "open"],
+      "usage": "plvs-cli workbench open --expected-revision <n> --json",
+      "summary": "Open one more workbench as launching PLVS again does, and return its instance.",
+      "execution": "runningApp",
+      "operation": "action",
+      "wireMethod": "workbench.open",
+      "json": "required",
+      "expectedRevision": "required",
+      "dryRun": false,
+      "outputFile": "none",
+      "positionals": [],
+      "options": [
+        {
+          "name": "--expected-revision",
+          "required": true,
+          "value": { "type": "integer", "minimum": 0, "maximum": 9007199254740991 }
+        },
+        { "name": "--json", "required": true, "value": { "type": "boolean" } }
+      ],
+      "wireParams": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["expectedRevision"],
+        "properties": {
+          "expectedRevision": { "type": "integer", "minimum": 0, "maximum": 9007199254740991 }
+        }
+      }
+    },
+    {
+      "id": "workbench.quit",
+      "family": "workbench",
+      "path": ["workbench", "quit"],
+      "usage": "plvs-cli workbench quit --expected-revision <n> --json",
+      "summary": "Quit this workbench as the Tray's Quit Workbench does; with one workbench, quit PLVS.",
+      "execution": "runningApp",
+      "operation": "action",
+      "wireMethod": "workbench.quit",
+      "json": "required",
+      "expectedRevision": "required",
+      "dryRun": false,
+      "outputFile": "none",
+      "positionals": [],
+      "options": [
+        {
+          "name": "--expected-revision",
+          "required": true,
+          "value": { "type": "integer", "minimum": 0, "maximum": 9007199254740991 }
+        },
+        { "name": "--json", "required": true, "value": { "type": "boolean" } }
+      ],
+      "wireParams": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["expectedRevision"],
+        "properties": {
+          "expectedRevision": { "type": "integer", "minimum": 0, "maximum": 9007199254740991 }
+        }
+      }
+    },
+    {
+      "id": "workbench.quitAll",
+      "family": "workbench",
+      "path": ["workbench", "quit-all"],
+      "usage": "plvs-cli workbench quit-all --expected-revision <n> --json",
+      "summary": "Quit every workbench as the Tray's Quit PLVS does, keeping the restore set.",
+      "execution": "runningApp",
+      "operation": "action",
+      "wireMethod": "workbench.quitAll",
       "json": "required",
       "expectedRevision": "required",
       "dryRun": false,
@@ -2465,6 +2748,82 @@
         "properties": {
           "panelId": { "type": "string" },
           "durationMs": { "type": "integer", "minimum": 100, "maximum": 10000 },
+          "expectedRevision": { "type": "integer", "minimum": 0, "maximum": 9007199254740991 }
+        }
+      }
+    },
+    {
+      "id": "panel.pin",
+      "family": "panel",
+      "path": ["panel", "pin"],
+      "usage": "plvs-cli panel pin --panel-id <id> --expected-revision <n> --json",
+      "summary": "Lock a panel at its rendered size, as the header's Pin button does.",
+      "execution": "runningApp",
+      "operation": "action",
+      "wireMethod": "panel.pin",
+      "json": "required",
+      "expectedRevision": "required",
+      "dryRun": false,
+      "outputFile": "none",
+      "positionals": [],
+      "options": [
+        {
+          "name": "--panel-id",
+          "mapsTo": "panelId",
+          "required": true,
+          "value": { "type": "string" }
+        },
+        {
+          "name": "--expected-revision",
+          "required": true,
+          "value": { "type": "integer", "minimum": 0, "maximum": 9007199254740991 }
+        },
+        { "name": "--json", "required": true, "value": { "type": "boolean" } }
+      ],
+      "wireParams": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["panelId", "expectedRevision"],
+        "properties": {
+          "panelId": { "type": "string" },
+          "expectedRevision": { "type": "integer", "minimum": 0, "maximum": 9007199254740991 }
+        }
+      }
+    },
+    {
+      "id": "panel.unpin",
+      "family": "panel",
+      "path": ["panel", "unpin"],
+      "usage": "plvs-cli panel unpin --panel-id <id> --expected-revision <n> --json",
+      "summary": "Release a panel's pinned size, as the header's Unpin button does.",
+      "execution": "runningApp",
+      "operation": "action",
+      "wireMethod": "panel.unpin",
+      "json": "required",
+      "expectedRevision": "required",
+      "dryRun": false,
+      "outputFile": "none",
+      "positionals": [],
+      "options": [
+        {
+          "name": "--panel-id",
+          "mapsTo": "panelId",
+          "required": true,
+          "value": { "type": "string" }
+        },
+        {
+          "name": "--expected-revision",
+          "required": true,
+          "value": { "type": "integer", "minimum": 0, "maximum": 9007199254740991 }
+        },
+        { "name": "--json", "required": true, "value": { "type": "boolean" } }
+      ],
+      "wireParams": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["panelId", "expectedRevision"],
+        "properties": {
+          "panelId": { "type": "string" },
           "expectedRevision": { "type": "integer", "minimum": 0, "maximum": 9007199254740991 }
         }
       }

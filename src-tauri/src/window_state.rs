@@ -305,6 +305,80 @@ pub fn apply_window_bounds<R: tauri::Runtime>(
   Ok(())
 }
 
+/// Places the main window's top-left corner at a CSS-pixel offset from one monitor's work-area
+/// origin and gives it a CSS-pixel inner size, for Agent Control's `window move`.
+///
+/// Monitor and window positions do not share one coordinate space on every platform. Windows and
+/// X11 report one virtual desktop in physical pixels, so the target is the work area's physical
+/// origin plus the offset scaled by that monitor's factor. macOS reports each monitor's position
+/// scaled by its own factor, so physical positions from two displays with different factors cannot
+/// be compared; there the target is computed and applied in points. Sizes are logical everywhere:
+/// the second size call corrects a size a cross-DPI move rescaled. The debounced window-state
+/// flush saves the result as it saves a drag.
+#[tauri::command]
+pub fn move_main_window<R: tauri::Runtime>(
+  window: tauri::WebviewWindow<R>,
+  monitor: String,
+  x: f64,
+  y: f64,
+  width: f64,
+  height: f64,
+) -> Result<(), String> {
+  let target = window
+    .available_monitors()
+    .map_err(|e| format!("monitors: {e}"))?
+    .into_iter()
+    .find(|candidate| candidate.name().map(String::as_str) == Some(monitor.as_str()))
+    .ok_or_else(|| format!("monitor {monitor} is not connected"))?;
+  if window
+    .is_maximized()
+    .map_err(|e| format!("window maximized state: {e}"))?
+  {
+    window
+      .unmaximize()
+      .map_err(|e| format!("window unmaximize: {e}"))?;
+  }
+  let size = tauri::LogicalSize::new(width, height);
+  window
+    .set_size(size)
+    .map_err(|e| format!("window size: {e}"))?;
+  let work_area = target.work_area();
+  if cfg!(target_os = "macos") {
+    let origin = work_area.position.to_logical::<f64>(target.scale_factor());
+    window
+      .set_position(tauri::LogicalPosition::new(origin.x + x, origin.y + y))
+      .map_err(|e| format!("window position: {e}"))?;
+  } else {
+    let scale = target.scale_factor();
+    window
+      .set_position(tauri::PhysicalPosition::new(
+        work_area.position.x + (x * scale).round() as i32,
+        work_area.position.y + (y * scale).round() as i32,
+      ))
+      .map_err(|e| format!("window position: {e}"))?;
+  }
+  window
+    .set_size(size)
+    .map_err(|e| format!("window size: {e}"))?;
+  Ok(())
+}
+
+/// The title bar's Maximize / Restore and the system Minimize, for Agent Control. They stay native
+/// so the frontend capability does not grow general window-state permissions.
+#[tauri::command]
+pub fn set_main_window_state<R: tauri::Runtime>(
+  window: tauri::WebviewWindow<R>,
+  state: String,
+) -> Result<(), String> {
+  match state.as_str() {
+    "maximize" => window.maximize(),
+    "unmaximize" => window.unmaximize(),
+    "minimize" => window.minimize(),
+    other => return Err(format!("unknown window state {other}")),
+  }
+  .map_err(|e| format!("window {state}: {e}"))
+}
+
 fn persist_window_bounds<R: tauri::Runtime>(
   window: &tauri::WebviewWindow<R>,
   bounds: WindowBounds,

@@ -218,6 +218,8 @@ plvs-cli measurement wait-until <file|-> [--timeout-ms <n>] --json
 plvs-cli measurement reset-hold --panel-id <id> --expected-revision <n> --json
 plvs-cli measurement reset-true-peak-max --panel-id <id> --expected-revision <n> --json
 plvs-cli panel hold-slow --panel-id <id> --duration-ms <100..10000> --expected-revision <n> --json
+plvs-cli panel pin --panel-id <id> --expected-revision <n> --json
+plvs-cli panel unpin --panel-id <id> --expected-revision <n> --json
 ```
 
 Axis updates, panel updates and Snapshot selection also accept `--steps <2..60>` and
@@ -247,18 +249,34 @@ Glass. See
 [View Control](../agent-control/view.md) for strict patch validation, platform availability, Dock
 suspension, and native rollback behavior.
 
-Window Control reads the main window and sets its inner size in CSS pixels or hides and shows it as
-the tray does:
+Window Control reads the main window and its monitors, sets its inner size or its position on a
+monitor in CSS pixels, maximizes, restores or minimizes it, and hides and shows it as the tray does:
 
 ```powershell
 plvs-cli window inspect --json
 plvs-cli window resize --width <css-px> --height <css-px> --expected-revision <n> --json
+plvs-cli window move --monitor <monitor-id> --x <css-px> --y <css-px> --expected-revision <n> --json
 plvs-cli window hide --expected-revision <n> --json
 plvs-cli window show --expected-revision <n> --json
+plvs-cli window maximize --expected-revision <n> --json
+plvs-cli window unmaximize --expected-revision <n> --json
+plvs-cli window minimize --expected-revision <n> --json
 ```
 
 A size that does not fit the current monitor fails instead of being shrunk. See
 [Window Control](../agent-control/window.md).
+
+Workbench Control opens another workbench as a second launch does, and quits one workbench or all
+of them as the Tray's Quit Workbench and Quit PLVS do:
+
+```powershell
+plvs-cli workbench open --expected-revision <n> --json
+plvs-cli workbench quit --expected-revision <n> --json
+plvs-cli workbench quit-all --expected-revision <n> --json
+```
+
+`open` returns the new workbench's `instanceId`; a quit is delivered before the process exits. See
+[Workbench Control](../agent-control/workbench.md).
 
 Update Control reads the update state and runs Check for Updates once; installing stays a user
 action:
@@ -293,6 +311,7 @@ plvs-cli ui show feedback --expected-revision <n> --expected-ui-generation <n> -
 plvs-cli ui show toolbar-menu --menu <sources|loudness-profile|panels|views|presets|status> --expected-revision <n> --expected-ui-generation <n> --json
 plvs-cli ui show dock-toolbar --expected-revision <n> --expected-ui-generation <n> --json
 plvs-cli ui show panel-help --panel-id <id> --expected-revision <n> --expected-ui-generation <n> --json
+plvs-cli ui show panel-fullscreen --panel-id <id> --expected-revision <n> --expected-ui-generation <n> --json
 plvs-cli ui show add-panel --expected-revision <n> --expected-ui-generation <n> --json
 plvs-cli ui show source-group --group <output|input|applications> --expected-revision <n> --expected-ui-generation <n> --json
 plvs-cli ui show dropdown --control <target-id> --expected-revision <n> --expected-ui-generation <n> --json

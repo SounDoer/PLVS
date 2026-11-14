@@ -38,7 +38,7 @@ describe("Agent Control handler coverage", () => {
     }
   });
 
-  it("answers long waits, measurement reads and visual capture outside the serialized queue", () => {
+  it("answers long waits, measurement reads, visual capture and workbench lifecycle outside the serialized queue", () => {
     const direct = Object.keys(METHOD_TABLE)
       .filter((method) => isDirectLane(METHOD_TABLE, method))
       .sort();
@@ -48,7 +48,9 @@ describe("Agent Control handler coverage", () => {
           method === "app.wait" ||
           method === "transport.file.wait" ||
           method.startsWith("measurement.") ||
-          method.startsWith("visual.")
+          method.startsWith("visual.") ||
+          method === "workbench.open" ||
+          method === "workbench.quitAll"
       )
       .sort();
     expect(direct).toEqual(expected);

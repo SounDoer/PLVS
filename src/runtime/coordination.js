@@ -269,7 +269,14 @@ export async function issueInstanceCommand(instanceId, action, payload = null) {
 }
 
 export async function quitAllInstances() {
-  const operation = await prepareGlobalOperation();
+  await quitPreparedInstances(await prepareGlobalOperation());
+}
+
+/**
+ * Finishes Quit PLVS once every workbench has stopped and saved. Agent Control prepares first so a
+ * refusal (an open editor anywhere) reaches the caller before it is told the quit was accepted.
+ */
+export async function quitPreparedInstances(operation) {
   try {
     await commitGlobalOperation(operation);
     await exit(0);

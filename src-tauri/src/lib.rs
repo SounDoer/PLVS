@@ -106,6 +106,14 @@ fn macos_reopen_action(has_visible_windows: bool, main_window_visible: bool) -> 
   }
 }
 
+/// Opens one additional workbench exactly as a second launch does, for Agent Control's
+/// `workbench open`. The new process registers itself, opens Stopped with Automatic selected, and
+/// applies the same startup guards as any launch, including the update installer's gate.
+#[tauri::command]
+fn runtime_open_workbench(context: tauri::State<'_, AppLaunchContext>) -> Result<(), String> {
+  coordinator::spawn_ordinary_workbench(context.isolated_app_data.as_deref())
+}
+
 fn runtime_log_file_name() -> String {
   format!("{}-{}", env!("PLVS_APP_NAME"), std::process::id())
 }
@@ -307,6 +315,7 @@ pub fn run() {
       persistence::commands::persistence_library_replace,
       coordinator::runtime_publish_instance_state,
       coordinator::runtime_list_instances,
+      runtime_open_workbench,
       coordinator::runtime_retire_current_workspace,
       coordinator::runtime_route_global_shortcut,
       coordinator::runtime_route_instance_transport,
@@ -336,6 +345,8 @@ pub fn run() {
       cli_path::set_cli_path_enabled,
       window_state::current_window_bounds,
       window_state::apply_window_bounds,
+      window_state::move_main_window,
+      window_state::set_main_window_state,
       pointer::move_pointer,
       dock::enter_dock,
       dock::exit_dock,

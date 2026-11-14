@@ -32,8 +32,17 @@ import { isParticipantInstance } from "../lib/runtimeRole.js";
 import { useDevelopmentEventFixtures } from "../dev/DevelopmentEventFixturesContext.jsx";
 import { useDevelopmentPerformance } from "../dev/useDevelopmentPerformance.js";
 import { useEditorDraftRegistry } from "./EditorDraftContext.jsx";
-import { readWindowGeometry } from "../lib/windowGeometry.js";
+import {
+  maximizeWindow,
+  minimizeWindow,
+  moveWindowTo,
+  readWindowGeometry,
+  readWindowMonitors,
+  unmaximizeWindow,
+} from "../lib/windowGeometry.js";
 import { isTauri } from "../ipc/env.js";
+import { listRuntimeInstances, openAdditionalWorkbench } from "../ipc/commands.js";
+import { prepareGlobalOperation, quitPreparedInstances } from "../runtime/coordination.js";
 import { planFileImport } from "../lib/fileImportPlan.js";
 import {
   applyWindowBounds,
@@ -165,12 +174,30 @@ export function AgentControlBridge() {
       form: docked ? "dock" : "normal",
       visible: windowVisible,
       readGeometry: readWindowGeometry,
+      readMonitors: readWindowMonitors,
       applyBounds: applyWindowBounds,
+      moveTo: moveWindowTo,
+      maximize: maximizeWindow,
+      unmaximize: unmaximizeWindow,
+      minimize: minimizeWindow,
       show: onShowWindow,
       // The tray's Hide: persistence is flushed first, and it is refused while an update installs.
       hide: () => requestCloseAction("tray"),
     }),
     [docked, onShowWindow, requestCloseAction, windowVisible]
+  );
+  // Quit Workbench, Quit PLVS and a second launch, through the paths the Tray and the OS use.
+  const workbenchControl = useMemo(
+    () => ({
+      available: isTauri(),
+      busy: updateBusy,
+      quitWorkbench: () => requestCloseAction("quit"),
+      prepareQuitAll: prepareGlobalOperation,
+      commitQuitAll: quitPreparedInstances,
+      listInstances: listRuntimeInstances,
+      openWorkbench: openAdditionalWorkbench,
+    }),
+    [requestCloseAction, updateBusy]
   );
   const agentControlDevice = useMemo(
     () => ({
@@ -686,6 +713,7 @@ export function AgentControlBridge() {
     developmentPerformance,
     developmentUpdate,
     windowControl,
+    workbenchControl,
     updateControl,
     pointerControl,
     device: agentControlDevice,

@@ -125,7 +125,17 @@ pub enum ControlCommand {
     height: u64,
     expected_revision: u64,
   },
+  WindowMove {
+    monitor: String,
+    x: u64,
+    y: u64,
+    expected_revision: u64,
+  },
   WindowVisibility {
+    method: String,
+    expected_revision: u64,
+  },
+  WorkbenchLifecycle {
     method: String,
     expected_revision: u64,
   },
@@ -536,6 +546,7 @@ pub fn parse_control_args(args: &[String]) -> Result<ControlCommand, String> {
     [command, rest @ ..] if command == "workspace" => return parse_workspace_args(rest),
     [command, rest @ ..] if command == "ui" => return parse_ui_args(rest),
     [command, rest @ ..] if command == "window" => return parse_window_args(rest),
+    [command, rest @ ..] if command == "workbench" => return parse_workbench_args(rest),
     [command, rest @ ..] if command == "update" => return parse_update_args(rest),
     [command, rest @ ..] if command == "pointer" => return parse_pointer_args(rest),
     [command, rest @ ..] if command == "editor-draft" => return parse_editor_draft_args(rest),
@@ -950,7 +961,7 @@ fn parse_ui_safe_integer(raw: Option<&String>, option: &str) -> Result<u64, Stri
 }
 
 fn parse_ui_args(args: &[String]) -> Result<ControlCommand, String> {
-  const USAGE: &str = "Usage:\n  plvs-cli ui inspect <--json|--format text>\n  plvs-cli ui show settings --section <section> --expected-revision <n> --expected-ui-generation <n> --json\n  plvs-cli ui show panel-settings --panel-id <id> --expected-revision <n> --expected-ui-generation <n> --json\n  plvs-cli ui show theme-editor --mode <create|edit|customize|duplicate> [--theme-id <id>] [--page <core|palettes|advanced>] --expected-revision <n> --expected-ui-generation <n> --json\n  plvs-cli ui show loudness-profile-editor --mode <create|edit> [--profile-id <id>] --expected-revision <n> --expected-ui-generation <n> --json\n  plvs-cli ui show feedback --expected-revision <n> --expected-ui-generation <n> --json\n  plvs-cli ui show toolbar-menu --menu <sources|loudness-profile|panels|views|presets|status> --expected-revision <n> --expected-ui-generation <n> --json\n  plvs-cli ui show dock-toolbar --expected-revision <n> --expected-ui-generation <n> --json\n  plvs-cli ui show panel-help --panel-id <id> --expected-revision <n> --expected-ui-generation <n> --json\n  plvs-cli ui show add-panel --expected-revision <n> --expected-ui-generation <n> --json\n  plvs-cli ui show source-group --group <output|input|applications> --expected-revision <n> --expected-ui-generation <n> --json\n  plvs-cli ui show dropdown --control <target-id> --expected-revision <n> --expected-ui-generation <n> --json\n  plvs-cli ui quick-tour <start|next|back> --expected-revision <n> --expected-ui-generation <n> --json\n  plvs-cli ui action --target <target-id> --expected-revision <n> --expected-ui-generation <n> --json\n  plvs-cli ui targets --json\n  plvs-cli ui locate --target <target-id> --json\n  plvs-cli ui close <surface-id> --expected-revision <n> --expected-ui-generation <n> --json\n  plvs-cli ui cancel <surface-id> --expected-revision <n> --expected-ui-generation <n> --json";
+  const USAGE: &str = "Usage:\n  plvs-cli ui inspect <--json|--format text>\n  plvs-cli ui show settings --section <section> --expected-revision <n> --expected-ui-generation <n> --json\n  plvs-cli ui show panel-settings --panel-id <id> --expected-revision <n> --expected-ui-generation <n> --json\n  plvs-cli ui show theme-editor --mode <create|edit|customize|duplicate> [--theme-id <id>] [--page <core|palettes|advanced>] --expected-revision <n> --expected-ui-generation <n> --json\n  plvs-cli ui show loudness-profile-editor --mode <create|edit> [--profile-id <id>] --expected-revision <n> --expected-ui-generation <n> --json\n  plvs-cli ui show feedback --expected-revision <n> --expected-ui-generation <n> --json\n  plvs-cli ui show toolbar-menu --menu <sources|loudness-profile|panels|views|presets|status> --expected-revision <n> --expected-ui-generation <n> --json\n  plvs-cli ui show dock-toolbar --expected-revision <n> --expected-ui-generation <n> --json\n  plvs-cli ui show panel-help --panel-id <id> --expected-revision <n> --expected-ui-generation <n> --json\n  plvs-cli ui show panel-fullscreen --panel-id <id> --expected-revision <n> --expected-ui-generation <n> --json\n  plvs-cli ui show add-panel --expected-revision <n> --expected-ui-generation <n> --json\n  plvs-cli ui show source-group --group <output|input|applications> --expected-revision <n> --expected-ui-generation <n> --json\n  plvs-cli ui show dropdown --control <target-id> --expected-revision <n> --expected-ui-generation <n> --json\n  plvs-cli ui quick-tour <start|next|back> --expected-revision <n> --expected-ui-generation <n> --json\n  plvs-cli ui action --target <target-id> --expected-revision <n> --expected-ui-generation <n> --json\n  plvs-cli ui targets --json\n  plvs-cli ui locate --target <target-id> --json\n  plvs-cli ui close <surface-id> --expected-revision <n> --expected-ui-generation <n> --json\n  plvs-cli ui cancel <surface-id> --expected-revision <n> --expected-ui-generation <n> --json";
   if args.iter().any(|arg| is_help(arg)) {
     return Ok(ControlCommand::FamilyHelp("ui".to_string()));
   }
@@ -978,6 +989,7 @@ fn parse_ui_args(args: &[String]) -> Result<ControlCommand, String> {
     [show, target, ..] if show == "show" && target == "toolbar-menu" => ("toolbar-menu", 2),
     [show, target, ..] if show == "show" && target == "dock-toolbar" => ("dock-toolbar", 2),
     [show, target, ..] if show == "show" && target == "panel-help" => ("panel-help", 2),
+    [show, target, ..] if show == "show" && target == "panel-fullscreen" => ("panel-fullscreen", 2),
     [show, target, ..] if show == "show" && target == "add-panel" => ("add-panel", 2),
     [show, target, ..] if show == "show" && target == "source-group" => ("source-group", 2),
     [show, target, ..] if show == "show" && target == "dropdown" => ("dropdown", 2),
@@ -1020,7 +1032,10 @@ fn parse_ui_args(args: &[String]) -> Result<ControlCommand, String> {
         );
         index += 2;
       }
-      "--panel-id" if matches!(kind, "panel-settings" | "panel-help") && panel_id.is_none() => {
+      "--panel-id"
+        if matches!(kind, "panel-settings" | "panel-help" | "panel-fullscreen")
+          && panel_id.is_none() =>
+      {
         panel_id = Some(
           args
             .get(index + 1)
@@ -1262,6 +1277,17 @@ fn parse_ui_args(args: &[String]) -> Result<ControlCommand, String> {
       expected_revision,
       expected_ui_generation,
     }),
+    "panel-fullscreen" => Ok(ControlCommand::UiShowNamed {
+      method: "ui.show.panelFullscreen".to_string(),
+      field: Some((
+        "panelId".to_string(),
+        panel_id
+          .filter(|value| !value.trim().is_empty())
+          .ok_or_else(|| "The panel fullscreen target requires --panel-id.".to_string())?,
+      )),
+      expected_revision,
+      expected_ui_generation,
+    }),
     "add-panel" => Ok(ControlCommand::UiShowNamed {
       method: "ui.show.addPanel".to_string(),
       field: None,
@@ -1335,7 +1361,7 @@ fn parse_ui_args(args: &[String]) -> Result<ControlCommand, String> {
 }
 
 fn parse_window_args(args: &[String]) -> Result<ControlCommand, String> {
-  const USAGE: &str = "Usage:\n  plvs-cli window inspect --json\n  plvs-cli window resize --width <css-px> --height <css-px> --expected-revision <n> --json\n  plvs-cli window hide --expected-revision <n> --json\n  plvs-cli window show --expected-revision <n> --json";
+  const USAGE: &str = "Usage:\n  plvs-cli window inspect --json\n  plvs-cli window resize --width <css-px> --height <css-px> --expected-revision <n> --json\n  plvs-cli window move --monitor <monitor-id> --x <css-px> --y <css-px> --expected-revision <n> --json\n  plvs-cli window hide --expected-revision <n> --json\n  plvs-cli window show --expected-revision <n> --json\n  plvs-cli window maximize --expected-revision <n> --json\n  plvs-cli window unmaximize --expected-revision <n> --json\n  plvs-cli window minimize --expected-revision <n> --json";
   if args.iter().any(|arg| is_help(arg)) {
     return Ok(ControlCommand::FamilyHelp("window".to_string()));
   }
@@ -1345,12 +1371,19 @@ fn parse_window_args(args: &[String]) -> Result<ControlCommand, String> {
   let [action, options @ ..] = args else {
     return Err(USAGE.to_string());
   };
-  if !matches!(action.as_str(), "resize" | "hide" | "show") {
+  if !matches!(
+    action.as_str(),
+    "resize" | "move" | "hide" | "show" | "maximize" | "unmaximize" | "minimize"
+  ) {
     return Err(USAGE.to_string());
   }
   let resize = action == "resize";
+  let moving = action == "move";
   let mut width = None;
   let mut height = None;
+  let mut monitor = None;
+  let mut x = None;
+  let mut y = None;
   let mut expected_revision = None;
   let mut json = false;
   let mut index = 0;
@@ -1375,6 +1408,29 @@ fn parse_window_args(args: &[String]) -> Result<ControlCommand, String> {
         }
         index += 2;
       }
+      "--monitor" if moving && monitor.is_none() => {
+        monitor = Some(
+          options
+            .get(index + 1)
+            .filter(|value| !value.trim().is_empty())
+            .ok_or_else(|| "Missing value for --monitor.".to_string())?
+            .clone(),
+        );
+        index += 2;
+      }
+      option @ ("--x" | "--y") if moving && (if option == "--x" { x } else { y }).is_none() => {
+        let value = options
+          .get(index + 1)
+          .and_then(|raw| raw.parse::<u64>().ok())
+          .filter(|value| *value <= 7680)
+          .ok_or_else(|| format!("The {option} value must be an integer from 0 to 7680."))?;
+        if option == "--x" {
+          x = Some(value);
+        } else {
+          y = Some(value);
+        }
+        index += 2;
+      }
       "--expected-revision" if expected_revision.is_none() => {
         expected_revision = Some(parse_ui_safe_integer(
           options.get(index + 1),
@@ -1390,6 +1446,14 @@ fn parse_window_args(args: &[String]) -> Result<ControlCommand, String> {
   }
   let expected_revision =
     expected_revision.ok_or_else(|| "Window actions require --expected-revision.".to_string())?;
+  if moving {
+    return Ok(ControlCommand::WindowMove {
+      monitor: monitor.ok_or_else(|| "The window move action requires --monitor.".to_string())?,
+      x: x.ok_or_else(|| "The window move action requires --x.".to_string())?,
+      y: y.ok_or_else(|| "The window move action requires --y.".to_string())?,
+      expected_revision,
+    });
+  }
   if !resize {
     return Ok(ControlCommand::WindowVisibility {
       method: format!("window.{action}"),
@@ -1400,6 +1464,49 @@ fn parse_window_args(args: &[String]) -> Result<ControlCommand, String> {
     width: width.ok_or_else(|| "The window resize action requires --width.".to_string())?,
     height: height.ok_or_else(|| "The window resize action requires --height.".to_string())?,
     expected_revision,
+  })
+}
+
+fn parse_workbench_args(args: &[String]) -> Result<ControlCommand, String> {
+  const USAGE: &str = "Usage:\n  plvs-cli workbench open --expected-revision <n> --json\n  plvs-cli workbench quit --expected-revision <n> --json\n  plvs-cli workbench quit-all --expected-revision <n> --json";
+  if args.iter().any(|arg| is_help(arg)) {
+    return Ok(ControlCommand::FamilyHelp("workbench".to_string()));
+  }
+  let [action, options @ ..] = args else {
+    return Err(USAGE.to_string());
+  };
+  let method = match action.as_str() {
+    "open" => "workbench.open",
+    "quit" => "workbench.quit",
+    "quit-all" => "workbench.quitAll",
+    _ => return Err(USAGE.to_string()),
+  };
+  let mut expected_revision = None;
+  let mut json = false;
+  let mut index = 0;
+  while index < options.len() {
+    match options[index].as_str() {
+      "--json" if !json => {
+        json = true;
+        index += 1;
+      }
+      "--expected-revision" if expected_revision.is_none() => {
+        expected_revision = Some(parse_ui_safe_integer(
+          options.get(index + 1),
+          "--expected-revision",
+        )?);
+        index += 2;
+      }
+      value => return Err(format!("Unknown or duplicate workbench option: {value}")),
+    }
+  }
+  if !json {
+    return Err("Workbench actions require --json.".to_string());
+  }
+  Ok(ControlCommand::WorkbenchLifecycle {
+    method: method.to_string(),
+    expected_revision: expected_revision
+      .ok_or_else(|| "Workbench actions require --expected-revision.".to_string())?,
   })
 }
 
@@ -1855,10 +1962,16 @@ fn parse_module_args(args: &[String]) -> Result<ControlCommand, String> {
   }
 }
 
-/// Chart gestures with no other command: `measurement reset-hold`, `measurement
-/// reset-true-peak-max` and `panel hold-slow`.
+/// Panel actions addressed by Panel ID: the chart gestures with no other command (`measurement
+/// reset-hold`, `measurement reset-true-peak-max`, `panel hold-slow`) and the header's
+/// `panel pin` / `panel unpin`.
 fn parse_panel_gesture_args(method: &str, options: &[String]) -> Result<ControlCommand, String> {
   let hold = method == "panel.holdSlow";
+  let subject = if matches!(method, "panel.pin" | "panel.unpin") {
+    "Panel pin commands"
+  } else {
+    "Chart gesture commands"
+  };
   let mut panel_id = None;
   let mut duration_ms = None;
   let mut expected_revision = None;
@@ -1903,17 +2016,17 @@ fn parse_panel_gesture_args(method: &str, options: &[String]) -> Result<ControlC
     }
   }
   if !json {
-    return Err("Chart gesture commands require --json.".to_string());
+    return Err(format!("{subject} require --json."));
   }
   if hold && duration_ms.is_none() {
     return Err("The panel hold-slow command requires --duration-ms.".to_string());
   }
   Ok(ControlCommand::PanelGesture {
     method: method.to_string(),
-    panel_id: panel_id.ok_or_else(|| "Chart gesture commands require --panel-id.".to_string())?,
+    panel_id: panel_id.ok_or_else(|| format!("{subject} require --panel-id."))?,
     duration_ms,
     expected_revision: expected_revision
-      .ok_or_else(|| "Chart gesture commands require --expected-revision.".to_string())?,
+      .ok_or_else(|| format!("{subject} require --expected-revision."))?,
   })
 }
 
@@ -3084,8 +3197,11 @@ fn parse_panel_args(args: &[String]) -> Result<ControlCommand, String> {
   if args.iter().any(|arg| is_help(arg)) {
     return Ok(ControlCommand::Help);
   }
-  if args.first().map(String::as_str) == Some("hold-slow") {
-    return parse_panel_gesture_args("panel.holdSlow", &args[1..]);
+  match args.first().map(String::as_str) {
+    Some("hold-slow") => return parse_panel_gesture_args("panel.holdSlow", &args[1..]),
+    Some("pin") => return parse_panel_gesture_args("panel.pin", &args[1..]),
+    Some("unpin") => return parse_panel_gesture_args("panel.unpin", &args[1..]),
+    _ => {}
   }
   const UPDATE_USAGE: &str =
     "Usage: plvs-cli panel update <panel-id> <file|-> --json [--expected-revision <n>] [--dry-run]";
@@ -4163,6 +4279,11 @@ impl ControlFailure {
         | "fixtureConflict"
         | "fixtureResetUnsafe"
         | "windowSizeUnavailable"
+        | "windowPositionUnavailable"
+        | "windowMinimized"
+        | "windowHidden"
+        | "quitRefused"
+        | "workbenchUnavailable"
         | "updateUnavailable",
       ) => 4,
       (_, "timeout" | "cancelled" | "uiNotSettled") => 5,
@@ -4214,7 +4335,9 @@ fn command_name(command: &ControlCommand) -> String {
     ControlCommand::UiClose { .. } => "ui.close".to_string(),
     ControlCommand::WindowInspect => "window.inspect".to_string(),
     ControlCommand::WindowResize { .. } => "window.resize".to_string(),
+    ControlCommand::WindowMove { .. } => "window.move".to_string(),
     ControlCommand::WindowVisibility { method, .. } => method.clone(),
+    ControlCommand::WorkbenchLifecycle { method, .. } => method.clone(),
     ControlCommand::UpdateInspect => "update.inspect".to_string(),
     ControlCommand::UpdateCheck { .. } => "update.check".to_string(),
     ControlCommand::UiCancel { .. } => "ui.cancel".to_string(),
@@ -4560,7 +4683,21 @@ fn request_for_command<R: Read>(
       "height": height,
       "expectedRevision": expected_revision,
     }),
+    ControlCommand::WindowMove {
+      monitor,
+      x,
+      y,
+      expected_revision,
+    } => serde_json::json!({
+      "monitor": monitor,
+      "x": x,
+      "y": y,
+      "expectedRevision": expected_revision,
+    }),
     ControlCommand::WindowVisibility {
+      expected_revision, ..
+    }
+    | ControlCommand::WorkbenchLifecycle {
       expected_revision, ..
     }
     | ControlCommand::UpdateCheck { expected_revision } => {
@@ -6177,6 +6314,110 @@ mod tests {
     ]))
     .unwrap();
     assert_eq!(command_name(&hide), "window.hide");
+    for action in ["maximize", "unmaximize", "minimize"] {
+      let state = parse_control_args(&args(&[
+        "window",
+        action,
+        "--expected-revision",
+        "4",
+        "--json",
+      ]))
+      .unwrap();
+      assert_eq!(command_name(&state), format!("window.{action}"));
+    }
+    let moved = parse_control_args(&args(&[
+      "window",
+      "move",
+      "--monitor",
+      "Built-in Retina Display",
+      "--x",
+      "0",
+      "--y",
+      "120",
+      "--expected-revision",
+      "4",
+      "--json",
+    ]))
+    .unwrap();
+    assert_eq!(command_name(&moved), "window.move");
+    for (action, method) in [
+      ("open", "workbench.open"),
+      ("quit", "workbench.quit"),
+      ("quit-all", "workbench.quitAll"),
+    ] {
+      let lifecycle = parse_control_args(&args(&[
+        "workbench",
+        action,
+        "--expected-revision",
+        "4",
+        "--json",
+      ]))
+      .unwrap();
+      assert_eq!(command_name(&lifecycle), method);
+      assert_eq!(
+        request_for_command(&lifecycle, &mut Cursor::new([]))
+          .unwrap()
+          .params,
+        serde_json::json!({ "expectedRevision": 4 })
+      );
+    }
+    assert_eq!(
+      parse_control_args(&args(&["workbench", "quit", "--json"])),
+      Err("Workbench actions require --expected-revision.".to_string())
+    );
+    assert_eq!(
+      request_for_command(&moved, &mut Cursor::new([]))
+        .unwrap()
+        .params,
+      serde_json::json!({
+        "monitor": "Built-in Retina Display",
+        "x": 0,
+        "y": 120,
+        "expectedRevision": 4
+      })
+    );
+    assert_eq!(
+      parse_control_args(&args(&[
+        "window",
+        "move",
+        "--x",
+        "0",
+        "--y",
+        "0",
+        "--expected-revision",
+        "4",
+        "--json",
+      ])),
+      Err("The window move action requires --monitor.".to_string())
+    );
+    assert!(parse_control_args(&args(&[
+      "window",
+      "move",
+      "--monitor",
+      "A",
+      "--x",
+      "-5",
+      "--y",
+      "0",
+      "--expected-revision",
+      "4",
+      "--json",
+    ]))
+    .is_err());
+    assert!(parse_control_args(&args(&[
+      "window",
+      "resize",
+      "--monitor",
+      "A",
+      "--width",
+      "800",
+      "--height",
+      "600",
+      "--expected-revision",
+      "4",
+      "--json",
+    ]))
+    .is_err());
     assert_eq!(
       parse_control_args(&args(&["window", "inspect", "--json"])),
       Ok(ControlCommand::WindowInspect)
@@ -6314,6 +6555,71 @@ mod tests {
     ]))
     .unwrap();
     assert_eq!(command_name(&reset), "measurement.resetHold");
+    for (action, method) in [("pin", "panel.pin"), ("unpin", "panel.unpin")] {
+      let pin = parse_control_args(&args(&[
+        "panel",
+        action,
+        "--panel-id",
+        "spectrum",
+        "--expected-revision",
+        "4",
+        "--json",
+      ]))
+      .unwrap();
+      assert_eq!(command_name(&pin), method);
+      assert_eq!(
+        request_for_command(&pin, &mut Cursor::new([]))
+          .unwrap()
+          .params,
+        serde_json::json!({ "panelId": "spectrum", "expectedRevision": 4 })
+      );
+      assert_eq!(
+        parse_control_args(&args(&[
+          "panel",
+          action,
+          "--panel-id",
+          "spectrum",
+          "--json"
+        ])),
+        Err("Panel pin commands require --expected-revision.".to_string())
+      );
+    }
+    let fullscreen = parse_control_args(&args(&[
+      "ui",
+      "show",
+      "panel-fullscreen",
+      "--panel-id",
+      "spectrum",
+      "--expected-revision",
+      "4",
+      "--expected-ui-generation",
+      "2",
+      "--json",
+    ]))
+    .unwrap();
+    assert_eq!(command_name(&fullscreen), "ui.show.panelFullscreen");
+    assert_eq!(
+      request_for_command(&fullscreen, &mut Cursor::new([]))
+        .unwrap()
+        .params,
+      serde_json::json!({
+        "panelId": "spectrum",
+        "expectedRevision": 4,
+        "expectedUiGeneration": 2
+      })
+    );
+    assert!(parse_control_args(&args(&[
+      "panel",
+      "pin",
+      "--panel-id",
+      "spectrum",
+      "--duration-ms",
+      "500",
+      "--expected-revision",
+      "4",
+      "--json",
+    ]))
+    .is_err());
     assert!(parse_control_args(&args(&[
       "measurement",
       "reset-hold",
@@ -6732,6 +7038,7 @@ mod tests {
       "file" => "output.bin".to_string(),
       "module-id" => "spectrum".to_string(),
       "panel-id" => "spectrum".to_string(),
+      "monitor-id" => "Display 1".to_string(),
       "frequency|time" => "frequency".to_string(),
       "preset-id" => "preset-1".to_string(),
       "theme-id" => "custom-1".to_string(),

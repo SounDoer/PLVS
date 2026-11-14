@@ -21,6 +21,7 @@ import { settingsHandlers } from "./settings.js";
 import { moduleHandlers } from "./module.js";
 import { appHandlers } from "./app.js";
 import { windowHandlers } from "./window.js";
+import { workbenchHandlers } from "./workbench.js";
 import { updateHandlers } from "./update.js";
 import { pointerHandlers } from "./pointer.js";
 import { gestureHandlers } from "./gestures.js";
@@ -48,6 +49,7 @@ export const METHOD_TABLE = Object.freeze({
   ...measurementHandlers,
   ...uiHandlers,
   ...windowHandlers,
+  ...workbenchHandlers,
   ...updateHandlers,
   ...pointerHandlers,
   ...gestureHandlers,

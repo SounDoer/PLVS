@@ -41,6 +41,7 @@ The public `show` targets are:
   `presets`, or `status`;
 - `dock-toolbar` reveals the Dock toolbar;
 - `panel-help` pins a panel's gesture reference, as clicking its question mark does;
+- `panel-fullscreen` shows one panel in Fullscreen, as its header's Fullscreen button does;
 - `add-panel` opens the Panels menu's Add Panel list;
 - `source-group` expands the Sources menu's `output`, `input` or `applications` group;
 - `dropdown` opens a named single-choice dropdown in Settings, Panel Settings or Views.
@@ -62,6 +63,12 @@ the request is `surfaceUnavailable`. `dropdown` takes a target id from `ui targe
 click outside does. `panel-help` is available for the rendered tab of a normal or fullscreen panel.
 A hover preview of the gesture reference, opened by the pointer resting on the question mark, is
 the same surface.
+
+`panel-fullscreen` accepts the rendered tab of a Workspace panel; a tab behind another tab in its
+slot, or any panel in Dock, is `surfaceUnavailable`. The result is a `panelFullscreen` surface with
+target `{ panelId }`. Fullscreen is transient presentation, like the button: it advances
+`uiGeneration`, not the revision, and is never restored on the next launch. Showing another panel
+replaces the current one. `ui close` exits Fullscreen as the header's exit button and Escape do.
 
 `dock-toolbar` reveals the toolbar as the strip's arrow button does and is `surfaceUnavailable`
 outside Dock. Its `dockToolbar` surface closes through the arrow's Hide intent, which also closes

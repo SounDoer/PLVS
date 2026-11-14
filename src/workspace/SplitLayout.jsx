@@ -25,6 +25,7 @@ import { getPanelControls } from "./panelControlInstances.js";
 import { LAYER_FLOATING } from "../components/ui/layers.js";
 import { IconAction } from "@/components/ui/icon-action";
 import { UI_PREFERENCES } from "../preferences/data.js";
+import { useUiNavigationTarget, useUiSurface } from "../uiNavigation/UiNavigationContext.jsx";
 
 // The resize rail is as wide as the shell gap (it renders at `--ui-shell-gap`), so the sizing math
 // below reads the same value the stylesheet publishes.
@@ -400,7 +401,28 @@ function FullscreenOverlay() {
     [axisViewportData, fullscreenId, onPanelControlsChange, panelControls, panelHistoryData]
   );
 
-  if (!fullscreenId || !def || !Component) return null;
+  const showing = Boolean(fullscreenId && def && Component);
+  // In Fullscreen the header offers only Unpin, for the shown panel; pinning needs the layout.
+  useUiNavigationTarget(
+    "fullscreenPin",
+    showing
+      ? { panelId: fullscreenId, pinned: isPinned, unpin: () => setPanelPinned(fullscreenId, null) }
+      : {}
+  );
+  useUiSurface({
+    active: showing,
+    lifetimeKey: fullscreenId,
+    kind: "panelFullscreen",
+    origin: "navigable",
+    blocking: false,
+    dismissible: true,
+    supportedActions: ["close"],
+    target: { panelId: fullscreenId },
+    // Exit Fullscreen and Escape do the same.
+    onClose: () => setFullscreen(null),
+  });
+
+  if (!showing) return null;
 
   return (
     <div

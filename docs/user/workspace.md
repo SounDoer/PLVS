@@ -27,6 +27,12 @@ When moving a panel, PLVS fills the space it will occupy after you release the p
 placement direction. Dropping on a panel title adds it as a tab; moving outside a valid panel shows
 **No Drop Target** and leaves the layout unchanged.
 
+Each panel header has **Pin panel size** and **Fullscreen**. Pin locks the panel at the size it has
+when you press it, so resizing the window or dragging neighboring edges leaves it unchanged; press
+**Unpin panel size** to release it. A pinned panel also locks its slot, so the other tabs in that
+slot show it as locked. Fullscreen fills the Workspace with one panel until you press the exit button in its header or
+Escape; it is not restored on the next launch.
+
 ## Panels and presets
 
 The **Panels** menu adds panels, including a second instance of a meter you want to watch two ways

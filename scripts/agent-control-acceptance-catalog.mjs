@@ -84,6 +84,8 @@ const groups = [
       "axis.panel.reset",
       "panel.update",
       "panel.reset",
+      "panel.pin",
+      "panel.unpin",
       "settings.update",
     ],
   },
@@ -166,6 +168,7 @@ const groups = [
       "ui.show.feedback",
       "ui.show.toolbarMenu",
       "ui.show.panelHelp",
+      "ui.show.panelFullscreen",
       "ui.show.addPanel",
       "ui.show.sourceGroup",
       "ui.show.dropdown",
@@ -200,7 +203,16 @@ const groups = [
   {
     scenario: "window-platform-contract",
     disposition: "platformContract",
-    commands: ["window.resize", "window.hide", "window.show", "pointer.move"],
+    commands: [
+      "window.resize",
+      "window.move",
+      "window.hide",
+      "window.show",
+      "window.maximize",
+      "window.unmaximize",
+      "window.minimize",
+      "pointer.move",
+    ],
   },
   {
     scenario: "capture-rig",
@@ -230,6 +242,11 @@ const groups = [
     disposition: "external",
     commands: ["update.check"],
     owner: "update",
+  },
+  {
+    scenario: "workbench-platform-contract",
+    disposition: "platformContract",
+    commands: ["workbench.open", "workbench.quit", "workbench.quitAll"],
   },
   {
     scenario: "configuration-relaunch",

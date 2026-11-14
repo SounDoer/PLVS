@@ -7,7 +7,7 @@ import { serializeWorkspaceLayout } from "./workspaceLayout.js";
 import { runningAppCommandEntries } from "./commandManifest.js";
 import { buildModuleList } from "./moduleControl.js";
 import { TOOLBAR_MENUS, UI_SETTINGS_SECTIONS } from "../uiNavigation/uiNavigationModel.js";
-import { WINDOW_SIZE_MAX, WINDOW_SIZE_MIN } from "./windowControl.js";
+import { WINDOW_OFFSET_MAX, WINDOW_SIZE_MAX, WINDOW_SIZE_MIN } from "./windowControl.js";
 
 /**
  * @param {string} featureGate
@@ -54,6 +54,7 @@ export function buildAgentControlPanelSnapshot({
     id: panelId,
     moduleId: panel.moduleId,
     title: resolvePanelDisplayName(workspace, panelId),
+    pinned: Boolean(workspace.pinnedPanelsById?.[panelId]),
     controls: readPublicPanelControls(panel.moduleId, getPanelControls(workspace, panelId), {
       hasLoudnessReference,
     }),
@@ -120,6 +121,7 @@ export function buildAgentControlCapabilities(runtime, revision) {
                 toolbarMenu: hasMethod("ui.show.toolbarMenu") ? { menus: TOOLBAR_MENUS } : false,
                 dockToolbar: hasMethod("ui.show.dockToolbar"),
                 panelHelp: hasMethod("ui.show.panelHelp"),
+                panelFullscreen: hasMethod("ui.show.panelFullscreen"),
                 addPanel: hasMethod("ui.show.addPanel"),
                 sourceGroup: hasMethod("ui.show.sourceGroup")
                   ? { groups: ["output", "input", "applications"] }
@@ -136,10 +138,28 @@ export function buildAgentControlCapabilities(runtime, revision) {
               resize: hasMethod("window.resize")
                 ? { minimum: WINDOW_SIZE_MIN, maximum: WINDOW_SIZE_MAX, unit: "cssPx" }
                 : false,
+              move: hasMethod("window.move")
+                ? { minimum: 0, maximum: WINDOW_OFFSET_MAX, unit: "cssPx" }
+                : false,
               hide: hasMethod("window.hide"),
               show: hasMethod("window.show"),
+              maximize: hasMethod("window.maximize"),
+              unmaximize: hasMethod("window.unmaximize"),
+              minimize: hasMethod("window.minimize"),
             },
           }
+        : {}),
+      ...(hasMethod("workbench.open")
+        ? {
+            workbench: {
+              open: true,
+              quit: hasMethod("workbench.quit"),
+              quitAll: hasMethod("workbench.quitAll"),
+            },
+          }
+        : {}),
+      ...(hasMethod("panel.pin")
+        ? { panelHeader: { pin: true, unpin: hasMethod("panel.unpin") } }
         : {}),
       ...(hasMethod("measurement.resetHold")
         ? {

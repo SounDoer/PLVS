@@ -41,6 +41,7 @@ export const UI_SURFACE_KINDS = Object.freeze([
   "toolbarMenu",
   "dockToolbar",
   "panelHelp",
+  "panelFullscreen",
   "addPanel",
   "sourceGroup",
   "dropdown",

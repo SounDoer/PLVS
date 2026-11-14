@@ -6,7 +6,7 @@ import {
 } from "./visualControl.js";
 import { commandEntriesForFamily } from "./commandManifest.js";
 import { normalizeMeasurementPredicate } from "./measurementPredicates.js";
-import { WINDOW_SIZE_MAX, WINDOW_SIZE_MIN } from "./windowControl.js";
+import { WINDOW_OFFSET_MAX, WINDOW_SIZE_MAX, WINDOW_SIZE_MIN } from "./windowControl.js";
 import { isUiTargetId } from "../uiNavigation/uiTargets.js";
 
 const SOURCE_GROUPS = Object.freeze(["output", "input", "applications"]);
@@ -425,12 +425,16 @@ export function normalizeAgentControlRequest(input) {
   }
 
   if (
-    ["ui.show.panelHelp", "ui.show.sourceGroup", "ui.show.dropdown", "ui.action"].includes(
-      input.method
-    )
+    [
+      "ui.show.panelHelp",
+      "ui.show.panelFullscreen",
+      "ui.show.sourceGroup",
+      "ui.show.dropdown",
+      "ui.action",
+    ].includes(input.method)
   ) {
     const name =
-      input.method === "ui.show.panelHelp"
+      input.method === "ui.show.panelHelp" || input.method === "ui.show.panelFullscreen"
         ? "panelId"
         : input.method === "ui.show.sourceGroup"
           ? "group"
@@ -481,9 +485,13 @@ export function normalizeAgentControlRequest(input) {
   }
 
   if (
-    ["measurement.resetHold", "measurement.resetTruePeakMax", "panel.holdSlow"].includes(
-      input.method
-    )
+    [
+      "measurement.resetHold",
+      "measurement.resetTruePeakMax",
+      "panel.holdSlow",
+      "panel.pin",
+      "panel.unpin",
+    ].includes(input.method)
   ) {
     const hold = input.method === "panel.holdSlow";
     const field = unknownField(
@@ -850,7 +858,52 @@ export function normalizeAgentControlRequest(input) {
     };
   }
 
-  if (["window.resize", "window.hide", "window.show", "update.check"].includes(input.method)) {
+  if (input.method === "window.move") {
+    const field = unknownField(input.params, new Set(["monitor", "x", "y", "expectedRevision"]));
+    if (field) return invalidParams(`$.params.${field}`, `Unknown parameter: ${field}.`);
+    const revisionError = validateExpectedRevision(input.params);
+    if (revisionError) return revisionError;
+    if (typeof input.params.monitor !== "string" || input.params.monitor.trim() === "") {
+      return invalidParams("$.params.monitor", "monitor must be a non-empty monitor ID.");
+    }
+    for (const axis of ["x", "y"]) {
+      const value = input.params[axis];
+      if (!Number.isInteger(value) || value < 0 || value > WINDOW_OFFSET_MAX) {
+        return invalidParams(
+          `$.params.${axis}`,
+          `${axis} must be an integer from 0 to ${WINDOW_OFFSET_MAX}.`
+        );
+      }
+    }
+    return {
+      ok: true,
+      request: {
+        id: input.id,
+        method: input.method,
+        params: {
+          monitor: input.params.monitor,
+          x: input.params.x,
+          y: input.params.y,
+          expectedRevision: input.params.expectedRevision,
+        },
+      },
+    };
+  }
+
+  if (
+    [
+      "window.resize",
+      "window.hide",
+      "window.show",
+      "window.maximize",
+      "window.unmaximize",
+      "window.minimize",
+      "update.check",
+      "workbench.quitAll",
+      "workbench.quit",
+      "workbench.open",
+    ].includes(input.method)
+  ) {
     const resize = input.method === "window.resize";
     const field = unknownField(
       input.params,
