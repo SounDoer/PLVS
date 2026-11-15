@@ -2382,9 +2382,9 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 
 ========================================================================
-npm:framer-motion@14.10.1
+npm:framer-motion@14.14.0
 Declared license: MIT
-Source: https://registry.npmjs.org/framer-motion/-/framer-motion-14.10.1.tgz
+Source: https://registry.npmjs.org/framer-motion/-/framer-motion-14.14.0.tgz
 
 --- LICENSE.md ---
 The MIT License (MIT)
@@ -2713,9 +2713,9 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 
 ========================================================================
-npm:lucide-react@1.70.0
+npm:lucide-react@1.73.0
 Declared license: ISC
-Source: https://registry.npmjs.org/lucide-react/-/lucide-react-1.70.0.tgz
+Source: https://registry.npmjs.org/lucide-react/-/lucide-react-1.73.0.tgz
 
 --- LICENSE ---
 ISC License
@@ -3635,9 +3635,9 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 
 ========================================================================
-npm:motion-dom@14.10.1
+npm:motion-dom@14.14.0
 Declared license: MIT
-Source: https://registry.npmjs.org/motion-dom/-/motion-dom-14.10.1.tgz
+Source: https://registry.npmjs.org/motion-dom/-/motion-dom-14.14.0.tgz
 
 --- LICENSE.md ---
 The MIT License (MIT)
