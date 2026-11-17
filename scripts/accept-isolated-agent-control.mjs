@@ -217,6 +217,10 @@ export async function runIsolatedAgentControl({ executable, root, outDir, scenar
   }
 
   function checkToolbar(pressed, screenshot) {
+    // Raise the test window so a background macOS WebView can render the screenshot.
+    const window = invoke(["window", "inspect"]);
+    const shown = invoke(["window", "show", "--expected-revision", String(window.revision)]);
+    assert.equal(shown.visible, true);
     const settings = invoke(["settings", "inspect"]);
     const full = invoke([
       "visual",
