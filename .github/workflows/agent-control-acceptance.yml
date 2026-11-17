@@ -9,6 +9,11 @@ on:
         description: Full commit SHA to verify
         required: true
         type: string
+      platform:
+        description: Desktop platforms to verify
+        type: choice
+        default: all
+        options: [all, windows, macos, linux]
 
 permissions:
   contents: read
@@ -22,14 +27,8 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        include:
-          - platform: windows
-            labels: [self-hosted, plvs-rig, windows]
-          - platform: macos
-            labels: [self-hosted, plvs-rig, macos]
-          - platform: linux
-            labels: [self-hosted, plvs-rig, linux]
-    runs-on: ${{ matrix.labels }}
+        platform: ${{ inputs.platform == 'all' && fromJSON('["windows","macos","linux"]') || fromJSON(format('["{0}"]', inputs.platform)) }}
+    runs-on: [self-hosted, plvs-rig, "${{ matrix.platform }}"]
     timeout-minutes: 90
     defaults:
       run:

@@ -29,35 +29,70 @@ async function readEvidence(file) {
   }
 }
 
+function resizeDiagnostic(history) {
+  const sizing = history.findLast(({ response }) => response.error?.details?.requestedSize)
+    ?.response.error.details;
+  if (!sizing) return undefined;
+  const names = [
+    "requestedSize",
+    "viewport",
+    "nativeInner",
+    "nativeOuter",
+    "originalViewport",
+    "originalNativeInner",
+  ];
+  return {
+    ...Object.fromEntries(
+      names.map((name) => [
+        name,
+        {
+          width: sizing[name]?.width,
+          height: sizing[name]?.height,
+        },
+      ])
+    ),
+    scale: sizing.scale,
+  };
+}
+
 function publicDiagnostic(trace) {
   const { cliCount, code } = trace.failure ?? {};
-  const commandHistory = (trace.cli ?? [])
-    .slice(0, cliCount)
-    .slice(-5)
-    .flatMap((entry) => {
-      const args = entry.args[0] === "--instance" ? entry.args.slice(2) : entry.args;
-      const command = commandsBySpecificity.find(({ path }) =>
-        path.every((part, index) => part === args[index])
-      );
-      if (!command) return [];
-      const { result, error } = entry.response;
-      return [
-        {
-          command: command.id,
-          exitCode: entry.status,
-          ...(typeof error?.code === "string" && /^[a-zA-Z][a-zA-Z0-9_]{0,79}$/.test(error.code)
-            ? { code: error.code }
-            : {}),
-          ...(command.id === "instances.list" && Array.isArray(result?.instances)
-            ? { instanceCount: result.instances.length }
-            : {}),
-        },
-      ];
-    });
+  const history = (trace.cli ?? []).slice(0, cliCount);
+  const commandHistory = history.slice(-5).flatMap((entry) => {
+    const args = entry.args[0] === "--instance" ? entry.args.slice(2) : entry.args;
+    const command = commandsBySpecificity.find(({ path }) =>
+      path.every((part, index) => part === args[index])
+    );
+    if (!command) return [];
+    const { result, error } = entry.response;
+    return [
+      {
+        command: command.id,
+        exitCode: entry.status,
+        ...(typeof error?.code === "string" && /^[a-zA-Z][a-zA-Z0-9_]{0,79}$/.test(error.code)
+          ? { code: error.code }
+          : {}),
+        ...(command.id === "instances.list" && Array.isArray(result?.instances)
+          ? { instanceCount: result.instances.length }
+          : {}),
+      },
+    ];
+  });
   return {
     completedSteps: trace.steps?.length ?? 0,
     ...(code === "ERR_ASSERTION" || code === "acceptanceTimeout" ? { code } : {}),
     commandHistory,
+    ...(trace.scenario === "window-platform-contract" ? { resize: resizeDiagnostic(history) } : {}),
+    ...(Array.isArray(trace.failure?.workbenches)
+      ? {
+          workbenches: trace.failure.workbenches.map(({ state, reachable, closeConfirmation }) => ({
+            state: ["R", "S", "D", "T", "Z", "X", "I", "missing"].includes(state) ? state : "other",
+            ...(typeof reachable === "boolean"
+              ? { reachable, closeConfirmation: closeConfirmation === true }
+              : {}),
+          })),
+        }
+      : {}),
     ...(trace.cleanupError ? { cleanupFailed: true } : {}),
   };
 }

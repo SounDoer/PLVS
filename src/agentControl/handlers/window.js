@@ -34,11 +34,17 @@ function requireRevision(request, clock) {
   }
 }
 
-async function settle(check, reason) {
+async function settle(check, reason, timeoutDetails = () => ({})) {
   const deadline = Date.now() + SETTLE_TIMEOUT_MS;
   while (!(await check())) {
     if (Date.now() >= deadline) {
-      throw semanticFailure(reason, "$.params", "The window did not settle in time.", -32042);
+      throw semanticFailure(
+        reason,
+        "$.params",
+        "The window did not settle in time.",
+        -32042,
+        timeoutDetails()
+      );
     }
     await new Promise((resolve) => setTimeout(resolve, 16));
   }
@@ -97,9 +103,22 @@ async function resize(ctx) {
       );
     }
     await windowControl.applyBounds(planned.bounds);
+    let latest = geometry;
     await settle(
-      async () => windowSizeSettled((await windowControl.readGeometry()).viewport, size),
-      "uiNotSettled"
+      async () => {
+        latest = await windowControl.readGeometry();
+        return windowSizeSettled(latest.viewport, size);
+      },
+      "uiNotSettled",
+      () => ({
+        requestedSize: size,
+        viewport: latest.viewport,
+        nativeInner: latest.inner,
+        nativeOuter: latest.outer,
+        originalViewport: geometry.viewport,
+        originalNativeInner: geometry.inner,
+        scale: latest.scale,
+      })
     );
     changed = true;
   }

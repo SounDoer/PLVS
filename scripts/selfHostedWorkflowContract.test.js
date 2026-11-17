@@ -172,9 +172,12 @@ describe("self-hosted runners on a public repository", () => {
     const workflow = parse(workflows["agent-control-acceptance.yml"]);
     expect(Object.keys(workflow.on)).toEqual(["workflow_dispatch"]);
     const job = workflow.jobs["agent-control"];
-    expect(job.strategy.matrix.include.map(({ labels }) => labels)).toEqual(
-      ["windows", "macos", "linux"].map((platform) => ["self-hosted", "plvs-rig", platform])
-    );
+    expect(workflow.on.workflow_dispatch.inputs.platform).toMatchObject({
+      default: "all",
+      options: ["all", "windows", "macos", "linux"],
+    });
+    expect(job.strategy.matrix.platform).toContain('["windows","macos","linux"]');
+    expect(job["runs-on"]).toEqual(["self-hosted", "plvs-rig", "${{ matrix.platform }}"]);
     expect(job.steps.find(({ name }) => name === "Run desktop acceptance").run).toContain(
       "scripts/run-agent-control-acceptance.mjs"
     );

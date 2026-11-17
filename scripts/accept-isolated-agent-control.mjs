@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { spawn, spawnSync } from "node:child_process";
 import { closeSync, openSync } from "node:fs";
-import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, readFile, readdir, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { basename, dirname, join, resolve } from "node:path";
 import { setTimeout as delay } from "node:timers/promises";
@@ -51,6 +51,27 @@ async function until(read, label) {
     await delay(200);
   }
   throw Object.assign(new Error(`Timed out waiting for ${label}.`), { code: "acceptanceTimeout" });
+}
+
+async function inspectLinuxWorkbenchProcesses(dataRoot) {
+  const registry = join(dataRoot, "multi-instance", "runtime", "instances");
+  const files = await readdir(registry).catch(() => []);
+  return Promise.all(
+    files
+      .filter((file) => file.endsWith(".json"))
+      .map(async (file) => {
+        try {
+          const { pid, instanceId } = JSON.parse(await readFile(join(registry, file), "utf8"));
+          const stat = await readFile(`/proc/${pid}/stat`, "utf8");
+          return {
+            instanceId,
+            state: stat.slice(stat.lastIndexOf(")") + 2, stat.lastIndexOf(")") + 3),
+          };
+        } catch {
+          return { state: "missing" };
+        }
+      })
+  );
 }
 
 export async function runIsolatedAgentControl({ executable, root, outDir, scenario, runDesktop }) {
@@ -354,6 +375,23 @@ export async function runIsolatedAgentControl({ executable, root, outDir, scenar
       cliCount: cliLog.length,
       code: error.code,
     };
+    if (scenario === "workbench-platform-contract" && process.platform === "linux") {
+      evidence.failure.workbenches = await inspectLinuxWorkbenchProcesses(dataRoot);
+      for (const item of evidence.failure.workbenches) {
+        if (!item.instanceId || item.state === "Z") continue;
+        try {
+          const ui = invoke(["ui", "inspect"], {
+            instance: item.instanceId,
+            allowUnavailable: true,
+          });
+          item.reachable = Boolean(ui);
+          item.closeConfirmation =
+            ui?.surfaces.some(({ kind }) => kind === "closeConfirmation") ?? false;
+        } catch {
+          item.reachable = false;
+        }
+      }
+    }
     if (scenario === "window-platform-contract" && instance) {
       try {
         invoke(["window", "inspect"]);
