@@ -188,7 +188,22 @@ pub fn is_process_alive(pid: u32) -> bool {
 #[cfg(any(target_os = "macos", target_os = "linux"))]
 pub fn is_process_alive(pid: u32) -> bool {
   let result = unsafe { libc::kill(pid as libc::pid_t, 0) };
-  unix_process_probe_is_alive(result, std::io::Error::last_os_error().raw_os_error())
+  if !unix_process_probe_is_alive(result, std::io::Error::last_os_error().raw_os_error()) {
+    return false;
+  }
+  #[cfg(target_os = "linux")]
+  if let Ok(stat) = fs::read_to_string(format!("/proc/{pid}/stat")) {
+    // kill(pid, 0) also succeeds for exited children that have not been reaped.
+    if matches!(
+      stat
+        .rsplit_once(')')
+        .and_then(|(_, rest)| rest.split_whitespace().next()),
+      Some("Z" | "X")
+    ) {
+      return false;
+    }
+  }
+  true
 }
 
 #[cfg(any(target_os = "macos", target_os = "linux"))]
@@ -746,6 +761,29 @@ mod tests {
   fn process_liveness_distinguishes_the_current_process_from_an_invalid_pid() {
     assert!(is_process_alive(std::process::id()));
     assert!(!is_process_alive(u32::MAX));
+  }
+
+  #[cfg(target_os = "linux")]
+  #[test]
+  fn exited_unreaped_child_is_not_alive() {
+    let mut child = std::process::Command::new("sh")
+      .args(["-c", "exit 0"])
+      .spawn()
+      .unwrap();
+    let mut info: libc::siginfo_t = unsafe { std::mem::zeroed() };
+    // Observe exit while deliberately leaving the child waitable.
+    let result = unsafe {
+      libc::waitid(
+        libc::P_PID,
+        child.id(),
+        &mut info,
+        libc::WEXITED | libc::WNOWAIT,
+      )
+    };
+    let alive = is_process_alive(child.id());
+    child.wait().unwrap();
+    assert_eq!(result, 0);
+    assert!(!alive);
   }
 
   #[test]

@@ -27,6 +27,7 @@ export const WINDOW_OFFSET_MAX = 7680;
  *   scale: number,
  *   inner: { width: number, height: number },
  *   outer: { width: number, height: number },
+ *   sizeSetterUsesViewport?: boolean,
  *   position: { x: number, y: number },
  *   origin?: { x: number, y: number },
  *   maximized: boolean,
@@ -85,7 +86,8 @@ function nativeInnerSize(geometry, viewport) {
  */
 export function planWindowResize({ form }, geometry, { width, height }) {
   if (form !== "normal") return { refusal: "dockActive" };
-  const native = nativeInnerSize(geometry, { width, height });
+  const viewport = { width, height };
+  const native = nativeInnerSize(geometry, viewport);
   const inner = {
     width: Math.round(native.width * geometry.scale),
     height: Math.round(native.height * geometry.scale),
@@ -101,12 +103,13 @@ export function planWindowResize({ form }, geometry, { width, height }) {
   ) {
     return { refusal: "windowSizeUnavailable" };
   }
+  const setterSize = geometry.sizeSetterUsesViewport ? viewport : native;
   return {
     bounds: {
       x: geometry.position.x,
       y: geometry.position.y,
-      width: inner.width,
-      height: inner.height,
+      width: Math.round(setterSize.width * geometry.scale),
+      height: Math.round(setterSize.height * geometry.scale),
       isMaximized: false,
     },
   };
@@ -175,7 +178,7 @@ export function planWindowMove({ form }, geometry, monitors, { monitor: monitorI
       monitor: monitor.id,
       x,
       y,
-      ...inner,
+      ...(geometry.sizeSetterUsesViewport ? geometry.viewport : inner),
     },
   };
 }

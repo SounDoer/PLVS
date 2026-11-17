@@ -142,6 +142,36 @@ describe("Window Control", () => {
     );
   });
 
+  it("passes WebView size to GTK while fitting the decorated window", () => {
+    const state = { form: "normal" };
+    const gtk = geometry({
+      sizeSetterUsesViewport: true,
+      scale: 1,
+      viewport: { width: 1280, height: 800 },
+      inner: { width: 1332, height: 889 },
+      outer: { width: 1332, height: 889 },
+      workArea: { width: 1600, height: 1000 },
+    });
+    const request = { width: 1184, height: 704 };
+    expect(planWindowResize(state, gtk, request)).toMatchObject({ bounds: request });
+    expect(planWindowResize(state, gtk, { ...request, height: 950 })).toMatchObject({
+      refusal: "windowSizeUnavailable",
+    });
+    const monitor = {
+      ...MAIN,
+      scale: 1,
+      workArea: { ...MAIN.workArea, width: 1600, height: 1000 },
+    };
+    expect(planWindowMove(state, gtk, [monitor], { monitor: "Main", x: 10, y: 10 })).toMatchObject({
+      target: gtk.viewport,
+    });
+    expect(planWindowMove(state, gtk, [monitor], { monitor: "Main", x: 10, y: 150 })).toMatchObject(
+      {
+        refusal: "windowPositionUnavailable",
+      }
+    );
+  });
+
   it("refuses a size that would not fit instead of letting it be clamped", async () => {
     const applyBounds = vi.fn();
     await expect(

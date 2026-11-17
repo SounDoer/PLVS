@@ -252,11 +252,7 @@ pub fn spawn_missing_restored_workspaces(
     if let Some(path) = isolated_app_data {
       command.arg("--plvs-test-app-data-root").arg(path);
     }
-    command
-      .stdin(std::process::Stdio::null())
-      .stdout(std::process::Stdio::null())
-      .stderr(std::process::Stdio::null())
-      .spawn()
+    spawn_workbench(&mut command)
       .map_err(|error| format!("Unable to restore workspace {workspace_id}: {error}"))?;
     if !delay.is_zero() && index + 1 < missing.len() {
       std::thread::sleep(delay);
@@ -272,12 +268,32 @@ pub fn spawn_ordinary_workbench(isolated_app_data: Option<&Path>) -> Result<(), 
   if let Some(path) = isolated_app_data {
     command.arg("--plvs-test-app-data-root").arg(path);
   }
-  command
+  spawn_workbench(&mut command)
+    .map_err(|error| format!("Unable to open an additional PLVS workbench: {error}"))
+}
+
+fn spawn_workbench(command: &mut std::process::Command) -> std::io::Result<()> {
+  let child = command
     .stdin(std::process::Stdio::null())
     .stdout(std::process::Stdio::null())
     .stderr(std::process::Stdio::null())
-    .spawn()
-    .map_err(|error| format!("Unable to open an additional PLVS workbench: {error}"))?;
+    .spawn()?;
+  #[cfg(target_os = "linux")]
+  {
+    let mut child = child;
+    if let Err(error) = std::thread::Builder::new()
+      .name("workbench-reaper".to_owned())
+      .spawn(move || {
+        if let Err(error) = child.wait() {
+          log::warn!("Unable to reap PLVS workbench: {error}");
+        }
+      })
+    {
+      log::warn!("Unable to start PLVS workbench reaper: {error}");
+    }
+  }
+  #[cfg(not(target_os = "linux"))]
+  drop(child);
   Ok(())
 }
 

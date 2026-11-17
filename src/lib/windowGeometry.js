@@ -1,6 +1,6 @@
 import { availableMonitors, currentMonitor, getCurrentWindow } from "@tauri-apps/api/window";
 import { moveMainWindow, setMainWindowState } from "../ipc/commands.js";
-import { isMacOS } from "./platform.js";
+import { isLinux, isMacOS } from "./platform.js";
 
 /**
  * Monitor and window positions share one coordinate space only on some platforms. Windows and X11
@@ -58,6 +58,8 @@ export async function readWindowGeometry() {
     scale,
     inner: { width: inner.width, height: inner.height },
     outer: { width: outer.width, height: outer.height },
+    // GTK adds client-side decorations to resize requests. Reported native sizes include them.
+    sizeSetterUsesViewport: isLinux(),
     position: { x: position.x, y: position.y },
     origin: desktopPoint(position, scale),
     maximized,

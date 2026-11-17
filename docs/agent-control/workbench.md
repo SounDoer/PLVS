@@ -32,6 +32,7 @@ Both refuse with `editorActive` while a blocking editor is open in the selected 
 with `scope` `workbench` or `all`. It is delivered before the process exits, so a caller always
 reads it; afterwards the workbench's Agent Control endpoint disappears. If saving fails after the
 response, the window stays open with the save error's Retry and Cancel, as it does for the Tray.
+On Linux, an exited child waiting to be reaped is excluded from discovery.
 
 ## Revision and timing
 

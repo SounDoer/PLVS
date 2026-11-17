@@ -24,6 +24,9 @@ restores a Preset's window: a maximized window is restored first, the size is ap
 that stays correct across monitors with different scale factors, and the result is saved as the
 window's remembered bounds.
 
+Linux's GTK window adds client-side decorations to the requested WebView size. PLVS includes
+those decorations when checking the work area and passes the WebView size to GTK.
+
 A size whose window, including its frame, would not fit the current monitor's work area fails with
 `windowSizeUnavailable` before anything changes. It is never silently shrunk, so a screenshot or
 recording taken afterwards has the requested size. Dock has no resizable window; the request fails
