@@ -55,6 +55,22 @@ function resizeDiagnostic(history) {
   };
 }
 
+function moveDiagnostic(history) {
+  const details = history.findLast(({ response }) => response.error?.details?.requestedPosition)
+    ?.response.error.details;
+  if (!details) return undefined;
+  const position = (value) => (value ? { x: value.x, y: value.y } : null);
+  const size = (value) => ({ width: value?.width, height: value?.height });
+  return {
+    requestedPosition: position(details.requestedPosition),
+    reportedPosition: position(details.reportedPosition),
+    originalPosition: position(details.originalPosition),
+    monitorMatched: details.monitorMatched === true,
+    viewport: size(details.viewport),
+    originalViewport: size(details.originalViewport),
+  };
+}
+
 function publicDiagnostic(trace) {
   const { cliCount, code } = trace.failure ?? {};
   const history = (trace.cli ?? []).slice(0, cliCount);
@@ -82,7 +98,9 @@ function publicDiagnostic(trace) {
     completedSteps: trace.steps?.length ?? 0,
     ...(code === "ERR_ASSERTION" || code === "acceptanceTimeout" ? { code } : {}),
     commandHistory,
-    ...(trace.scenario === "window-platform-contract" ? { resize: resizeDiagnostic(history) } : {}),
+    ...(trace.scenario === "window-platform-contract"
+      ? { resize: resizeDiagnostic(history), move: moveDiagnostic(history) }
+      : {}),
     ...(Array.isArray(trace.failure?.workbenches)
       ? {
           workbenches: trace.failure.workbenches.map(({ state, reachable, closeConfirmation }) => ({

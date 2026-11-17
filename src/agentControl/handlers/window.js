@@ -2,6 +2,7 @@ import {
   buildWindowInspection,
   planWindowMove,
   planWindowResize,
+  windowOffset,
   windowPositionSettled,
   windowSizeSettled,
 } from "../windowControl.js";
@@ -201,13 +202,25 @@ async function move(ctx) {
     );
   }
   await windowControl.moveTo(planned.target);
-  await settle(async () => {
-    const current = await windowControl.readGeometry();
-    return (
-      windowPositionSettled(current, target) &&
-      windowSizeSettled(current.viewport, geometry.viewport)
-    );
-  }, "uiNotSettled");
+  let latest = geometry;
+  await settle(
+    async () => {
+      latest = await windowControl.readGeometry();
+      return (
+        windowPositionSettled(latest, target) &&
+        windowSizeSettled(latest.viewport, geometry.viewport)
+      );
+    },
+    "uiNotSettled",
+    () => ({
+      requestedPosition: { x: target.x, y: target.y },
+      reportedPosition: latest.monitor ? windowOffset(latest, latest.monitor) : null,
+      originalPosition: geometry.monitor ? windowOffset(geometry, geometry.monitor) : null,
+      monitorMatched: latest.monitor?.id === target.monitor,
+      viewport: latest.viewport,
+      originalViewport: geometry.viewport,
+    })
+  );
   return inspected(ctx, true);
 }
 
