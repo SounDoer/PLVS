@@ -313,6 +313,13 @@ target directory, several GB. Before dispatching a release, check that all three
 gh api repos/SounDoer/PLVS/actions/runners --jq '.runners[] | "\(.name) \(.status) busy=\(.busy)"'
 ```
 
+## Long-term acceptance archive
+
+Routine results stay with their Actions runs. Keep reviewed numeric Capture Soak reference
+recordings in [the baseline fixtures](../fixtures/capture-soak-baselines/README.md) for future
+comparison. When a release or a regression merits long-term retention, copy that run's evidence
+to private storage with the Actions run link, full commit SHA, platform, and run attempt.
+
 ## Bad release response
 
 Use this when a published stable release is broken badly enough that nobody else should install

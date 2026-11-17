@@ -32,7 +32,8 @@ const REQUIRED_SCENARIOS = [
   "dialog-decisions",
   "revision-wait",
 ];
-const ISOLATED_SCENARIOS = [
+export const ISOLATED_SCENARIOS = [
+  "desktop",
   "file-dialogue-restart",
   "configuration-relaunch",
   "window-platform-contract",
@@ -584,6 +585,15 @@ async function main() {
       root,
       outDir: options.outDir,
       scenario: options.scenario,
+      runDesktop: ({ instanceId, env }) => {
+        const child = spawnSync(
+          process.execPath,
+          [fileURLToPath(import.meta.url), "--instance", instanceId, "--out-dir", options.outDir],
+          { cwd: root, env, stdio: "inherit" }
+        );
+        if (child.error) throw child.error;
+        if (child.status !== 0) throw new Error("The isolated desktop acceptance failed.");
+      },
     });
     console.log(`Evidence: ${evidencePath}`);
     return;

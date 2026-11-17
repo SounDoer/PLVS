@@ -1,0 +1,98 @@
+# Developer Agent Control acceptance on the real desktop rigs. Stable package smoke remains
+# in release-package-smoke.yml. The public artifact contains statuses only.
+name: Agent Control Acceptance
+
+on:
+  workflow_dispatch:
+    inputs:
+      commit_sha:
+        description: Full commit SHA to verify
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: agent-control-acceptance-${{ inputs.commit_sha }}
+  cancel-in-progress: false
+
+jobs:
+  agent-control:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: windows
+            labels: [self-hosted, plvs-rig, windows]
+          - platform: macos
+            labels: [self-hosted, plvs-rig, macos]
+          - platform: linux
+            labels: [self-hosted, plvs-rig, linux]
+    runs-on: ${{ matrix.labels }}
+    timeout-minutes: 90
+    defaults:
+      run:
+        shell: bash
+    env:
+      COMMIT_SHA: ${{ inputs.commit_sha }}
+      COREPACK_ENABLE_AUTO_PIN: 0
+    steps:
+      - name: Validate the commit
+        run: |
+          if [[ ! "$COMMIT_SHA" =~ ^[0-9a-f]{40}$ ]]; then
+            echo "commit_sha must be a full lowercase commit SHA" >&2
+            exit 1
+          fi
+
+      - name: Checkout the exact commit
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ inputs.commit_sha }}
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Require the commit on main
+        run: |
+          if ! git merge-base --is-ancestor "$COMMIT_SHA" refs/remotes/origin/main; then
+            echo "commit_sha is not reachable from main" >&2
+            exit 1
+          fi
+
+      - name: Setup Node
+        uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+
+      - name: Install Rust toolchain
+        run: rustup toolchain install --no-self-update
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build the dev app and CLI
+        run: |
+          npm run ffmpeg:fetch
+          npm run cli:build -- --profile debug --identity dev --stage
+          export TAURI_CONFIG="$(node -p 'JSON.stringify(require("./src-tauri/tauri.dev.conf.json"))')"
+          cargo build --manifest-path src-tauri/Cargo.toml --locked --bin plvs \
+            --no-default-features --features dev-identity --target-dir src-tauri/target/dev-identity
+
+      - name: Run desktop acceptance
+        run: |
+          args=(node scripts/run-agent-control-acceptance.mjs
+            "artifacts/agent-control-workflow/$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT")
+          if [[ "$RUNNER_OS" == macOS ]]; then
+            caffeinate -d -i "${args[@]}"
+          else
+            "${args[@]}"
+          fi
+
+      - name: Upload Agent Control summary
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: agent-control-evidence-${{ matrix.platform }}
+          path: artifacts/agent-control-workflow/${{ github.run_id }}-${{ github.run_attempt }}/summary.json
+          if-no-files-found: warn
+          retention-days: 14

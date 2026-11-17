@@ -79,6 +79,22 @@ Ordinary hosted CI runs the protocol and orchestration tests; it does not certif
 capture. Native capture still needs validation on each desktop
 platform; Linux validation must use an unlocked real GNOME Wayland session with the window visible.
 
+### Agent Control desktop evidence
+
+Run the **Agent Control Acceptance** workflow manually from Actions with a full commit SHA on
+`main`. Each desktop runner builds the dev app for that commit, uses a temporary profile, and
+checks the desktop suite, File Dialogue restart, configuration relaunch, Window, and Workbench.
+The workflow uploads a JSON status summary for each platform for 14 days, including after a
+scenario fails. It uses the machine-wide rig lease and runs independently of stable release gates.
+
+Each runner writes the full traces, logs, screenshots, and recordings under
+`artifacts/agent-control-workflow/<run-id>-<attempt>/details/`. These files can include local paths,
+device and monitor names, and window pixels. The runner workspace is reused and later checkouts
+may clean it. If a particular result needs long-term retention, copy its run directory to private
+storage with the full commit SHA, platform, run attempt, and Actions link.
+
+### macOS Dock lifecycle verification
+
 After macOS Dock window-lifecycle changes, build the packaged dev app with
 `npm run desktop:dev-optimized -- --bundles app`, then run
 `node scripts/smoke-macos-dock-lifecycle.mjs [app-executable] [evidence-directory]` in an unlocked

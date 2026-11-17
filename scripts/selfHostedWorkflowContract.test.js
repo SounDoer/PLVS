@@ -154,6 +154,7 @@ describe("self-hosted runners on a public repository", () => {
   it.each([
     ["capture-acceptance.yml", "capture-smoke"],
     ["release-package-smoke.yml", "package-smoke"],
+    ["agent-control-acceptance.yml", "agent-control"],
   ])("%s refuses a commit that main does not contain before anything from it runs", (file, job) => {
     // A dispatch accepts any SHA in the repository network, fork pull request commits included.
     const { steps } = parse(workflows[file]).jobs[job];
@@ -165,6 +166,22 @@ describe("self-hosted runners on a public repository", () => {
     expect(steps[reachable].run).toContain(
       'git merge-base --is-ancestor "$COMMIT_SHA" refs/remotes/origin/main'
     );
+  });
+
+  it("runs desktop Agent Control on all three rigs and uploads only the summary", () => {
+    const workflow = parse(workflows["agent-control-acceptance.yml"]);
+    expect(Object.keys(workflow.on)).toEqual(["workflow_dispatch"]);
+    const job = workflow.jobs["agent-control"];
+    expect(job.strategy.matrix.include.map(({ labels }) => labels)).toEqual(
+      ["windows", "macos", "linux"].map((platform) => ["self-hosted", "plvs-rig", platform])
+    );
+    expect(job.steps.find(({ name }) => name === "Run desktop acceptance").run).toContain(
+      "scripts/run-agent-control-acceptance.mjs"
+    );
+    const upload = job.steps.find(({ uses }) => uses?.startsWith("actions/upload-artifact@"));
+    expect(upload.if).toBe("always()");
+    expect(upload.with.path).toMatch(/\/summary\.json$/);
+    expect(upload.with["retention-days"]).toBe(14);
   });
 
   it("accepts a dispatch-only self-hosted workflow and a dispatch-only caller", () => {

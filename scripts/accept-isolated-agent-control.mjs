@@ -53,7 +53,7 @@ async function until(read, label) {
   throw new Error(`Timed out waiting for ${label}.`);
 }
 
-export async function runIsolatedAgentControl({ executable, root, outDir, scenario }) {
+export async function runIsolatedAgentControl({ executable, root, outDir, scenario, runDesktop }) {
   await mkdir(outDir, { recursive: true });
   const temporaryRoot = resolve(tmpdir());
   const profilePrefix = "plvs-agent-control-";
@@ -319,6 +319,8 @@ export async function runIsolatedAgentControl({ executable, root, outDir, scenar
         },
         join(outDir, `${scenario}-vite.log`)
       );
+    } else if (env.PLVS_ACCEPTANCE_OWN_VITE === "1") {
+      throw new Error(`Desktop acceptance requires a free Vite port (${MAIN_DEV_PORT}).`);
     }
     await until(async () => {
       if (vite && (vite.child.exitCode !== null || !vite.child.pid))
@@ -331,7 +333,10 @@ export async function runIsolatedAgentControl({ executable, root, outDir, scenar
 
     evidence.steps.push("start isolated dev app");
     evidence.firstInstance = await start();
-    if (scenario === "configuration-relaunch") await configurationRelaunch();
+    if (scenario === "desktop") {
+      runDesktop({ instanceId: instance, env });
+      evidence.steps.push("verify the desktop acceptance suite");
+    } else if (scenario === "configuration-relaunch") await configurationRelaunch();
     else if (scenario === "window-platform-contract")
       await runWindowContract({ invoke, until, steps: evidence.steps });
     else if (scenario === "workbench-platform-contract")
@@ -377,6 +382,8 @@ export async function runIsolatedAgentControl({ executable, root, outDir, scenar
     }
     for (const owned of [app, vite]) {
       await stop(owned).catch((error) => {
+        cleanupFailed = true;
+        evidence.cleanupError ??= error.message;
         failure ??= error;
       });
     }
