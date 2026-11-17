@@ -25,6 +25,14 @@ describe("Agent Control acceptance arguments", () => {
     ).toThrow("Usage");
     expect(() => parseAgentControlAcceptanceArgs(["--unknown", "value"])).toThrow("Usage");
   });
+
+  it("runs configuration relaunch only with a dedicated instance", () => {
+    const args = ["--scenario", "configuration-relaunch"];
+    expect(parseAgentControlAcceptanceArgs(args).scenario).toBe("configuration-relaunch");
+    expect(() => parseAgentControlAcceptanceArgs([...args, "--instance", "existing"])).toThrow(
+      "starts its own instance"
+    );
+  });
 });
 
 describe("Agent Control acceptance invocation", () => {

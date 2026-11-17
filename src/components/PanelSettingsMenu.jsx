@@ -1,5 +1,5 @@
 import { Settings2 } from "lucide-react";
-import { useCallback, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 
 import { PanelSettingsContent } from "./PanelSettingsContent.jsx";
 import { PanelSettingsHeader } from "./PanelSettingsHeader.jsx";
@@ -43,6 +43,11 @@ export function PanelSettingsMenu({
 }) {
   const available = hasPanelSettings(props);
   const [open, setOpen] = useState(false);
+  const closedByNavigation = useRef(false);
+  const changeOpen = useCallback((next) => {
+    if (next) closedByNavigation.current = false;
+    setOpen(next);
+  }, []);
   const show = useCallback(() => {
     if (!available || !panelId) {
       throw createUiNavigationError("surfaceUnavailable", {
@@ -50,8 +55,8 @@ export function PanelSettingsMenu({
         panelId,
       });
     }
-    setOpen(true);
-  }, [available, panelId]);
+    changeOpen(true);
+  }, [available, changeOpen, panelId]);
   useUiNavigationTarget("panelSettings", panelId, { show });
   useUiSurface({
     active: open && available && Boolean(panelId),
@@ -61,13 +66,16 @@ export function PanelSettingsMenu({
     dismissible: true,
     supportedActions: ["close"],
     target: { panelId, presentation },
-    onClose: () => setOpen(false),
+    onClose: () => {
+      closedByNavigation.current = true;
+      setOpen(false);
+    },
   });
   if (!available) return null;
   const title = panelTitle ?? PANEL_SETTINGS_TITLES[props.activeTab] ?? "Panel";
 
   return (
-    <Popover open={open} onOpenChange={setOpen}>
+    <Popover open={open} onOpenChange={changeOpen}>
       <PopoverTrigger asChild>
         <IconAction
           aria-label="Panel settings"
@@ -81,6 +89,12 @@ export function PanelSettingsMenu({
       <PopoverContent
         align="end"
         sideOffset={6}
+        onCloseAutoFocus={(event) => {
+          // The next navigation action may open a popover while this one animates out.
+          // Restoring focus to this trigger would dismiss that new popover.
+          if (closedByNavigation.current) event.preventDefault();
+          closedByNavigation.current = false;
+        }}
         onEscapeKeyDown={(event) => {
           if (
             /** @type {Element} */ (event.target).closest?.(

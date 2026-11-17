@@ -177,13 +177,17 @@ const groups = [
       "ui.quickTour.next",
       "ui.quickTour.back",
       "ui.cancel",
-      "ui.decide",
       "editorDraft.patch",
       "editorDraft.undo",
       "editorDraft.redo",
       "editorDraft.save",
       "editorDraft.discard",
     ],
+  },
+  {
+    scenario: "dialog-decisions",
+    disposition: "roundTrip",
+    commands: ["ui.decide"],
   },
   {
     scenario: "dock-platform-contract",
@@ -251,9 +255,8 @@ const groups = [
   },
   {
     scenario: "configuration-relaunch",
-    disposition: "external",
+    disposition: "roundTrip",
     commands: ["config.import", "config.reset"],
-    owner: "update",
   },
 ];
 

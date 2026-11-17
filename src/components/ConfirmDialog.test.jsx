@@ -124,6 +124,17 @@ describe("ConfirmDialog editor draft decision", () => {
         editorSurfaceId: "editor-surface",
       },
     });
+    expect(decision.choices.map(({ id }) => id)).toEqual(["cancel"]);
+    await expect(
+      navigation.decideSurface({
+        surfaceId: decision.surfaceId,
+        choice: "confirm",
+        expectedRevision: 0,
+        expectedUiGeneration: navigation.inspectUi().uiGeneration,
+      })
+    ).rejects.toMatchObject({ reason: "uiActionUnavailable" });
+    expect(onConfirm).not.toHaveBeenCalled();
+    expect(navigation.inspectUi().surfaces).toContainEqual(decision);
 
     await act(async () => {
       registry.discard("theme", "editor-surface", decision.surfaceId, 5);

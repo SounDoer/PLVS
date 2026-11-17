@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 
-import { spawnSync } from "node:child_process";
+import assert from "node:assert/strict";
+import { execFile, spawnSync } from "node:child_process";
 import { mkdtemp, mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { dirname, join, relative, resolve } from "node:path";
@@ -18,7 +19,8 @@ import { scopeDevCliToWorktree } from "./dev-worktree.mjs";
 import { runAgentControlSmoke, selectSmokeInstance } from "./smoke-agent-control.mjs";
 import { runUiVisualWalkthrough } from "./ui-visual-walkthrough.mjs";
 import { createRunJournalStore } from "./ui-walkthrough/journal.mjs";
-import { runFileDialogueRestart } from "./accept-file-dialogue-restart.mjs";
+import { runIsolatedAgentControl } from "./accept-isolated-agent-control.mjs";
+import { AGENT_CONTROL_ACCEPTANCE_SCENARIOS } from "./agent-control-acceptance-catalog.mjs";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
 const REQUIRED_SCENARIOS = [
@@ -27,7 +29,10 @@ const REQUIRED_SCENARIOS = [
   "read-contract",
   "product-walkthrough",
   "dock-platform-contract",
+  "dialog-decisions",
+  "revision-wait",
 ];
+const ISOLATED_SCENARIOS = ["file-dialogue-restart", "configuration-relaunch"];
 
 export function parseAgentControlAcceptanceArgs(args) {
   let instanceId;
@@ -44,7 +49,7 @@ export function parseAgentControlAcceptanceArgs(args) {
       seen.has(flag)
     ) {
       throw new Error(
-        "Usage: npm run acceptance:agent-control -- [--instance <id> | --scenario file-dialogue-restart] [--out-dir <directory>]"
+        "Usage: npm run acceptance:agent-control -- [--instance <id> | --scenario <file-dialogue-restart|configuration-relaunch>] [--out-dir <directory>]"
       );
     }
     seen.add(flag);
@@ -52,9 +57,9 @@ export function parseAgentControlAcceptanceArgs(args) {
     else if (flag === "--scenario") scenario = value;
     else outDir = value;
   }
-  if (scenario && (scenario !== "file-dialogue-restart" || instanceId)) {
-    throw new Error("The file-dialogue-restart scenario starts its own instance.");
-  }
+  if (scenario && !ISOLATED_SCENARIOS.includes(scenario))
+    throw new Error(`Unknown isolated acceptance scenario: ${scenario}.`);
+  if (scenario && instanceId) throw new Error(`The ${scenario} scenario starts its own instance.`);
   const stamp = new Date()
     .toISOString()
     .replaceAll(":", "-")
@@ -113,6 +118,19 @@ export function createAcceptanceInvoker(executable, run = spawnSync) {
   return {
     success: (args) => invoke(args),
     outcome: (args) => invoke(args, { allowFailure: true, raw: true }),
+    asyncOutcome: (args) =>
+      new Promise((resolve, reject) => {
+        execFile(executable, args, { cwd: root, timeout: 15_000 }, (error, stdout) => {
+          if (error && typeof error.code !== "number") return reject(error);
+          try {
+            resolve(
+              parseEnvelope(args, { status: error?.code ?? 0, stdout }, { allowFailure: true })
+            );
+          } catch (parseError) {
+            reject(parseError);
+          }
+        });
+      }),
     text: (args) => {
       const child = spawn(args);
       if (child.status !== 0)
@@ -120,6 +138,156 @@ export function createAcceptanceInvoker(executable, run = spawnSync) {
       return child.stdout;
     },
   };
+}
+
+async function withVerifiedCleanup(body, cleanup) {
+  let proved = false;
+  try {
+    try {
+      return await body();
+    } finally {
+      await cleanup();
+      proved = true;
+    }
+  } catch (error) {
+    error.cleanupVerified = proved;
+    throw error;
+  }
+}
+
+function uiTokens({ revision, uiGeneration }) {
+  return [
+    "--expected-revision",
+    String(revision),
+    "--expected-ui-generation",
+    String(uiGeneration),
+  ];
+}
+
+async function runDialogDecisions(run) {
+  const initial = await run(["ui", "inspect", "--json"]);
+  assert.equal(initial.surfaces.length, 0);
+  let id;
+  return withVerifiedCleanup(
+    async () => {
+      const shown = await run(["ui", "show", "feedback", ...uiTokens(initial), "--json"]);
+      id = shown.surface.surfaceId;
+      const ui = await run(["ui", "inspect", "--json"]);
+      const decisions = ui.surfaces.find(({ surfaceId }) => surfaceId === id).choices;
+      assert.equal(decisions.find(({ id }) => id === "send")?.disabled, true);
+      const decide = ["ui", "decide", "--surface-id", id, "--choice"];
+      const disabled = await run([...decide, "send", ...uiTokens(ui), "--dry-run", "--json"], {
+        allowFailure: true,
+      });
+      assert.equal(disabled.envelope.error?.code, "uiActionUnavailable");
+      const stale = await run(
+        [...decide, "cancel", ...uiTokens({ ...ui, uiGeneration: ui.uiGeneration - 1 }), "--json"],
+        { allowFailure: true }
+      );
+      assert.equal(stale.envelope.error?.code, "uiGenerationConflict");
+      const stillOpen = await run(["ui", "inspect", "--json"]);
+      assert.equal(stillOpen.topSurfaceId, id);
+      const reset = await run(
+        [
+          "config",
+          "reset",
+          "--dry-run",
+          "--expected-revision",
+          String(stillOpen.revision),
+          "--json",
+        ],
+        { allowFailure: true }
+      );
+      assert.equal(reset.envelope.error?.code, "editorActive");
+      return ["Verified disabled and stale dialog choices, the blocking editor guard, and Cancel."];
+    },
+    async () => {
+      const ui = await run(["ui", "inspect", "--json"]);
+      if (ui.topSurfaceId === id && id)
+        await run([
+          "ui",
+          "decide",
+          "--surface-id",
+          id,
+          "--choice",
+          "cancel",
+          ...uiTokens(ui),
+          "--json",
+        ]);
+      assert.equal((await run(["ui", "inspect", "--json"])).surfaces.length, 0);
+    }
+  );
+}
+
+async function runRevisionWait(run, wait) {
+  const initial = await run(["settings", "inspect", "--json"]);
+  const previous = initial.settings.fileDialogueDetection;
+  const directory = await mkdtemp(join(tmpdir(), "plvs-revision-wait-"));
+  const update = async (value, revision) => {
+    const patch = join(directory, "settings.json");
+    await writeFile(patch, JSON.stringify({ fileDialogueDetection: value }), { mode: 0o600 });
+    return run(["settings", "update", patch, "--expected-revision", String(revision), "--json"]);
+  };
+  const argv = ["wait", "--after-revision", String(initial.revision)];
+  const concurrentWaits = Array.from({ length: 5 }, () =>
+    wait([...argv, "--timeout-ms", "8000", "--json"])
+  );
+  const waiting = Promise.allSettled(concurrentWaits);
+  let wrote = false;
+  return withVerifiedCleanup(
+    async () => {
+      // Registration order is independent of process launch order. Only the refused wait
+      // should finish before the mutation.
+      const refused = await Promise.race(concurrentWaits);
+      assert.equal(refused.envelope.error?.code, "waitLimitReached");
+      const current = await run(["settings", "inspect", "--json"]);
+      assert.equal(current.revision, initial.revision);
+      const changed = await update(!previous, initial.revision);
+      wrote = changed.changed;
+      assert.equal(wrote, true);
+      let woke = 0;
+      for (const outcome of await waiting) {
+        assert.equal(outcome.status, "fulfilled");
+        if (outcome.value === refused) continue;
+        assert.deepEqual(outcome.value.envelope.result, {
+          matchedImmediately: false,
+          outcome: "changed",
+          revision: changed.revision,
+        });
+        woke++;
+      }
+      assert.equal(woke, 4);
+      const timeout = await wait([
+        "wait",
+        "--after-revision",
+        String(changed.revision),
+        "--timeout-ms",
+        "100",
+        "--json",
+      ]);
+      assert.equal(timeout.status, 5);
+      assert.equal(timeout.envelope.error?.code, "timeout");
+      return [
+        "Four concurrent waits woke on one commit, a fifth was refused, and timeout returned exit 5.",
+      ];
+    },
+    async () => {
+      try {
+        await waiting;
+        if (wrote) {
+          const current = await run(["settings", "inspect", "--json"]);
+          if (current.settings.fileDialogueDetection !== previous)
+            await update(previous, current.revision);
+          assert.equal(
+            (await run(["settings", "inspect", "--json"])).settings.fileDialogueDetection,
+            previous
+          );
+        }
+      } finally {
+        await rm(directory, { recursive: true, force: true });
+      }
+    }
+  );
 }
 
 export async function runOfflineContract(invoke) {
@@ -278,7 +446,7 @@ export async function runAgentControlAcceptance({
   const artifacts = [];
   const warnings = [
     "Capture-rig commands remain owned by smoke:capture.",
-    "config.import remains owned by update acceptance because it relaunches the app.",
+    "Run configuration-relaunch separately against an isolated app profile.",
   ];
   let cleanupStatus = "passed";
   let failure = null;
@@ -304,8 +472,11 @@ export async function runAgentControlAcceptance({
       sourceSha,
       platform,
     });
-    if (smoke.evidence.summary !== "complete")
-      throw new Error("Base Agent Control smoke was incomplete.");
+    if (smoke.evidence.summary !== "complete") {
+      throw Object.assign(new Error("Base Agent Control smoke was incomplete."), {
+        evidencePath: smoke.evidencePath,
+      });
+    }
     for (const artifact of smoke.evidence.artifacts) {
       artifacts.push({ ...artifact, file: relative(outDir, artifact.file) });
     }
@@ -313,7 +484,6 @@ export async function runAgentControlAcceptance({
       "Completed screenshot, silent recording, semantic navigation, and cleanup.",
     ]);
     pass("read-contract", await runReadContract(run));
-
     const walkthrough = await runProductWalkthrough(
       (args) => invoker.success(args),
       selectedInstance,
@@ -332,12 +502,29 @@ export async function runAgentControlAcceptance({
       `Completed ${walkthrough.scenarios.length} visible product scenarios with verified restoration.`,
     ]);
     pass("dock-platform-contract", await runDockPlatformContract(run, platform));
+    pass("dialog-decisions", await runDialogDecisions(run));
+    pass(
+      "revision-wait",
+      await runRevisionWait(run, (args) =>
+        invoker.asyncOutcome([...args, "--instance", selectedInstance])
+      )
+    );
   } catch (error) {
     failure = error;
     const completedIds = new Set(completed.map(({ id }) => id));
     const id = REQUIRED_SCENARIOS.find((candidate) => !completedIds.has(candidate));
     if (id) completed.push({ id, status: "failed", observations: [error.message] });
-    cleanupStatus = "failed";
+    if (id === "base-smoke") {
+      const smoke = error.evidencePath
+        ? await readFile(error.evidencePath, "utf8")
+            .then(JSON.parse)
+            .catch(() => null)
+        : null;
+      if (smoke?.cleanup?.status !== "passed") cleanupStatus = "failed";
+    }
+    if (id === "product-walkthrough" && error.report?.restoration?.verified !== true)
+      cleanupStatus = "failed";
+    if (error.cleanupVerified === false) cleanupStatus = "failed";
   }
   const coverage = completeScenarioCoverage(REQUIRED_SCENARIOS, completed);
   const evidence = {
@@ -351,6 +538,10 @@ export async function runAgentControlAcceptance({
     endedAt: new Date().toISOString(),
     summary: cleanupStatus === "failed" ? "failed" : coverage.summary,
     scenarios: coverage.scenarios,
+    catalogueScenarios: AGENT_CONTROL_ACCEPTANCE_SCENARIOS.map((id) => ({
+      id,
+      status: coverage.scenarios.find((scenario) => scenario.id === id)?.status ?? "notRun",
+    })),
     artifacts,
     cleanup: {
       status: cleanupStatus,
@@ -383,10 +574,11 @@ async function main() {
       throw ffmpeg.error ?? new Error("Could not prepare the FFmpeg sidecars.");
     }
     const { executable } = buildPlvsCli({ identity: "dev" });
-    const evidencePath = await runFileDialogueRestart({
+    const evidencePath = await runIsolatedAgentControl({
       executable,
       root,
       outDir: options.outDir,
+      scenario: options.scenario,
     });
     console.log(`Evidence: ${evidencePath}`);
     return;

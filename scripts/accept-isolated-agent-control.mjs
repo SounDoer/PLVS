@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { spawn, spawnSync } from "node:child_process";
 import { closeSync, openSync } from "node:fs";
-import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { basename, dirname, join, resolve } from "node:path";
 import { setTimeout as delay } from "node:timers/promises";
@@ -51,26 +51,28 @@ async function until(read, label) {
   throw new Error(`Timed out waiting for ${label}.`);
 }
 
-export async function runFileDialogueRestart({ executable, root, outDir }) {
+export async function runIsolatedAgentControl({ executable, root, outDir, scenario }) {
   await mkdir(outDir, { recursive: true });
   const temporaryRoot = resolve(tmpdir());
-  const profile = await mkdtemp(join(temporaryRoot, "plvs-file-dialogue-"));
+  const profilePrefix = "plvs-agent-control-";
+  const profile = await mkdtemp(join(temporaryRoot, profilePrefix));
   const dataRoot = join(profile, "app");
   const env = { ...process.env, PLVS_TEST_IDENTITY_ROOT: join(dataRoot, "multi-instance") };
   const cliLog = [];
-  const evidencePath = join(outDir, "file-dialogue-restart.json");
+  const evidencePath = join(outDir, `${scenario}.json`);
   const git = (args) =>
     spawnSync("git", args, { cwd: root, encoding: "utf8" }).stdout?.trim() ?? null;
   const evidence = {
     head: git(["rev-parse", "HEAD"]),
     workingTreeDirty: Boolean(git(["status", "--porcelain"])),
-    scenario: "file-dialogue-restart",
+    scenario,
     steps: [],
     cli: cliLog,
   };
   let app;
   let vite;
   let instance;
+  let restartingFrom;
 
   function invoke(args, { allowUnavailable = false, offline = false } = {}) {
     const selector = !offline && instance ? ["--instance", instance] : [];
@@ -122,16 +124,62 @@ export async function runFileDialogueRestart({ executable, root, outDir }) {
             : {}),
         },
       },
-      join(outDir, "file-dialogue-app.log")
+      join(outDir, `${scenario}-app.log`)
     );
+    return discover(previousInstance, app.child);
+  }
+
+  const instances = () => invoke(["instances"], { offline: true }).instances;
+
+  async function discover(previousInstance, child) {
     instance = await until(() => {
-      if (app.child.exitCode !== null || !app.child.pid)
+      if (child && (child.exitCode !== null || !child.pid))
         throw new Error("Dev app exited during startup.");
-      const listed = invoke(["instances"], { offline: true }).instances;
-      return listed.find(({ instanceId }) => instanceId !== previousInstance)?.instanceId;
+      return instances().find(({ instanceId }) => instanceId !== previousInstance)?.instanceId;
     }, "a new isolated workbench");
     await until(() => invoke(["settings", "inspect"], { allowUnavailable: true }), "Agent Control");
     return instance;
+  }
+
+  async function configurationRelaunch() {
+    const settings = () => invoke(["settings", "inspect"]);
+    const revision = () => ["--expected-revision", String(settings().revision)];
+    const dialogueEnabled = () => settings().settings.fileDialogueDetection;
+    const initial = dialogueEnabled();
+    const patch = join(profile, "settings.json");
+    await writeFile(patch, JSON.stringify({ fileDialogueDetection: !initial }));
+    invoke(["settings", "update", patch, ...revision()]);
+    assert.equal(dialogueEnabled(), !initial);
+    const backup = join(profile, "before-reset.plvsconfig");
+    invoke(["config", "export", "--out", backup]);
+    const exported = JSON.parse(await readFile(backup, "utf8"));
+    assert.equal(exported.kind, "configuration-profile");
+    assert.equal(Object.hasOwn(exported.settings, "agentControlEnabled"), false);
+
+    const resetPlan = invoke(["config", "reset", ...revision(), "--dry-run"]);
+    assert.equal(resetPlan.relaunch, false);
+    assert.equal(resetPlan.wouldRelaunch, true);
+    assert.equal(dialogueEnabled(), !initial);
+
+    const change = async (args) => {
+      const tokens = revision();
+      restartingFrom = instance;
+      assert.equal(invoke(["config", ...args, ...tokens]).relaunch, true);
+      const newInstance = await discover(restartingFrom);
+      restartingFrom = undefined;
+      return newInstance;
+    };
+
+    evidence.secondInstance = await change(["reset"]);
+    assert.equal(dialogueEnabled(), initial);
+    evidence.steps.push("verify reset relaunched with defaults and retained Agent Control access");
+
+    const importPlan = invoke(["config", "import", backup, ...revision(), "--dry-run"]);
+    assert.equal(importPlan.relaunch, false);
+    assert.equal(dialogueEnabled(), initial);
+    evidence.thirdInstance = await change(["import", backup]);
+    assert.equal(dialogueEnabled(), !initial);
+    evidence.steps.push("verify import relaunched and restored the exported setting");
   }
 
   function checkToolbar(pressed, screenshot) {
@@ -190,39 +238,7 @@ export async function runFileDialogueRestart({ executable, root, outDir }) {
     return { run, report: invoke(["transport", "file", "report", run.sessionId]).report };
   }
 
-  let failure;
-  try {
-    await mkdir(dataRoot);
-    await writeJsonAtomic(join(dataRoot, "plvs-settings.json"), {
-      agentControlEnabled: true,
-      "plvs:settings": {
-        closeAction: "quit",
-        updatePreferences: { choiceMade: true, autoCheck: false, autoDownload: false },
-      },
-    });
-    const frontend = `http://localhost:${MAIN_DEV_PORT}/@fs/${join(root, "src", "App.jsx").replaceAll("\\", "/")}`;
-    if (await portIsFree(MAIN_DEV_PORT)) {
-      vite = launch(
-        process.execPath,
-        [join(root, "node_modules", "vite", "bin", "vite.js")],
-        {
-          cwd: root,
-          env: { ...env, PLVS_DEV_PORT: String(MAIN_DEV_PORT) },
-        },
-        join(outDir, "file-dialogue-vite.log")
-      );
-    }
-    await until(async () => {
-      if (vite && (vite.child.exitCode !== null || !vite.child.pid))
-        throw new Error("Vite exited during startup.");
-      const response = await fetch(frontend, { signal: AbortSignal.timeout(2000) }).catch(
-        () => null
-      );
-      return response?.ok && (await response.text()).includes("createHotContext");
-    }, "the PLVS frontend for this checkout");
-
-    evidence.steps.push("start isolated dev app");
-    evidence.firstInstance = await start();
+  async function fileDialogueRestart() {
     const sample = join(root, "fixtures", "dialogue-benchmark", "sources", "1320-122617-0000.flac");
     const baseline = runFile("analyze", sample);
     assert.equal(baseline.report.analysis.dialogue.enabled, false);
@@ -263,15 +279,75 @@ export async function runFileDialogueRestart({ executable, root, outDir }) {
       enabled.report.summary.dialogueLoudnessLufs
     );
     evidence.steps.push("verify a new process restored the setting and used it for analysis");
+  }
+
+  let failure;
+  try {
+    await mkdir(dataRoot);
+    await writeJsonAtomic(join(dataRoot, "plvs-settings.json"), {
+      agentControlEnabled: true,
+      "plvs:settings": {
+        closeAction: "quit",
+        updatePreferences: { choiceMade: true, autoCheck: false, autoDownload: false },
+      },
+    });
+    const frontend = `http://localhost:${MAIN_DEV_PORT}/@fs/${join(root, "src", "App.jsx").replaceAll("\\", "/")}`;
+    if (await portIsFree(MAIN_DEV_PORT)) {
+      vite = launch(
+        process.execPath,
+        [join(root, "node_modules", "vite", "bin", "vite.js")],
+        {
+          cwd: root,
+          env: {
+            ...env,
+            PLVS_DEV_PORT: String(MAIN_DEV_PORT),
+            TAURI_ENV_PLATFORM: process.platform === "win32" ? "windows" : process.platform,
+          },
+        },
+        join(outDir, `${scenario}-vite.log`)
+      );
+    }
+    await until(async () => {
+      if (vite && (vite.child.exitCode !== null || !vite.child.pid))
+        throw new Error("Vite exited during startup.");
+      const response = await fetch(frontend, { signal: AbortSignal.timeout(2000) }).catch(
+        () => null
+      );
+      return response?.ok && (await response.text()).includes("createHotContext");
+    }, "the PLVS frontend for this checkout");
+
+    evidence.steps.push("start isolated dev app");
+    evidence.firstInstance = await start();
+    if (scenario === "configuration-relaunch") await configurationRelaunch();
+    else await fileDialogueRestart();
   } catch (error) {
     failure = error;
   } finally {
+    let cleanupFailed = false;
+    if (scenario === "configuration-relaunch" && app) {
+      try {
+        if (restartingFrom) await discover(restartingFrom);
+        if (instance && instances().some(({ instanceId }) => instanceId === instance)) {
+          const { revision } = invoke(["inspect"]);
+          invoke(["workbench", "quit-all", "--expected-revision", String(revision)]);
+          await until(() => instances().length === 0, "isolated workbench shutdown");
+        }
+      } catch (error) {
+        cleanupFailed = true;
+        evidence.cleanupError = error.message;
+        failure ??= error;
+      }
+    }
     for (const owned of [app, vite]) {
       await stop(owned).catch((error) => {
         failure ??= error;
       });
     }
-    if (dirname(profile) === temporaryRoot && basename(profile).startsWith("plvs-file-dialogue-")) {
+    if (
+      !cleanupFailed &&
+      dirname(profile) === temporaryRoot &&
+      basename(profile).startsWith(profilePrefix)
+    ) {
       await rm(profile, { recursive: true, force: true, maxRetries: 10, retryDelay: 150 }).catch(
         (error) => {
           failure ??= error;

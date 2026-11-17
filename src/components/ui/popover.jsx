@@ -63,6 +63,7 @@ const PopoverContent = React.forwardRef(
       <PopoverPrimitive.Content
         ref={ref}
         data-slot="popover-content"
+        data-visual-capture-transition=""
         align={align}
         sideOffset={sideOffset}
         collisionPadding={collisionPadding}

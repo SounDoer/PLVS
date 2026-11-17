@@ -72,7 +72,9 @@ export function ConfirmDialog({
       : { phase: "decision" },
     choices: [
       { id: "cancel", label: cancelLabel, run: cancel },
-      { id: "confirm", label: confirmLabel, run: confirm, afterDelivery: true },
+      ...(!editorDraftDecision
+        ? [{ id: "confirm", label: confirmLabel, run: confirm, afterDelivery: true }]
+        : []),
     ],
     onCancel: cancel,
   });

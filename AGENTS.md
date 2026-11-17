@@ -41,7 +41,7 @@ failure cost is high. Keep the entry actionable and put durable incident context
 ## Agent Control
 
 Agent Control is the supported way for agents and automation to inspect or change the state visible
-in a running PLVS window. Windows uses a current-user named pipe; macOS uses a private Unix socket.
+in a running PLVS window. Windows uses a current-user named pipe. macOS and Linux use private Unix sockets.
 
 - Use Agent Control first for PLVS state, UI navigation, and visual review (`visual screenshot`).
   Use computer use only to test actual input behavior (hover, scrolling, dragging, focus), interact

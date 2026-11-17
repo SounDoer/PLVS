@@ -19,7 +19,7 @@ Without `--out`, the successful result contains:
   "configuration": {
     "app": "PLVS",
     "kind": "configuration-profile",
-    "version": 1
+    "version": 2
   }
 }
 ```
@@ -51,10 +51,10 @@ relaunching. A successful real import replaces the same four domains and machine
 as Settings **Everything**, preserves the local `agentControlEnabled` permission, and returns
 `relaunch: true`.
 
-The successful response is not merely queued. Rust flushes the named-pipe response and waits until
-the CLI has read every buffered byte; only then does the frontend relaunch PLVS. The revision in the
-result belongs to the ending process. Rediscover the relaunched app and call `inspect` rather than
-comparing revisions across the two sessions.
+The frontend relaunches PLVS after Rust confirms response delivery. Windows confirms delivery
+after the CLI reads the named-pipe response. macOS and Linux use a CLI acknowledgement over the
+Unix socket. The revision in the result belongs to the ending process. Rediscover the relaunched
+app and call `inspect` to obtain the new process's revision.
 
 ## Reset
 

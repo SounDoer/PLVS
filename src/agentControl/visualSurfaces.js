@@ -159,6 +159,27 @@ function visibleCanvasesSettled(surface, windowObject) {
   });
 }
 
+function visibleTransitionsSettled({ rect, element }) {
+  // Floating surfaces are portalled to the document, outside the target's DOM subtree.
+  const transitions = element.ownerDocument.querySelectorAll("[data-visual-capture-transition]");
+  return Array.from(transitions).every((overlay) => {
+    if (
+      !overlay
+        .getAnimations?.()
+        .some((animation) => animation.pending || animation.playState === "running")
+    ) {
+      return true;
+    }
+    const bounds = overlay.getBoundingClientRect();
+    return (
+      bounds.right <= rect.x ||
+      bounds.bottom <= rect.y ||
+      bounds.left >= rect.x + rect.width ||
+      bounds.top >= rect.y + rect.height
+    );
+  });
+}
+
 function nextAnimationFrame(windowObject, signal) {
   return new Promise((resolve, reject) => {
     if (signal?.aborted) {
@@ -250,6 +271,7 @@ export async function settleVisualSurface({
         surface.rendered &&
         surface.rect.width > 0 &&
         surface.rect.height > 0 &&
+        visibleTransitionsSettled(surface) &&
         visibleCanvasesSettled(surface, windowObject);
       if (settled && previous && sameRect(previous.rect, surface.rect)) {
         const revision = getRevision();

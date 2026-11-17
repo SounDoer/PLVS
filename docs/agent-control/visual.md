@@ -65,6 +65,8 @@ coherent measurement generation and sequence. Recordings retain `startedRevision
 `currentRevision`, and `endedRevision` as correlation metadata; they do not lock the app against
 later mutations.
 
+Render settlement waits for opening and closing popover animations that overlap the capture area.
+
 ## Screenshot workflow
 
 ```powershell

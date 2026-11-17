@@ -192,6 +192,31 @@ describe("visual paint settlement", () => {
     });
   });
 
+  it("waits for an overlapping portalled popover animation before settling", async () => {
+    addSurface("workspace", rect(0, 0, 640, 480));
+    const floating = document.createElement("div");
+    floating.setAttribute("data-visual-capture-transition", "");
+    floating.getBoundingClientRect = standIn(() => rect(10, 20, 100, 80));
+    floating.getAnimations = standIn(
+      vi
+        .fn()
+        .mockReturnValueOnce([{ playState: "running" }])
+        .mockReturnValue([{ playState: "finished" }])
+    );
+    document.body.append(floating);
+
+    await expect(
+      settleVisualSurface({
+        target: { kind: "workspace" },
+        workspace: {},
+        getRevision: () => 0,
+        expectedRevision: 0,
+        signal: undefined,
+      })
+    ).resolves.toMatchObject({ revision: 0 });
+    expect(window.requestAnimationFrame).toHaveBeenCalledTimes(3);
+  });
+
   it("correlates the settled surface with the current UI generation", async () => {
     addSurface("workspace", rect(0, 0, 640, 480));
     await expect(
