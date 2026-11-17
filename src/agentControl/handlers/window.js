@@ -182,10 +182,13 @@ async function move(ctx) {
     );
   }
   await windowControl.moveTo(planned.target);
-  await settle(
-    async () => windowPositionSettled(await windowControl.readGeometry(), target),
-    "uiNotSettled"
-  );
+  await settle(async () => {
+    const current = await windowControl.readGeometry();
+    return (
+      windowPositionSettled(current, target) &&
+      windowSizeSettled(current.viewport, geometry.viewport)
+    );
+  }, "uiNotSettled");
   return inspected(ctx, true);
 }
 

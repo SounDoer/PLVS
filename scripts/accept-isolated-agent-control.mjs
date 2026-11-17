@@ -5,8 +5,10 @@ import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { basename, dirname, join, resolve } from "node:path";
 import { setTimeout as delay } from "node:timers/promises";
-import { writeJsonAtomic } from "./acceptance-evidence.mjs";
+import { hostPlatform, writeJsonAtomic } from "./acceptance-evidence.mjs";
 import { APP_DATA_ROOT_ARG, MAIN_DEV_PORT, portIsFree } from "./dev-worktree.mjs";
+
+import { runWindowContract, runWorkbenchContract } from "./accept-window-workbench.mjs";
 
 const target = "toolbar:dialogue-detection";
 
@@ -58,6 +60,7 @@ export async function runIsolatedAgentControl({ executable, root, outDir, scenar
   const profile = await mkdtemp(join(temporaryRoot, profilePrefix));
   const dataRoot = join(profile, "app");
   const env = { ...process.env, PLVS_TEST_IDENTITY_ROOT: join(dataRoot, "multi-instance") };
+  delete env.PLVS_INSTANCE_ID;
   const cliLog = [];
   const evidencePath = join(outDir, `${scenario}.json`);
   const git = (args) =>
@@ -66,6 +69,7 @@ export async function runIsolatedAgentControl({ executable, root, outDir, scenar
     head: git(["rev-parse", "HEAD"]),
     workingTreeDirty: Boolean(git(["status", "--porcelain"])),
     scenario,
+    platform: hostPlatform(),
     steps: [],
     cli: cliLog,
   };
@@ -74,8 +78,11 @@ export async function runIsolatedAgentControl({ executable, root, outDir, scenar
   let instance;
   let restartingFrom;
 
-  function invoke(args, { allowUnavailable = false, offline = false } = {}) {
-    const selector = !offline && instance ? ["--instance", instance] : [];
+  function invoke(
+    args,
+    { allowUnavailable = false, expectedError, instance: selected = instance } = {}
+  ) {
+    const selector = selected ? ["--instance", selected] : [];
     const child = spawnSync(executable, [...selector, ...args, "--json"], {
       cwd: root,
       env,
@@ -97,7 +104,13 @@ export async function runIsolatedAgentControl({ executable, root, outDir, scenar
       )
     )
       return null;
-    cliLog.push({ args, status: child.status, response });
+    cliLog.push({ args: [...selector, ...args], status: child.status, response });
+    if (expectedError) {
+      assert.notEqual(child.status, 0);
+      assert.equal(response.ok, false);
+      assert.equal(response.error?.code, expectedError);
+      return;
+    }
     if (child.status !== 0 || !response.ok) {
       throw new Error(`${args.join(" ")} failed: ${response.error?.message ?? child.stderr}`);
     }
@@ -129,7 +142,7 @@ export async function runIsolatedAgentControl({ executable, root, outDir, scenar
     return discover(previousInstance, app.child);
   }
 
-  const instances = () => invoke(["instances"], { offline: true }).instances;
+  const instances = () => invoke(["instances"], { instance: null }).instances;
 
   async function discover(previousInstance, child) {
     instance = await until(() => {
@@ -319,16 +332,40 @@ export async function runIsolatedAgentControl({ executable, root, outDir, scenar
     evidence.steps.push("start isolated dev app");
     evidence.firstInstance = await start();
     if (scenario === "configuration-relaunch") await configurationRelaunch();
+    else if (scenario === "window-platform-contract")
+      await runWindowContract({ invoke, until, steps: evidence.steps });
+    else if (scenario === "workbench-platform-contract")
+      await runWorkbenchContract({
+        invoke,
+        instances,
+        until,
+        steps: evidence.steps,
+        firstInstance: instance,
+      });
     else await fileDialogueRestart();
   } catch (error) {
     failure = error;
+    if (scenario === "window-platform-contract" && instance) {
+      try {
+        invoke(["window", "inspect"]);
+      } catch {
+        // The original command failure remains the scenario result.
+      }
+    }
   } finally {
     let cleanupFailed = false;
-    if (scenario === "configuration-relaunch" && app) {
+    if (app && ["configuration-relaunch", "workbench-platform-contract"].includes(scenario)) {
       try {
         if (restartingFrom) await discover(restartingFrom);
-        if (instance && instances().some(({ instanceId }) => instanceId === instance)) {
-          const { revision } = invoke(["inspect"]);
+        const registered = instances();
+        if (registered.length > 0) {
+          instance =
+            registered.find(({ instanceId }) => instanceId === instance)?.instanceId ??
+            registered[0].instanceId;
+          const { revision } = await until(
+            () => invoke(["inspect"], { allowUnavailable: true }),
+            "the isolated workbench before cleanup"
+          );
           invoke(["workbench", "quit-all", "--expected-revision", String(revision)]);
           await until(() => instances().length === 0, "isolated workbench shutdown");
         }

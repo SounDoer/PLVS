@@ -60,6 +60,20 @@ export function buildWindowInspection({ form, visible }, geometry) {
   };
 }
 
+/** The native inner size can include a title-bar inset outside the WebView on macOS.
+ * @param {WindowGeometry} geometry
+ * @param {{ width: number, height: number }} viewport
+ */
+function nativeInnerSize(geometry, viewport) {
+  return {
+    width:
+      viewport.width + Math.max(0, geometry.inner.width / geometry.scale - geometry.viewport.width),
+    height:
+      viewport.height +
+      Math.max(0, geometry.inner.height / geometry.scale - geometry.viewport.height),
+  };
+}
+
 /**
  * Plans the bounds the existing window-bounds path applies for a requested inner size. The
  * top-left stays where it is; a size whose window would not fit the work area is refused rather
@@ -71,9 +85,10 @@ export function buildWindowInspection({ form, visible }, geometry) {
  */
 export function planWindowResize({ form }, geometry, { width, height }) {
   if (form !== "normal") return { refusal: "dockActive" };
+  const native = nativeInnerSize(geometry, { width, height });
   const inner = {
-    width: Math.round(width * geometry.scale),
-    height: Math.round(height * geometry.scale),
+    width: Math.round(native.width * geometry.scale),
+    height: Math.round(native.height * geometry.scale),
   };
   const frame = {
     width: Math.max(0, geometry.outer.width - geometry.inner.width),
@@ -147,9 +162,10 @@ export function planWindowMove({ form }, geometry, monitors, { monitor: monitorI
     width: monitor.workArea.width / monitor.scale,
     height: monitor.workArea.height / monitor.scale,
   };
+  const inner = nativeInnerSize(geometry, geometry.viewport);
   if (
-    x + geometry.viewport.width + frame.width > workArea.width ||
-    y + geometry.viewport.height + frame.height > workArea.height
+    x + inner.width + frame.width > workArea.width ||
+    y + inner.height + frame.height > workArea.height
   ) {
     return { refusal: "windowPositionUnavailable", monitor };
   }
@@ -159,8 +175,7 @@ export function planWindowMove({ form }, geometry, monitors, { monitor: monitorI
       monitor: monitor.id,
       x,
       y,
-      width: geometry.viewport.width,
-      height: geometry.viewport.height,
+      ...inner,
     },
   };
 }

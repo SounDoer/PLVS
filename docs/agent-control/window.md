@@ -10,7 +10,7 @@ Command syntax and arguments are in [`generated/commands.md`](generated/commands
 
 `window inspect` reports the window form (`normal` or `dock`), whether the window is visible, whether
 it is maximized or minimized, the current `monitor` ID, its `position` as the CSS-pixel offset of its
-top-left corner from that monitor's work-area origin, its inner size in CSS pixels, the webview's
+top-left corner from that monitor's work-area origin, its WebView size in CSS pixels, the WebView's
 device pixel ratio, and the current monitor's work area in CSS pixels. `monitors` lists every
 connected monitor's ID and work-area size in its own CSS pixels: the choices `window move` accepts.
 Monitor IDs are the same names Dock Control uses, read again for every request. A screenshot of the `main` target has the inner size multiplied
@@ -18,7 +18,7 @@ by the device pixel ratio.
 
 ## Size
 
-`window resize --width --height` sets the normal window's inner size in integer CSS pixels, from 320
+`window resize --width --height` sets the normal window's WebView size in integer CSS pixels, from 320
 through 7680, keeping its top-left corner where it is. It uses the same native bounds path that
 restores a Preset's window: a maximized window is restored first, the size is applied in the order
 that stays correct across monitors with different scale factors, and the result is saved as the
@@ -35,7 +35,7 @@ scale factors, and fails with `uiNotSettled` otherwise.
 
 `window move --monitor --x --y` places the window's top-left corner at a CSS-pixel offset from the
 named monitor's work-area origin, the same coordinate `window inspect` reports. The window keeps its
-CSS inner size, so on a monitor with another scale factor its physical size follows that factor. It
+CSS WebView size, so on a monitor with another scale factor its physical size follows that factor. It
 uses the bounds path `window resize` uses: a maximized window is restored first and the result is
 saved as the window's remembered bounds.
 
@@ -64,6 +64,6 @@ always acts; `changed` reports whether visibility itself changed.
 
 ## Revision
 
-Window commands leave the global revision unchanged: window geometry and visibility are not part
-of `app.inspect`. The actions still require `--expected-revision`, so they are refused when the app
-changed since the caller last looked, and they have no dry run.
+Window geometry and visibility live in `window inspect`. A window change can advance the global
+revision by changing the active Preset's dirty state in `app.inspect`. Read the current revision
+before issuing the next action. Window actions require `--expected-revision` and have no dry run.

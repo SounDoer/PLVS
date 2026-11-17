@@ -216,8 +216,12 @@ const groups = [
       "window.maximize",
       "window.unmaximize",
       "window.minimize",
-      "pointer.move",
     ],
+  },
+  {
+    scenario: "pointer-platform-contract",
+    disposition: "platformContract",
+    commands: ["pointer.move"],
   },
   {
     scenario: "capture-rig",

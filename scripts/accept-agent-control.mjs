@@ -32,7 +32,12 @@ const REQUIRED_SCENARIOS = [
   "dialog-decisions",
   "revision-wait",
 ];
-const ISOLATED_SCENARIOS = ["file-dialogue-restart", "configuration-relaunch"];
+const ISOLATED_SCENARIOS = [
+  "file-dialogue-restart",
+  "configuration-relaunch",
+  "window-platform-contract",
+  "workbench-platform-contract",
+];
 
 export function parseAgentControlAcceptanceArgs(args) {
   let instanceId;
@@ -49,7 +54,7 @@ export function parseAgentControlAcceptanceArgs(args) {
       seen.has(flag)
     ) {
       throw new Error(
-        "Usage: npm run acceptance:agent-control -- [--instance <id> | --scenario <file-dialogue-restart|configuration-relaunch>] [--out-dir <directory>]"
+        `Usage: npm run acceptance:agent-control -- [--instance <id> | --scenario <${ISOLATED_SCENARIOS.join("|")}>] [--out-dir <directory>]`
       );
     }
     seen.add(flag);
@@ -446,7 +451,7 @@ export async function runAgentControlAcceptance({
   const artifacts = [];
   const warnings = [
     "Capture-rig commands remain owned by smoke:capture.",
-    "Run configuration-relaunch separately against an isolated app profile.",
+    "Run configuration-relaunch, window-platform-contract, and workbench-platform-contract separately against isolated profiles.",
   ];
   let cleanupStatus = "passed";
   let failure = null;

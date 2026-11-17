@@ -842,6 +842,16 @@ scenarios that this run did not execute. Capture-rig commands remain owned by `s
 a temporary profile. It verifies the reset and import dry-runs, confirms that both operations
 start a new instance, and reads settings back through the relaunched app.
 
+`npm run acceptance:agent-control -- --scenario window-platform-contract` uses a temporary
+profile to exercise window resize, move, maximize, restore, minimize, hide, and show. It checks
+the observed state, revision guards, and idempotent operations. Use a visible desktop session
+with a connected monitor.
+
+`npm run acceptance:agent-control -- --scenario workbench-platform-contract` uses a temporary
+profile to open two workbenches, verify instance selection, quit one, then open another and verify
+that Quit All removes both instances. Each scenario writes its own JSON trace in the evidence
+directory.
+
 `npm run acceptance:agent-control -- --scenario file-dialogue-restart` runs the File Dialogue
 Detection regression on its own dev processes and temporary app profile. It checks the toolbar,
 reanalyzes the same session, restarts the app, and verifies that the new process uses the saved

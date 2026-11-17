@@ -123,6 +123,25 @@ describe("Window Control", () => {
     expect(response.result.changed).toBe(false);
   });
 
+  it("converts WebView sizes to native sizes when the title bar occupies the native content area", () => {
+    const state = { form: "normal" };
+    const framed = geometry({
+      inner: { width: 2560, height: 1504 },
+      outer: { width: 2560, height: 1504 },
+    });
+    expect(planWindowResize(state, framed, { width: 1184, height: 672 })).toMatchObject({
+      bounds: { width: 2368, height: 1408 },
+    });
+    expect(planWindowMove(state, framed, [MAIN], { monitor: "Main", x: 40, y: 40 })).toMatchObject({
+      target: { width: 1280, height: 752 },
+    });
+    expect(planWindowMove(state, framed, [MAIN], { monitor: "Main", x: 40, y: 320 })).toMatchObject(
+      {
+        refusal: "windowPositionUnavailable",
+      }
+    );
+  });
+
   it("refuses a size that would not fit instead of letting it be clamped", async () => {
     const applyBounds = vi.fn();
     await expect(
