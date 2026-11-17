@@ -16,9 +16,12 @@ function assertNear(actual, expected) {
 export async function runWindowContract({ invoke, until, steps }) {
   const inspect = () => invoke(["window", "inspect"]);
   const initial = inspect();
+  const capabilities = invoke(["capabilities"]);
+  const canMinimize = capabilities.features.window.minimize === true;
+  assert.equal(capabilities.methods.includes("window.minimize"), canMinimize);
   assert.equal(initial.form, "normal");
   assert.equal(initial.visible, true);
-  assert.equal(initial.minimized, false);
+  assert.equal(initial.minimized, canMinimize ? false : null);
 
   const action = (name, args = [], expectedRevision = inspect().revision, options) =>
     invoke(["window", name, ...args, ...revisionToken(expectedRevision)], options);
@@ -39,7 +42,6 @@ export async function runWindowContract({ invoke, until, steps }) {
 
   if (initial.maximized) action("unmaximize");
   const before = observe({ maximized: false });
-  const capabilities = invoke(["capabilities"]);
   const { minimum, maximum } = capabilities.features.window.resize;
   const canMove = capabilities.features.window.move !== false;
   assert.equal(capabilities.methods.includes("window.move"), canMove);
@@ -105,6 +107,13 @@ export async function runWindowContract({ invoke, until, steps }) {
     ["minimize", { minimized: true }],
     ["hide", { visible: false }],
   ]) {
+    if (name === "minimize" && !canMinimize) {
+      const { revision } = inspect();
+      action(name, [], revision, { expectedError: "controlUnavailable" });
+      observe({ minimized: null, revision, visible: true });
+      steps.push("verify the desktop backend refuses a minimize it cannot confirm");
+      continue;
+    }
     assert.equal(action(name).changed, true);
     observe(expected);
     assert.equal(action(name).changed, false);
@@ -115,9 +124,9 @@ export async function runWindowContract({ invoke, until, steps }) {
   }
   action("maximize", [], inspect().revision, { expectedError: "windowHidden" });
   assert.equal(action("show").changed, true);
-  observe({ visible: true, minimized: false });
+  observe({ visible: true, minimized: canMinimize ? false : null });
   assert.equal(action("show").changed, false);
-  steps.push("verify maximize, restore, minimize, hide, and show");
+  steps.push("verify maximize, restore, hide, and show");
 }
 
 export async function runWorkbenchContract({ invoke, instances, until, steps, firstInstance }) {

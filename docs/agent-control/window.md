@@ -62,12 +62,17 @@ Each returns `changed: false` when the window is already in that state. A hidden
 `window show`, which brings a minimized window back. Dock fails with `dockActive`. Each settles when
 the window reports the new state and returns the full inspection.
 
+Native Wayland accepts a system request to minimize but does not report the resulting minimized
+state. Agent Control omits `window.minimize` from capabilities, reports `minimized: null`, and
+returns `controlUnavailable` for a direct call. `window hide` and `window show` still control
+visibility.
+
 ## Visibility
 
 `window hide` and `window show` are the tray's Hide and Show. Hide saves pending state first, as the
 tray does, and fails with `busy` while an update is installing. In Dock, Hide suspends the strip
-and Show restores it. Show also brings a visible but minimized or covered window forward, so it
-always acts; `changed` reports whether visibility itself changed.
+and Show restores it. Show also requests that the window be brought forward, including from a
+minimized state on backends that support it. `changed` reports whether visibility itself changed.
 
 ## Revision
 

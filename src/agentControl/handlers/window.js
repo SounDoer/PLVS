@@ -243,6 +243,15 @@ async function setWindowState(ctx) {
   requireRevision(request, clock);
   const windowControl = requireWindow(live().windowControl);
   refuseDock(windowControl, "Window state");
+  const action = request.method.slice("window.".length);
+  if (action === "minimize" && windowControl.minimizeAvailable === false) {
+    throw semanticFailure(
+      "controlUnavailable",
+      "$.method",
+      "The desktop backend does not report whether the window is minimized.",
+      -32012
+    );
+  }
   if (!windowControl.visible) {
     throw semanticFailure(
       "windowHidden",
@@ -252,7 +261,6 @@ async function setWindowState(ctx) {
     );
   }
   const geometry = await windowControl.readGeometry();
-  const action = request.method.slice("window.".length);
   if (action !== "minimize" && geometry.minimized) {
     throw semanticFailure(
       "windowMinimized",

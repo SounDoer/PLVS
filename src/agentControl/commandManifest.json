@@ -1324,6 +1324,7 @@
       "execution": "runningApp",
       "operation": "action",
       "wireMethod": "window.minimize",
+      "featureGate": "window.minimize",
       "json": "required",
       "expectedRevision": "required",
       "dryRun": false,

@@ -365,8 +365,11 @@ describe("agent-control app snapshots", () => {
     expect(wayland.features.window.move).toBe(false);
     expect(wayland.methods).toContain("window.resize");
     expect(wayland.methods).not.toContain("window.move");
+    expect(wayland.features.window.minimize).toBe(false);
+    expect(wayland.methods).not.toContain("window.minimize");
     expect(x11.features.window.move).toMatchObject({ unit: "cssPx" });
     expect(x11.methods).toContain("window.move");
+    expect(x11.features.window.minimize).toBe(true);
   });
 
   it("advertises the library transfer methods", () => {

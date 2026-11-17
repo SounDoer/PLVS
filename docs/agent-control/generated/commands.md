@@ -961,6 +961,7 @@ Minimize the normal window as the title bar does.
 - Execution: `runningApp`; operation: `action`
 - JSON: `required`; expected revision: `required`; dry-run: `false`; output file: `none`
 - Wire method: `window.minimize`
+- Feature gate: `window.minimize`
 
 ```text
 plvs-cli window minimize --expected-revision <n> --json

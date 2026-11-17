@@ -263,7 +263,9 @@ plvs-cli window unmaximize --expected-revision <n> --json
 plvs-cli window minimize --expected-revision <n> --json
 ```
 
-A size that does not fit the current monitor fails instead of being shrunk. See
+A size that does not fit the current monitor fails instead of being shrunk. On native Wayland,
+`capabilities` omits `window move` and `window minimize`, whose results cannot be verified on
+that backend. `window hide` and `window show` remain available. See
 [Window Control](../agent-control/window.md).
 
 Workbench Control opens another workbench as a second launch does, and quits one workbench or all

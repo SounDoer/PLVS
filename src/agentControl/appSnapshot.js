@@ -33,7 +33,9 @@ function featureGateAvailable(featureGate, runtime) {
   if (featureGate === "visual") return visual !== undefined;
   if (featureGate === "visual.screenshot") return visual?.screenshot === true;
   if (featureGate === "visual.recording") return visual?.recording === true;
-  if (featureGate === "window.move") return runtime?.windowPositionAvailable !== false;
+  // On native Wayland there are no global coordinates or observable minimized state.
+  if (featureGate === "window.move" || featureGate === "window.minimize")
+    return runtime?.windowPositionAvailable !== false;
   return false;
 }
 

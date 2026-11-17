@@ -71,25 +71,33 @@ describe("Window Control", () => {
     });
   });
 
-  it("leaves the position unavailable and refuses moves on native Wayland", async () => {
+  it("reports unavailable position and minimized state on native Wayland", async () => {
     const control = {
       available: true,
       form: "normal",
       visible: true,
       moveAvailable: false,
+      minimizeAvailable: false,
+      minimize: vi.fn(),
       readGeometry: async () => geometry(),
       moveTo: vi.fn(),
     };
     const inspected = await windowHandlers["window.inspect"].run(
       context("window.inspect", {}, control)
     );
-    expect(inspected.result).toMatchObject({ monitor: "Main", position: null });
+    expect(inspected.result).toMatchObject({ monitor: "Main", position: null, minimized: null });
     await expect(
       windowHandlers["window.move"].run(
         context("window.move", { monitor: "Main", x: 16, y: 16, expectedRevision: 0 }, control)
       )
     ).rejects.toMatchObject({ reason: "controlUnavailable" });
     expect(control.moveTo).not.toHaveBeenCalled();
+    await expect(
+      windowHandlers["window.minimize"].run(
+        context("window.minimize", { expectedRevision: 0 }, control)
+      )
+    ).rejects.toMatchObject({ reason: "controlUnavailable" });
+    expect(control.minimize).not.toHaveBeenCalled();
   });
 
   it("applies the requested inner size at the current position through the bounds path", async () => {

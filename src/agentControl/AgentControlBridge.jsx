@@ -180,6 +180,7 @@ export function AgentControlBridge() {
       form: docked ? "dock" : "normal",
       visible: windowVisible,
       moveAvailable: runtime.windowPositionAvailable !== false,
+      minimizeAvailable: runtime.windowPositionAvailable !== false,
       readGeometry: readWindowGeometry,
       readMonitors: readWindowMonitors,
       applyBounds: applyWindowBounds,
