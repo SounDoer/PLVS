@@ -27,11 +27,13 @@ import { WINDOW_OFFSET_MAX, WINDOW_SIZE_MAX, WINDOW_SIZE_MIN } from "./windowCon
  * }} AgentControlAnalysisContext
  */
 
-function featureGateAvailable(featureGate, visual) {
+function featureGateAvailable(featureGate, runtime) {
+  const visual = runtime?.visual;
   if (featureGate === undefined) return true;
   if (featureGate === "visual") return visual !== undefined;
   if (featureGate === "visual.screenshot") return visual?.screenshot === true;
   if (featureGate === "visual.recording") return visual?.recording === true;
+  if (featureGate === "window.move") return runtime?.windowPositionAvailable !== false;
   return false;
 }
 
@@ -69,7 +71,7 @@ export function buildAgentControlPanelSnapshot({
 export function buildAgentControlCapabilities(runtime, revision) {
   const visual = runtime?.visual;
   const methods = runningAppCommandEntries
-    .filter(({ featureGate }) => featureGateAvailable(featureGate, visual))
+    .filter(({ featureGate }) => featureGateAvailable(featureGate, runtime))
     .map(({ wireMethod }) => wireMethod);
   const hasMethod = (method) => methods.includes(method);
   return {
@@ -300,5 +302,6 @@ export function readAgentControlRuntime() {
     identifier: injected.identifier,
     platform: injected.platform,
     dockCapabilities: injected.dockCapabilities,
+    windowPositionAvailable: injected.windowPositionAvailable,
   };
 }

@@ -39,7 +39,10 @@ export async function runWindowContract({ invoke, until, steps }) {
 
   if (initial.maximized) action("unmaximize");
   const before = observe({ maximized: false });
-  const { minimum, maximum } = invoke(["capabilities"]).features.window.resize;
+  const capabilities = invoke(["capabilities"]);
+  const { minimum, maximum } = capabilities.features.window.resize;
+  const canMove = capabilities.features.window.move !== false;
+  assert.equal(capabilities.methods.includes("window.move"), canMove);
   const smaller = (dimension) => Math.max(minimum, Math.min(maximum, Math.floor(dimension) - 96));
   const size = { width: smaller(before.size.width), height: smaller(before.size.height) };
   assert.ok(
@@ -57,28 +60,44 @@ export async function runWindowContract({ invoke, until, steps }) {
     assert.ok(resizedApp.revision > beforeApp.revision);
   }
   assertNear(resized.size, size);
-  assertNear(resized.position, before.position);
+  if (canMove) assertNear(resized.position, before.position);
+  else assert.equal(resized.position, null);
   assert.equal(action("resize", sizeArgs).changed, false);
   steps.push("verify guarded resize, unchanged position, and idempotent resize");
 
-  const { monitor, position, workArea } = resized;
-  assert.ok(
-    monitor && position && workArea,
-    "Window inspection did not identify its current monitor."
-  );
-  // The shrink leaves room to move away from the work-area origin even on one display.
-  const offset = { x: Math.abs(position.x) <= 1 ? 16 : 0, y: Math.abs(position.y) <= 1 ? 16 : 0 };
-  const move = toPosition(monitor, offset);
-  action("move", toPosition("plvs-acceptance-missing-monitor", offset), resized.revision, {
-    expectedError: "monitorNotFound",
-  });
-  assertNear(observe({ monitor }).position, position);
-  assert.equal(action("move", move).changed, true);
-  const moved = observe({ monitor });
-  assertNear(moved.position, offset);
-  assertNear(moved.size, size);
-  assert.equal(action("move", move).changed, false);
-  steps.push("verify monitor selection, movement, preserved size, and idempotent move");
+  if (!canMove) {
+    action(
+      "move",
+      toPosition(resized.monitor ?? "unavailable", { x: 16, y: 16 }),
+      resized.revision,
+      {
+        expectedError: "controlUnavailable",
+      }
+    );
+    assertNear(observe({ position: null, revision: resized.revision }).size, size);
+    steps.push(
+      "verify the desktop backend withholds positioning and refuses a move without mutation"
+    );
+  } else {
+    const { monitor, position, workArea } = resized;
+    assert.ok(
+      monitor && position && workArea,
+      "Window inspection did not identify its current monitor."
+    );
+    // The shrink leaves room to move away from the work-area origin even on one display.
+    const offset = { x: Math.abs(position.x) <= 1 ? 16 : 0, y: Math.abs(position.y) <= 1 ? 16 : 0 };
+    const move = toPosition(monitor, offset);
+    action("move", toPosition("plvs-acceptance-missing-monitor", offset), resized.revision, {
+      expectedError: "monitorNotFound",
+    });
+    assertNear(observe({ monitor }).position, position);
+    assert.equal(action("move", move).changed, true);
+    const moved = observe({ monitor });
+    assertNear(moved.position, offset);
+    assertNear(moved.size, size);
+    assert.equal(action("move", move).changed, false);
+    steps.push("verify monitor selection, movement, preserved size, and idempotent move");
+  }
 
   for (const [name, expected] of [
     ["maximize", { maximized: true }],

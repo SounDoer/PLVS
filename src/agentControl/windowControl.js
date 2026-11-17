@@ -38,10 +38,10 @@ export const WINDOW_OFFSET_MAX = 7680;
  */
 
 /**
- * @param {{ form: string, visible: boolean }} state
+ * @param {{ form: string, visible: boolean, moveAvailable?: boolean }} state
  * @param {WindowGeometry} geometry
  */
-export function buildWindowInspection({ form, visible }, geometry) {
+export function buildWindowInspection({ form, visible, moveAvailable }, geometry) {
   const monitor = geometry.monitor ?? null;
   return {
     form,
@@ -49,7 +49,7 @@ export function buildWindowInspection({ form, visible }, geometry) {
     maximized: geometry.maximized,
     minimized: geometry.minimized === true,
     monitor: monitor?.id ?? null,
-    position: monitor ? windowOffset(geometry, monitor) : null,
+    position: monitor && moveAvailable !== false ? windowOffset(geometry, monitor) : null,
     size: { width: geometry.viewport.width, height: geometry.viewport.height },
     devicePixelRatio: geometry.scale,
     workArea: geometry.workArea

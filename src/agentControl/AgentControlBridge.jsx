@@ -179,6 +179,7 @@ export function AgentControlBridge() {
       available: isTauri(),
       form: docked ? "dock" : "normal",
       visible: windowVisible,
+      moveAvailable: runtime.windowPositionAvailable !== false,
       readGeometry: readWindowGeometry,
       readMonitors: readWindowMonitors,
       applyBounds: applyWindowBounds,
@@ -190,7 +191,7 @@ export function AgentControlBridge() {
       // The tray's Hide: persistence is flushed first, and it is refused while an update installs.
       hide: () => requestCloseAction("tray"),
     }),
-    [docked, onShowWindow, requestCloseAction, windowVisible]
+    [docked, onShowWindow, requestCloseAction, runtime.windowPositionAvailable, windowVisible]
   );
   // Quit Workbench, Quit PLVS and a second launch, through the paths the Tray and the OS use.
   const workbenchControl = useMemo(

@@ -37,6 +37,7 @@ import { themeStateSignature, loudnessProfileStateSignature } from "./bridge/sig
  *   identifier?: any,
  *   platform?: any,
  *   dockCapabilities?: { supported: boolean, reserveSpace: boolean, aboveFullScreen: boolean },
+ *   windowPositionAvailable?: boolean,
  * }} AgentControlRuntime
  *
  * @typedef {{

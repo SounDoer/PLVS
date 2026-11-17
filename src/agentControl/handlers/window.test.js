@@ -71,6 +71,27 @@ describe("Window Control", () => {
     });
   });
 
+  it("leaves the position unavailable and refuses moves on native Wayland", async () => {
+    const control = {
+      available: true,
+      form: "normal",
+      visible: true,
+      moveAvailable: false,
+      readGeometry: async () => geometry(),
+      moveTo: vi.fn(),
+    };
+    const inspected = await windowHandlers["window.inspect"].run(
+      context("window.inspect", {}, control)
+    );
+    expect(inspected.result).toMatchObject({ monitor: "Main", position: null });
+    await expect(
+      windowHandlers["window.move"].run(
+        context("window.move", { monitor: "Main", x: 16, y: 16, expectedRevision: 0 }, control)
+      )
+    ).rejects.toMatchObject({ reason: "controlUnavailable" });
+    expect(control.moveTo).not.toHaveBeenCalled();
+  });
+
   it("applies the requested inner size at the current position through the bounds path", async () => {
     let current = geometry();
     const applyBounds = vi.fn(async (bounds) => {

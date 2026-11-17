@@ -241,6 +241,20 @@ fn monitor_rects<R: tauri::Runtime>(window: &tauri::WebviewWindow<R>) -> Vec<Mon
     .collect()
 }
 
+/// Wayland does not expose a global top-level window position. Check the actual GTK display,
+/// since a Wayland session may still run PLVS through XWayland.
+pub fn desktop_position_available() -> bool {
+  #[cfg(target_os = "linux")]
+  {
+    use gtk::prelude::ObjectExt;
+    gtk::gdk::Display::default().is_some_and(|display| display.type_().name().contains("X11"))
+  }
+  #[cfg(not(target_os = "linux"))]
+  {
+    true
+  }
+}
+
 #[tauri::command]
 pub fn current_window_bounds<R: tauri::Runtime>(
   window: tauri::WebviewWindow<R>,

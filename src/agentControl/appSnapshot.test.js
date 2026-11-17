@@ -355,6 +355,20 @@ describe("agent-control app snapshots", () => {
     ).toBe(false);
   });
 
+  it("withholds absolute positioning on a desktop backend without global coordinates", () => {
+    const runtime = { available: true, appVersion: "0.26.2", platform: "linux" };
+    const wayland = buildAgentControlCapabilities(
+      { ...runtime, windowPositionAvailable: false },
+      2
+    );
+    const x11 = buildAgentControlCapabilities({ ...runtime, windowPositionAvailable: true }, 2);
+    expect(wayland.features.window.move).toBe(false);
+    expect(wayland.methods).toContain("window.resize");
+    expect(wayland.methods).not.toContain("window.move");
+    expect(x11.features.window.move).toMatchObject({ unit: "cssPx" });
+    expect(x11.methods).toContain("window.move");
+  });
+
   it("advertises the library transfer methods", () => {
     const capabilities = buildAgentControlCapabilities(
       {

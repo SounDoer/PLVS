@@ -49,6 +49,10 @@ before anything changes; it is never clamped elsewhere. A minimized window fails
 `changed: false`. The command settles when the window reports that monitor and offset, within one
 pixel, and fails with `uiNotSettled` otherwise.
 
+Native Wayland does not expose global positions for top-level windows. On that backend,
+`window inspect` returns `position: null`, `capabilities` omits `window.move`, and a direct call
+returns `controlUnavailable`. X11 and XWayland still provide positioning.
+
 ## Maximize, Restore and Minimize
 
 `window maximize`, `window unmaximize` and `window minimize` do what the title bar's buttons do,

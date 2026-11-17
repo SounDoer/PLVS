@@ -531,6 +531,7 @@ pub fn run() {
         "appVersion": env!("CARGO_PKG_VERSION"),
         "identifier": env!("PLVS_APP_ID"),
         "platform": std::env::consts::OS,
+        "windowPositionAvailable": window_state::desktop_position_available(),
         "dockCapabilities": {
           "supported": dock::is_supported_platform(),
           "reserveSpace": dock::is_supported_platform(),

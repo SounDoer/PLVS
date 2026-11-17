@@ -163,6 +163,14 @@ async function move(ctx) {
   const { request, clock, live } = ctx;
   requireRevision(request, clock);
   const windowControl = requireWindow(live().windowControl);
+  if (windowControl.moveAvailable === false) {
+    throw semanticFailure(
+      "controlUnavailable",
+      "$.method",
+      "The desktop backend does not provide global window positioning.",
+      -32012
+    );
+  }
   const target = { monitor: request.params.monitor, x: request.params.x, y: request.params.y };
   const geometry = await windowControl.readGeometry();
   if (geometry.minimized) {

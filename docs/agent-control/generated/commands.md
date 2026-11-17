@@ -837,6 +837,7 @@ Place the normal window's top-left corner at a CSS-pixel offset from a monitor's
 - Execution: `runningApp`; operation: `action`
 - JSON: `required`; expected revision: `required`; dry-run: `false`; output file: `none`
 - Wire method: `window.move`
+- Feature gate: `window.move`
 
 ```text
 plvs-cli window move --monitor <monitor-id> --x <css-px> --y <css-px> --expected-revision <n> --json
