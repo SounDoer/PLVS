@@ -143,20 +143,33 @@ function sameRect(left, right) {
   );
 }
 
-function visibleCanvasesSettled(surface, windowObject) {
+function findUnsettledCanvas(surface, windowObject) {
   const canvases = Array.from(surface.element.querySelectorAll("canvas"));
   if (surface.element.tagName === "CANVAS") canvases.unshift(surface.element);
-  return canvases.every((canvas) => {
+  for (const canvas of canvases) {
     const rect = canvas.getBoundingClientRect();
-    if (!isRendered(canvas, windowObject, surface.viewport)) return true;
-    if (!(canvas.width > 0 && canvas.height > 0 && rect.width > 0 && rect.height > 0)) return false;
+    if (!isRendered(canvas, windowObject, surface.viewport)) continue;
     // Some renderers deliberately cap X and Y backing-store scale independently. The settlement
     // contract therefore checks that the current displayed box is the Canvas client box and that
     // both backing axes have been allocated; it must not assume backing size is CSS size × DPR.
     const clientWidth = Number(canvas.clientWidth) || rect.width;
     const clientHeight = Number(canvas.clientHeight) || rect.height;
-    return Math.abs(clientWidth - rect.width) < 1 && Math.abs(clientHeight - rect.height) < 1;
-  });
+    if (
+      !(canvas.width > 0 && canvas.height > 0 && rect.width > 0 && rect.height > 0) ||
+      Math.abs(clientWidth - rect.width) >= 1 ||
+      Math.abs(clientHeight - rect.height) >= 1
+    ) {
+      return {
+        width: rect.width,
+        height: rect.height,
+        clientWidth,
+        clientHeight,
+        backingWidth: canvas.width,
+        backingHeight: canvas.height,
+      };
+    }
+  }
+  return null;
 }
 
 function visibleTransitionsSettled({ rect, element }) {
@@ -229,6 +242,9 @@ export async function settleVisualSurface({
   const controller = new AbortController();
   const cancel = () => controller.abort();
   signal?.addEventListener("abort", cancel, { once: true });
+  let stage = "fonts";
+  let frames = 0;
+  let canvas = null;
   let timeout;
   const timeoutPromise = new Promise((_, reject) => {
     timeout = setTimeout(
@@ -236,6 +252,13 @@ export async function settleVisualSurface({
         reject(
           Object.assign(new Error("The visual surface did not settle in time."), {
             reason: "renderNotSettled",
+            details: {
+              stage,
+              frames,
+              visible: documentObject.visibilityState === "visible",
+              focused: documentObject.hasFocus?.() === true,
+              canvas,
+            },
           })
         ),
       timeoutMs
@@ -244,9 +267,11 @@ export async function settleVisualSurface({
 
   const settle = async () => {
     await documentObject.fonts?.ready;
+    stage = "firstFrame";
     let previous = null;
     for (;;) {
       await nextAnimationFrame(windowObject, controller.signal);
+      frames++;
       const resolved = resolveVisualSurface({
         target,
         workspace,
@@ -263,16 +288,16 @@ export async function settleVisualSurface({
           throw Object.assign(new Error(resolved.error.message), resolved.error);
         }
         previous = null;
+        stage = "target";
         continue;
       }
       const { surface } = resolved;
-      const settled =
-        surface.ready &&
-        surface.rendered &&
-        surface.rect.width > 0 &&
-        surface.rect.height > 0 &&
-        visibleTransitionsSettled(surface) &&
-        visibleCanvasesSettled(surface, windowObject);
+      const ready =
+        surface.ready && surface.rendered && surface.rect.width > 0 && surface.rect.height > 0;
+      const transitionsSettled = ready && visibleTransitionsSettled(surface);
+      canvas = transitionsSettled ? findUnsettledCanvas(surface, windowObject) : null;
+      const settled = transitionsSettled && canvas === null;
+      stage = !ready ? "target" : !transitionsSettled ? "transition" : canvas ? "canvas" : "bounds";
       if (settled && previous && sameRect(previous.rect, surface.rect)) {
         const revision = getRevision();
         if (expectedRevision !== undefined && revision !== expectedRevision) {

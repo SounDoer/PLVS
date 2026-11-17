@@ -71,6 +71,33 @@ function moveDiagnostic(history) {
   };
 }
 
+function renderDiagnostic(history) {
+  const details = history.findLast(({ response }) => response.error?.code === "renderNotSettled")
+    ?.response.error.details;
+  if (
+    !details ||
+    !["fonts", "firstFrame", "target", "transition", "canvas", "bounds"].includes(details.stage)
+  ) {
+    return undefined;
+  }
+  const { stage, frames, visible, focused, canvas } = details;
+  return {
+    stage,
+    ...(Number.isSafeInteger(frames) ? { frames } : {}),
+    visible: visible === true,
+    focused: focused === true,
+    ...(canvas
+      ? {
+          canvas: Object.fromEntries(
+            ["width", "height", "clientWidth", "clientHeight", "backingWidth", "backingHeight"]
+              .filter((key) => Number.isFinite(canvas[key]))
+              .map((key) => [key, canvas[key]])
+          ),
+        }
+      : {}),
+  };
+}
+
 function publicDiagnostic(trace) {
   const { cliCount, code } = trace.failure ?? {};
   const history = (trace.cli ?? []).slice(0, cliCount);
@@ -98,6 +125,7 @@ function publicDiagnostic(trace) {
     completedSteps: trace.steps?.length ?? 0,
     ...(code === "ERR_ASSERTION" || code === "acceptanceTimeout" ? { code } : {}),
     commandHistory,
+    render: renderDiagnostic(history),
     ...(trace.scenario === "window-platform-contract"
       ? { resize: resizeDiagnostic(history), move: moveDiagnostic(history) }
       : {}),
