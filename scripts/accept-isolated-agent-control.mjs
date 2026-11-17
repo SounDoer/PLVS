@@ -50,7 +50,7 @@ async function until(read, label) {
     if (result) return result;
     await delay(200);
   }
-  throw new Error(`Timed out waiting for ${label}.`);
+  throw Object.assign(new Error(`Timed out waiting for ${label}.`), { code: "acceptanceTimeout" });
 }
 
 export async function runIsolatedAgentControl({ executable, root, outDir, scenario, runDesktop }) {
@@ -350,6 +350,10 @@ export async function runIsolatedAgentControl({ executable, root, outDir, scenar
     else await fileDialogueRestart();
   } catch (error) {
     failure = error;
+    evidence.failure = {
+      cliCount: cliLog.length,
+      code: error.code,
+    };
     if (scenario === "window-platform-contract" && instance) {
       try {
         invoke(["window", "inspect"]);

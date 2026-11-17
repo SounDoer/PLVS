@@ -49,4 +49,39 @@ describe("Agent Control workflow summary", () => {
       ).status
     ).toBe("passed");
   });
+
+  it("projects only command IDs, codes and counts around a failure before cleanup", () => {
+    const failed = {
+      ...trace,
+      scenario: "window-platform-contract",
+      status: "failed",
+      steps: ["private context"],
+      failure: { cliCount: 2, code: "ERR_ASSERTION" },
+      cli: [
+        {
+          args: ["instances"],
+          status: 0,
+          response: { result: { instances: [{ instanceId: "private-id" }] } },
+        },
+        {
+          args: ["--instance", "private-id", "window", "move", "--monitor", "private-name"],
+          status: 4,
+          response: { error: { code: "uiNotSettled", message: "/private/profile" } },
+        },
+        {
+          args: ["workbench", "quit-all"],
+          status: 0,
+          response: { result: {} },
+        },
+      ],
+    };
+    expect(summarizeScenario(failed.scenario, sourceSha, 1, failed, null).diagnostic).toEqual({
+      completedSteps: 1,
+      code: "ERR_ASSERTION",
+      commandHistory: [
+        { command: "instances.list", exitCode: 0, instanceCount: 1 },
+        { command: "window.move", exitCode: 4, code: "uiNotSettled" },
+      ],
+    });
+  });
 });

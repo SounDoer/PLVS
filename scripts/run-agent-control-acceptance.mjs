@@ -4,6 +4,7 @@ import { closeSync, openSync } from "node:fs";
 import { mkdir, readFile } from "node:fs/promises";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
+import manifest from "../src/agentControl/commandManifest.json" with { type: "json" };
 import { ISOLATED_SCENARIOS } from "./accept-agent-control.mjs";
 import { hostPlatform, resolveEvidenceSourceSha, writeJsonAtomic } from "./acceptance-evidence.mjs";
 import {
@@ -17,6 +18,7 @@ import {
 
 const root = fileURLToPath(new URL("../", import.meta.url));
 const acceptance = join(root, "scripts", "accept-agent-control.mjs");
+const commandsBySpecificity = [...manifest.commands].sort((a, b) => b.path.length - a.path.length);
 
 async function readEvidence(file) {
   try {
@@ -27,22 +29,55 @@ async function readEvidence(file) {
   }
 }
 
+function publicDiagnostic(trace) {
+  const { cliCount, code } = trace.failure ?? {};
+  const commandHistory = (trace.cli ?? [])
+    .slice(0, cliCount)
+    .slice(-5)
+    .flatMap((entry) => {
+      const args = entry.args[0] === "--instance" ? entry.args.slice(2) : entry.args;
+      const command = commandsBySpecificity.find(({ path }) =>
+        path.every((part, index) => part === args[index])
+      );
+      if (!command) return [];
+      const { result, error } = entry.response;
+      return [
+        {
+          command: command.id,
+          exitCode: entry.status,
+          ...(typeof error?.code === "string" && /^[a-zA-Z][a-zA-Z0-9_]{0,79}$/.test(error.code)
+            ? { code: error.code }
+            : {}),
+          ...(command.id === "instances.list" && Array.isArray(result?.instances)
+            ? { instanceCount: result.instances.length }
+            : {}),
+        },
+      ];
+    });
+  return {
+    completedSteps: trace.steps?.length ?? 0,
+    ...(code === "ERR_ASSERTION" || code === "acceptanceTimeout" ? { code } : {}),
+    commandHistory,
+    ...(trace.cleanupError ? { cleanupFailed: true } : {}),
+  };
+}
+
 // This is the only output copied to Actions. Detailed traces may contain local paths,
 // display or device names, and window pixels.
 export function summarizeScenario(scenario, sourceSha, exitCode, trace, desktop) {
   const validTrace =
     trace?.scenario === scenario && trace.head === sourceSha && trace.workingTreeDirty === false;
   const validDesktop = desktop?.sourceSha === sourceSha && Array.isArray(desktop.scenarios);
+  const passed =
+    exitCode === 0 &&
+    validTrace &&
+    trace.status === "passed" &&
+    (scenario !== "desktop" || (validDesktop && desktop.summary === "complete"));
   return {
     id: scenario,
-    status:
-      exitCode === 0 &&
-      validTrace &&
-      trace.status === "passed" &&
-      (scenario !== "desktop" || (validDesktop && desktop.summary === "complete"))
-        ? "passed"
-        : "failed",
+    status: passed ? "passed" : "failed",
     exitCode,
+    ...(!passed && validTrace && trace.failure ? { diagnostic: publicDiagnostic(trace) } : {}),
     ...(scenario === "desktop" && validDesktop
       ? { checks: desktop.scenarios.map(({ id, status }) => ({ id, status })) }
       : {}),
