@@ -168,3 +168,60 @@ it("resumes the interrupted file and pending files in order with their original 
     expect(begin).toHaveBeenNthCalledWith(4, "three.wav", {}, probe("three.wav"), null, true)
   );
 });
+
+it("requires a new track choice when retrying a changed multi-track source", async () => {
+  const original = probe("movie.mov", 2);
+  const session = {
+    id: "failed",
+    path: original.path,
+    metadata: {
+      ...original,
+      selectedTrack: original.audioTracks[1],
+    },
+  };
+  const changed = {
+    ...original,
+    sourceVersion: { ...original.sourceVersion, sha256: "replacement" },
+  };
+  vi.mocked(probeFileAnalysis).mockResolvedValue(changed);
+  const { result, begin } = mountQueue([session]);
+
+  act(() => result.current.retrySession(session));
+  await waitFor(() => expect(result.current.snapshot.items[0]?.state).toBe("track"));
+  expect(begin).not.toHaveBeenCalled();
+
+  act(() => result.current.confirmTrack(result.current.items[0].id, 0));
+  await waitFor(() => expect(begin).toHaveBeenCalledWith(original.path, {}, changed, null, true));
+});
+
+it.each(["unchanged", "single-track replacement"])(
+  "retries an %s source on the available track",
+  async (kind) => {
+    const original = probe("movie.mov", 2);
+    const session = {
+      id: "failed",
+      path: original.path,
+      metadata: {
+        ...original,
+        selectedTrack: original.audioTracks[1],
+      },
+    };
+    const replacement = probe("movie.mov");
+    replacement.sourceVersion.sha256 = "replacement";
+    const expectedProbe = kind === "unchanged" ? session.metadata : replacement;
+    vi.mocked(probeFileAnalysis).mockResolvedValue(kind === "unchanged" ? original : replacement);
+    const { result, begin } = mountQueue([session]);
+
+    act(() => result.current.retrySession(session));
+
+    await waitFor(() =>
+      expect(begin).toHaveBeenCalledWith(
+        original.path,
+        {},
+        expectedProbe,
+        kind === "unchanged" ? session.id : null,
+        true
+      )
+    );
+  }
+);

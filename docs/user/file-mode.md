@@ -37,7 +37,8 @@ file to resume following the queue.
 - For a file with several audio tracks, use **Choose Track…** in **Files**. The queue continues
   while the file waits. Confirming a track adds it to the end of the queue.
 - A failed file stays in the list with its error. Use **Retry** to add it to the end of the queue.
-  Any previous successful result remains available for inspection and export.
+  If the file changed and now has several audio tracks, use **Choose Track…** again. Any previous
+  successful result remains available for inspection and export.
 - **Stop** on the current row stops that file and the queue continues. **Cancel Batch…** stops the
   batch and cancels pending files after confirmation. Completed results and files waiting for track
   selection stay in **Files**.

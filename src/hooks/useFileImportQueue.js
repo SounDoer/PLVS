@@ -29,7 +29,7 @@ export function useFileImportQueue({
   }, [enabled]);
 
   const enqueue = useCallback(
-    (paths, trackIndex = null, retryId = null) => {
+    (paths, trackIndex = null, retryId = null, previousProbe = null) => {
       const settings = structuredClone(getSettings());
       const pending = [...new Set(paths)].filter(Boolean).map((path) => ({
         id: ++nextId.current,
@@ -37,7 +37,7 @@ export function useFileImportQueue({
         fileName: path.split(/[\\/]/).pop() || path,
         settings,
         state: "queued",
-        probe: null,
+        probe: previousProbe,
         trackIndex,
         retryId,
         error: null,
@@ -265,7 +265,12 @@ export function useFileImportQueue({
       if (item && ["canceled", "error", "paused"].includes(item.state)) append(item);
     },
     retrySession: (session) =>
-      enqueue([session.path], session.metadata?.selectedTrack?.index ?? null, session.id),
+      enqueue(
+        [session.path],
+        session.metadata?.selectedTrack?.index ?? null,
+        session.id,
+        session.metadata ?? null
+      ),
     remove: (id) => setItems((previous) => previous.filter((item) => item.id !== id)),
     stopCurrent: () => cancel(),
     cancelBatch: () => cancel(true),
