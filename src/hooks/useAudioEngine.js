@@ -49,6 +49,7 @@ const CAPTURE_RECOVERY_STABILITY_MS = 2_000;
  * @param {{
  *   captureDeviceId?: string,
  *   captureFormatSignature?: string,
+ *   captureDeviceUnavailable?: boolean,
  *   histMaxSamples: number,
  *   visualMaxSamples: number,
  *   audioRef: { current: any },
@@ -69,6 +70,7 @@ export function useAudioEngine({
   captureDeviceId = "default",
   /** When channels/default rate change for the active device, bumps to restart WASAPI/session (e.g. Windows speaker layout). */
   captureFormatSignature = "",
+  captureDeviceUnavailable = false,
   histMaxSamples,
   visualMaxSamples,
   audioRef,
@@ -131,8 +133,8 @@ export function useAudioEngine({
 
   /**
    * Start/stop native or browser audio capture. Dependency list is intentionally narrow:
-   * - `running`, `captureDeviceId`, and `captureFormatSignature` are the only inputs that should
-   *   restart the engine when they change. History capacities are frontend retention and update
+   * - Capture lifecycle, Source selection and its availability/format, and recovery drive
+   *   native engine transitions. History capacities are frontend retention and update
    *   through refs without interrupting native measurement.
    * - All `*Ref` arguments are mutable boxes read inside the effect; their **identities** are
    *   stable (useRef), and the effect reads `.current` on each run — listing them would
@@ -166,10 +168,27 @@ export function useAudioEngine({
         .catch((error) => markStopFailed?.(error));
       return;
     }
-    if (isTauri() && audioRef.current?.mode === "tauri") {
+    if (isTauri() && audioRef.current?.mode === "tauri" && !captureDeviceUnavailable) {
       clearLocalMeterStateForRestart();
     }
     let mounted = true;
+    let disconnected = false;
+    const stopForDisconnectedSource = () => {
+      disconnected = true;
+      halt(new Error("Source Disconnected"));
+      stopTimer?.();
+      setSelectedOffset(-1);
+      raiseNotice(
+        "warning",
+        "Source Disconnected",
+        "Reconnect the device or choose another in Sources, then select Start.",
+        { requiresAttention: true, helpTopic: "audio-capture" }
+      );
+    };
+    if (captureDeviceUnavailable) {
+      stopForDisconnectedSource();
+      return;
+    }
     const init = async () => {
       try {
         const stopResult = stopInFlightRef.current;
@@ -180,13 +199,15 @@ export function useAudioEngine({
           const applicationId = /^app-[0-9a-f]{32}$/.test(captureDeviceId) ? captureDeviceId : null;
           const devices = await listAudioDevices();
           if (!mounted) return;
-          if (!applicationId && !devices?.length) {
-            throw new Error("No input devices reported by the native engine");
-          }
           const resolved = applicationId
             ? { device: { id: applicationId, defaultSampleRate: 48_000 }, isAutomatic: false }
-            : resolveDevice(devices, captureDeviceId);
+            : resolveDevice(devices ?? [], captureDeviceId);
           const { device: resolvedDevice, isAutomatic } = resolved;
+          if (!resolvedDevice) {
+            if (isAutomatic) throw new Error("No input devices reported by the native engine");
+            stopForDisconnectedSource();
+            return;
+          }
 
           let engineDeviceId;
           if (applicationId) {
@@ -230,7 +251,7 @@ export function useAudioEngine({
               ),
           });
           const applyFrame = (f) => {
-            if (!mounted) return;
+            if (!mounted || disconnected) return;
             if (recoveryPendingRef.current) {
               recoveryPendingRef.current = false;
               recoveryRearmAtRef.current = Date.now() + CAPTURE_RECOVERY_STABILITY_MS;
@@ -267,9 +288,17 @@ export function useAudioEngine({
           // later (stall, device loss). Without this the UI keeps showing LIVE over a frozen meter.
           unsubs.push(
             await onEngineStateChanged((payload) => {
-              if (!mounted || payload?.state !== "error") return;
+              if (!mounted || disconnected || payload?.state !== "error") return;
+              if (payload.reason === "deviceDisconnected" && !isAutomatic && !applicationId) {
+                stopForDisconnectedSource();
+                return;
+              }
               const message = payload.error || "Audio capture stopped";
-              if (payload.reason === "deviceInvalidated" && recoveryAvailableRef.current) {
+              if (
+                (payload.reason === "deviceInvalidated" ||
+                  payload.reason === "deviceDisconnected") &&
+                recoveryAvailableRef.current
+              ) {
                 recoveryAvailableRef.current = false;
                 recoveryPendingRef.current = true;
                 recoveryRearmAtRef.current = 0;
@@ -304,7 +333,7 @@ export function useAudioEngine({
             measurementOwner?.abortSession();
             throw error;
           }
-          if (!mounted) {
+          if (!mounted || disconnected) {
             releaseListeners();
             measurementOwner?.abortSession();
             return;
@@ -322,6 +351,7 @@ export function useAudioEngine({
           "Error: Browser preview: metering runs in the desktop app (Rust DSP). Use `npm run tauri dev`."
         );
       } catch (err) {
+        if (!mounted || disconnected) return;
         halt(err);
         setSelectedOffset(-1);
         raiseNotice("error", `Error: ${err?.message || "Audio unavailable"}`, undefined, {
@@ -352,6 +382,12 @@ export function useAudioEngine({
         } catch (_) {}
       }
     };
-  }, [running, captureDeviceId, captureFormatSignature, recoveryRevision]);
+  }, [
+    running,
+    captureDeviceId,
+    captureFormatSignature,
+    captureDeviceUnavailable,
+    recoveryRevision,
+  ]);
   /* eslint-enable react-hooks/exhaustive-deps, react-hooks/immutability */
 }

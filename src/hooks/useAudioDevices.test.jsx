@@ -314,6 +314,46 @@ describe("useAudioDevices", () => {
     expect(result.current.captureDeviceId).toBe("default");
   });
 
+  it("keeps a disconnected exact selection through inventory refresh and reconnection", async () => {
+    mocks.readCaptureDeviceIdFromLocalStorage.mockReturnValue(CAP);
+    mocks.loadCaptureDeviceId.mockResolvedValue(CAP);
+    const { result } = renderHook(() => useAudioDevices());
+    await waitFor(() => expect(result.current.snapshot.generation).toBe(1));
+
+    await act(async () => mocks.deviceListHandler([device(LB, "Speakers", true)]));
+    await waitFor(() => expect(mocks.migrateCaptureDeviceId).toHaveBeenCalledWith(CAP));
+    expect(result.current.captureDeviceId).toBe(CAP);
+    expect(result.current.safeAudioDeviceId).toBe(CAP);
+    expect(result.current.audioDevices.some((entry) => entry.id === CAP)).toBe(false);
+
+    await act(async () =>
+      mocks.deviceListHandler([device(LB, "Speakers", true), device(CAP, "Mic")])
+    );
+    await waitFor(() =>
+      expect(result.current.audioDevices.some((entry) => entry.id === CAP)).toBe(true)
+    );
+    expect(result.current.captureDeviceId).toBe(CAP);
+    expect(result.current.snapshot.migrationState).toBeNull();
+    expect(mocks.saveCaptureDeviceId).not.toHaveBeenCalled();
+  });
+
+  it("migrates a stored legacy ID when its device becomes available later", async () => {
+    mocks.readCaptureDeviceIdFromLocalStorage.mockReturnValue("in:0");
+    mocks.loadCaptureDeviceId.mockResolvedValue("in:0");
+    mocks.listAudioDevices.mockResolvedValue([device(LB, "Speakers", true)]);
+    const { result } = renderHook(() => useAudioDevices());
+    await waitFor(() => expect(result.current.snapshot.migrationState?.state).toBe("failed"));
+    expect(result.current.captureDeviceId).toBe("in:0");
+    expect(mocks.saveCaptureDeviceId).not.toHaveBeenCalled();
+
+    mocks.migrateCaptureDeviceId.mockResolvedValue(CAP);
+    await act(async () =>
+      mocks.deviceListHandler([device(LB, "Speakers", true), device(CAP, "Mic")])
+    );
+    await waitFor(() => expect(result.current.captureDeviceId).toBe(CAP));
+    expect(mocks.saveCaptureDeviceId).toHaveBeenCalledExactlyOnceWith(CAP);
+  });
+
   it("drops a stale Automatic preview instead of overwriting a newer inventory", async () => {
     const firstPreview = deferred();
     const secondPreview = deferred();

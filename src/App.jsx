@@ -274,6 +274,7 @@ function AppContent() {
     audioInputs,
     onSelectCaptureDevice,
     captureFormatSignature,
+    captureDeviceUnavailable,
     footerSourceLabel,
   } = useSource();
 
@@ -552,6 +553,7 @@ function AppContent() {
   const runtimeEnginesProps = {
     captureDeviceId,
     captureFormatSignature,
+    captureDeviceUnavailable,
     histMaxSamples,
     visualMaxSamples,
     channelRolesRef,

@@ -12,6 +12,7 @@ import { useMeterDisplayState, useMeterRuntime } from "./MeterRuntimeContext.jsx
  *   audioInputs: any[],
  *   onSelectCaptureDevice: (deviceId: string) => Promise<boolean>,
  *   captureFormatSignature: string,
+ *   captureDeviceUnavailable: boolean,
  *   selectedSource: { type: string, label: string } | null,
  *   sourceDisplayName: string | null,
  *   footerSourceLabel: string,
@@ -79,6 +80,11 @@ export function SourceProvider({ children }) {
       ? `${d.channels}:${d.defaultSampleRate}${d.monitorSignature ? `|${d.monitorSignature}` : ""}`
       : "";
   }, [captureDeviceId, audioDevices, captureApplications, defaultOutputFormatSig]);
+  const captureDeviceUnavailable =
+    devices.snapshot.inventoryReady &&
+    captureDeviceId !== "default" &&
+    !/^app-[0-9a-f]{32}$/.test(captureDeviceId) &&
+    !captureFormatSignature;
 
   const selectedSource = useMemo(() => {
     if (!isTauri()) return null;
@@ -134,6 +140,7 @@ export function SourceProvider({ children }) {
         audioInputs,
         onSelectCaptureDevice,
         captureFormatSignature,
+        captureDeviceUnavailable,
         selectedSource,
         sourceDisplayName,
         footerSourceLabel,

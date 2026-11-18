@@ -42,9 +42,9 @@ describe("resolveDevice", () => {
     expect(isAutomatic).toBe(false);
   });
 
-  it("falls back to automatic selection when specific id is not found", () => {
+  it("leaves an unavailable exact selection unresolved", () => {
     const { device, isAutomatic } = resolveDevice([tap, mic], "lb-unknown");
-    expect(isAutomatic).toBe(true);
-    expect(device.id).toBe(tap.id);
+    expect(isAutomatic).toBe(false);
+    expect(device).toBeNull();
   });
 });

@@ -307,7 +307,7 @@ describe("useAudioEngine", () => {
       engineEvents.state({
         state: "error",
         error: "Capture stopped: the audio device is no longer available.",
-        reason: "deviceInvalidated",
+        reason: "deviceDisconnected",
       })
     );
 
@@ -325,6 +325,52 @@ describe("useAudioEngine", () => {
       "Audio configuration changed — measurement restarted"
     );
   });
+
+  it.each(["native event", "inventory change", "native enumeration"])(
+    "halts an exact capture after a %s reports that its source disconnected",
+    async (signal) => {
+      const props = {
+        captureDeviceId: "lb-main",
+        captureFormatSignature: "2:48000",
+        intake: { reset: vi.fn() },
+        setAudio: vi.fn(),
+        raiseNotice: vi.fn(),
+        halt: vi.fn(),
+        setSelectedOffset: vi.fn(),
+        resetTimer: vi.fn(),
+        stopTimer: vi.fn(),
+        setShowClock: vi.fn(),
+      };
+      const { rerender } = renderHook((current) => useHarness(current), { initialProps: props });
+      await waitFor(() =>
+        expect(startAudioCapture).toHaveBeenCalledWith(
+          expect.objectContaining({ deviceId: "lb-main" })
+        )
+      );
+      if (signal === "inventory change") {
+        // The device may already be back by the time the engine could enumerate it again.
+        rerender({ ...props, captureDeviceUnavailable: true, captureFormatSignature: "" });
+      } else if (signal === "native enumeration") {
+        vi.mocked(listAudioDevices).mockResolvedValue([{ id: "lb-other" }]);
+        rerender({ ...props, captureFormatSignature: "" });
+      } else {
+        act(() => engineEvents.state({ state: "error", reason: "deviceDisconnected" }));
+      }
+
+      await waitFor(() =>
+        expect(props.halt).toHaveBeenCalledExactlyOnceWith(new Error("Source Disconnected"))
+      );
+      expect(props.stopTimer).toHaveBeenCalledOnce();
+      expect(props.raiseNotice).toHaveBeenCalledExactlyOnceWith(
+        "warning",
+        "Source Disconnected",
+        "Reconnect the device or choose another in Sources, then select Start.",
+        { requiresAttention: true, helpTopic: "audio-capture" }
+      );
+      expect(startAudioCapture).toHaveBeenCalledOnce();
+      expect(previewAudioDevice).not.toHaveBeenCalled();
+    }
+  );
 
   it("does not loop when the replacement stream invalidates before delivering a frame", async () => {
     const props = {

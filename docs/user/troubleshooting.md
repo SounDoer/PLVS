@@ -29,9 +29,10 @@ Play audio and check that you can hear it through the output you want to measure
 In **Sources**, select that output explicitly. **Automatic** follows the system
 default, which can change when you connect headphones or unplug an interface.
 
-If the meter stopped after a device disconnected, reconnect it and select it
-again. For application capture, confirm the app is still running and playing
-audio. For more platform-specific checks, see [Signal Source](signal-source.md).
+If Status shows **Source Disconnected**, reconnect the selected device or choose
+another in **Sources**, then select **Start**. For application capture, confirm
+the app is still running and playing audio. For more platform-specific checks,
+see [Signal Source](signal-source.md).
 
 ## <span id="audio-dropped"></span> Audio was dropped
 

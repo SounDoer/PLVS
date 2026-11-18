@@ -61,3 +61,7 @@ submenu offers the same source groups, including running applications.
 PLVS tells you instead of showing stale readings. A stalled stream, dropped audio, or a changed
 default output is shown as a notice. On Windows, when a system audio change such as toggling Spatial
 Sound invalidates the device, PLVS rebuilds the stream and starts a fresh measurement automatically.
+
+If an input or output you selected by name disconnects, PLVS stops measuring, keeps your selection,
+and shows **Source Disconnected** in Status. Reconnect the device or choose another in **Sources**,
+then select **Start** to begin a fresh measurement.

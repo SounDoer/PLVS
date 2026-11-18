@@ -440,9 +440,11 @@ impl CaptureSession {
           emit_capture_failure(
             &failure_app,
             error.message(),
-            error
-              .reason()
-              .or_else(|| (error_code != STREAM_ERROR_NONE).then_some("deviceInvalidated")),
+            error.reason().or(match error_code {
+              STREAM_ERROR_DEVICE_UNAVAILABLE => Some("deviceDisconnected"),
+              STREAM_ERROR_INVALIDATED => Some("deviceInvalidated"),
+              _ => None,
+            }),
           );
         }
         result

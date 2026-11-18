@@ -168,7 +168,7 @@ pub fn preview_audio_device(device_id: String) -> Result<AudioDevicePreview, Str
 }
 
 /// If `device_id` is an old format-based `lb-*` / `cap-*` v1 hash, resolve it and return the current v2 id;
-/// [`None`] if unknown or unplugged (caller may fall back to `"default"`).
+/// [`None`] if unknown or unplugged; the caller keeps the requested ID.
 #[tauri::command]
 pub fn migrate_capture_device_id(device_id: String) -> Result<Option<String>, String> {
   if device_id.is_empty() || device_id == "default" {

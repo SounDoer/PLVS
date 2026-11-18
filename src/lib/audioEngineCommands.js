@@ -14,8 +14,10 @@
 export function resolveDevice(devices, captureDeviceId) {
   const isAutomatic = !captureDeviceId || captureDeviceId === "default";
   if (!isAutomatic) {
-    const d = devices.find((x) => x.id === captureDeviceId);
-    if (d) return { device: d, isAutomatic: false };
+    return {
+      device: devices.find((device) => device.id === captureDeviceId) ?? null,
+      isAutomatic: false,
+    };
   }
   const device =
     devices.find((d) => d.isSystemOutputMonitor) ||

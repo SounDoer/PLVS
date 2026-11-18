@@ -92,6 +92,10 @@ Automatic selected and reports `requestedId: "default"`, `mode: "automatic"`, an
 whether capture is running, whether a device restart is settling, and whether the running engine
 has acknowledged the requested selection.
 
+If an exact input or output disconnects, capture stops and `requestedId` stays selected.
+While it is missing, `available` is false and `resolved` is null. Reconnecting makes the
+device available again. Use `transport live start` to begin a fresh measurement.
+
 ## Exact selection and concurrency
 
 `device select` accepts only the literal `default` or one exact, case-sensitive ID returned by the

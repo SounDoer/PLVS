@@ -121,7 +121,7 @@ export function useAudioDevices({
           updateSnapshot((latest) => ({
             ...latest,
             migrationState: options.migrationState
-              ? { state: "failed", requestedId: options.migrationState.requestedId }
+              ? { ...options.migrationState, state: "failed" }
               : null,
           }));
         }
@@ -174,6 +174,10 @@ export function useAudioDevices({
           failure.code = "deviceUnavailable";
           throw failure;
         }
+      }
+
+      if (options.migrationState && snapshotRef.current.migrationState !== options.migrationState) {
+        return { changed: false, requestedId: snapshotRef.current.requestedId };
       }
 
       const restart =
@@ -230,11 +234,16 @@ export function useAudioDevices({
         new Date()
       );
       const advanced = advanceDeviceGeneration(snapshotRef.current, normalized);
+      const { requestedId, migrationState } = snapshotRef.current;
       const next = {
         ...advanced,
         captureApplications: normalizeCaptureApplications(captureApplications),
-        requestedId: snapshotRef.current.requestedId,
-        migrationState: snapshotRef.current.migrationState,
+        requestedId,
+        migrationState:
+          migrationState?.requestedId === requestedId &&
+          advanced.allDevices.some((device) => device.id === requestedId)
+            ? null
+            : migrationState,
         inventoryReady: true,
       };
       publish(next);
@@ -288,7 +297,12 @@ export function useAudioDevices({
     const sequence = selectionSequenceRef.current;
     void loadCaptureDeviceId().then((requestedId) => {
       if (!cancelled && mountedRef.current && sequence === selectionSequenceRef.current) {
-        updateSnapshot((current) => ({ ...current, requestedId: requestedId || "default" }));
+        const loadedId = requestedId || "default";
+        updateSnapshot((current) =>
+          current.requestedId === loadedId
+            ? current
+            : { ...current, requestedId: loadedId, migrationState: null }
+        );
       }
     });
     return () => {
@@ -318,49 +332,53 @@ export function useAudioDevices({
     if (snapshot.migrationState?.state === "migrating") return;
     if (
       snapshot.migrationState?.state === "failed" &&
-      snapshot.migrationState.requestedId === snapshot.requestedId
+      snapshot.migrationState.requestedId === snapshot.requestedId &&
+      snapshot.migrationState.generation === snapshot.generation
     )
       return;
-    const requestedId = snapshot.requestedId;
+    const { requestedId, generation } = snapshot;
     const sequence = ++migrationSequenceRef.current;
+    const migrationState = { state: "migrating", requestedId, generation };
+    const stillSelected = () =>
+      mountedRef.current &&
+      sequence === migrationSequenceRef.current &&
+      snapshotRef.current.requestedId === requestedId &&
+      snapshotRef.current.migrationState === migrationState;
+    const finishUnresolved = () => {
+      if (stillSelected()) {
+        updateSnapshot((current) => ({
+          ...current,
+          migrationState: { ...migrationState, state: "failed" },
+        }));
+      }
+    };
     updateSnapshot((current) => ({
       ...current,
-      migrationState: { state: "migrating", requestedId },
+      migrationState,
     }));
-    void migrateCaptureDeviceId(requestedId).then(
-      async (migratedId) => {
-        if (
-          !mountedRef.current ||
-          sequence !== migrationSequenceRef.current ||
-          snapshotRef.current.requestedId !== requestedId
-        )
-          return;
-        const nextId = typeof migratedId === "string" && migratedId ? migratedId : "default";
-        try {
-          await selectCaptureDevice(nextId, {
-            migrationState: { state: "migrating", requestedId },
-          });
-        } catch (_) {}
-      },
-      () => {
-        if (mountedRef.current && sequence === migrationSequenceRef.current) {
-          updateSnapshot((current) => ({
-            ...current,
-            migrationState: { state: "failed", requestedId },
-          }));
-        }
+    void migrateCaptureDeviceId(requestedId).then(async (migratedId) => {
+      if (!stillSelected()) return;
+      if (!migratedId || migratedId === requestedId) {
+        finishUnresolved();
+        return;
       }
-    );
+      try {
+        await selectCaptureDevice(migratedId, { migrationState });
+      } catch (_) {
+        finishUnresolved();
+      }
+    }, finishUnresolved);
   }, [selectCaptureDevice, snapshot, updateSnapshot]);
 
   const safeAudioDeviceId = useMemo(() => {
-    const allowed = new Set([
-      "default",
-      ...snapshot.allDevices.map((device) => device.id),
-      ...snapshot.captureApplications.map((application) => application.id),
-    ]);
-    return allowed.has(snapshot.requestedId) ? snapshot.requestedId : "default";
-  }, [snapshot.allDevices, snapshot.captureApplications, snapshot.requestedId]);
+    if (
+      /^app-[0-9a-f]{32}$/.test(snapshot.requestedId) &&
+      !snapshot.captureApplications.some((application) => application.id === snapshot.requestedId)
+    ) {
+      return "default";
+    }
+    return snapshot.requestedId;
+  }, [snapshot.captureApplications, snapshot.requestedId]);
 
   const audioDevices = useMemo(
     () =>

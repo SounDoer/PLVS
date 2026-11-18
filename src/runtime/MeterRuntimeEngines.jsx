@@ -6,6 +6,7 @@ import { useMeterRuntimeAssembly } from "./MeterRuntimeContext.jsx";
 export function MeterRuntimeEngines({
   captureDeviceId,
   captureFormatSignature,
+  captureDeviceUnavailable,
   histMaxSamples,
   visualMaxSamples,
   channelRolesRef,
@@ -57,6 +58,7 @@ export function MeterRuntimeEngines({
   useAudioEngine({
     captureDeviceId,
     captureFormatSignature,
+    captureDeviceUnavailable,
     histMaxSamples,
     visualMaxSamples,
     audioRef,

@@ -20,6 +20,7 @@ describe("SourceProvider", () => {
     expect(result.current.sourceDisplayName).toBeNull();
     expect(result.current.footerSourceLabel).toBe("Not connected");
     expect(result.current.captureFormatSignature).toBe("");
+    expect(result.current.captureDeviceUnavailable).toBe(false);
     expect(result.current.audioOutputs).toEqual([]);
     expect(result.current.audioInputs).toEqual([]);
     expect(typeof result.current.onSelectCaptureDevice).toBe("function");
