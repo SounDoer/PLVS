@@ -9,6 +9,7 @@ const mocks = vi.hoisted(() => ({
   importProfile: vi.fn(),
   resetProfile: vi.fn(),
   reloadAfterProfileChange: vi.fn(),
+  configurationRestartPending: vi.fn(() => false),
   pickConfigurationProfileFile: vi.fn(),
   saveConfigurationProfileFile: vi.fn(),
   readProfileFile: vi.fn(),
@@ -25,6 +26,8 @@ vi.mock("../ipc/commands.js", () => ({
   writeProfileFile: mocks.writeProfileFile,
 }));
 vi.mock("../persistence/profile.js", () => ({
+  configurationRestartPending: mocks.configurationRestartPending,
+  subscribeConfigurationRestart: () => () => {},
   exportProfile: mocks.exportProfile,
   importProfile: mocks.importProfile,
   reloadAfterProfileChange: mocks.reloadAfterProfileChange,
@@ -44,6 +47,7 @@ describe("useConfigurationProfileActions", () => {
   beforeEach(() => {
     for (const mock of Object.values(mocks)) mock.mockReset?.();
     mocks.isTauri.mockReturnValue(false);
+    mocks.configurationRestartPending.mockReturnValue(false);
   });
 
   it("exports a desktop profile to the selected file", async () => {
@@ -157,19 +161,41 @@ describe("useConfigurationProfileActions", () => {
     expect(result.current.configurationBusy).toBe(false);
   });
 
-  it("reports a coordinated reload failure as an import failure", async () => {
+  it("reports a save failure without trying to restart", async () => {
     mocks.isTauri.mockReturnValue(true);
-    mocks.pickConfigurationProfileFile.mockResolvedValue("C:\\profile.plvsconfig");
+    mocks.pickConfigurationProfileFile.mockResolvedValue("C:/profile.plvsconfig");
     mocks.readProfileFile.mockResolvedValue('{"app":"PLVS","kind":"configuration-profile"}');
-    mocks.importProfile.mockResolvedValue(undefined);
-    mocks.reloadAfterProfileChange.mockRejectedValue(new Error("peer failed"));
+    mocks.importProfile.mockRejectedValue(new Error("disk full"));
     const { result } = renderHook(() => useConfigurationProfileActions());
 
-    await act(async () => {
-      await result.current.importConfiguration();
-    });
+    await act(async () => result.current.importConfiguration());
 
     expect(result.current.configurationStatus).toBe("Import failed");
+    expect(result.current.configurationRestartPending).toBe(false);
+    expect(mocks.reloadAfterProfileChange).not.toHaveBeenCalled();
+  });
+
+  it("keeps the saved configuration pending when restart fails and retries it without re-importing", async () => {
+    mocks.isTauri.mockReturnValue(true);
+    mocks.pickConfigurationProfileFile.mockResolvedValue("C:/profile.plvsconfig");
+    mocks.readProfileFile.mockResolvedValue('{"app":"PLVS","kind":"configuration-profile"}');
+    mocks.importProfile.mockImplementationOnce(async () => {
+      mocks.configurationRestartPending.mockReturnValue(true);
+    });
+    mocks.reloadAfterProfileChange
+      .mockRejectedValueOnce(new Error("peer failed"))
+      .mockImplementationOnce(async () => mocks.configurationRestartPending.mockReturnValue(false));
+    const { result } = renderHook(() => useConfigurationProfileActions());
+
+    await act(async () => result.current.importConfiguration());
+
+    expect(result.current.configurationStatus).toBe("Configuration saved. PLVS could not restart.");
+    expect(result.current.configurationRestartPending).toBe(true);
     expect(result.current.configurationBusy).toBe(false);
+    await act(async () => result.current.retryConfigurationRestart());
+
+    expect(mocks.importProfile).toHaveBeenCalledTimes(1);
+    expect(mocks.reloadAfterProfileChange).toHaveBeenCalledTimes(2);
+    expect(result.current.configurationRestartPending).toBe(false);
   });
 });

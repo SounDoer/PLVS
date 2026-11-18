@@ -176,13 +176,12 @@ describe("profile API", () => {
       importProfileCommand: vi.fn(async () => {}),
       resetProfileCommand: vi.fn(async () => {}),
     };
-    const { exportProfile, importProfile, resetProfile } = await importProfileModule({
-      tauri: true,
-      commandMocks,
-    });
+    const { exportProfile, importProfile, resetProfile, reloadAfterProfileChange } =
+      await importProfileModule({ tauri: true, commandMocks });
 
     expect(await exportProfile()).toMatchObject({ settings: { referenceLufs: -20 } });
     await importProfile({ app: "PLVS", kind: "configuration-profile", version: 1 });
+    await reloadAfterProfileChange();
     await resetProfile();
 
     expect(commandMocks.exportProfileCommand).toHaveBeenCalled();
@@ -230,25 +229,57 @@ describe("profile API", () => {
     expect(relaunch).toHaveBeenCalledTimes(1);
   });
 
-  it("aborts the coordinated profile operation when peer shutdown cannot commit", async () => {
-    const operation = { id: "profile", issued: [{ instanceId: "peer" }] };
-    const abortGlobalOperation = vi.fn(async () => {});
-    const { importProfile, reloadAfterProfileChange } = await importProfileModule({
-      tauri: true,
-      commandMocks: {
-        prepareGlobalOperation: vi.fn(async () => operation),
-        importProfileCommand: vi.fn(async () => {}),
-        commitGlobalOperation: vi.fn(async () => {
-          throw new Error("peer failed");
-        }),
-        abortGlobalOperation,
-      },
-    });
+  it("re-prepares after peer shutdown fails without applying the configuration twice", async () => {
+    const first = { id: "profile", issued: [{ instanceId: "peer" }] };
+    const retry = { id: "retry", issued: [{ instanceId: "peer" }] };
+    const mocks = {
+      prepareGlobalOperation: vi.fn().mockResolvedValueOnce(first).mockResolvedValueOnce(retry),
+      commitGlobalOperation: vi
+        .fn()
+        .mockRejectedValueOnce(new Error("peer failed"))
+        .mockResolvedValueOnce(undefined),
+      abortGlobalOperation: vi.fn(async () => {}),
+      importProfileCommand: vi.fn(async () => {}),
+      relaunch: vi.fn(async () => {}),
+    };
+    const { configurationRestartPending, importProfile, reloadAfterProfileChange, resetProfile } =
+      await importProfileModule({ tauri: true, commandMocks: mocks });
     await importProfile({ app: "PLVS", kind: "configuration-profile", version: 1 });
 
     await expect(reloadAfterProfileChange()).rejects.toThrow("peer failed");
+    expect(configurationRestartPending()).toBe(true);
+    expect(mocks.abortGlobalOperation).toHaveBeenCalledWith(first);
+    await expect(resetProfile()).rejects.toThrow("Finish the current configuration change");
 
-    expect(abortGlobalOperation).toHaveBeenCalledWith(operation);
+    await reloadAfterProfileChange();
+
+    expect(mocks.commitGlobalOperation).toHaveBeenLastCalledWith(retry);
+    expect(mocks.importProfileCommand).toHaveBeenCalledTimes(1);
+    expect(mocks.relaunch).toHaveBeenCalledTimes(1);
+    expect(configurationRestartPending()).toBe(false);
+  });
+
+  it("retries only relaunch after peers already closed", async () => {
+    const mocks = {
+      commitGlobalOperation: vi.fn(async () => {}),
+      resetProfileCommand: vi.fn(async () => {}),
+      relaunch: vi
+        .fn()
+        .mockRejectedValueOnce(new Error("launch failed"))
+        .mockResolvedValueOnce(undefined),
+    };
+    const { configurationRestartPending, resetProfile, reloadAfterProfileChange } =
+      await importProfileModule({ tauri: true, commandMocks: mocks });
+    await resetProfile();
+
+    await expect(reloadAfterProfileChange()).rejects.toThrow("launch failed");
+    expect(configurationRestartPending()).toBe(true);
+    await reloadAfterProfileChange();
+
+    expect(mocks.commitGlobalOperation).toHaveBeenCalledTimes(1);
+    expect(mocks.resetProfileCommand).toHaveBeenCalledTimes(1);
+    expect(mocks.relaunch).toHaveBeenCalledTimes(2);
+    expect(configurationRestartPending()).toBe(false);
   });
 
   it("falls back to webview reload outside Tauri", async () => {

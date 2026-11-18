@@ -84,6 +84,7 @@ the UI disagree, the UI on `main` wins and this file is corrected.
 | Auto Download Updates  | The Settings option that downloads and verifies an update in the background                         | 自动下载更新     |                             |
 | View Update Details    | Opens the release notes, download progress and installation for an update                           | 查看更新详情     |                             |
 | Update and Restart     | Installs a ready update after confirmation and reopens PLVS                                         | 更新并重启       |                             |
+| Retry Restart          | Reopens PLVS after saving a complete configuration when the first restart could not finish          | 重试重启         |                             |
 | Skip This Time         | Declines the update offer for this launch and keeps the downloaded package                          | 本次跳过         |                             |
 
 ## Panels

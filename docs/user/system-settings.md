@@ -321,9 +321,13 @@ local Presets.
 For a one-item file, use **Export** on the saved Loudness Profile, Preset, or custom Theme itself.
 In the Settings **Saved Items** exporter, choose a type, then select the Items to export together.
 
-If storage fails or PLVS exits during that replacement, the incomplete import is rolled back. A
-recovery journal completes that rollback automatically the next time the target workbench opens,
-before its saved state is shown.
+If storage fails or PLVS exits before the shared configuration commits, other workbenches keep
+their saved Library. The next time the importing workbench opens, its recovery journal restores
+its previous local settings. PLVS preserves recovery snapshots from older versions under the
+application data directory in `multi-instance/transactions/` with a `.legacy-*.json` suffix.
+
+If the configuration saves but PLVS cannot restart, Settings confirms that it was saved and
+offers **Retry Restart**. This retries the restart without importing the configuration again.
 
 New Loudness Profile exports use a strict portable format intended for sharing between installations.
 Every exported rule must have a threshold, and a Profile must contain a reference or at least one

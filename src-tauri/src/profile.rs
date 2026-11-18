@@ -1,3 +1,4 @@
+use std::collections::BTreeMap;
 use std::fs;
 use std::io::Write;
 use std::path::{Path, PathBuf};
@@ -352,30 +353,6 @@ fn ordered_theme_documents(themes: &Value) -> Vec<Value> {
   ordered
 }
 
-fn replace_profile_collection(
-  session: &crate::persistence::WorkspacePersistenceSession,
-  kind: &str,
-  documents: Vec<Value>,
-) -> Result<(), String> {
-  let items = session
-    .library()
-    .list(kind)
-    .map_err(|error| error.to_string())?;
-  let revisions = items
-    .into_iter()
-    .map(|item| (item.id, item.revision))
-    .collect();
-  let collection_revision = session
-    .library()
-    .collection_revision(kind)
-    .map_err(|error| error.to_string())?;
-  session
-    .library()
-    .replace_collection(kind, &documents, collection_revision, &revisions)
-    .map(|_| ())
-    .map_err(|error| error.to_string())
-}
-
 fn profile_import_journal_path(
   session: &crate::persistence::WorkspacePersistenceSession,
 ) -> PathBuf {
@@ -387,7 +364,7 @@ fn profile_import_journal_path(
 
 fn write_profile_import_journal(
   session: &crate::persistence::WorkspacePersistenceSession,
-  previous: &crate::persistence::HydratedWorkspace,
+  import_id: &str,
 ) -> Result<(), String> {
   let path = profile_import_journal_path(session);
   let parent = path
@@ -396,9 +373,9 @@ fn write_profile_import_journal(
   fs::create_dir_all(parent)
     .map_err(|error| format!("Unable to create configuration import journal directory: {error}"))?;
   let mut bytes = serde_json::to_vec_pretty(&json!({
-    "version": 1,
-    "profile": profile_from_hydrated(previous.clone()),
-    "globalPreferences": previous.global_preferences,
+    "version": 2,
+    "importId": import_id,
+    "workspace": session.workspace_snapshot()?,
   }))
   .map_err(|error| format!("Unable to serialize configuration import journal: {error}"))?;
   bytes.push(b'\n');
@@ -424,56 +401,6 @@ fn remove_profile_import_journal(
   }
 }
 
-fn restore_profile_import_snapshot(
-  session: &crate::persistence::WorkspacePersistenceSession,
-  journal: &Value,
-) -> Result<(), String> {
-  let profile = journal
-    .get("profile")
-    .cloned()
-    .ok_or_else(|| "Configuration import journal is missing its profile snapshot.".to_string())?;
-  apply_profile_to_session_unjournaled(session, profile, |_| Ok(()))?;
-
-  let previous_globals = journal
-    .get("globalPreferences")
-    .and_then(Value::as_object)
-    .cloned()
-    .unwrap_or_default();
-  for key in [
-    "keyboardShortcuts",
-    "clearShortcut",
-    "clearGlobal",
-    "askToSendCrashReports",
-  ] {
-    let current = session
-      .library()
-      .read_global_preference(key)
-      .map_err(|error| error.to_string())?;
-    match (current, previous_globals.get(key)) {
-      (Some(current), Some(previous)) if current.value != *previous => {
-        session
-          .library()
-          .set_global_preference(key, current.revision, previous)
-          .map_err(|error| error.to_string())?;
-      }
-      (Some(current), None) => {
-        session
-          .library()
-          .delete_global_preference(key, current.revision)
-          .map_err(|error| error.to_string())?;
-      }
-      (None, Some(previous)) => {
-        session
-          .library()
-          .set_global_preference(key, 0, previous)
-          .map_err(|error| error.to_string())?;
-      }
-      _ => {}
-    }
-  }
-  Ok(())
-}
-
 pub(crate) fn recover_configuration_import(
   session: &crate::persistence::WorkspacePersistenceSession,
 ) -> Result<(), String> {
@@ -489,133 +416,118 @@ pub(crate) fn recover_configuration_import(
   };
   let journal: Value = serde_json::from_slice(&bytes)
     .map_err(|error| format!("Unable to parse configuration import journal: {error}"))?;
-  if journal.get("version").and_then(Value::as_i64) != Some(1) {
-    return Err("Unsupported configuration import journal version.".to_string());
+  match journal.get("version").and_then(Value::as_i64) {
+    Some(1) => {
+      // Legacy journals have no shared revision checks. Preserve the snapshot for manual
+      // recovery and leave the current data in place.
+      let recovery_id =
+        crate::runtime_identity::RuntimeIdentity::new_for_workspace(session.workspace_id())?;
+      let archived = path.with_extension(format!("legacy-{}.json", recovery_id.instance_id()));
+      fs::rename(&path, &archived).map_err(|error| {
+        format!("Unable to preserve legacy configuration import journal: {error}")
+      })?;
+      log::warn!(
+        "Legacy configuration recovery snapshot retained at {}",
+        archived.display()
+      );
+      return Ok(());
+    }
+    Some(2) => {}
+    _ => return Err("Unsupported configuration import journal version.".to_string()),
   }
-  restore_profile_import_snapshot(session, &journal)?;
+  let import_id = journal
+    .get("importId")
+    .and_then(Value::as_str)
+    .ok_or_else(|| "Configuration import journal is missing its import ID.".to_string())?;
+  if session
+    .library()
+    .configuration_committed(session.workspace_id(), import_id)
+    .map_err(|error| error.to_string())?
+  {
+    // The commit marker and shared data were written in the same SQLite transaction.
+    // A leftover journal after a successful commit is safe to keep until cleanup succeeds.
+    if let Err(error) = remove_profile_import_journal(session) {
+      log::warn!("{error}");
+    }
+    return Ok(());
+  }
+  let workspace = journal
+    .get("workspace")
+    .and_then(Value::as_object)
+    .cloned()
+    .ok_or_else(|| "Configuration import journal is missing its workspace snapshot.".to_string())?;
+  session.replace_workspace_snapshot(workspace)?;
   remove_profile_import_journal(session)
 }
 
-fn apply_profile_to_session_unjournaled(
+fn apply_profile_to_session_before_commit(
   session: &crate::persistence::WorkspacePersistenceSession,
   profile: Value,
-  mut after_step: impl FnMut(&str) -> Result<(), String>,
-) -> Result<(), String> {
-  let values = normalize_profile_for_store(profile);
-  let settings = values
-    .get("plvs:settings")
-    .cloned()
-    .unwrap_or_else(|| json!({}));
-  let presets = values
-    .get("plvs:presets")
-    .cloned()
-    .unwrap_or_else(|| json!({}));
-  let themes = values
-    .get("plvs:themes")
-    .cloned()
-    .unwrap_or_else(|| json!({}));
-  let preset_documents = presets
-    .get("list")
-    .and_then(Value::as_array)
-    .cloned()
-    .unwrap_or_default();
-  let profile_documents = settings
-    .get("loudnessProfiles")
-    .and_then(Value::as_object)
-    .and_then(|profiles| profiles.get("profiles"))
-    .and_then(Value::as_array)
-    .cloned()
-    .unwrap_or_default();
-  replace_profile_collection(session, "preset", preset_documents)?;
-  after_step("presets")?;
-  replace_profile_collection(session, "theme", ordered_theme_documents(&themes))?;
-  after_step("themes")?;
-  replace_profile_collection(session, "loudnessProfile", profile_documents)?;
-  after_step("loudnessProfiles")?;
-
-  session.save_instance_domain(crate::persistence::WorkspaceDomain::Settings, &settings)?;
-  session.save_instance_domain(
-    crate::persistence::WorkspaceDomain::Workspace,
-    values.get("plvs:workspace").unwrap_or(&json!({})),
-  )?;
-  session.save_instance_domain(crate::persistence::WorkspaceDomain::Presets, &presets)?;
-  session.save_workspace_value(
-    crate::persistence::WorkspaceValue::WindowBounds,
-    values.get("windowBounds").unwrap_or(&Value::Null),
-  )?;
-  after_step("workspace")?;
-  session.save_workspace_value(
-    crate::persistence::WorkspaceValue::CaptureDeviceId,
-    values.get("captureDeviceId").unwrap_or(&json!("default")),
-  )?;
-
-  let mut global_values = std::collections::BTreeMap::from([(
-    "keyboardShortcuts".to_string(),
-    values
-      .get("keyboardShortcuts")
-      .cloned()
-      .unwrap_or_else(default_keyboard_shortcuts),
-  )]);
-  if let Some(consent) = settings.get("askToSendCrashReports") {
-    global_values.insert("askToSendCrashReports".to_string(), consent.clone());
-  }
-  let mut expected = std::collections::BTreeMap::new();
-  for key in global_values.keys() {
-    expected.insert(
-      key.clone(),
-      session
-        .library()
-        .read_global_preference(key)
-        .map_err(|error| error.to_string())?
-        .map(|preference| preference.revision)
-        .unwrap_or(0),
-    );
-  }
-  session
-    .library()
-    .set_global_preferences(&expected, &global_values)
-    .map(|_| ())
-    .map_err(|error| error.to_string())?;
-  after_step("globalPreferences")
-}
-
-fn apply_profile_to_session_with_step_hook(
-  session: &crate::persistence::WorkspacePersistenceSession,
-  profile: Value,
-  after_step: impl FnMut(&str) -> Result<(), String>,
+  reset: bool,
+  after_workspace_save: impl FnOnce() -> Result<(), String>,
 ) -> Result<(), String> {
   recover_configuration_import(session)?;
-  let previous = session.hydrate()?;
-  write_profile_import_journal(session, &previous)?;
-  let result = apply_profile_to_session_unjournaled(session, profile, after_step);
-  match result {
-    Ok(()) => match remove_profile_import_journal(session) {
-      Ok(()) => Ok(()),
-      Err(error) => {
-        let journal = json!({
-          "profile": profile_from_hydrated(previous.clone()),
-          "globalPreferences": previous.global_preferences,
-        });
-        restore_profile_import_snapshot(session, &journal)?;
-        remove_profile_import_journal(session)?;
-        Err(error)
-      }
+  let values = normalize_profile_for_store(profile);
+  let settings = &values["plvs:settings"];
+  let collections = [
+    (
+      "preset",
+      values["plvs:presets"]["list"]
+        .as_array()
+        .cloned()
+        .unwrap_or_default(),
+    ),
+    ("theme", ordered_theme_documents(&values["plvs:themes"])),
+    (
+      "loudnessProfile",
+      settings["loudnessProfiles"]["profiles"]
+        .as_array()
+        .cloned()
+        .unwrap_or_default(),
+    ),
+  ];
+  let mut preferences = BTreeMap::from([(
+    "keyboardShortcuts",
+    Some(
+      values
+        .get("keyboardShortcuts")
+        .cloned()
+        .unwrap_or_else(default_keyboard_shortcuts),
+    ),
+  )]);
+  if let Some(consent) = settings.get("askToSendCrashReports") {
+    preferences.insert("askToSendCrashReports", Some(consent.clone()));
+  }
+  if reset {
+    preferences.insert("quickTour", Some(json!("pending")));
+    preferences.insert(STARTER_ITEMS_SEEDED_KEY, None);
+  }
+
+  let import = crate::runtime_identity::RuntimeIdentity::new_for_workspace(session.workspace_id())?;
+  write_profile_import_journal(session, import.instance_id())?;
+  let result = session.library().commit_configuration(
+    session.workspace_id(),
+    import.instance_id(),
+    &collections,
+    &preferences,
+    || {
+      session.save_configuration_workspace(&values)?;
+      after_workspace_save()
     },
-    Err(error) => {
-      let journal = json!({
-        "profile": profile_from_hydrated(previous.clone()),
-        "globalPreferences": previous.global_preferences,
-      });
-      match restore_profile_import_snapshot(session, &journal) {
-        Ok(()) => {
-          remove_profile_import_journal(session)?;
-          Err(error)
-        }
-        Err(rollback_error) => Err(format!(
-          "{error} Automatic rollback also failed: {rollback_error} The import journal was kept for startup recovery."
-        )),
+  );
+  match result {
+    Ok(()) => {
+      if let Err(error) = remove_profile_import_journal(session) {
+        log::warn!("{error}");
       }
+      Ok(())
     }
+    Err(error) => match recover_configuration_import(session) {
+      Ok(()) => Err(error.to_string()),
+      Err(recovery_error) => Err(format!(
+        "{error} Workspace recovery also failed: {recovery_error} The import journal was kept for startup recovery."
+      )),
+    },
   }
 }
 
@@ -623,7 +535,7 @@ fn apply_profile_to_session(
   session: &crate::persistence::WorkspacePersistenceSession,
   profile: Value,
 ) -> Result<(), String> {
-  apply_profile_to_session_with_step_hook(session, profile, |_| Ok(()))
+  apply_profile_to_session_before_commit(session, profile, false, || Ok(()))
 }
 
 fn chrono_like_utc_now() -> String {
@@ -750,32 +662,14 @@ pub fn import_profile(app: AppHandle, profile: Value) -> Result<(), String> {
   Ok(())
 }
 
-/// Reset is the one operation that makes the installation a first run again, so it also forgets
-/// that the starter items were seeded; importing a profile does not. Cleared last: a failed reset
-/// must not leave an untouched library that seeds the preset a second time.
+/// Reset restores first-run preferences in the same transaction as the Library changes.
 fn reset_session(session: &crate::persistence::WorkspacePersistenceSession) -> Result<(), String> {
-  apply_profile_to_session(
+  apply_profile_to_session_before_commit(
     session,
     json!({ "app": PROFILE_APP, "kind": PROFILE_KIND, "version": PROFILE_VERSION }),
-  )?;
-  let library = session.library();
-  let tour_revision = library
-    .read_global_preference("quickTour")
-    .map_err(|error| error.to_string())?
-    .map(|preference| preference.revision)
-    .unwrap_or(0);
-  library
-    .set_global_preference("quickTour", tour_revision, &json!("pending"))
-    .map_err(|error| error.to_string())?;
-  if let Some(seeded) = library
-    .read_global_preference(STARTER_ITEMS_SEEDED_KEY)
-    .map_err(|error| error.to_string())?
-  {
-    library
-      .delete_global_preference(STARTER_ITEMS_SEEDED_KEY, seeded.revision)
-      .map_err(|error| error.to_string())?;
-  }
-  Ok(())
+    true,
+    || Ok(()),
+  )
 }
 
 #[tauri::command]
@@ -999,7 +893,7 @@ mod tests {
     .unwrap();
     let before = session.hydrate().unwrap();
 
-    let error = apply_profile_to_session_with_step_hook(
+    let error = apply_profile_to_session_before_commit(
       &session,
       json!({
         "settings": { "referenceLufs": -18, "askToSendCrashReports": true },
@@ -1008,13 +902,8 @@ mod tests {
         "themes": { "themes": { "new": { "id": "new", "name": "New" } }, "order": ["new"] },
         "captureDeviceId": "out:2"
       }),
-      |step| {
-        if step == "themes" {
-          Err("injected import failure".to_string())
-        } else {
-          Ok(())
-        }
-      },
+      false,
+      || Err("injected import failure".to_string()),
     )
     .unwrap_err();
 
@@ -1028,48 +917,127 @@ mod tests {
   }
 
   #[test]
-  fn opening_a_workspace_recovers_an_interrupted_profile_import() {
-    let root = std::env::temp_dir().join(format!(
-      "plvs-transactional-profile-recovery-{}",
-      std::process::id()
-    ));
-    let _ = std::fs::remove_dir_all(&root);
-    let session = crate::persistence::WorkspacePersistenceSession::open(&root, "default").unwrap();
+  fn recovery_after_interruption_preserves_later_saves_in_another_workbench() {
+    use crate::persistence::{WorkspacePersistenceSession, WorkspaceStore};
+    const CHILD_ROOT: &str = "PLVS_TEST_INTERRUPTED_CONFIGURATION_ROOT";
+    const INTERRUPTED: i32 = 73;
+    if let Some(root) = std::env::var_os(CHILD_ROOT) {
+      let session = WorkspacePersistenceSession::open(Path::new(&root), "secondary").unwrap();
+      apply_profile_to_session_before_commit(
+        &session,
+        json!({
+          "settings": { "referenceLufs": -18, "askToSendCrashReports": true },
+          "presets": { "list": [{ "id": "partial", "name": "Partial" }] },
+        }),
+        false,
+        || std::process::exit(INTERRUPTED),
+      )
+      .unwrap();
+      panic!("child did not stop with its transaction open");
+    }
+    let directory = tempfile::tempdir().unwrap();
+    let root = directory.path();
+    let session = WorkspacePersistenceSession::open(root, "secondary").unwrap();
     apply_profile_to_session(
       &session,
       json!({
         "settings": { "referenceLufs": -23 },
-        "workspace": { "panelOrder": ["level"] },
-        "presets": { "activeId": "old", "list": [{ "id": "old", "name": "Old" }] },
-        "themes": { "themes": {}, "order": [] }
+        "presets": { "list": [{ "id": "old", "name": "Old" }] },
       }),
     )
     .unwrap();
-    let before = session.hydrate().unwrap();
-    write_profile_import_journal(&session, &before).unwrap();
-    apply_profile_to_session_unjournaled(
-      &session,
-      json!({
-        "settings": { "referenceLufs": -18, "askToSendCrashReports": true },
-        "workspace": { "panelOrder": ["loudness"] },
-        "presets": { "activeId": "new", "list": [{ "id": "new", "name": "New" }] },
-        "themes": { "themes": { "new": { "id": "new", "name": "New" } }, "order": ["new"] }
-      }),
-      |_| Ok(()),
-    )
-    .unwrap();
-    assert_ne!(session.hydrate().unwrap(), before);
+    let prior_workspace = session.workspace_snapshot().unwrap();
+    let journal = profile_import_journal_path(&session);
     drop(session);
 
-    let recovered =
-      crate::persistence::WorkspacePersistenceSession::open(&root, "default").unwrap();
+    let child = std::process::Command::new(std::env::current_exe().unwrap())
+      .args(["--exact", std::thread::current().name().unwrap()])
+      .env(CHILD_ROOT, root)
+      .output()
+      .unwrap();
+    assert_eq!(child.status.code(), Some(INTERRUPTED), "{child:?}");
+    let workspace = WorkspaceStore::open(root, "secondary").unwrap();
     assert_eq!(
-      profile_from_hydrated(recovered.hydrate().unwrap()),
-      profile_from_hydrated(before)
+      workspace.load().unwrap().unwrap()["plvs:settings"]["referenceLufs"],
+      -18
+    );
+    assert!(journal.exists());
+
+    let peer = WorkspacePersistenceSession::open(root, "default").unwrap();
+    assert!(peer.library().read("preset", "partial").unwrap().is_none());
+    assert!(peer
+      .library()
+      .read_global_preference("askToSendCrashReports")
+      .unwrap()
+      .is_none());
+    peer
+      .library()
+      .create("preset", "later", &json!({"id": "later"}))
+      .unwrap();
+    let saved_revision = peer.library().collection_revision("preset").unwrap();
+
+    let recovered = WorkspacePersistenceSession::open(root, "secondary").unwrap();
+    assert_eq!(recovered.workspace_snapshot().unwrap(), prior_workspace);
+    assert!(peer.library().read("preset", "old").unwrap().is_some());
+    assert!(peer.library().read("preset", "later").unwrap().is_some());
+    assert_eq!(
+      peer.library().collection_revision("preset").unwrap(),
+      saved_revision
     );
     assert!(!profile_import_journal_path(&recovered).exists());
-    drop(recovered);
-    let _ = std::fs::remove_dir_all(root);
+  }
+
+  #[test]
+  fn committed_import_keeps_its_workspace_even_if_the_journal_survives() {
+    use crate::persistence::WorkspacePersistenceSession;
+    let directory = tempfile::tempdir().unwrap();
+    let session = WorkspacePersistenceSession::open(directory.path(), "default").unwrap();
+    let path = profile_import_journal_path(&session);
+    let mut journal = Vec::new();
+    apply_profile_to_session_before_commit(
+      &session,
+      json!({ "settings": { "referenceLufs": -18 } }),
+      false,
+      || {
+        journal = fs::read(&path).unwrap();
+        Ok(())
+      },
+    )
+    .unwrap();
+    fs::write(&path, journal).unwrap();
+    drop(session);
+
+    let reopened = WorkspacePersistenceSession::open(directory.path(), "default").unwrap();
+    assert_eq!(reopened.hydrate().unwrap().settings["referenceLufs"], -18);
+    assert!(!path.exists());
+  }
+
+  #[test]
+  fn legacy_import_journal_is_preserved_without_replacing_saved_items() {
+    use crate::persistence::WorkspacePersistenceSession;
+    let directory = tempfile::tempdir().unwrap();
+    let root = directory.path();
+    let session = WorkspacePersistenceSession::open(root, "secondary").unwrap();
+    let path = profile_import_journal_path(&session);
+    fs::create_dir_all(path.parent().unwrap()).unwrap();
+    let old = br#"{"version":1,"profile":{"presets":{"list":[]}},"globalPreferences":{}}"#;
+    fs::write(&path, old).unwrap();
+    drop(session);
+    let peer = WorkspacePersistenceSession::open(root, "default").unwrap();
+    peer
+      .library()
+      .create("preset", "later", &json!({"id": "later"}))
+      .unwrap();
+
+    let _reopened = WorkspacePersistenceSession::open(root, "secondary").unwrap();
+    assert!(peer.library().read("preset", "later").unwrap().is_some());
+    assert!(!path.exists());
+    let archived = fs::read_dir(path.parent().unwrap())
+      .unwrap()
+      .next()
+      .unwrap()
+      .unwrap();
+    assert_eq!(fs::read(archived.path()).unwrap(), old);
   }
 
   #[test]

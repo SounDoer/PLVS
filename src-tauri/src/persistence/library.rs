@@ -5,7 +5,7 @@ use std::{
   time::{Duration, Instant},
 };
 
-use rusqlite::{params, Connection, OptionalExtension, TransactionBehavior};
+use rusqlite::{params, Connection, OptionalExtension, Transaction, TransactionBehavior};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use sha2::{Digest, Sha256};
@@ -501,12 +501,32 @@ impl LibraryRepository {
     expected_collection_revision: i64,
     expected_item_revisions: &BTreeMap<String, i64>,
   ) -> Result<LibraryCollection, LibraryError> {
-    validate_key(kind, "Library kind")?;
     if expected_collection_revision < 0 {
       return Err(LibraryError::Conflict(
         "Expected Library collection revision cannot be negative.".to_string(),
       ));
     }
+    let mut connection = self.connection()?;
+    let transaction = connection
+      .transaction_with_behavior(TransactionBehavior::Immediate)
+      .map_err(map_sqlite_error)?;
+    let result = Self::replace_collection_in(
+      &transaction,
+      kind,
+      documents,
+      Some((expected_collection_revision, expected_item_revisions)),
+    )?;
+    transaction.commit().map_err(map_sqlite_error)?;
+    Ok(result)
+  }
+
+  fn replace_collection_in(
+    transaction: &Transaction<'_>,
+    kind: &str,
+    documents: &[Value],
+    expected: Option<(i64, &BTreeMap<String, i64>)>,
+  ) -> Result<LibraryCollection, LibraryError> {
+    validate_key(kind, "Library kind")?;
     let mut desired = Vec::with_capacity(documents.len());
     let mut desired_ids = HashSet::new();
     for document in documents {
@@ -531,22 +551,13 @@ impl LibraryRepository {
       ));
     }
 
-    let mut connection = self.connection()?;
-    let transaction = connection
-      .transaction_with_behavior(TransactionBehavior::Immediate)
-      .map_err(map_sqlite_error)?;
-    let current_collection_revision = transaction
-      .query_row(
-        "SELECT revision FROM library_collections WHERE kind = ?1",
-        [kind],
-        |row| row.get::<_, i64>(0),
-      )
-      .optional()?
-      .unwrap_or(0);
-    if current_collection_revision != expected_collection_revision {
-      return Err(LibraryError::Conflict(format!(
-        "Library collection changed from expected revision {expected_collection_revision} to revision {current_collection_revision}."
-      )));
+    let current_collection_revision = Self::read_collection_revision(transaction, kind)?;
+    if let Some((revision, _)) = expected {
+      if current_collection_revision != revision {
+        return Err(LibraryError::Conflict(format!(
+          "Library collection changed from expected revision {revision} to revision {current_collection_revision}."
+        )));
+      }
     }
     let current: BTreeMap<String, (i64, String)> = {
       let mut statement = transaction
@@ -561,14 +572,16 @@ impl LibraryRepository {
         .collect::<Result<_, _>>()?;
       current
     };
-    let current_revisions: BTreeMap<String, i64> = current
-      .iter()
-      .map(|(id, (revision, _))| (id.clone(), *revision))
-      .collect();
-    if &current_revisions != expected_item_revisions {
-      return Err(LibraryError::Conflict(
-        "One or more Library items changed after this collection was read.".to_string(),
-      ));
+    if let Some((_, item_revisions)) = expected {
+      let current_revisions: BTreeMap<String, i64> = current
+        .iter()
+        .map(|(id, (revision, _))| (id.clone(), *revision))
+        .collect();
+      if &current_revisions != item_revisions {
+        return Err(LibraryError::Conflict(
+          "One or more Library items changed after this collection was read.".to_string(),
+        ));
+      }
     }
 
     transaction.execute("DELETE FROM library_order WHERE kind = ?1", [kind])?;
@@ -612,17 +625,72 @@ impl LibraryRepository {
         document,
       });
     }
-    let committed_collection_revision = expected_collection_revision + 1;
+    let committed_collection_revision = current_collection_revision + 1;
     transaction.execute(
       "INSERT INTO library_collections (kind, revision) VALUES (?1, ?2)
        ON CONFLICT(kind) DO UPDATE SET revision = excluded.revision",
       params![kind, committed_collection_revision],
     )?;
-    transaction.commit().map_err(map_sqlite_error)?;
     Ok(LibraryCollection {
       collection_revision: committed_collection_revision,
       items: committed_items,
     })
+  }
+
+  pub(crate) fn commit_configuration(
+    &self,
+    workspace_id: &str,
+    import_id: &str,
+    collections: &[(&str, Vec<Value>)],
+    preferences: &BTreeMap<&str, Option<Value>>,
+    save_workspace: impl FnOnce() -> Result<(), String>,
+  ) -> Result<(), LibraryError> {
+    let mut connection = self.connection()?;
+    let transaction = connection
+      .transaction_with_behavior(TransactionBehavior::Immediate)
+      .map_err(map_sqlite_error)?;
+    for (kind, documents) in collections {
+      Self::replace_collection_in(&transaction, kind, documents, None)?;
+    }
+    for (key, value) in preferences {
+      if let Some(value) = value {
+        let json =
+          serde_json::to_string(value).map_err(|error| LibraryError::Storage(error.to_string()))?;
+        transaction.execute(
+          "INSERT INTO global_preferences (preference_key, revision, value_json)
+           VALUES (?1, 1, ?2)
+           ON CONFLICT(preference_key) DO UPDATE SET
+             revision = revision + 1, value_json = excluded.value_json",
+          params![key, json],
+        )?;
+      } else {
+        transaction.execute(
+          "DELETE FROM global_preferences WHERE preference_key = ?1",
+          [key],
+        )?;
+      }
+    }
+    transaction.execute(
+      "INSERT INTO configuration_commits (workspace_id, import_id) VALUES (?1, ?2)
+       ON CONFLICT(workspace_id) DO UPDATE SET import_id = excluded.import_id",
+      params![workspace_id, import_id],
+    )?;
+    save_workspace().map_err(LibraryError::Storage)?;
+    transaction.commit().map_err(map_sqlite_error)
+  }
+
+  pub(crate) fn configuration_committed(
+    &self,
+    workspace_id: &str,
+    import_id: &str,
+  ) -> Result<bool, LibraryError> {
+    self.connection()?
+      .query_row(
+        "SELECT EXISTS(SELECT 1 FROM configuration_commits WHERE workspace_id = ?1 AND import_id = ?2)",
+        params![workspace_id, import_id],
+        |row| row.get(0),
+      )
+      .map_err(map_sqlite_error)
   }
 
   pub fn read_global_preference(
@@ -918,6 +986,10 @@ fn initialize_schema(connection: &Connection) -> Result<(), LibraryError> {
          preference_key TEXT PRIMARY KEY,
          revision INTEGER NOT NULL CHECK (revision > 0),
          value_json TEXT NOT NULL
+       );
+       CREATE TABLE IF NOT EXISTS configuration_commits (
+         workspace_id TEXT PRIMARY KEY,
+         import_id TEXT NOT NULL
        );
        CREATE TABLE IF NOT EXISTS workspace_restore_set (
          workspace_id TEXT PRIMARY KEY,

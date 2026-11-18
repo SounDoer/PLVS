@@ -90,6 +90,10 @@ impl WorkspacePersistenceSession {
   }
 
   pub fn save_instance_domain(&self, domain: WorkspaceDomain, value: &Value) -> Result<(), String> {
+    self.save_state_value(domain.key(), Self::instance_domain_value(domain, value)?)
+  }
+
+  fn instance_domain_value(domain: WorkspaceDomain, value: &Value) -> Result<Value, String> {
     let mut domain_value = value
       .as_object()
       .cloned()
@@ -112,7 +116,54 @@ impl WorkspacePersistenceSession {
       WorkspaceDomain::Workspace => {}
     }
 
-    self.save_state_value(domain.key(), Value::Object(domain_value))
+    Ok(Value::Object(domain_value))
+  }
+
+  pub(crate) fn workspace_snapshot(&self) -> Result<Map<String, Value>, String> {
+    self
+      .state
+      .lock()
+      .map(|state| state.clone())
+      .map_err(|_| "Workspace persistence session is unavailable.".to_string())
+  }
+
+  pub(crate) fn replace_workspace_snapshot(&self, next: Map<String, Value>) -> Result<(), String> {
+    self.update_workspace(|state| {
+      *state = next;
+      Ok(())
+    })
+  }
+
+  pub(crate) fn save_configuration_workspace(
+    &self,
+    values: &Map<String, Value>,
+  ) -> Result<(), String> {
+    self.update_workspace(|next| {
+      let empty = Value::Object(Map::new());
+      for domain in [
+        WorkspaceDomain::Settings,
+        WorkspaceDomain::Workspace,
+        WorkspaceDomain::Presets,
+      ] {
+        let value = values.get(domain.key()).unwrap_or(&empty);
+        next.insert(
+          domain.key().to_string(),
+          Self::instance_domain_value(domain, value)?,
+        );
+      }
+      next.insert(
+        "windowBounds".into(),
+        values.get("windowBounds").cloned().unwrap_or(Value::Null),
+      );
+      next.insert(
+        "captureDeviceId".into(),
+        values
+          .get("captureDeviceId")
+          .cloned()
+          .unwrap_or_else(|| Value::String("default".into())),
+      );
+      Ok(())
+    })
   }
 
   pub fn save_workspace_value(&self, key: WorkspaceValue, value: &Value) -> Result<(), String> {
@@ -128,12 +179,22 @@ impl WorkspacePersistenceSession {
   }
 
   fn save_state_value(&self, key: &str, value: Value) -> Result<(), String> {
+    self.update_workspace(|state| {
+      state.insert(key.to_string(), value);
+      Ok(())
+    })
+  }
+
+  fn update_workspace(
+    &self,
+    update: impl FnOnce(&mut Map<String, Value>) -> Result<(), String>,
+  ) -> Result<(), String> {
     let mut state = self
       .state
       .lock()
       .map_err(|_| "Workspace persistence session is unavailable.".to_string())?;
     let mut next = state.clone();
-    next.insert(key.to_string(), value);
+    update(&mut next)?;
     self.store.save(&Value::Object(next.clone()))?;
     *state = next;
     Ok(())

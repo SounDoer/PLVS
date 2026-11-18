@@ -341,6 +341,27 @@ describe("SettingsPanel", () => {
     expect(screen.getByText("Configuration exported")).toBeTruthy();
   });
 
+  it("offers only a restart for the saved configuration after restart fails", () => {
+    const retry = vi.fn();
+    render(
+      <SettingsPanel
+        {...BASE_PROPS}
+        configurationRestartPending
+        configurationStatus="Configuration saved. PLVS could not restart."
+        onRetryConfigurationRestart={retry}
+      />
+    );
+    expect(screen.getByRole("status").textContent).toContain("Configuration saved.");
+    expect(
+      screen.getByRole("button", { name: "Import complete setup" }).hasAttribute("disabled")
+    ).toBe(true);
+    expect(
+      screen.getByRole("button", { name: "Reset PLVS to default" }).hasAttribute("disabled")
+    ).toBe(true);
+    fireEvent.click(screen.getByRole("button", { name: "Retry Restart" }));
+    expect(retry).toHaveBeenCalledTimes(1);
+  });
+
   it("renders Agent Control as a toggle with an honest tip", () => {
     const onSetAgentControlEnabled = vi.fn();
     render(

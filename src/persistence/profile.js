@@ -25,7 +25,44 @@ import {
   prepareGlobalOperation,
 } from "../runtime/coordination.js";
 
-let pendingProfileOperation = null;
+let pendingProfileRestart = null;
+let savingProfile = false;
+let restartingProfile = null;
+const restartListeners = new Set();
+
+export function configurationRestartPending() {
+  return pendingProfileRestart !== null;
+}
+
+export function subscribeConfigurationRestart(listener) {
+  restartListeners.add(listener);
+  return () => restartListeners.delete(listener);
+}
+
+function setPendingProfileRestart(pending) {
+  pendingProfileRestart = pending;
+  for (const listener of restartListeners) listener();
+}
+
+async function saveDesktopProfile(save) {
+  if (savingProfile || configurationRestartPending()) {
+    throw new Error("Finish the current configuration change before starting another.");
+  }
+  savingProfile = true;
+  try {
+    const operation = await prepareGlobalOperation();
+    try {
+      await save();
+    } catch (error) {
+      await abortGlobalOperation(operation);
+      throw error;
+    }
+    suspendPluginStorePersistence();
+    setPendingProfileRestart({ operation, peersClosed: false });
+  } finally {
+    savingProfile = false;
+  }
+}
 
 function browserRawProfile() {
   const domains = exportAll();
@@ -55,16 +92,8 @@ export async function exportProfile() {
 export async function importProfile(raw) {
   const profile = normalizeImportedProfile(raw);
   if (isTauri()) {
-    const operation = await prepareGlobalOperation();
-    try {
-      suspendPluginStorePersistence();
-      await importProfileCommand(profile);
-      pendingProfileOperation = operation;
-      return profile;
-    } catch (error) {
-      await abortGlobalOperation(operation);
-      throw error;
-    }
+    await saveDesktopProfile(() => importProfileCommand(profile));
+    return profile;
   }
 
   replaceStore(settingsStore, profile.settings);
@@ -79,16 +108,8 @@ export async function importProfile(raw) {
 
 export async function resetProfile() {
   if (isTauri()) {
-    const operation = await prepareGlobalOperation();
-    try {
-      suspendPluginStorePersistence();
-      await resetProfileCommand();
-      pendingProfileOperation = operation;
-      return;
-    } catch (error) {
-      await abortGlobalOperation(operation);
-      throw error;
-    }
+    await saveDesktopProfile(resetProfileCommand);
+    return;
   }
   resetAll();
   try {
@@ -96,21 +117,30 @@ export async function resetProfile() {
   } catch (_) {}
 }
 
+async function restartDesktopAfterProfileChange() {
+  const pending = pendingProfileRestart;
+  if (pending && !pending.peersClosed) {
+    const operation = pending.operation ?? (await prepareGlobalOperation());
+    try {
+      await commitGlobalOperation(operation);
+      pending.peersClosed = true;
+    } catch (error) {
+      pending.operation = null;
+      await abortGlobalOperation(operation);
+      throw error;
+    }
+  }
+  await closeTrayIcon();
+  await relaunch();
+  setPendingProfileRestart(null);
+}
+
 export async function reloadAfterProfileChange() {
   if (isTauri()) {
-    if (pendingProfileOperation) {
-      const operation = pendingProfileOperation;
-      pendingProfileOperation = null;
-      try {
-        await commitGlobalOperation(operation);
-      } catch (error) {
-        await abortGlobalOperation(operation);
-        throw error;
-      }
-    }
-    await closeTrayIcon();
-    await relaunch();
-    return;
+    restartingProfile ??= restartDesktopAfterProfileChange().finally(() => {
+      restartingProfile = null;
+    });
+    return restartingProfile;
   }
   window.location.reload();
 }

@@ -74,9 +74,11 @@ export function AppSettingsOverlays({
   const {
     configurationBusy,
     configurationStatus,
+    configurationRestartPending,
     exportConfiguration,
     importConfiguration,
     resetConfiguration,
+    retryConfigurationRestart,
   } = useConfigurationProfileActions();
   const localPack = usePackTransfer();
   const pack = packTransfer ?? localPack;
@@ -463,8 +465,10 @@ export function AppSettingsOverlays({
       onExportConfiguration: exportConfiguration,
       onImportConfiguration: importConfiguration,
       onResetConfiguration: resetConfiguration,
+      onRetryConfigurationRestart: retryConfigurationRestart,
       configurationBusy: configurationBusy,
       configurationStatus: configurationStatus,
+      configurationRestartPending,
       onLibraryExport: () => setLibraryExportOpen(true),
       onSharedPackImport: pack.beginSharedImport,
       packBusy: pack.busy,
