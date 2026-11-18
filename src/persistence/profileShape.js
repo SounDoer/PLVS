@@ -66,6 +66,7 @@ function normalizeWindowBounds(value) {
     width: Math.round(width),
     height: Math.round(height),
     isMaximized: isMaximized === true,
+    ...(isPlainObject(value.relative) ? { relative: { ...value.relative } } : {}),
   };
 }
 

@@ -28,7 +28,6 @@ describe("monitor inventory", () => {
     expect(await readMonitorInventory()).toEqual({
       monitors: [{ id: "Primary", name: "Primary" }],
       fallbackMonitor: "Primary",
-      monitorRects: [{ x: -2560, y: 0, width: 2560, height: 1080 }],
       monitorInventoryReady: true,
     });
   });

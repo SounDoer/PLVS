@@ -126,7 +126,10 @@
  * @typedef {{
  *   id: string,
  *   name: string,
- *   windowBounds?: { x: number, y: number, width: number, height: number, isMaximized: boolean },
+ *   windowBounds?: {
+ *     x: number, y: number, width: number, height: number, isMaximized: boolean,
+ *     relative?: object,
+ *   },
  *   tree: TreeNode,
  *   panelsById: Record<PanelId, PanelInstance>,
  *   panelOrder: PanelId[],

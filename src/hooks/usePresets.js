@@ -1,8 +1,8 @@
 import { normalizePanelPresentation } from "../lib/panelPresentation.js";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { applyWindowBounds, currentWindowBounds } from "../ipc/commands.js";
+import { applyWindowBounds, currentWindowBounds, resolveWindowBounds } from "../ipc/commands.js";
 import { isTauri } from "../ipc/env.js";
-import { onWindowBoundsChanged } from "../ipc/events.js";
+import { onWindowBoundsChanged, onWindowDisplaysChanged } from "../ipc/events.js";
 import { setWindowDecorations } from "./useFocusViewWindow.js";
 import { DEFAULT_FOCUS_VIEW, normalizeFocusView } from "../lib/focusView.js";
 import { hasKnownModulesOnly } from "../workspace/panelInstances.js";
@@ -57,6 +57,12 @@ async function readWindowBounds() {
   } catch (_) {
     return undefined;
   }
+}
+
+async function resolvePresetWindowBounds(preset) {
+  if (!preset?.windowBounds || preset.dock?.enabled === true) return undefined;
+  if (!isTauri()) return preset.windowBounds;
+  return resolveWindowBounds(preset.windowBounds);
 }
 
 /**
@@ -172,6 +178,7 @@ export function usePresets({
   // The bounds Rust last persisted, which already leave out minimised and docked windows. Undefined
   // outside Tauri, where bounds are not compared.
   const [windowBounds, setWindowBounds] = useState(undefined);
+  const [displayVersion, setDisplayVersion] = useState(0);
 
   useEffect(
     () =>
@@ -184,6 +191,14 @@ export function usePresets({
   const write = useCallback((next) => {
     presetsStore.patch(next);
     setPresets(normalizePresets(presetsStore.read()));
+  }, []);
+
+  useEffect(() => {
+    if (!isTauri()) return;
+    const subscription = onWindowDisplaysChanged(() => setDisplayVersion((version) => version + 1));
+    return () => {
+      void subscription.then((unsubscribe) => unsubscribe());
+    };
   }, []);
 
   const clearActive = useCallback(() => {
@@ -277,6 +292,21 @@ export function usePresets({
     () => presets.list.find((preset) => preset.id === presets.activeId) ?? null,
     [presets.activeId, presets.list]
   );
+  const [resolvedWindow, setResolvedWindow] = useState(null);
+  useEffect(() => {
+    if (!activePreset?.windowBounds || activePreset.dock?.enabled || dock.enabled) return;
+    let cancelled = false;
+    void resolvePresetWindowBounds(activePreset)
+      .then((bounds) => {
+        if (!cancelled) setResolvedWindow({ preset: activePreset, bounds });
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, [activePreset, displayVersion, dock.enabled, windowBounds]);
+  const resolvedWindowBounds =
+    resolvedWindow?.preset === activePreset ? resolvedWindow.bounds : activePreset?.windowBounds;
   const dirty = useMemo(
     () =>
       activePreset !== null &&
@@ -287,9 +317,10 @@ export function usePresets({
           dockReserveSpaceSupported: isDockReserveSpaceSupported(),
           dockAboveFullScreenSupported: isWindows(),
           normalizeLoudnessProfileActive,
+          resolvedWindowBounds,
         }
       ),
-    [activePreset, normalizeLoudnessProfileActive, scene, windowBounds]
+    [activePreset, normalizeLoudnessProfileActive, resolvedWindowBounds, scene, windowBounds]
   );
 
   const saveSnapshot = useCallback(
@@ -591,6 +622,7 @@ export function usePresets({
       applySnapshot,
       activateSnapshot,
       preflightApplySnapshot,
+      resolvePresetWindowBounds,
     }),
     [
       apply,

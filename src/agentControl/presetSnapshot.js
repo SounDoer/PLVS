@@ -80,6 +80,7 @@ export function buildPublicPresetSnapshot(preset, context = {}) {
   const workspace = buildSavedWorkspace(preset);
   const hasLoudnessReference = hasSavedLoudnessReference(preset, context);
   const focusView = normalizeFocusView(preset.focusView ?? DEFAULT_FOCUS_VIEW);
+  const { relative: _relative, ...bounds } = preset.windowBounds ?? {};
   return {
     id: String(preset.id),
     name: String(preset.name ?? "").trim(),
@@ -99,7 +100,7 @@ export function buildPublicPresetSnapshot(preset, context = {}) {
       }),
     },
     window: {
-      bounds: preset.windowBounds ?? null,
+      bounds: preset.windowBounds ? bounds : null,
       pinned: preset.windowPinned === true,
       focusView,
       panelPresentation: normalizePanelPresentation(preset.panelPresentation, focusView),

@@ -469,6 +469,7 @@ function Harness({
       return true;
     },
     preflightApplySnapshot: () => true,
+    resolvePresetWindowBounds: async (preset) => preset.windowBounds,
   };
   onStore(store);
   const executeTransport =

@@ -15,6 +15,7 @@ static PRESENTATION: Mutex<Option<Presentation>> = Mutex::new(None);
 struct Presentation {
   monitor: MonitorRect,
   work_area: MonitorRect,
+  reserved: bool,
 }
 
 /// Called from setup after GTK initialization, before the boot snapshot is made.
@@ -129,6 +130,21 @@ fn same_rect(a: MonitorRect, b: MonitorRect) -> bool {
   (a.x, a.y, a.width, a.height) == (b.x, b.y, b.width, b.height)
 }
 
+pub(crate) fn pre_reservation_work_area(monitor: &tauri::Monitor) -> Option<MonitorRect> {
+  let geometry = MonitorRect {
+    x: monitor.position().x,
+    y: monitor.position().y,
+    width: monitor.size().width,
+    height: monitor.size().height,
+  };
+  PRESENTATION
+    .lock()
+    .unwrap_or_else(|e| e.into_inner())
+    .as_ref()
+    .filter(|saved| saved.reserved && same_rect(saved.monitor, geometry))
+    .map(|saved| saved.work_area)
+}
+
 /// EWMH distances are measured from the root screen, not the monitor or work area.
 fn strut(
   area: MonitorRect,
@@ -218,6 +234,7 @@ pub fn configure<R: tauri::Runtime>(
     *PRESENTATION.lock().unwrap_or_else(|e| e.into_inner()) = Some(Presentation {
       monitor: geometry,
       work_area: area,
+      reserved,
     });
     gdk::property_change(
       &native,

@@ -24,7 +24,7 @@ import { normalizeSurfaceOpacity } from "../settings/defaults.js";
  *   glassEnabled: boolean,
  *   dock: any,
  *   loudnessProfileActive?: string,
- *   windowBounds?: { x: number, y: number, width: number, height: number, isMaximized?: boolean },
+ *   windowBounds?: import("../workspace/types.js").Preset["windowBounds"],
  * }} PresetScene
  */
 
@@ -33,6 +33,7 @@ import { normalizeSurfaceOpacity } from "../settings/defaults.js";
  *   dockReserveSpaceSupported?: boolean,
  *   dockAboveFullScreenSupported?: boolean,
  *   normalizeLoudnessProfileActive?: (raw: unknown) => string,
+ *   resolvedWindowBounds?: PresetScene["windowBounds"],
  * }} PresetDivergenceOptions
  */
 
@@ -52,6 +53,7 @@ export function presetRestoredScene(
     dockReserveSpaceSupported = true,
     dockAboveFullScreenSupported = true,
     normalizeLoudnessProfileActive,
+    resolvedWindowBounds,
   } = {}
 ) {
   const presetDockEnabled = preset.dock?.enabled === true;
@@ -104,7 +106,7 @@ export function presetRestoredScene(
   }
 
   if (preset.windowBounds && !presetDockEnabled && scene.windowBounds) {
-    restored.windowBounds = preset.windowBounds;
+    restored.windowBounds = resolvedWindowBounds ?? preset.windowBounds;
   }
   return restored;
 }
@@ -117,11 +119,19 @@ export function presetRestoredScene(
  */
 export function presetDiverges(preset, scene, options) {
   const restored = presetRestoredScene(preset, scene, options);
-  return !sameValue(comparable(restored), comparable(scene));
+  const compareNormalBounds = Boolean(preset.windowBounds?.relative);
+  return !sameValue(
+    comparable(restored, compareNormalBounds),
+    comparable(scene, compareNormalBounds)
+  );
 }
 
-function comparable(scene) {
-  return { ...scene, dock: comparableDock(scene.dock), windowBounds: comparableBounds(scene) };
+function comparable(scene, compareNormalBounds) {
+  return {
+    ...scene,
+    dock: comparableDock(scene.dock),
+    windowBounds: comparableBounds(scene.windowBounds, compareNormalBounds),
+  };
 }
 
 function comparableDock(dock) {
@@ -139,22 +149,22 @@ function comparableDock(dock) {
   };
 }
 
-function comparableBounds({ windowBounds: bounds }) {
+function comparableBounds(bounds, compareNormalBounds) {
   if (!bounds) return undefined;
-  // A maximised window looks the same whatever normal rectangle it would restore to, and Rust keeps
-  // the last normal one on file while the live read reports the maximised one.
-  if (bounds.isMaximized === true) return { isMaximized: true };
+  // Older maximized snapshots may contain the zoomed rectangle. A relative snapshot includes
+  // the normal rectangle, which also distinguishes maximized placements on different monitors.
+  if (bounds.isMaximized === true && !compareNormalBounds) return { isMaximized: true };
   return {
     x: bounds.x,
     y: bounds.y,
     width: bounds.width,
     height: bounds.height,
-    isMaximized: false,
+    isMaximized: bounds.isMaximized === true,
   };
 }
 
 /// Structural equality in which a member holding `undefined` counts as absent.
-function sameValue(a, b) {
+export function sameValue(a, b) {
   if (Object.is(a, b)) return true;
   if (typeof a !== "object" || typeof b !== "object" || a === null || b === null) return false;
   if (Array.isArray(a) !== Array.isArray(b)) return false;

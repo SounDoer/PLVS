@@ -16,8 +16,8 @@ use tauri::Manager;
 use tauri_plugin_store::StoreExt;
 
 use crate::window_state::{
-  clamp_to_visible, default_window_bounds, primary_fit_target, read_persisted_window_bounds,
-  save_window_bounds, MonitorRect, WindowBounds,
+  applied_placement, apply_resolved_placement, persist_window_bounds, read_persisted_window_bounds,
+  resolve_placement, save_window_bounds, MonitorRect, WindowBounds, WindowPlacement,
 };
 
 /// Logical (DPI-independent) strip height. Single source of truth: the
@@ -757,7 +757,7 @@ fn exit_dock_inner<R: tauri::Runtime>(
   window: tauri::WebviewWindow<R>,
   decorations: bool,
   always_on_top: bool,
-  bounds: Option<WindowBounds>,
+  bounds: Option<WindowPlacement>,
   origin: Option<crate::feedback_diagnostics::Origin>,
 ) -> Result<(), String> {
   let flag = window.state::<DockedFlag>();
@@ -812,39 +812,16 @@ fn exit_dock_inner<R: tauri::Runtime>(
         .map_err(|e| format!("always on top: {e}"))?;
       #[cfg(target_os = "macos")]
       crate::macos_dock_window::restore_chrome(&window)?;
-      let saved: Option<WindowBounds> =
-        bounds.or_else(|| read_persisted_window_bounds(window.app_handle()));
-      let monitors: Vec<MonitorRect> = window
-        .available_monitors()
-        .unwrap_or_default()
-        .iter()
-        .map(|m| MonitorRect {
-          x: m.position().x,
-          y: m.position().y,
-          width: m.size().width,
-          height: m.size().height,
-        })
-        .collect();
-      let fit = primary_fit_target(&window, &monitors);
-      // Size, position, size: on Windows a move onto a monitor with another DPI rescales the size set
-      // before it; on macOS a content-size change keeps the bottom-left corner, so the size must
-      // already be final when the top-left is placed.
-      if let Some(b) = saved {
-        let clamped = clamp_to_visible(b, &monitors, fit);
-        let _ = window.set_size(tauri::PhysicalSize::new(clamped.width, clamped.height));
-        let _ = window.set_position(tauri::PhysicalPosition::new(clamped.x, clamped.y));
-        let _ = window.set_size(tauri::PhysicalSize::new(clamped.width, clamped.height));
-        if b.is_maximized {
-          let _ = window.maximize();
+      let saved = bounds.or_else(|| read_persisted_window_bounds(window.app_handle()));
+      let placement = resolve_placement(&window, saved.as_ref()).and_then(|resolved| {
+        match apply_resolved_placement(&window, &resolved) {
+          Ok(()) => Some(applied_placement(&resolved, saved.as_ref())),
+          Err(error) => {
+            log::warn!("normal window bounds could not be restored after Dock exit: {error}");
+            None
+          }
         }
-      } else if !monitors.is_empty() {
-        // No saved normal bounds (e.g. first run docked): don't leave the window strip-sized; place the
-        // default window by the first-run rule.
-        let fallback = default_window_bounds(fit);
-        let _ = window.set_size(tauri::PhysicalSize::new(fallback.width, fallback.height));
-        let _ = window.set_position(tauri::PhysicalPosition::new(fallback.x, fallback.y));
-        let _ = window.set_size(tauri::PhysicalSize::new(fallback.width, fallback.height));
-      }
+      });
       let app = window.app_handle();
       let prev = read_dock_state(app);
       write_dock_state(
@@ -868,6 +845,11 @@ fn exit_dock_inner<R: tauri::Runtime>(
       flag.0.store(false, Ordering::Relaxed);
       #[cfg(target_os = "macos")]
       crate::macos_dock_window::normal(&window)?;
+      if let Some(placement) = placement {
+        if let Err(error) = persist_window_bounds(&window, placement) {
+          log::warn!("normal window bounds could not be saved after Dock exit: {error}");
+        }
+      }
       Ok(())
     },
   )
@@ -1658,7 +1640,7 @@ pub async fn exit_dock<R: tauri::Runtime>(
   window: tauri::WebviewWindow<R>,
   decorations: bool,
   always_on_top: bool,
-  bounds: Option<WindowBounds>,
+  bounds: Option<WindowPlacement>,
   origin: Option<crate::feedback_diagnostics::Origin>,
 ) -> Result<(), String> {
   tauri::async_runtime::spawn_blocking(move || {
@@ -1702,7 +1684,7 @@ pub fn exit_dock<R: tauri::Runtime>(
   window: tauri::WebviewWindow<R>,
   decorations: bool,
   always_on_top: bool,
-  bounds: Option<WindowBounds>,
+  bounds: Option<WindowPlacement>,
   origin: Option<crate::feedback_diagnostics::Origin>,
 ) -> Result<(), String> {
   exit_dock_inner(window, decorations, always_on_top, bounds, origin)

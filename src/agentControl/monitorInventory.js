@@ -12,21 +12,6 @@ export async function readMonitorInventory() {
       typeof monitor.name === "string" ? [{ id: monitor.name, name: monitor.name }] : []
     ),
     fallbackMonitor: current?.name ?? primary?.name ?? null,
-    monitorRects: monitors.flatMap((monitor) =>
-      Number.isFinite(monitor.position?.x) &&
-      Number.isFinite(monitor.position?.y) &&
-      Number.isFinite(monitor.size?.width) &&
-      Number.isFinite(monitor.size?.height)
-        ? [
-            {
-              x: monitor.position.x,
-              y: monitor.position.y,
-              width: monitor.size.width,
-              height: monitor.size.height,
-            },
-          ]
-        : []
-    ),
     monitorInventoryReady: true,
   };
 }

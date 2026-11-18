@@ -225,10 +225,12 @@ Preset Apply distinguishes a resource that has a safe fallback from a current-mo
 - A deleted Loudness Profile resolves to Off and produces `loudnessProfileUnavailable`.
 - A missing saved Dock monitor falls back to the current monitor and then the primary monitor, and
   produces `dockMonitorUnavailable`. It fails only when no monitor is available.
-- Off-screen or unusable saved window bounds are adjusted against the primary monitor and produce
-  `windowBoundsAdjusted`: bounds too small or with bogus coordinates are replaced with a capped
-  size centered on the monitor, while bounds that are merely mostly off-screen keep their saved
-  size and are re-centered on the monitor instead.
+- Normal window placement uses the desktop's native resolver. Local snapshots with display-relative
+  placement preserve their logical content size and relative work-area position when the display
+  geometry changes. Legacy pixel bounds that cannot be used fall back to the default window
+  centered in the primary work area. Apply and dry-run report `windowBoundsAdjusted` when the
+  resolved physical rectangle differs from the saved one. Saved snapshots report the original
+  physical rectangle under `window.bounds`.
 - A platform without Dock support drops the saved Dock state, applies the rest of the Preset, and
   produces `dockUnsupported`.
 - A platform that cannot reserve screen space keeps Dock in overlay mode and produces

@@ -161,13 +161,17 @@ fn normalize_window_bounds(value: Option<&Value>) -> Value {
   if width <= 0.0 || height <= 0.0 {
     return Value::Null;
   }
-  json!({
+  let mut bounds = json!({
     "x": x.round() as i64,
     "y": y.round() as i64,
     "width": width.round() as u64,
     "height": height.round() as u64,
     "isMaximized": obj.get("isMaximized").and_then(Value::as_bool).unwrap_or(false),
-  })
+  });
+  if let Some(relative) = obj.get("relative").filter(|value| value.is_object()) {
+    bounds["relative"] = relative.clone();
+  }
+  bounds
 }
 
 pub fn normalize_profile_for_store(profile: Value) -> Map<String, Value> {
@@ -810,6 +814,25 @@ pub fn write_text_file(path: String, contents: String) -> Result<(), String> {
 #[cfg(test)]
 mod tests {
   use super::*;
+
+  #[test]
+  fn preserves_relative_window_placement_for_complete_setup() {
+    let bounds = json!({
+      "x": 768, "y": 432, "width": 1024, "height": 576, "isMaximized": false,
+      "relative": {
+        "monitor": "test", "scale": 1.0,
+        "workArea": {"x": 0, "y": 0, "width": 2560, "height": 1440},
+        "logicalWidth": 1024, "logicalHeight": 576, "frameWidth": 0, "frameHeight": 0,
+        "horizontal": 0.5, "vertical": 0.5
+      }
+    });
+    let values = normalize_profile_for_store(json!({
+      "windowBounds": bounds,
+      "presets": {"list": [{"id": "test", "name": "Test", "windowBounds": bounds}]}
+    }));
+    assert_eq!(values["windowBounds"], bounds);
+    assert_eq!(values["plvs:presets"]["list"][0]["windowBounds"], bounds);
+  }
 
   #[test]
   fn normalizes_store_keys_from_profile_shape() {

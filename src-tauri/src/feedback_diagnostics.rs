@@ -388,20 +388,22 @@ impl DiagnosticsState {
       .unwrap_or(false)
   }
 
-  fn environment_changed(&self, environment: Value) {
+  fn environment_changed(&self, environment: Value) -> bool {
     let previous = {
       let Ok(mut inner) = self.inner.lock() else {
-        return;
+        return false;
       };
       if inner.last_environment.as_ref() == Some(&environment) {
-        return;
+        return false;
       }
       inner.last_environment.replace(environment.clone())
     };
     if let Some(previous) = previous {
       let id = self.begin("display.changed", Origin::System, json!({}), previous);
       self.finish(id, environment, None, true, false);
+      return true;
     }
+    false
   }
 }
 
@@ -411,7 +413,9 @@ pub fn watch_environment<R: Runtime>(window: WebviewWindow<R>) {
     .name("diagnostic-display-watch".into())
     .spawn(move || loop {
       if let Some(state) = window.app_handle().try_state::<DiagnosticsState>() {
-        state.environment_changed(monitor_snapshot(&window));
+        if state.environment_changed(monitor_snapshot(&window)) {
+          let _ = tauri::Emitter::emit(&window, "window-displays-changed", ());
+        }
       }
       std::thread::sleep(std::time::Duration::from_secs(2));
     });

@@ -657,18 +657,18 @@ Declared exceptions (device px on purpose):
 
 ## 9. Key terms
 
-| Term                | Definition                                                                                                                               |
-| ------------------- | ---------------------------------------------------------------------------------------------------------------------------------------- |
-| **WASAPI Loopback** | Native Windows API that reads an output device as an input, with no virtual sound card                                                   |
-| **Core Audio Tap**  | Native system-audio capture on macOS 14.2+ (the equivalent of WASAPI Loopback)                                                           |
-| **realtime-safe**   | The audio callback thread does not allocate, lock or make syscalls                                                                       |
-| **Channel**         | Tauri's high-rate one-way push channel (~60 Hz metric frames)                                                                            |
-| **plvs:settings**   | Persisted global preferences: `appearance`, `themeId`, `referenceLufs`, panel label overrides, etc.                                      |
-| **plvs:workspace**  | Persisted workspace layout tree and each panel's control state                                                                           |
-| **plvs:presets**    | Persisted user-saved workspace presets                                                                                                   |
-| **plvs:themes**     | Persisted custom themes                                                                                                                  |
-| **windowBounds**    | Top-level key in `plvs-settings.json`; Rust maintains window geometry separately so JS settings writes cannot overwrite it               |
-| **dockState**       | Top-level key in `plvs-settings.json` (maintained by Rust): dock enabled / edge / display; windowBounds stops being written while docked |
+| Term                | Definition                                                                                                                                       |
+| ------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------ |
+| **WASAPI Loopback** | Native Windows API that reads an output device as an input, with no virtual sound card                                                           |
+| **Core Audio Tap**  | Native system-audio capture on macOS 14.2+ (the equivalent of WASAPI Loopback)                                                                   |
+| **realtime-safe**   | The audio callback thread does not allocate, lock or make syscalls                                                                               |
+| **Channel**         | Tauri's high-rate one-way push channel (~60 Hz metric frames)                                                                                    |
+| **plvs:settings**   | Persisted global preferences: `appearance`, `themeId`, `referenceLufs`, panel label overrides, etc.                                              |
+| **plvs:workspace**  | Persisted workspace layout tree and each panel's control state                                                                                   |
+| **plvs:presets**    | Persisted user-saved workspace presets                                                                                                           |
+| **plvs:themes**     | Persisted custom themes                                                                                                                          |
+| **windowBounds**    | Rust-owned workbench value with the exact physical rectangle and optional display-relative placement. Local Preset snapshots use the same shape. |
+| **dockState**       | Rust-owned workbench value for the Dock form, edge and display. Normal window placement stays separate while docked.                             |
 
 ### Dock three-window boundary
 

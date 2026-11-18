@@ -77,9 +77,9 @@ pub use audio::{
 };
 
 use crate::window_state::{
-  clamp_to_visible, clean_active_preset_window_bounds, default_window_bounds, primary_fit_target,
-  startup_surface_opacity, startup_window_is_frameless, MonitorRect, WindowBounds,
-  DEFAULT_WINDOW_LOGICAL_HEIGHT, DEFAULT_WINDOW_LOGICAL_WIDTH,
+  applied_placement, apply_resolved_placement, clean_active_preset_window_bounds,
+  persist_window_bounds, resolve_placement, startup_surface_opacity, startup_window_is_frameless,
+  WindowPlacement, DEFAULT_WINDOW_LOGICAL_HEIGHT, DEFAULT_WINDOW_LOGICAL_WIDTH,
 };
 use state::AppState;
 
@@ -344,6 +344,7 @@ pub fn run() {
       cli_path::cli_path_status,
       cli_path::set_cli_path_enabled,
       window_state::current_window_bounds,
+      window_state::resolve_window_bounds,
       window_state::apply_window_bounds,
       window_state::move_main_window,
       window_state::set_main_window_state,
@@ -591,7 +592,7 @@ pub fn run() {
 
       // windowBounds is a Rust-owned sibling key (not inside plvs:settings) so JS settings
       // writes cannot clobber geometry Rust saves. See window_state::save_window_bounds.
-      let saved_bounds: Option<WindowBounds> = clean_active_preset_window_bounds(&presets)
+      let saved_bounds: Option<WindowPlacement> = clean_active_preset_window_bounds(&presets)
         .or_else(|| serde_json::from_value(hydrated.window_bounds).ok());
       let mut boot_dock = dock_state;
       let boot_docked = boot_dock.as_ref().map(|d| d.enabled).unwrap_or(false);
@@ -628,11 +629,6 @@ pub fn run() {
 
       app.manage(dock_accessories::AccessoryInitScript(init_script));
 
-      // Saved bounds are PHYSICAL pixels (saved from inner_size + outer_position). Restore
-      // them with physical setters: the builder's inner_size/position take LOGICAL pixels,
-      // so on a scaled display (e.g. 150%) restoring through the builder double-scales and
-      // the window grows + drifts on every relaunch. set_size/set_position take physical,
-      // matching the save path and the (physical) monitor rects used for clamping.
       if boot_docked {
         let d = boot_dock.as_mut().expect("boot_docked requires dock state");
         if let Ok(height) = dock::fitted_height(&window, d.monitor.as_deref(), d.height) {
@@ -671,36 +667,16 @@ pub fn run() {
         .0
         .load(std::sync::atomic::Ordering::Relaxed);
       if restore_normal {
-        let monitors: Vec<MonitorRect> = window
-          .available_monitors()
-          .unwrap_or_default()
-          .iter()
-          .map(|m| MonitorRect {
-            x: m.position().x,
-            y: m.position().y,
-            width: m.size().width,
-            height: m.size().height,
-          })
-          .collect();
-        let fit = primary_fit_target(&window, &monitors);
-        // Size, position, size: on Windows a move onto a monitor with another DPI rescales the
-        // size set before it; on macOS a content-size change keeps the bottom-left corner, so the
-        // size must already be final when the top-left is placed.
-        if let Some(b) = saved_bounds {
-          let clamped = clamp_to_visible(b, &monitors, fit);
-          let _ = window.set_size(tauri::PhysicalSize::new(clamped.width, clamped.height));
-          let _ = window.set_position(tauri::PhysicalPosition::new(clamped.x, clamped.y));
-          let _ = window.set_size(tauri::PhysicalSize::new(clamped.width, clamped.height));
-          if b.is_maximized {
-            let _ = window.maximize();
+        if let Some(resolved) = resolve_placement(&window, saved_bounds.as_ref()) {
+          match apply_resolved_placement(&window, &resolved) {
+            Ok(()) => {
+              let placement = applied_placement(&resolved, saved_bounds.as_ref());
+              if let Err(error) = persist_window_bounds(&window, placement) {
+                log::warn!("startup window bounds could not be saved: {error}");
+              }
+            }
+            Err(error) => log::warn!("startup window bounds could not be restored: {error}"),
           }
-        } else if !monitors.is_empty() {
-          // First launch: nothing saved, so apply the first-run rule instead of leaving placement to
-          // the OS, which cascades from the top-left on Windows.
-          let placed = default_window_bounds(fit);
-          let _ = window.set_size(tauri::PhysicalSize::new(placed.width, placed.height));
-          let _ = window.set_position(tauri::PhysicalPosition::new(placed.x, placed.y));
-          let _ = window.set_size(tauri::PhysicalSize::new(placed.width, placed.height));
         }
       }
       #[cfg(target_os = "macos")]
@@ -864,7 +840,9 @@ pub fn run() {
         window.on_window_event(move |event| {
           if matches!(
             event,
-            tauri::WindowEvent::Moved(_) | tauri::WindowEvent::Resized(_)
+            tauri::WindowEvent::Moved(_)
+              | tauri::WindowEvent::Resized(_)
+              | tauri::WindowEvent::ScaleFactorChanged { .. }
           ) {
             dirty.store(true, Ordering::Relaxed);
           }

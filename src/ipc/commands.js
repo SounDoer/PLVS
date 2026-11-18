@@ -102,6 +102,10 @@ export function currentWindowBounds() {
   return invoke("current_window_bounds");
 }
 
+export function resolveWindowBounds(bounds) {
+  return invoke("resolve_window_bounds", { bounds });
+}
+
 export function applyWindowBounds(bounds) {
   return invoke("apply_window_bounds", { bounds });
 }

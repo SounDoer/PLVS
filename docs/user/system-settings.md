@@ -315,6 +315,8 @@ workbenches open, PLVS first checks every workbench for an open draft, stops cap
 replacing shared data; the workbench where you chose Import receives the instance-owned fields.
 **Reset PLVS to Default** uses the same coordinated restart and restores a fresh installation.
 The local Agent Control switch keeps its current setting.
+Complete Setup includes the workbench's last normal window placement and the placement stored in
+local Presets.
 
 For a one-item file, use **Export** on the saved Loudness Profile, Preset, or custom Theme itself.
 In the Settings **Saved Items** exporter, choose a type, then select the Items to export together.

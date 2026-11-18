@@ -62,6 +62,11 @@ export async function onWindowBoundsChanged(handler) {
   });
 }
 
+/** @param {() => void} handler */
+export function onWindowDisplaysChanged(handler) {
+  return listen("window-displays-changed", handler);
+}
+
 function unwrapEventPayload(event) {
   return event?.payload ?? event;
 }

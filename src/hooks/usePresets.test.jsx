@@ -8,6 +8,7 @@ import { presetsStore, workspaceStore } from "../persistence/index.js";
 const mocks = vi.hoisted(() => ({
   applyWindowBounds: vi.fn(),
   currentWindowBounds: vi.fn(),
+  resolveWindowBounds: vi.fn(async (bounds) => bounds),
   isTauri: vi.fn(() => false),
   onWindowBoundsChanged: vi.fn(),
   unlistenWindowBounds: vi.fn(),
@@ -28,6 +29,7 @@ vi.mock("@tauri-apps/api/core", () => ({ invoke: vi.fn(async () => {}) }));
 vi.mock("../ipc/commands.js", () => ({
   applyWindowBounds: mocks.applyWindowBounds,
   currentWindowBounds: mocks.currentWindowBounds,
+  resolveWindowBounds: mocks.resolveWindowBounds,
 }));
 
 vi.mock("../ipc/env.js", () => ({
@@ -36,6 +38,7 @@ vi.mock("../ipc/env.js", () => ({
 
 vi.mock("../ipc/events.js", () => ({
   onWindowBoundsChanged: mocks.onWindowBoundsChanged,
+  onWindowDisplaysChanged: async () => () => {},
 }));
 
 import { useState } from "react";
@@ -448,6 +451,18 @@ describe("usePresets", () => {
 
     expect(result.current.presets).toMatchObject({ activeId: "p1", dirty: false });
     expect(presetsStore.read()).not.toHaveProperty("dirty");
+  });
+
+  it("compares the restored bounds without rewriting the preset after a display change", async () => {
+    mocks.isTauri.mockReturnValue(true);
+    const saved = { x: 10, y: 20, width: 800, height: 600, isMaximized: false };
+    const restored = { ...saved, x: 400, y: 300 };
+    const { result } = renderPresetHook();
+    await act(async () => result.current.presets.save("Cross Display"));
+    mocks.resolveWindowBounds.mockResolvedValueOnce(restored);
+    await act(async () => mocks.windowBoundsHandler(restored));
+    expect(result.current.presets.dirty).toBe(false);
+    expect(presetsStore.read().list[0].windowBounds).toEqual(saved);
   });
 
   it("does not change Focus View when applying an older preset", async () => {

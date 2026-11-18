@@ -41,6 +41,15 @@ your first Preset in the create field and select **Add**. The selected Preset sh
 while anything it restores differs from the current layout, and the mark clears as soon as you
 return to the same settings.
 
+Locally saved Presets also remember the normal window's position, size, and maximized state.
+Applying a Preset prefers the original display if PLVS can identify it, then the display with
+the current window, then the primary display. On the original work area at the original scale,
+the stored position and size are restored exactly. When the work area or scale changes, a
+centered window stays centered and a window against an edge stays at that edge. The window keeps
+its logical content size or shrinks to fit the work area. **Update** captures the current
+placement, including the display. Older Presets keep their original pixel-based behavior until
+updated. Sharesets and other portable Presets carry the layout without window placement.
+
 Toolbar configuration entries such as Loudness Profile, Views, and Presets remain neutral while
 closed, even when their configuration is active. Hover and an open menu use the same neutral
 background and brighter icon. Inspect the menu for the selected configuration and modified state.
@@ -336,4 +345,8 @@ linking again adopts the shared range. Level and correlation ranges remain indep
 ## Persistence
 
 Your layout, presets, and view choices are remembered and restored the next time you open PLVS.
+Each workbench remembers its last normal window placement. Reopening a workbench or leaving Dock
+uses that placement when a Preset does not supply one. The same display adaptations apply after
+a display is removed or its work area changes. The system may limit window positioning, for
+example under native Wayland.
 Measurement history is not: each launch starts a new session.

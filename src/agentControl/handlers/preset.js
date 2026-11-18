@@ -188,6 +188,11 @@ async function apply(ctx) {
       -32020
     );
   }
+  const boundsPreset =
+    target.dock?.enabled && dock.supported !== true
+      ? { ...target, dock: { ...target.dock, enabled: false } }
+      : target;
+  const resolvedWindowBounds = await presets.resolvePresetWindowBounds(boundsPreset);
   const resources = planPresetApplyResources(target, {
     loudnessProfiles,
     dockSupported: dock.supported === true,
@@ -199,7 +204,7 @@ async function apply(ctx) {
     monitors: dockRequestContext.monitors,
     fallbackMonitor: dockRequestContext.fallbackMonitor,
     monitorInventoryReady: dockRequestContext.monitorInventoryReady,
-    monitorRects: dockRequestContext.monitorRects,
+    resolvedWindowBounds,
   });
   if (resources.issues.length > 0) {
     throw semanticFailure(
@@ -218,6 +223,7 @@ async function apply(ctx) {
   presets.assertSceneOperationAllowed(request.method);
   const scenePlan = planPresetApply(state, request.params.presetId, currentSnapshot, {
     targetPreset: resources.preset,
+    resolvedWindowBounds,
   });
   const planned = {
     ...scenePlan,

@@ -15,12 +15,211 @@ pub struct WindowBounds {
 }
 
 /// A monitor's visible rectangle (position + size), in physical pixels.
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
 pub struct MonitorRect {
   pub x: i32,
   pub y: i32,
   pub width: u32,
   pub height: u32,
+}
+
+/// The physical rectangle remains readable by earlier versions.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct WindowPlacement {
+  #[serde(flatten)]
+  pub bounds: WindowBounds,
+  #[serde(
+    default,
+    skip_serializing_if = "Option::is_none",
+    deserialize_with = "read_relative"
+  )]
+  relative: Option<RelativePlacement>,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct RelativePlacement {
+  monitor: Option<String>,
+  work_area: MonitorRect,
+  scale: f64,
+  logical_width: f64,
+  logical_height: f64,
+  frame_width: f64,
+  frame_height: f64,
+  #[serde(default, skip_serializing_if = "is_zero")]
+  resize_inset_width: f64,
+  #[serde(default, skip_serializing_if = "is_zero")]
+  resize_inset_height: f64,
+  horizontal: f64,
+  vertical: f64,
+}
+
+fn is_zero(value: &f64) -> bool {
+  *value == 0.0
+}
+
+fn read_relative<'de, D: serde::Deserializer<'de>>(
+  deserializer: D,
+) -> Result<Option<RelativePlacement>, D::Error> {
+  let value = Value::deserialize(deserializer)?;
+  Ok(
+    serde_json::from_value::<RelativePlacement>(value)
+      .ok()
+      .filter(|relative| {
+        relative.work_area.width > 0
+          && relative.work_area.height > 0
+          && relative.scale.is_finite()
+          && relative.scale > 0.0
+          && relative.logical_width > 0.0
+          && relative.logical_height > 0.0
+          && relative.frame_width >= 0.0
+          && relative.frame_height >= 0.0
+          && relative.resize_inset_width >= 0.0
+          && relative.resize_inset_height >= 0.0
+          && (0.0..=1.0).contains(&relative.horizontal)
+          && (0.0..=1.0).contains(&relative.vertical)
+      }),
+  )
+}
+
+#[derive(Debug, Clone)]
+struct PlacementTarget {
+  monitor: Option<String>,
+  work_area: MonitorRect,
+  scale: f64,
+}
+
+impl PlacementTarget {
+  fn from_monitor<R: tauri::Runtime>(
+    window: &tauri::WebviewWindow<R>,
+    monitor: &tauri::Monitor,
+  ) -> Self {
+    Self {
+      monitor: monitor.name().cloned(),
+      work_area: normal_work_area(window, monitor),
+      scale: monitor.scale_factor(),
+    }
+  }
+}
+
+/// The work area available to the normal window after this workbench releases its own Dock
+/// reservation. Other windows' reservations still apply.
+fn normal_work_area<R: tauri::Runtime>(
+  window: &tauri::WebviewWindow<R>,
+  monitor: &tauri::Monitor,
+) -> MonitorRect {
+  let work_area = monitor.work_area();
+  #[cfg(target_os = "windows")]
+  let (reserved_height, reserved_top) =
+    crate::appbar::own_reserved_height(window, monitor.name().map(String::as_str));
+  #[cfg(not(target_os = "windows"))]
+  let (reserved_height, reserved_top) = (0, 0);
+  #[cfg(target_os = "linux")]
+  if let Some(area) = crate::linux_dock::pre_reservation_work_area(monitor) {
+    return area;
+  }
+  #[cfg(not(target_os = "windows"))]
+  let _ = window;
+  MonitorRect {
+    x: work_area.position.x,
+    y: work_area.position.y.saturating_sub(reserved_top),
+    width: work_area.size.width,
+    height: work_area.size.height.saturating_add(reserved_height),
+  }
+}
+
+#[derive(Debug)]
+pub(crate) struct ResolvedPlacement {
+  pub bounds: WindowBounds,
+  target: Option<PlacementTarget>,
+  resize_inset: tauri::PhysicalSize<u32>,
+}
+
+fn travel_fraction(position: i32, origin: i32, area: u32, outer: u32) -> f64 {
+  let travel = area.saturating_sub(outer);
+  if travel == 0 {
+    return 0.5;
+  }
+  ((f64::from(position) - f64::from(origin)) / f64::from(travel)).clamp(0.0, 1.0)
+}
+
+impl RelativePlacement {
+  fn capture(
+    bounds: WindowBounds,
+    target: PlacementTarget,
+    outer_width: u32,
+    outer_height: u32,
+  ) -> Self {
+    let PlacementTarget {
+      monitor,
+      work_area,
+      scale,
+    } = target;
+    Self {
+      monitor,
+      work_area,
+      scale,
+      logical_width: f64::from(bounds.width) / scale,
+      logical_height: f64::from(bounds.height) / scale,
+      frame_width: f64::from(outer_width.saturating_sub(bounds.width)) / scale,
+      frame_height: f64::from(outer_height.saturating_sub(bounds.height)) / scale,
+      resize_inset_width: 0.0,
+      resize_inset_height: 0.0,
+      horizontal: travel_fraction(bounds.x, work_area.x, work_area.width, outer_width),
+      vertical: travel_fraction(bounds.y, work_area.y, work_area.height, outer_height),
+    }
+  }
+
+  fn resolve(&self, saved: WindowBounds, target: &PlacementTarget) -> ResolvedPlacement {
+    let area = target.work_area;
+    let scale = target.scale;
+    let bounds = if self.monitor == target.monitor && self.work_area == area && self.scale == scale
+    {
+      saved
+    } else {
+      let frame_width = (self.frame_width * scale).round() as u32;
+      let frame_height = (self.frame_height * scale).round() as u32;
+      let width = self.logical_width * scale;
+      let height = self.logical_height * scale;
+      let ratio = 1.0_f64
+        .min(f64::from(area.width.saturating_sub(frame_width)) / width)
+        .min(f64::from(area.height.saturating_sub(frame_height)) / height);
+      let width = ((width * ratio).round() as u32).max(1);
+      let height = ((height * ratio).round() as u32).max(1);
+      let horizontal_travel = area.width.saturating_sub(width.saturating_add(frame_width));
+      let vertical_travel = area
+        .height
+        .saturating_sub(height.saturating_add(frame_height));
+      WindowBounds {
+        x: area
+          .x
+          .saturating_add((f64::from(horizontal_travel) * self.horizontal).round() as i32),
+        y: area
+          .y
+          .saturating_add((f64::from(vertical_travel) * self.vertical).round() as i32),
+        width,
+        height,
+        is_maximized: saved.is_maximized,
+      }
+    };
+    ResolvedPlacement {
+      bounds,
+      target: Some(target.clone()),
+      resize_inset: tauri::PhysicalSize::new(
+        (self.resize_inset_width * scale).round() as u32,
+        (self.resize_inset_height * scale).round() as u32,
+      ),
+    }
+  }
+}
+
+/// AppKit and GTK place normal windows at whole desktop points.
+fn snap_to_logical_pixels(bounds: &mut WindowBounds, scale: f64) {
+  let snap = |physical: f64| ((physical / scale).round() * scale).round();
+  bounds.x = snap(f64::from(bounds.x)) as i32;
+  bounds.y = snap(f64::from(bounds.y)) as i32;
+  bounds.width = (snap(f64::from(bounds.width)) as u32).max(1);
+  bounds.height = (snap(f64::from(bounds.height)) as u32).max(1);
 }
 
 fn clean_active_preset(presets: &Value) -> Option<&Value> {
@@ -35,7 +234,7 @@ fn clean_active_preset(presets: &Value) -> Option<&Value> {
     .find(|preset| preset.get("id").and_then(Value::as_str) == Some(active_id))
 }
 
-pub fn clean_active_preset_window_bounds(presets: &Value) -> Option<WindowBounds> {
+pub fn clean_active_preset_window_bounds(presets: &Value) -> Option<WindowPlacement> {
   let preset = clean_active_preset(presets)?;
   if preset
     .get("dock")
@@ -109,6 +308,11 @@ fn is_unusable_bounds(b: &WindowBounds) -> bool {
     || b.y <= WINDOWS_MINIMIZED_SENTINEL
 }
 
+fn has_minimized_position(bounds: &WindowBounds) -> bool {
+  cfg!(target_os = "windows")
+    && (bounds.x <= WINDOWS_MINIMIZED_SENTINEL || bounds.y <= WINDOWS_MINIMIZED_SENTINEL)
+}
+
 /// The first-run window: 1280×800 logical content when it fits within 90% of the work area,
 /// otherwise shrunk proportionally (16:10 kept) until it does, centered in the work area.
 pub fn default_window_bounds(target: FitTarget) -> WindowBounds {
@@ -141,14 +345,14 @@ pub fn default_window_bounds(target: FitTarget) -> WindowBounds {
 }
 
 /// Returns the visible-overlap area (px²) between the window and a monitor.
-fn overlap_area(b: &WindowBounds, m: &MonitorRect) -> i64 {
+fn overlap_area(b: &WindowBounds, m: &MonitorRect) -> u64 {
   let bx2 = b.x as i64 + b.width as i64;
   let by2 = b.y as i64 + b.height as i64;
   let mx2 = m.x as i64 + m.width as i64;
   let my2 = m.y as i64 + m.height as i64;
   let ix = (bx2.min(mx2) - (b.x as i64).max(m.x as i64)).max(0);
   let iy = (by2.min(my2) - (b.y as i64).max(m.y as i64)).max(0);
-  ix * iy
+  ix as u64 * iy as u64
 }
 
 /// Saved bounds that are unusable (minimized sentinel, degenerate size) or mostly off-screen (less
@@ -163,13 +367,13 @@ pub fn clamp_to_visible(
     return b;
   }
   if !is_unusable_bounds(&b) {
-    let area = b.width as i64 * b.height as i64;
+    let area = u64::from(b.width) * u64::from(b.height);
     let visible = monitors
       .iter()
       .map(|m| overlap_area(&b, m))
       .max()
       .unwrap_or(0);
-    if visible * 8 >= area {
+    if visible >= area.div_ceil(8) {
       return b;
     }
   }
@@ -199,20 +403,12 @@ pub fn primary_fit_target<R: tauri::Runtime>(
     _ => (0, 0),
   };
   match window.primary_monitor().ok().flatten() {
-    Some(monitor) => {
-      let work_area = monitor.work_area();
-      FitTarget {
-        work_area: MonitorRect {
-          x: work_area.position.x,
-          y: work_area.position.y,
-          width: work_area.size.width,
-          height: work_area.size.height,
-        },
-        scale: monitor.scale_factor(),
-        frame_width,
-        frame_height,
-      }
-    }
+    Some(monitor) => FitTarget {
+      work_area: normal_work_area(window, &monitor),
+      scale: monitor.scale_factor(),
+      frame_width,
+      frame_height,
+    },
     None => FitTarget {
       work_area: monitors.first().copied().unwrap_or(MonitorRect {
         x: 0,
@@ -241,13 +437,70 @@ fn monitor_rects<R: tauri::Runtime>(window: &tauri::WebviewWindow<R>) -> Vec<Mon
     .collect()
 }
 
+pub(crate) fn resolve_placement<R: tauri::Runtime>(
+  window: &tauri::WebviewWindow<R>,
+  saved: Option<&WindowPlacement>,
+) -> Option<ResolvedPlacement> {
+  if let Some(saved) = saved {
+    if let Some(relative) = saved.relative.as_ref() {
+      let monitors = window.available_monitors().unwrap_or_default();
+      let monitor = relative
+        .monitor
+        .as_ref()
+        .filter(|_| desktop_position_available())
+        .and_then(|name| {
+          let mut matches = monitors
+            .iter()
+            .filter(|monitor| monitor.name() == Some(name));
+          let candidate = matches.next()?;
+          matches.next().is_none().then(|| candidate.clone())
+        })
+        .or_else(|| window.current_monitor().ok().flatten())
+        .or_else(|| window.primary_monitor().ok().flatten())
+        .or_else(|| monitors.into_iter().next());
+      if let Some(monitor) = monitor {
+        let target = PlacementTarget::from_monitor(window, &monitor);
+        let mut resolved = relative.resolve(saved.bounds, &target);
+        if cfg!(any(target_os = "macos", target_os = "linux")) {
+          snap_to_logical_pixels(&mut resolved.bounds, target.scale);
+        }
+        if !desktop_position_available() {
+          resolved.bounds.x = 0;
+          resolved.bounds.y = 0;
+        }
+        return Some(resolved);
+      }
+    }
+  }
+  let monitors = monitor_rects(window);
+  let fit = primary_fit_target(window, &monitors);
+  let mut bounds = match saved {
+    Some(saved) => clamp_to_visible(saved.bounds, &monitors, fit),
+    None if !monitors.is_empty() => default_window_bounds(fit),
+    None => return None,
+  };
+  if !desktop_position_available() {
+    bounds.x = 0;
+    bounds.y = 0;
+  }
+  Some(ResolvedPlacement {
+    bounds,
+    target: None,
+    resize_inset: tauri::PhysicalSize::new(0, 0),
+  })
+}
+
 /// Wayland does not expose a global top-level window position. Check the actual GTK display,
 /// since a Wayland session may still run PLVS through XWayland.
 pub fn desktop_position_available() -> bool {
   #[cfg(target_os = "linux")]
   {
     use gtk::prelude::ObjectExt;
-    gtk::gdk::Display::default().is_some_and(|display| display.type_().name().contains("X11"))
+    // Initialized by setup on the GTK thread before any placement commands or persistence.
+    static POSITION_AVAILABLE: std::sync::OnceLock<bool> = std::sync::OnceLock::new();
+    *POSITION_AVAILABLE.get_or_init(|| {
+      gtk::gdk::Display::default().is_some_and(|display| display.type_().name().contains("X11"))
+    })
   }
   #[cfg(not(target_os = "linux"))]
   {
@@ -258,17 +511,84 @@ pub fn desktop_position_available() -> bool {
 #[tauri::command]
 pub fn current_window_bounds<R: tauri::Runtime>(
   window: tauri::WebviewWindow<R>,
-) -> Result<WindowBounds, String> {
-  let pos = window
-    .outer_position()
-    .map_err(|e| format!("window position: {e}"))?;
-  let size = window
-    .inner_size()
-    .map_err(|e| format!("window size: {e}"))?;
+) -> Result<Option<WindowPlacement>, String> {
+  if window
+    .state::<crate::dock::DockedFlag>()
+    .0
+    .load(std::sync::atomic::Ordering::Relaxed)
+  {
+    return Ok(None);
+  }
+  capture_window_placement(&window)
+}
+
+fn capture_window_placement<R: tauri::Runtime>(
+  window: &tauri::WebviewWindow<R>,
+) -> Result<Option<WindowPlacement>, String> {
   let is_maximized = window
     .is_maximized()
     .map_err(|e| format!("window maximized state: {e}"))?;
+  if is_maximized {
+    if let Some(mut normal) = read_persisted_window_bounds(window.app_handle()) {
+      normal.bounds.is_maximized = true;
+      return Ok(Some(normal));
+    }
+  }
+  if window.is_minimized().unwrap_or(false) {
+    return Ok(None);
+  }
+  let bounds = read_window_bounds(window, is_maximized)?;
+  if bounds.width == 0 || bounds.height == 0 || has_minimized_position(&bounds) {
+    return Ok(None);
+  }
+  let relative = window
+    .current_monitor()
+    .ok()
+    .flatten()
+    .zip(window.outer_size().ok())
+    .filter(|(monitor, _)| monitor.scale_factor() > 0.0)
+    .map(|(monitor, outer)| {
+      let mut target = PlacementTarget::from_monitor(window, &monitor);
+      if let Some(name) = target.monitor.as_ref() {
+        let count = window
+          .available_monitors()
+          .unwrap_or_default()
+          .iter()
+          .filter(|monitor| monitor.name() == Some(name))
+          .count();
+        if count != 1 {
+          target.monitor = None;
+        }
+      }
+      let mut relative = RelativePlacement::capture(bounds, target, outer.width, outer.height);
+      // GTK adds its client-side decoration to a native resize request.
+      if cfg!(target_os = "linux") {
+        if let Ok(viewport) = window.as_ref().size() {
+          relative.resize_inset_width =
+            f64::from(bounds.width.saturating_sub(viewport.width)) / relative.scale;
+          relative.resize_inset_height =
+            f64::from(bounds.height.saturating_sub(viewport.height)) / relative.scale;
+        }
+      }
+      relative
+    });
+  Ok(Some(WindowPlacement { bounds, relative }))
+}
 
+fn read_window_bounds<R: tauri::Runtime>(
+  window: &tauri::WebviewWindow<R>,
+  is_maximized: bool,
+) -> Result<WindowBounds, String> {
+  let pos = if desktop_position_available() {
+    window
+      .outer_position()
+      .map_err(|e| format!("window position: {e}"))?
+  } else {
+    tauri::PhysicalPosition::new(0, 0)
+  };
+  let size = window
+    .inner_size()
+    .map_err(|e| format!("window size: {e}"))?;
   Ok(WindowBounds {
     x: pos.x,
     y: pos.y,
@@ -279,13 +599,29 @@ pub fn current_window_bounds<R: tauri::Runtime>(
 }
 
 #[tauri::command]
+pub fn resolve_window_bounds<R: tauri::Runtime>(
+  window: tauri::WebviewWindow<R>,
+  bounds: WindowPlacement,
+) -> WindowBounds {
+  resolve_placement(&window, Some(&bounds)).map_or(bounds.bounds, |resolved| resolved.bounds)
+}
+
+#[tauri::command]
 pub fn apply_window_bounds<R: tauri::Runtime>(
   window: tauri::WebviewWindow<R>,
-  bounds: WindowBounds,
+  bounds: WindowPlacement,
 ) -> Result<(), String> {
-  let monitors = monitor_rects(&window);
-  let clamped = clamp_to_visible(bounds, &monitors, primary_fit_target(&window, &monitors));
+  let Some(resolved) = resolve_placement(&window, Some(&bounds)) else {
+    return Ok(());
+  };
+  apply_resolved_placement(&window, &resolved)?;
+  persist_window_bounds(&window, applied_placement(&resolved, Some(&bounds)))
+}
 
+pub(crate) fn apply_resolved_placement<R: tauri::Runtime>(
+  window: &tauri::WebviewWindow<R>,
+  resolved: &ResolvedPlacement,
+) -> Result<(), String> {
   if window
     .is_maximized()
     .map_err(|e| format!("window maximized state: {e}"))?
@@ -295,18 +631,52 @@ pub fn apply_window_bounds<R: tauri::Runtime>(
       .map_err(|e| format!("window unmaximize: {e}"))?;
   }
 
-  // Size, position, size: on Windows a move onto a monitor with another DPI rescales the size set
-  // before it; on macOS a content-size change keeps the bottom-left corner, so the size must
-  // already be final when the top-left is placed.
-  window
-    .set_size(tauri::PhysicalSize::new(clamped.width, clamped.height))
-    .map_err(|e| format!("window size: {e}"))?;
-  window
-    .set_position(tauri::PhysicalPosition::new(clamped.x, clamped.y))
-    .map_err(|e| format!("window position: {e}"))?;
-  window
-    .set_size(tauri::PhysicalSize::new(clamped.width, clamped.height))
-    .map_err(|e| format!("window size: {e}"))?;
+  let bounds = resolved.bounds;
+  let size = if cfg!(target_os = "linux") {
+    tauri::PhysicalSize::new(
+      bounds
+        .width
+        .saturating_sub(resolved.resize_inset.width)
+        .max(1),
+      bounds
+        .height
+        .saturating_sub(resolved.resize_inset.height)
+        .max(1),
+    )
+  } else {
+    tauri::PhysicalSize::new(bounds.width, bounds.height)
+  };
+  // AppKit and GTK convert physical positions using the window's current scale.
+  // Apply in the destination's logical coordinate space when it is known.
+  if let Some(target) = resolved
+    .target
+    .as_ref()
+    .filter(|_| cfg!(any(target_os = "macos", target_os = "linux")))
+  {
+    window
+      .set_size(size.to_logical::<f64>(target.scale))
+      .map_err(|e| format!("window size: {e}"))?;
+    if desktop_position_available() {
+      window
+        .set_position(
+          tauri::PhysicalPosition::new(bounds.x, bounds.y).to_logical::<f64>(target.scale),
+        )
+        .map_err(|e| format!("window position: {e}"))?;
+    }
+  } else {
+    // Windows rescales a window during a cross-DPI move. Apply the physical size again afterwards.
+    window
+      .set_size(size)
+      .map_err(|e| format!("window size: {e}"))?;
+    if desktop_position_available() {
+      window
+        .set_position(tauri::PhysicalPosition::new(bounds.x, bounds.y))
+        .map_err(|e| format!("window position: {e}"))?;
+      window
+        .set_size(size)
+        .map_err(|e| format!("window size: {e}"))?;
+    }
+  }
 
   if bounds.is_maximized {
     window
@@ -314,9 +684,32 @@ pub fn apply_window_bounds<R: tauri::Runtime>(
       .map_err(|e| format!("window maximize: {e}"))?;
   }
 
-  persist_window_bounds(&window, clamped)?;
-
   Ok(())
+}
+
+pub(crate) fn applied_placement(
+  resolved: &ResolvedPlacement,
+  saved: Option<&WindowPlacement>,
+) -> WindowPlacement {
+  let bounds = resolved.bounds;
+  let relative = resolved
+    .target
+    .as_ref()
+    .zip(saved.and_then(|saved| saved.relative.as_ref()))
+    .map(|(target, source)| {
+      let width = (source.frame_width * target.scale).round() as u32;
+      let height = (source.frame_height * target.scale).round() as u32;
+      let mut relative = RelativePlacement::capture(
+        bounds,
+        target.clone(),
+        bounds.width.saturating_add(width),
+        bounds.height.saturating_add(height),
+      );
+      relative.resize_inset_width = f64::from(resolved.resize_inset.width) / target.scale;
+      relative.resize_inset_height = f64::from(resolved.resize_inset.height) / target.scale;
+      relative
+    });
+  WindowPlacement { bounds, relative }
 }
 
 /// Places the main window's top-left corner at a CSS-pixel offset from one monitor's work-area
@@ -385,7 +778,12 @@ pub fn set_main_window_state<R: tauri::Runtime>(
   state: String,
 ) -> Result<(), String> {
   match state.as_str() {
-    "maximize" => window.maximize(),
+    "maximize" => {
+      if !window.is_maximized().unwrap_or(false) {
+        save_window_bounds(&window);
+      }
+      window.maximize()
+    }
     "unmaximize" => window.unmaximize(),
     "minimize" => window.minimize(),
     other => return Err(format!("unknown window state {other}")),
@@ -393,12 +791,12 @@ pub fn set_main_window_state<R: tauri::Runtime>(
   .map_err(|e| format!("window {state}: {e}"))
 }
 
-fn persist_window_bounds<R: tauri::Runtime>(
+pub(crate) fn persist_window_bounds<R: tauri::Runtime>(
   window: &tauri::WebviewWindow<R>,
-  bounds: WindowBounds,
+  bounds: WindowPlacement,
 ) -> Result<(), String> {
   let app = window.app_handle();
-  let value = serde_json::to_value(bounds).unwrap_or_default();
+  let value = serde_json::to_value(&bounds).unwrap_or_default();
   let runtime = app.state::<crate::persistence::commands::PersistenceRuntime>();
   if runtime.is_installed() {
     runtime
@@ -413,13 +811,13 @@ fn persist_window_bounds<R: tauri::Runtime>(
       .save()
       .map_err(|error| format!("save window bounds: {error}"))?;
   }
-  let _ = window.app_handle().emit("window-bounds-changed", bounds);
+  let _ = window.emit("window-bounds-changed", bounds);
   Ok(())
 }
 
 pub(crate) fn read_persisted_window_bounds<R: tauri::Runtime>(
   app: &tauri::AppHandle<R>,
-) -> Option<WindowBounds> {
+) -> Option<WindowPlacement> {
   let runtime = app.state::<crate::persistence::commands::PersistenceRuntime>();
   let value = if runtime.is_installed() {
     runtime
@@ -444,40 +842,9 @@ pub(crate) fn read_persisted_window_bounds<R: tauri::Runtime>(
 /// stale boot bounds and clobber the geometry Rust just saved. In multi-instance storage this
 /// sibling belongs to the owning Workspace rather than the shared Library.
 pub fn save_window_bounds<R: tauri::Runtime>(window: &tauri::WebviewWindow<R>) {
-  let is_maximized = window.is_maximized().unwrap_or(false);
-  // When maximized, persist the flag but keep the last normal size/position already on file.
-  let prev = read_persisted_window_bounds(window.app_handle());
-
-  let bounds = if is_maximized {
-    match prev {
-      Some(b) => WindowBounds {
-        is_maximized: true,
-        ..b
-      },
-      None => return,
-    }
-  } else {
-    let pos = window.outer_position().ok();
-    let size = window.inner_size().ok();
-    match (pos, size) {
-      (Some(p), Some(s)) => {
-        let next = WindowBounds {
-          x: p.x,
-          y: p.y,
-          width: s.width,
-          height: s.height,
-          is_maximized: false,
-        };
-        if is_unusable_bounds(&next) {
-          return;
-        }
-        next
-      }
-      _ => return,
-    }
-  };
-
-  let _ = persist_window_bounds(window, bounds);
+  if let Ok(Some(bounds)) = capture_window_placement(window) {
+    let _ = persist_window_bounds(window, bounds);
+  }
 }
 
 #[cfg(test)]
@@ -501,6 +868,115 @@ mod tests {
       frame_width: 0,
       frame_height: 0,
     }
+  }
+
+  fn display(name: &str, x: i32, y: i32, width: u32, height: u32, scale: f64) -> PlacementTarget {
+    PlacementTarget {
+      monitor: Some(name.into()),
+      work_area: MonitorRect {
+        x,
+        y,
+        width,
+        height,
+      },
+      scale,
+    }
+  }
+
+  #[test]
+  fn restores_exact_pixels_on_the_same_display_and_stays_centered_on_4k() {
+    let original = WindowBounds {
+      x: 768,
+      y: 432,
+      width: 1024,
+      height: 576,
+      is_maximized: false,
+    };
+    let source = display("first", 0, 0, 2560, 1440, 1.0);
+    let relative = RelativePlacement::capture(original, source.clone(), 1024, 576);
+    assert_eq!(relative.resolve(original, &source).bounds, original);
+    let target = display("second", 0, 0, 3840, 2160, 1.0);
+    assert_eq!(
+      relative.resolve(original, &target).bounds,
+      WindowBounds {
+        x: 1408,
+        y: 792,
+        ..original
+      }
+    );
+  }
+
+  #[test]
+  fn preserves_trailing_edges_and_logical_content_size_in_a_scaled_work_area() {
+    let original = WindowBounds {
+      x: 1520,
+      y: 788,
+      width: 1024,
+      height: 576,
+      is_maximized: true,
+    };
+    let source = display("first", 0, 0, 2560, 1400, 1.0);
+    let relative = RelativePlacement::capture(original, source, 1040, 612);
+    let target = display("second", -3840, 30, 3840, 2100, 1.5);
+    assert_eq!(
+      relative.resolve(original, &target).bounds,
+      WindowBounds {
+        x: -1560,
+        y: 1212,
+        width: 1536,
+        height: 864,
+        is_maximized: true,
+      }
+    );
+  }
+
+  #[test]
+  fn fits_the_outer_window_on_a_smaller_work_area() {
+    let original = WindowBounds {
+      x: 0,
+      y: 0,
+      width: 2000,
+      height: 1000,
+      is_maximized: false,
+    };
+    let source = display("first", 0, 0, 3840, 2160, 1.0);
+    let relative = RelativePlacement::capture(original, source, 2020, 1040);
+    let target = display("second", 20, 40, 1000, 550, 1.0);
+    assert_eq!(
+      relative.resolve(original, &target).bounds,
+      WindowBounds {
+        x: 20,
+        y: 40,
+        width: 980,
+        height: 490,
+        is_maximized: false,
+      }
+    );
+  }
+
+  #[test]
+  fn malformed_relative_metadata_leaves_the_legacy_rectangle_readable() {
+    let legacy = json!({"x": 50, "y": 60, "width": 900, "height": 600, "isMaximized": false});
+    let mut malformed = legacy.clone();
+    malformed["relative"] = json!({"scale": 0});
+    let placement: WindowPlacement = serde_json::from_value(malformed).unwrap();
+    assert_eq!(serde_json::to_value(placement).unwrap(), legacy);
+  }
+
+  #[test]
+  fn resolves_half_point_rounding_before_applying_on_a_scaled_logical_desktop() {
+    let mut bounds = WindowBounds {
+      x: 446,
+      y: 413,
+      width: 2048,
+      height: 1152,
+      is_maximized: false,
+    };
+    snap_to_logical_pixels(&mut bounds, 2.0);
+    assert_eq!(
+      (bounds.x, bounds.y, bounds.width, bounds.height),
+      (446, 414, 2048, 1152)
+    );
   }
 
   #[test]
@@ -768,7 +1244,7 @@ mod tests {
     });
 
     assert_eq!(
-      clean_active_preset_window_bounds(&presets),
+      clean_active_preset_window_bounds(&presets).map(|placement| placement.bounds),
       Some(WindowBounds {
         x: 10,
         y: 20,

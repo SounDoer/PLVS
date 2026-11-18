@@ -52,9 +52,13 @@ size does not prove that the webview scale is unchanged.
 
 ### Persisted geometry uses physical pixels
 
-Window position and size are stored and restored in physical pixels, never logical pixels. Mixing
-units causes repeated growth or drift across launches on scaled displays. The governing code and
-comments are in `src-tauri/src/lib.rs` and `src-tauri/src/window_state.rs`.
+The exact rectangle stores a physical outer position and physical inner size. New normal-window
+records also keep the source display's physical work area and scale, position fractions, and the
+logical content and frame sizes. The Rust resolver uses the exact rectangle in the same display
+environment and resolves the relative record on a changed display. Carry the target scale into the
+native setter. On macOS, passing the target's physical position to the setter would convert it
+using the window's current display scale and can move it to the wrong screen. The resolver and
+setters live in `src-tauri/src/window_state.rs`.
 
 ### Apply chrome before geometry
 

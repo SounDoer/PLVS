@@ -91,6 +91,33 @@ describe("profileShape", () => {
     });
   });
 
+  it("keeps relative placement for the workbench and saved presets", () => {
+    const windowBounds = {
+      x: 768,
+      y: 432,
+      width: 1024,
+      height: 576,
+      isMaximized: false,
+      relative: {
+        monitor: "test",
+        workArea: { x: 0, y: 0, width: 2560, height: 1440 },
+        scale: 1,
+        logicalWidth: 1024,
+        logicalHeight: 576,
+        frameWidth: 0,
+        frameHeight: 0,
+        horizontal: 0.5,
+        vertical: 0.5,
+      },
+    };
+    const profile = buildProfileSnapshot({
+      windowBounds,
+      presets: { list: [{ ...VALID_PRESET, windowBounds }], activeId: VALID_PRESET.id },
+    });
+    expect(profile.windowBounds).toEqual(windowBounds);
+    expect(profile.presets.list[0].windowBounds).toEqual(windowBounds);
+  });
+
   it("migrates a version 1 Clear shortcut into the version 2 action map", () => {
     const profile = normalizeImportedProfile({
       app: "PLVS",

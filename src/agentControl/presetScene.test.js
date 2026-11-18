@@ -76,6 +76,24 @@ describe("Preset scene capture planning", () => {
     });
   });
 
+  it("recognizes a matching resolved rectangle after reading a stored preset", () => {
+    const windowBounds = { x: 400, y: 300, width: 800, height: 600, isMaximized: false };
+    const saved = {
+      ...current.list[0],
+      focusView: { borderless: false, autoHideControls: false },
+      windowBounds: { ...windowBounds, x: 10, relative: { horizontal: 0.5 } },
+    };
+    const state = { ...current, list: [saved] };
+    const live = {
+      ...snapshot,
+      focusView: { autoHideControls: false, borderless: false },
+      windowBounds: { ...windowBounds, relative: { horizontal: 0.5 } },
+    };
+    expect(
+      planPresetApply(state, saved.id, live, { resolvedWindowBounds: windowBounds })
+    ).toMatchObject({ changed: [], applyScene: false });
+  });
+
   it("associates matching scene content without replacing the scene", () => {
     const state = { ...current, activeId: null };
     expect(planPresetApply(state, "preset-1", snapshot)).toMatchObject({
@@ -130,7 +148,6 @@ describe("Preset scene capture planning", () => {
         dockSupported: true,
         monitors: [{ id: "monitor-1" }],
         fallbackMonitor: "monitor-1",
-        monitorRects: [{ x: 0, y: 0, width: 1920, height: 1080 }],
       })
     ).toMatchObject({
       issues: [],
@@ -160,14 +177,14 @@ describe("Preset scene capture planning", () => {
         {
           loudnessProfiles: [],
           dockSupported: true,
-          monitorRects: [{ x: 0, y: 0, width: 1920, height: 1080 }],
+          resolvedWindowBounds: { x: 320, y: 140, width: 1280, height: 800, isMaximized: false },
         }
       ).warnings
     ).toContainEqual({
       code: "windowBoundsAdjusted",
       path: "$.windowBounds",
       requested: preset.windowBounds,
-      effective: { ...preset.windowBounds, x: 560, y: 240 },
+      effective: { x: 320, y: 140, width: 1280, height: 800, isMaximized: false },
     });
   });
 

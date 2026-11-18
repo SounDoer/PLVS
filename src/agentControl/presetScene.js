@@ -1,5 +1,6 @@
 import { buildSpectrumChannelOptions } from "../math/spectrumChannelOptions.js";
 import { resolveEffectiveChannelControls } from "../analysis/effectiveChannels.js";
+import { sameValue } from "../lib/presetDivergence.js";
 
 const CHANNEL_CONTROL_KEYS = ["spectrumChannel", "vectorscopePair", "stereoMapPair"];
 
@@ -17,6 +18,7 @@ function snapshotOf(preset) {
   return snapshot;
 }
 
+/** @type {[string, string[]][]} */
 const SNAPSHOT_GROUPS = [
   [
     "workspace",
@@ -37,10 +39,6 @@ const SNAPSHOT_GROUPS = [
   ["loudnessProfile", ["loudnessProfileActive"]],
 ];
 
-function groupChanged(target, current, keys) {
-  return keys.some((key) => JSON.stringify(target[key]) !== JSON.stringify(current[key]));
-}
-
 /**
  * @param {string} selection
  */
@@ -50,41 +48,10 @@ function savedProfileId(selection) {
     : null;
 }
 
-function overlapArea(bounds, monitor) {
-  const x = Math.max(
-    0,
-    Math.min(bounds.x + bounds.width, monitor.x + monitor.width) - Math.max(bounds.x, monitor.x)
-  );
-  const y = Math.max(
-    0,
-    Math.min(bounds.y + bounds.height, monitor.y + monitor.height) - Math.max(bounds.y, monitor.y)
-  );
-  return x * y;
-}
-
-function adjustedWindowBounds(bounds, monitors) {
-  if (!bounds || !Array.isArray(monitors) || monitors.length === 0) return bounds;
-  const first = monitors[0];
-  const unusable =
-    bounds.width < 320 || bounds.height < 240 || bounds.x <= -32000 || bounds.y <= -32000;
-  if (unusable) {
-    const width = Math.min(1180, Math.max(first.width, 320));
-    const height = Math.min(860, Math.max(first.height, 240));
-    return {
-      ...bounds,
-      x: first.x + Math.max(Math.trunc((first.width - width) / 2), 0),
-      y: first.y + Math.max(Math.trunc((first.height - height) / 2), 0),
-      width,
-      height,
-    };
-  }
-  const visible = Math.max(...monitors.map((monitor) => overlapArea(bounds, monitor)));
-  if (visible * 8 >= bounds.width * bounds.height) return bounds;
-  return {
-    ...bounds,
-    x: first.x + Math.max(Math.trunc((first.width - bounds.width) / 2), 0),
-    y: first.y + Math.max(Math.trunc((first.height - bounds.height) / 2), 0),
-  };
+function physicalBounds(bounds) {
+  if (!bounds) return undefined;
+  const { x, y, width, height, isMaximized } = bounds;
+  return { x, y, width, height, isMaximized: isMaximized === true };
 }
 
 export function planPresetApplyResources(preset, context = {}) {
@@ -159,16 +126,17 @@ export function planPresetApplyResources(preset, context = {}) {
         });
       }
     }
-  } else if (preset.windowBounds) {
-    const effective = adjustedWindowBounds(preset.windowBounds, context.monitorRects);
-    if (JSON.stringify(effective) !== JSON.stringify(preset.windowBounds)) {
+  }
+  if (!effectivePreset.dock?.enabled && preset.windowBounds && context.resolvedWindowBounds) {
+    const requested = physicalBounds(preset.windowBounds);
+    const effective = physicalBounds(context.resolvedWindowBounds);
+    if (!sameValue(effective, requested)) {
       warnings.push({
         code: "windowBoundsAdjusted",
         path: "$.windowBounds",
-        requested: preset.windowBounds,
+        requested,
         effective,
       });
-      effectivePreset.windowBounds = effective;
     }
   }
 
@@ -290,7 +258,7 @@ export function planPresetUpdate(presets, presetId, snapshot) {
       issues: [issue("presetNotFound", "$.presetId", `Preset ${presetId} was not found.`)],
     };
   }
-  const snapshotChanged = JSON.stringify(snapshotOf(existing)) !== JSON.stringify(snapshot);
+  const snapshotChanged = !sameValue(snapshotOf(existing), snapshot);
   const changed = [
     ...(snapshotChanged ? [`presets.${presetId}.snapshot`] : []),
     ...(presets.activeId !== presetId ? ["presets.activeId"] : []),
@@ -325,9 +293,17 @@ export function planPresetUpdate(presets, presetId, snapshot) {
  * @param {any} presets
  * @param {string} presetId
  * @param {any} currentSnapshot
- * @param {{ targetPreset?: import("../workspace/types.js").Preset }} [options]
+ * @param {{
+ *   targetPreset?: import("../workspace/types.js").Preset,
+ *   resolvedWindowBounds?: import("../workspace/types.js").Preset["windowBounds"],
+ * }} [options]
  */
-export function planPresetApply(presets, presetId, currentSnapshot, { targetPreset } = {}) {
+export function planPresetApply(
+  presets,
+  presetId,
+  currentSnapshot,
+  { targetPreset, resolvedWindowBounds } = {}
+) {
   const savedPreset = presets.list.find(({ id }) => id === presetId);
   const preset = targetPreset?.id === presetId ? targetPreset : savedPreset;
   if (!preset) {
@@ -339,8 +315,16 @@ export function planPresetApply(presets, presetId, currentSnapshot, { targetPres
     };
   }
   const targetSnapshot = snapshotOf(preset);
+  const plannedBounds = preset.dock?.enabled
+    ? undefined
+    : physicalBounds(resolvedWindowBounds ?? targetSnapshot.windowBounds);
+  const currentBounds = physicalBounds(currentSnapshot.windowBounds);
   const sceneChanges = SNAPSHOT_GROUPS.filter(([, keys]) =>
-    groupChanged(targetSnapshot, currentSnapshot, keys)
+    keys.some((key) =>
+      key === "windowBounds"
+        ? plannedBounds && !sameValue(plannedBounds, currentBounds)
+        : !sameValue(targetSnapshot[key], currentSnapshot[key])
+    )
   ).map(([path]) => path);
   const changed = [
     ...sceneChanges,

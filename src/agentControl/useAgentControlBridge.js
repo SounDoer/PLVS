@@ -78,7 +78,6 @@ import { themeStateSignature, loudnessProfileStateSignature } from "./bridge/sig
  *   transitioning: boolean,
  *   monitors: any[],
  *   fallbackMonitor: any,
- *   monitorRects: any[],
  *   monitorInventoryReady: boolean,
  *   readMonitorInventory?: () => Promise<Partial<AgentControlDockContext>>,
  *   channelCount: any,
