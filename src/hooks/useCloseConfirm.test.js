@@ -4,7 +4,7 @@ import { renderHook, act } from "@testing-library/react";
 import { useCloseConfirm } from "./useCloseConfirm.js";
 
 const { mockExit, mockInvoke, mockFlushPersistence, closeRequestedCallback } = vi.hoisted(() => {
-  const cb = { current: null };
+  const cb = { current: null, registration: null };
   return {
     mockExit: vi.fn().mockResolvedValue(undefined),
     mockInvoke: vi.fn().mockResolvedValue(undefined),
@@ -19,7 +19,7 @@ vi.mock("@tauri-apps/api/window", () => ({
   getCurrentWindow: () => ({
     onCloseRequested: (cb) => {
       closeRequestedCallback.current = cb;
-      return Promise.resolve(() => {});
+      return closeRequestedCallback.registration ?? Promise.resolve(() => {});
     },
   }),
 }));
@@ -54,6 +54,7 @@ describe("useCloseConfirm", () => {
   beforeEach(() => {
     localStorage.clear();
     closeRequestedCallback.current = null;
+    closeRequestedCallback.registration = null;
     mockExit.mockClear();
     mockInvoke.mockClear();
     mockFlushPersistence.mockReset().mockResolvedValue(undefined);
@@ -64,6 +65,22 @@ describe("useCloseConfirm", () => {
   it("dialogOpen starts false", () => {
     const { result } = renderHook(() => useCloseConfirm({ onHideWindow: vi.fn() }));
     expect(result.current.dialogOpen).toBe(false);
+  });
+
+  it("cleans up a late native registration and ignores its old callback", async () => {
+    const unlisten = vi.fn();
+    let finish;
+    closeRequestedCallback.registration = new Promise((resolve) => {
+      finish = resolve;
+    });
+    const { unmount } = renderHook(() => useCloseConfirm({ onHideWindow: vi.fn() }));
+    const listener = closeRequestedCallback.current;
+    unmount();
+    await act(async () => finish(unlisten));
+    expect(unlisten).toHaveBeenCalledOnce();
+    const preventDefault = vi.fn();
+    await listener({ preventDefault });
+    expect(preventDefault).not.toHaveBeenCalled();
   });
 
   it("opens dialog when no preference saved and close is requested", async () => {

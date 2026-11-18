@@ -337,9 +337,14 @@ export function AgentControlBridge() {
         return { sessionId, runId };
       }
       if (method === "transport.file.reanalyze") {
-        if (meterRuntime.liveLifecycle === "running") await stopLiveForControl();
-        switchSource("file");
-        const run = await reanalyzeFileForControl(params.sessionId, currentFileAnalysisSettings());
+        const run = await reanalyzeFileForControl(params.sessionId, currentFileAnalysisSettings(), {
+          beforeRun: async () => {
+            if (meterRuntime.liveLifecycle === "running") await stopLiveForControl();
+            switchSource("file");
+          },
+          selectReplacementTrack: (probe) =>
+            selectImportTrack(probe, undefined, { replacement: true }),
+        });
         if (!run) throw new Error("FILE reanalysis was not accepted.");
         const runId = await run.accepted;
         return { sessionId: run.sessionId, runId };
@@ -533,9 +538,15 @@ export function AgentControlBridge() {
           );
         }
         if (changed.some((path) => path.startsWith("settings.keyboardShortcuts."))) {
-          await settings.applyKeyboardShortcutsForControl(next.keyboardShortcuts);
+          await settings.applyKeyboardShortcutsForControl(
+            next.keyboardShortcuts,
+            agentControlSettings.keyboardShortcuts
+          );
           compensation.push(() =>
-            settings.applyKeyboardShortcutsForControl(agentControlSettings.keyboardShortcuts)
+            settings.applyKeyboardShortcutsForControl(
+              agentControlSettings.keyboardShortcuts,
+              next.keyboardShortcuts
+            )
           );
         }
         if (changed.includes("settings.dialogueVadEngine")) {

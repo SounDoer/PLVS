@@ -7,6 +7,7 @@ import {
   useMeterRuntimeAssembly,
 } from "./MeterRuntimeContext.jsx";
 import { probeFileAnalysis } from "../ipc/commands.js";
+import { selectImportTrack } from "../agentControl/transportControl.js";
 vi.mock("../ipc/env.js", () => ({ isTauri: () => true }));
 vi.mock("../ipc/commands.js", () => ({ probeFileAnalysis: vi.fn(), clearAudioHistory: vi.fn() }));
 const sourceVersion = { canonicalPath: "C:/mix.mkv", byteLength: 10, sha256: "old" };
@@ -40,10 +41,12 @@ function mount() {
   });
   return { ...hook, id };
 }
-it("creates a new entry for replacement content and retains the original successful result", async () => {
+it("analyzes the only track in a replacement file and keeps the old result", async () => {
   const { result, id } = mount();
   vi.mocked(probeFileAnalysis).mockResolvedValue({
     ...probe,
+    selectedTrack: probe.audioTracks[0],
+    audioTracks: [probe.audioTracks[0]],
     sourceVersion: { ...sourceVersion, sha256: "new" },
   });
   await act(async () => {
@@ -53,7 +56,65 @@ it("creates a new entry for replacement content and retains the original success
   expect(
     result.current.runtime.fileSessions.find((file) => file.id === id).summary.integratedLufs
   ).toBe(-23);
-  expect(result.current.assembly.ledger.validRunRequest.probe.selectedTrack.index).toBe(2);
+  expect(result.current.assembly.ledger.validRunRequest.probe.selectedTrack.index).toBe(1);
+});
+
+it.each([true, false])(
+  "waits for a new choice on a multitrack replacement (confirm: %s)",
+  async (confirm) => {
+    const { result, id } = mount();
+    vi.mocked(probeFileAnalysis).mockResolvedValue({
+      ...probe,
+      sourceVersion: { ...sourceVersion, sha256: "new" },
+    });
+    let pending;
+    await act(async () => {
+      pending = result.current.runtime.reanalyzeFile(id, {});
+    });
+    expect(result.current.runtime.fileTaskBusy).toBe(true);
+    expect(result.current.assembly.ledger.validRunRequest).toBeNull();
+    expect(result.current.runtime.activeFileSession.summary.integratedLufs).toBe(-23);
+    const picker = result.current.runtime.replacementTrackSelection;
+    await act(async () => {
+      if (confirm) picker.onConfirm(1);
+      else await picker.onCancel();
+      await pending;
+    });
+    expect(result.current.runtime.replacementTrackSelection).toBeNull();
+    expect(result.current.runtime.fileSessions).toHaveLength(confirm ? 2 : 1);
+    expect(
+      result.current.runtime.fileSessions.find((file) => file.id === id).summary.integratedLufs
+    ).toBe(-23);
+    if (confirm)
+      expect(result.current.assembly.ledger.validRunRequest.probe.selectedTrack.index).toBe(1);
+    else expect(result.current.runtime.fileTaskBusy).toBe(false);
+  }
+);
+
+it("returns a track-selection refusal to Agent Control before starting a replacement", async () => {
+  const { result, id } = mount();
+  vi.mocked(probeFileAnalysis).mockResolvedValue({
+    ...probe,
+    sourceVersion: { ...sourceVersion, sha256: "new" },
+  });
+  const beforeRun = vi.fn();
+  await act(async () => {
+    await expect(
+      result.current.runtime.reanalyzeFileForControl(
+        id,
+        {},
+        {
+          selectReplacementTrack: (discovered) =>
+            selectImportTrack(discovered, undefined, { replacement: true }),
+          beforeRun,
+        }
+      )
+    ).rejects.toMatchObject({ reason: "fileTrackSelectionRequired", path: "$.params.sessionId" });
+  });
+  expect(beforeRun).not.toHaveBeenCalled();
+  expect(result.current.runtime.replacementTrackSelection).toBeNull();
+  expect(result.current.runtime.fileTaskBusy).toBe(false);
+  expect(result.current.runtime.activeFileSession.state).toBe("complete");
 });
 it("retains the original track even if the new probe defaults to a different track", async () => {
   const { result, id } = mount();

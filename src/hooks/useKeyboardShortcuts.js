@@ -6,9 +6,9 @@ import {
 } from "../data/keyboardShortcutActions.js";
 import { isTauri } from "../ipc/env.js";
 import {
+  keyboardShortcutPrefsRevision,
   loadKeyboardShortcutPrefs,
   saveKeyboardShortcutPrefs,
-  saveKeyboardShortcutPrefsForControl,
 } from "../lib/shortcutPrefs.js";
 import { useCoordinatorRole } from "../lib/runtimeRole.js";
 
@@ -91,17 +91,32 @@ async function replaceRegistrationsAtomically(registered, desired, dispatchRef) 
 export function useKeyboardShortcuts(dispatchRef) {
   const isCoordinator = useCoordinatorRole();
   const [shortcuts, setShortcuts] = useState(() => normalizeKeyboardShortcuts());
+  const saved = useRef({ shortcuts, revision: 0 });
   const [ready, setReady] = useState(false);
   const [capturing, setCapturing] = useState(false);
   const [registrationErrors, setRegistrationErrors] = useState({});
+  const [saveErrors, setSaveErrors] = useState(/** @type {Record<string, string>} */ ({}));
   const registeredRef = useRef(new Map());
+  const pendingUpdate = useRef(Promise.resolve());
+  const enqueueUpdate = useCallback((update) => {
+    const pending = pendingUpdate.current.then(update);
+    pendingUpdate.current = pending.catch(() => {});
+    return pending;
+  }, []);
+  const publishShortcuts = useCallback((next, revision) => {
+    saved.current = { shortcuts: next, revision };
+    setShortcuts(next);
+  }, []);
 
   useEffect(() => {
     let mounted = true;
     const sync = () => {
-      loadKeyboardShortcutPrefs().then((next) => {
+      void enqueueUpdate(async () => {
         if (!mounted) return;
-        setShortcuts(next);
+        const revision = keyboardShortcutPrefsRevision();
+        const next = await loadKeyboardShortcutPrefs();
+        if (!mounted) return;
+        if (revision >= saved.current.revision) publishShortcuts(next, revision);
         setReady(true);
       });
     };
@@ -111,7 +126,7 @@ export function useKeyboardShortcuts(dispatchRef) {
       mounted = false;
       window.removeEventListener("plvs-global-preferences-changed", sync);
     };
-  }, []);
+  }, [enqueueUpdate, publishShortcuts]);
 
   useEffect(() => {
     if (!ready || !isTauri()) return;
@@ -191,17 +206,34 @@ export function useKeyboardShortcuts(dispatchRef) {
     []
   );
 
-  const commitGuiUpdate = useCallback((update) => {
-    setShortcuts((current) => {
-      const next = normalizeKeyboardShortcuts(update(current));
-      void saveKeyboardShortcutPrefs(next);
-      return next;
-    });
-  }, []);
+  const commitGuiUpdate = useCallback(
+    (/** @type {string} */ actionId, update) =>
+      enqueueUpdate(async () => {
+        const { shortcuts: current, revision } = saved.current;
+        const updated = update(current);
+        if (updated === current) return;
+        const next = normalizeKeyboardShortcuts(updated);
+        try {
+          const savedRevision = await saveKeyboardShortcutPrefs(next, revision);
+          publishShortcuts(next, savedRevision ?? revision);
+        } catch (error) {
+          setSaveErrors((errors) => ({
+            ...errors,
+            [actionId]:
+              error?.reason === "conflict"
+                ? "Shortcuts changed in another workbench. Try again."
+                : "Could not save shortcut. Try again.",
+          }));
+          return;
+        }
+        setSaveErrors(({ [actionId]: _saved, ...errors }) => errors);
+      }),
+    [enqueueUpdate, publishShortcuts]
+  );
 
   const setShortcutAccelerator = useCallback(
     (actionId, accelerator) => {
-      commitGuiUpdate((current) =>
+      commitGuiUpdate(actionId, (current) =>
         configuredShortcutConflict(current, actionId, accelerator)
           ? current
           : {
@@ -219,7 +251,7 @@ export function useKeyboardShortcuts(dispatchRef) {
 
   const setShortcutGlobal = useCallback(
     (actionId, global) => {
-      commitGuiUpdate((current) => ({
+      commitGuiUpdate(actionId, (current) => ({
         ...current,
         [actionId]: { ...current[actionId], global },
       }));
@@ -228,33 +260,42 @@ export function useKeyboardShortcuts(dispatchRef) {
   );
 
   const applyKeyboardShortcutsForControl = useCallback(
-    async (next) => {
-      const normalized = normalizeKeyboardShortcuts(next);
-      const shouldRegister = isTauri() && isCoordinator && ready && !capturing;
-      const previousRegistrations = new Map(registeredRef.current);
-      if (shouldRegister) {
-        await replaceRegistrationsAtomically(
-          registeredRef.current,
-          requestedGlobalRegistrations(normalized),
-          dispatchRef
-        );
-      }
-      try {
-        await saveKeyboardShortcutPrefsForControl(normalized);
-      } catch (error) {
+    (next, expected = undefined) =>
+      enqueueUpdate(async () => {
+        const { shortcuts: current, revision } = saved.current;
+        if (
+          expected &&
+          JSON.stringify(normalizeKeyboardShortcuts(expected)) !== JSON.stringify(current)
+        ) {
+          throw new Error("Keyboard shortcuts changed before this operation could be applied.");
+        }
+        const normalized = normalizeKeyboardShortcuts(next);
+        const shouldRegister = isTauri() && isCoordinator && ready && !capturing;
+        const previousRegistrations = new Map(registeredRef.current);
         if (shouldRegister) {
           await replaceRegistrationsAtomically(
             registeredRef.current,
-            previousRegistrations,
+            requestedGlobalRegistrations(normalized),
             dispatchRef
-          ).catch(() => {});
+          );
         }
-        throw error;
-      }
-      setShortcuts(normalized);
-      setRegistrationErrors({});
-    },
-    [capturing, dispatchRef, isCoordinator, ready]
+        try {
+          const savedRevision = await saveKeyboardShortcutPrefs(normalized, revision);
+          publishShortcuts(normalized, savedRevision ?? revision);
+        } catch (error) {
+          if (shouldRegister) {
+            await replaceRegistrationsAtomically(
+              registeredRef.current,
+              previousRegistrations,
+              dispatchRef
+            ).catch(() => {});
+          }
+          throw error;
+        }
+        setRegistrationErrors({});
+        setSaveErrors({});
+      }),
+    [capturing, dispatchRef, enqueueUpdate, isCoordinator, publishShortcuts, ready]
   );
 
   return {
@@ -262,6 +303,7 @@ export function useKeyboardShortcuts(dispatchRef) {
     shortcutsReady: ready,
     shortcutCapturing: capturing,
     shortcutRegistrationErrors: registrationErrors,
+    shortcutSaveErrors: saveErrors,
     setShortcutAccelerator,
     setShortcutGlobal,
     setShortcutCapturing: setCapturing,

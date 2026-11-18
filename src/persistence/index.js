@@ -1,11 +1,7 @@
-// src/persistence/index.js
 /**
- * The single persistence "manager" entry point: the settings, workspace, presets and
- * themes domains over one backend, plus manager-level flush, export and reset.
- *
- * The desktop app uses the plugin-store backend (plvs-settings.json); a browser build
- * falls back to localStorage. Consumers and the domain stores see the same seam either
- * way. Each domain resolves its version lazily and may migrate on read.
+ * Domain stores for settings, workspace, presets and themes. Desktop boot normally
+ * selects transactional Workspace and shared Library storage. The plugin-store
+ * fallback serves desktop boots without that metadata. Browser builds use localStorage.
  */
 import { createLocalStorageBackend } from "./localStorageBackend.js";
 import { createPluginStoreBackend } from "./pluginStoreBackend.js";

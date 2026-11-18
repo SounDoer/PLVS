@@ -15,8 +15,10 @@ analysis entry. Reopening an unchanged file and track reuses its existing result
 Detection settings match. Otherwise, reopening analyzes it again in the same entry. Agent Control's
 `transport file analyze` follows the same rules and takes `--track <index>` for a file with several
 audio tracks.
-Reanalyze keeps the original track. If the source contents changed, reanalysis creates a new entry
-and preserves the old result. Missing sources do not remove results or reports already in memory.
+Reanalyze keeps the original track while the source is unchanged. If the source contents changed,
+PLVS uses the replacement's only audio track or opens **Select Audio Track** when several are
+available. It creates a new entry and preserves the old result. Cancelling the picker leaves the
+current result intact. Missing sources do not remove results or reports already in memory.
 
 Source versions use a content fingerprint taken when the file is opened and checked again after
 decoding; Cancel also stops a fingerprint read in progress. Completed

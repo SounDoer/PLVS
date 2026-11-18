@@ -454,6 +454,7 @@ export function AppSettingsOverlays({
       setShortcutCapturing: settings.setShortcutCapturing,
       shortcutsReady: settings.shortcutsReady,
       shortcutRegistrationErrors: settings.shortcutRegistrationErrors,
+      shortcutSaveErrors: settings.shortcutSaveErrors,
       customThemeOptions: settings.customThemeOptions,
       createCustomTheme: settings.createCustomTheme,
       editCustomTheme: settings.editCustomTheme,

@@ -1,6 +1,5 @@
-// src/persistence/pluginStoreBackend.js
 /**
- * Production backend: the single source of truth is plvs-settings.json (plugin-store).
+ * Legacy desktop fallback for boots without transactional persistence metadata.
  *
  * createDomainStore is synchronous, but the plugin-store JS API is async, so this backend
  * holds a synchronous in-memory cache seeded from window.__PLVS_INITIAL_STATE__ (injected
@@ -13,10 +12,6 @@
  * and schedule a trailing flush; the flush a few pointermoves later collapses all of
  * them into one `s.set()` per dirty key plus a single `s.save()`.
  */
-// Named before the other three domains existed: this one file holds `plvs:settings`,
-// `plvs:workspace`, `plvs:presets` and `plvs:themes`, plus Rust-owned siblings like
-// `windowBounds`. Nothing but a rename would fix the name, and a rename means migrating every
-// installed user's only copy of their data on the boot path -- see AGENTS.md.
 const STORE_FILE = "plvs-settings.json";
 const FLUSH_DELAY_MS = 200;
 

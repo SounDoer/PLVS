@@ -343,15 +343,17 @@ export function planTransportMutation(snapshot, method, params = {}, context = {
  * Choose the track `transport file analyze` imports. Automation cannot answer the GUI's track
  * dialog, so a file with several tracks needs `trackIndex` rather than a silent default.
  */
-export function selectImportTrack(probe, trackIndex) {
+export function selectImportTrack(probe, trackIndex, { replacement = false } = {}) {
   const tracks = fileImportTracks(probe);
   const details = { path: probe.path, tracks: cloneJson(tracks) };
   if (trackIndex === undefined) {
     if (tracks.length === 1) return withSelectedAudioTrack(probe, tracks[0].index);
     throw semanticFailure(
       "fileTrackSelectionRequired",
-      "$.params.trackIndex",
-      "The file has several audio tracks; choose one with --track <index>.",
+      replacement ? "$.params.sessionId" : "$.params.trackIndex",
+      replacement
+        ? "The replacement file has several audio tracks. Use transport file analyze with --track <index>."
+        : "The file has several audio tracks; choose one with --track <index>.",
       -32087,
       details
     );

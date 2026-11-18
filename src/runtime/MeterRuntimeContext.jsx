@@ -5,6 +5,7 @@ import { useIntakeRouting } from "../hooks/useIntakeRouting.js";
 import { useMeterDisplay } from "../hooks/useMeterDisplay.js";
 import { clearAudioHistory, probeFileAnalysis } from "../ipc/commands.js";
 import { sameFileSourceVersion, withSelectedAudioTrack } from "../lib/fileAnalysisSource.js";
+import { fileImportTracks } from "../lib/fileImportPlan.js";
 import { isTauri } from "../ipc/env.js";
 import { FrameIntake } from "../lib/FrameIntake.js";
 import { getSuccessfulFileSession } from "../lib/fileAnalysisSessionRegistry.js";
@@ -40,6 +41,7 @@ export function MeterRuntimeProvider({ children }) {
   const display = useMeterDisplay();
   const [sourceMode, setSourceMode] = useState("live");
   const [preparingFileId, setPreparingFileId] = useState(null);
+  const [replacementTrackSelection, setReplacementTrackSelection] = useState(null);
   const preparationRef = useRef(null);
   const ledger = useFileSessionLedger({ protectedFileId: preparingFileId });
   const { fileHistory, fileSessions, activeFileSession, analyzingFileSession } = ledger;
@@ -81,8 +83,10 @@ export function MeterRuntimeProvider({ children }) {
     const preparation = preparationRef.current;
     if (preparation && (!expectedSessionId || preparation.sessionId === expectedSessionId)) {
       preparation.cancelled = true;
+      preparation.cancelTrackSelection();
       preparationRef.current = null;
       setPreparingFileId(null);
+      setReplacementTrackSelection(null);
       taskSessionRef.current = null;
       return;
     }
@@ -216,8 +220,7 @@ export function MeterRuntimeProvider({ children }) {
   const reanalyzeFile = async (
     sessionId,
     analysisSettings,
-    onPrepared = null,
-    kind = "analyze"
+    { onPrepared = null, kind = "analyze", selectReplacementTrack = null, beforeRun = null } = {}
   ) => {
     analysisSettings = structuredClone(analysisSettings ?? {});
     display.clearNotice();
@@ -241,40 +244,73 @@ export function MeterRuntimeProvider({ children }) {
     }
 
     taskSessionRef.current = entry.id;
-    const preparation = { sessionId: entry.id, cancelled: false };
+    const preparation = { sessionId: entry.id, cancelled: false, cancelTrackSelection: () => {} };
     preparationRef.current = preparation;
     setPreparingFileId(entry.id);
     let probe = entry.metadata;
+    let replaced = false;
     try {
       if (isTauri()) {
         const discovered = await probeFileAnalysis(entry.path);
         if (preparation.cancelled) return null;
-        probe = withSelectedAudioTrack(
-          discovered,
-          entry.metadata?.selectedTrack?.index ?? discovered.selectedTrack.index
-        );
-        if (
+        replaced = Boolean(
           entry.metadata?.sourceVersion &&
-          !sameFileSourceVersion(entry.metadata.sourceVersion, probe.sourceVersion)
-        ) {
+          !sameFileSourceVersion(entry.metadata.sourceVersion, discovered.sourceVersion)
+        );
+        if (replaced) {
           if (kind === "restore")
             throw new Error(
               "Source file changed; the original history cannot be restored. Reanalyze to create a new result."
             );
-          const activate = activeFileIdRef.current === entry.id;
-          if (activate) {
-            display.clearSnapshot();
-            display.clearAudio();
+          if (fileImportTracks(discovered).length > 1) {
+            if (selectReplacementTrack) probe = selectReplacementTrack(discovered);
+            else {
+              probe = await new Promise((resolve) => {
+                preparation.cancelTrackSelection = () => resolve(null);
+                setReplacementTrackSelection({
+                  probe: discovered,
+                  onConfirm: (index) => {
+                    if (fileImportTracks(discovered).some((track) => track.index === index)) {
+                      resolve(withSelectedAudioTrack(discovered, index));
+                    }
+                  },
+                  onCancel: () => {
+                    if (preparationRef.current === preparation) return stopFileAnalysis(entry.id);
+                  },
+                });
+              });
+              if (!probe || preparation.cancelled) return null;
+              setReplacementTrackSelection(null);
+            }
+          } else {
+            probe = discovered;
           }
-          const newId = ledger.beginRun(entry.path, analysisSettings, probe, onPrepared, activate);
-          taskSessionRef.current = newId;
-          return newId;
+        } else {
+          probe = withSelectedAudioTrack(
+            discovered,
+            entry.metadata?.selectedTrack?.index ?? discovered.selectedTrack.index
+          );
+        }
+      }
+      if (beforeRun) {
+        try {
+          await beforeRun();
+        } catch (error) {
+          if (preparation.cancelled) return null;
+          taskSessionRef.current = null;
+          return Promise.reject(error);
         }
       }
       if (preparation.cancelled) return null;
-      if (activeFileIdRef.current === entry.id && !getSuccessfulFileSession(entry)) {
+      const activate = activeFileIdRef.current === entry.id;
+      if (activate && (replaced || !getSuccessfulFileSession(entry))) {
         display.clearSnapshot();
         display.clearAudio();
+      }
+      if (replaced) {
+        const newId = ledger.beginRun(entry.path, analysisSettings, probe, onPrepared, activate);
+        taskSessionRef.current = newId;
+        return newId;
       }
       onPrepared?.(entry.id);
       ledger.rerun(entry.id, entry.path, analysisSettings, probe, kind);
@@ -282,6 +318,7 @@ export function MeterRuntimeProvider({ children }) {
     } catch (error) {
       if (preparation.cancelled) return null;
       taskSessionRef.current = null;
+      if (error?.reason === "fileTrackSelectionRequired") throw error;
       if (kind === "analyze")
         ledger.updateSession(entry.id, (current) => ({
           ...current,
@@ -297,28 +334,27 @@ export function MeterRuntimeProvider({ children }) {
       if (preparationRef.current === preparation) {
         preparationRef.current = null;
         setPreparingFileId(null);
+        setReplacementTrackSelection(null);
       }
     }
   };
-  const restoreFileHistory = (sessionId) => reanalyzeFile(sessionId, null, null, "restore");
-  const reanalyzeFileForControl = async (sessionId, analysisSettings, kind = "analyze") => {
+  const restoreFileHistory = (sessionId) => reanalyzeFile(sessionId, null, { kind: "restore" });
+  const reanalyzeFileForControl = async (sessionId, analysisSettings, options = {}) => {
     let acceptance;
     const accepted = new Promise((resolve, reject) => {
       acceptance = { resolve, reject };
     });
-    const resultId = await reanalyzeFile(
-      sessionId,
-      analysisSettings,
-      (id) => {
+    const resultId = await reanalyzeFile(sessionId, analysisSettings, {
+      ...options,
+      onPrepared: (id) => {
         fileAnalysisAcceptanceRef.current.set(id, acceptance);
       },
-      kind
-    );
+    });
     if (!resultId) return null;
     return { sessionId: resultId, accepted };
   };
   const restoreFileHistoryForControl = (sessionId) =>
-    reanalyzeFileForControl(sessionId, null, "restore");
+    reanalyzeFileForControl(sessionId, null, { kind: "restore" });
   const selectFile = (sessionId) => {
     display.clearNotice();
     display.setSelectedOffset(-1);
@@ -442,6 +478,7 @@ export function MeterRuntimeProvider({ children }) {
       activeFileId: fileHistory.activeFileId,
       analyzingFileId: fileHistory.analyzingFileId,
       preparingFileId,
+      replacementTrackSelection,
       fileTaskBusy: Boolean(preparingFileId || fileHistory.analyzingFileId),
       ...verbs,
     }),
@@ -460,6 +497,7 @@ export function MeterRuntimeProvider({ children }) {
       fileHistory.activeFileId,
       fileHistory.analyzingFileId,
       preparingFileId,
+      replacementTrackSelection,
       verbs,
     ]
   );

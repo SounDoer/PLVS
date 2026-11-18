@@ -6,7 +6,7 @@ import { useRef } from "react";
 const register = vi.fn();
 const unregister = vi.fn();
 const { invoke } = vi.hoisted(() => ({ invoke: vi.fn() }));
-const { saveForControl } = vi.hoisted(() => ({ saveForControl: vi.fn() }));
+const { saveShortcuts } = vi.hoisted(() => ({ saveShortcuts: vi.fn() }));
 
 vi.mock("../ipc/env.js", () => ({ isTauri: () => true }));
 vi.mock("../lib/shortcutPrefs.js", () => ({
@@ -16,8 +16,8 @@ vi.mock("../lib/shortcutPrefs.js", () => ({
       toggleLiveSnapshot: { accelerator: "CmdOrCtrl+2", global: false },
       clear: { accelerator: "CmdOrCtrl+3", global: true },
     }),
-  saveKeyboardShortcutPrefs: () => Promise.resolve(),
-  saveKeyboardShortcutPrefsForControl: saveForControl,
+  keyboardShortcutPrefsRevision: () => 4,
+  saveKeyboardShortcutPrefs: saveShortcuts,
 }));
 vi.mock("@tauri-apps/plugin-global-shortcut", () => ({ register, unregister }));
 vi.mock("@tauri-apps/api/core", () => ({ invoke }));
@@ -40,8 +40,8 @@ beforeEach(() => {
   unregister.mockResolvedValue(undefined);
   invoke.mockReset();
   invoke.mockResolvedValue(false);
-  saveForControl.mockReset();
-  saveForControl.mockResolvedValue(undefined);
+  saveShortcuts.mockReset();
+  saveShortcuts.mockResolvedValue(5);
   delete window.__PLVS_INITIAL_STATE__;
   setCoordinatorRole(undefined);
 });
@@ -109,7 +109,7 @@ describe("useKeyboardShortcuts", () => {
     await waitFor(() => expect(register).toHaveBeenCalledTimes(2));
     register.mockClear();
     unregister.mockClear();
-    saveForControl.mockRejectedValueOnce(new Error("revision conflict"));
+    saveShortcuts.mockRejectedValueOnce(new Error("revision conflict"));
 
     await expect(
       latest.applyKeyboardShortcutsForControl({
@@ -123,5 +123,49 @@ describe("useKeyboardShortcuts", () => {
     expect(unregister).toHaveBeenCalledWith("CmdOrCtrl+Alt+K");
     expect(register).toHaveBeenCalledWith("CmdOrCtrl+3", expect.any(Function));
     expect(latest.keyboardShortcuts.clear.accelerator).toBe("CmdOrCtrl+3");
+  });
+
+  it("serializes successive GUI edits against the last saved revision", async () => {
+    let resolveFirst;
+    saveShortcuts
+      .mockReturnValueOnce(
+        new Promise((resolve) => {
+          resolveFirst = resolve;
+        })
+      )
+      .mockResolvedValueOnce(6);
+    render(<Harness dispatch={vi.fn()} />);
+    await waitFor(() => expect(latest.shortcutsReady).toBe(true));
+
+    act(() => {
+      latest.setShortcutAccelerator("clear", "CmdOrCtrl+9");
+      latest.setShortcutGlobal("toggleLiveSnapshot", true);
+    });
+    await waitFor(() => expect(saveShortcuts).toHaveBeenCalledOnce());
+    expect(saveShortcuts.mock.calls[0][1]).toBe(4);
+    expect(latest.keyboardShortcuts.clear.accelerator).toBe("CmdOrCtrl+3");
+    await act(async () => resolveFirst(5));
+
+    expect(saveShortcuts).toHaveBeenNthCalledWith(
+      2,
+      expect.objectContaining({
+        clear: { accelerator: "CmdOrCtrl+9", global: true },
+        toggleLiveSnapshot: { accelerator: "CmdOrCtrl+2", global: true },
+      }),
+      5
+    );
+    expect(latest.keyboardShortcuts.toggleLiveSnapshot.global).toBe(true);
+  });
+
+  it("keeps the saved binding and reports a conflict on the affected row", async () => {
+    saveShortcuts.mockRejectedValueOnce({ reason: "conflict" }).mockResolvedValueOnce(5);
+    render(<Harness dispatch={vi.fn()} />);
+    await waitFor(() => expect(latest.shortcutsReady).toBe(true));
+    await act(() => latest.setShortcutGlobal("toggleLiveSnapshot", true));
+    expect(latest.keyboardShortcuts.toggleLiveSnapshot.global).toBe(false);
+    expect(latest.shortcutSaveErrors.toggleLiveSnapshot).toMatch(/another workbench/);
+    await act(() => latest.setShortcutGlobal("toggleLiveSnapshot", true));
+    expect(latest.keyboardShortcuts.toggleLiveSnapshot.global).toBe(true);
+    expect(latest.shortcutSaveErrors).toEqual({});
   });
 });

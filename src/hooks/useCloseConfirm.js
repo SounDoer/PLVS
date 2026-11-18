@@ -68,8 +68,10 @@ export function useCloseConfirm({ onHideWindow, onShowWindow = NOOP_ASYNC, close
   useEffect(() => {
     if (!isTauri()) return;
     let unlisten;
+    let disposed = false;
     getCurrentWindow()
       .onCloseRequested(async (e) => {
+        if (disposed) return;
         e.preventDefault();
         if (closeBlockedRef.current) return;
         const saved = settingsStore.read().closeAction ?? null;
@@ -86,9 +88,14 @@ export function useCloseConfirm({ onHideWindow, onShowWindow = NOOP_ASYNC, close
         setDialogOpen(true);
       })
       .then((fn) => {
-        unlisten = fn;
+        if (disposed) fn();
+        else unlisten = fn;
+      })
+      .catch((error) => {
+        if (!disposed) console.error("Unable to listen for window close requests", error);
       });
     return () => {
+      disposed = true;
       unlisten?.();
     };
   }, [requestCloseAction]);

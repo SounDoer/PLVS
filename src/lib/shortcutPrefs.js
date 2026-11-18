@@ -5,7 +5,7 @@ import {
 } from "../data/keyboardShortcutActions.js";
 import { isTauri } from "../ipc/env.js";
 
-// The one store file, shared with the other persisted domains. Its historical name is intentional.
+// Desktop fallback when boot has no transactional persistence metadata.
 const STORE_FILE = "plvs-settings.json";
 const SHORTCUTS_KEY = "keyboardShortcuts";
 
@@ -38,14 +38,14 @@ export async function loadKeyboardShortcutPrefs() {
   }
 }
 
-export async function saveKeyboardShortcutPrefs(shortcuts) {
-  if (!isTauri()) return;
-  try {
-    await saveKeyboardShortcutPrefsForControl(shortcuts);
-  } catch (_) {}
+export function keyboardShortcutPrefsRevision() {
+  return transactionalBoot()?.globalPreferenceRevisions?.[SHORTCUTS_KEY] ?? 0;
 }
 
-export async function saveKeyboardShortcutPrefsForControl(shortcuts) {
+export async function saveKeyboardShortcutPrefs(
+  shortcuts,
+  expectedRevision = keyboardShortcutPrefsRevision()
+) {
   if (!isTauri()) return;
   const normalized = normalizeKeyboardShortcuts(shortcuts);
   if (transactionalBoot()) {
@@ -53,18 +53,20 @@ export async function saveKeyboardShortcutPrefsForControl(shortcuts) {
     const revisions = await invoke("persistence_save_global_preferences", {
       values: { [SHORTCUTS_KEY]: normalized },
       expectedRevisions: {
-        [SHORTCUTS_KEY]: metadata.globalPreferenceRevisions?.[SHORTCUTS_KEY] ?? 0,
+        [SHORTCUTS_KEY]: expectedRevision,
       },
     });
-    window.__PLVS_INITIAL_STATE__.globalPreferences = {
-      ...(window.__PLVS_INITIAL_STATE__.globalPreferences || {}),
-      [SHORTCUTS_KEY]: normalized,
-    };
-    metadata.globalPreferenceRevisions = {
-      ...(metadata.globalPreferenceRevisions || {}),
-      ...revisions,
-    };
-    return;
+    if (revisions[SHORTCUTS_KEY] >= keyboardShortcutPrefsRevision()) {
+      window.__PLVS_INITIAL_STATE__.globalPreferences = {
+        ...(window.__PLVS_INITIAL_STATE__.globalPreferences || {}),
+        [SHORTCUTS_KEY]: normalized,
+      };
+      metadata.globalPreferenceRevisions = {
+        ...(metadata.globalPreferenceRevisions || {}),
+        ...revisions,
+      };
+    }
+    return revisions[SHORTCUTS_KEY];
   }
   const { Store } = await import("@tauri-apps/plugin-store");
   const store = await Store.load(STORE_FILE);

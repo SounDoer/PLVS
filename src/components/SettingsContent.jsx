@@ -187,6 +187,7 @@ function IconButton({ children, className, ...props }) {
  *   setShortcutCapturing?: (...args: any[]) => any,
  *   shortcutsReady?: boolean,
  *   shortcutRegistrationErrors?: Record<string, string>,
+ *   shortcutSaveErrors?: Record<string, string>,
  *   channelCount?: number,
  *   channelLabelTokens?: any[],
  *   channelLabelHasOverride?: boolean,
@@ -261,6 +262,7 @@ export function SettingsContent({
   setShortcutCapturing = () => {},
   shortcutsReady = false,
   shortcutRegistrationErrors = {},
+  shortcutSaveErrors = {},
   channelCount = 0,
   channelLabelTokens = [],
   channelLabelHasOverride = false,
@@ -558,6 +560,7 @@ export function SettingsContent({
             const defaultBinding = DEFAULT_KEYBOARD_SHORTCUTS[action.id];
             const binding = keyboardShortcuts[action.id] ?? defaultBinding;
             const registrationError = shortcutRegistrationErrors[action.id];
+            const saveError = shortcutSaveErrors[action.id];
             const isDefault =
               binding.accelerator === defaultBinding.accelerator &&
               binding.global === defaultBinding.global;
@@ -602,9 +605,12 @@ export function SettingsContent({
                       cancelLabel={`Cancel reset ${action.label} shortcut settings`}
                     />
                   </div>
-                  {registrationError ? (
-                    <span className="text-[length:var(--ui-fs-axis)] text-destructive">
-                      Combo unavailable, try another
+                  {saveError || registrationError ? (
+                    <span
+                      role="status"
+                      className="text-[length:var(--ui-fs-axis)] text-destructive"
+                    >
+                      {saveError || "Combo unavailable, try another"}
                     </span>
                   ) : null}
                 </div>

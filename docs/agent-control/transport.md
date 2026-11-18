@@ -30,13 +30,16 @@ button. Snapshot selection is available in Dock and normal mode, does not stop L
 survives Dock entry and exit. FILE source entry remains unavailable while docked.
 
 FILE commands take explicit paths or immutable session IDs. Analyze selects FILE and imports the
-file exactly as the GUI does (see FILE lifecycle); reanalyze retains the selected track and preceding successful result until replacement
+file exactly as the GUI does (see FILE lifecycle); reanalyze retains the selected track of an unchanged
+source and the preceding successful result until replacement
 succeeds; stop retains partial results when no prior success exists and otherwise retains that
 successful result; select chooses an
 existing result; remove deletes one session; and clear deletes the complete FILE session ledger.
 
 Reanalyze keeps the session identity for an unchanged source. If its content fingerprint changed,
-it creates another entry and returns that entry's session ID, retaining the original result.
+it creates another entry using the replacement's only audio track and returns that entry's session
+ID, retaining the original result. A multitrack replacement returns `fileTrackSelectionRequired`
+with the available tracks. Use `transport file analyze <path> --track <index>` to open it explicitly.
 Callers must use the returned identity and inspect after completion rather than assuming the
 requested session was overwritten. Unavailable original tracks or sources leave the old result intact.
 

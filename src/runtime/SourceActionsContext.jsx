@@ -60,6 +60,7 @@ export function SourceActionsProvider({ children }) {
     activeFileSession,
     fileSessions,
     fileTaskBusy,
+    replacementTrackSelection,
     startLive,
     stopLive,
     switchSource,
@@ -218,9 +219,15 @@ export function SourceActionsProvider({ children }) {
       }}
     >
       <FileAudioTrackDialog
-        selection={fileImport.selection ?? fileQueue.selection}
-        onConfirm={fileImport.selection ? fileImport.confirm : fileQueue.confirm}
-        onCancel={fileImport.selection ? fileImport.cancel : fileQueue.dismiss}
+        selection={replacementTrackSelection ?? fileImport.selection ?? fileQueue.selection}
+        onConfirm={
+          replacementTrackSelection?.onConfirm ??
+          (fileImport.selection ? fileImport.confirm : fileQueue.confirm)
+        }
+        onCancel={
+          replacementTrackSelection?.onCancel ??
+          (fileImport.selection ? fileImport.cancel : fileQueue.dismiss)
+        }
       />
       {statistics.open ? (
         <ItemPickerDialog
