@@ -27,8 +27,8 @@ permissions:
   contents: read
 
 concurrency:
-  group: package-check-${{ github.ref }}
-  cancel-in-progress: true
+  group: package-check-${{ github.event_name }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name != 'schedule' }}
 
 jobs:
   windows:

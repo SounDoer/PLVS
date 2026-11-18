@@ -33,6 +33,13 @@ describe("routine package checks", () => {
     expect(source).not.toContain("secrets.");
   });
 
+  it("isolates weekly package checks from CI and manual cancellation", () => {
+    expect(workflow.concurrency).toEqual({
+      group: "package-check-${{ github.event_name }}-${{ github.ref }}",
+      "cancel-in-progress": "${{ github.event_name != 'schedule' }}",
+    });
+  });
+
   it("checks equivalent installable candidates on all three hosted platforms", () => {
     expect(Object.keys(workflow.jobs)).toEqual(["windows", "macos", "linux"]);
     expect(workflow.jobs.windows["runs-on"]).toBe("windows-2025-vs2026");
