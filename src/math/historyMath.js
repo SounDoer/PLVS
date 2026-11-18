@@ -1,18 +1,10 @@
+import { rowAt } from "../lib/historyRow.js";
+
 export const HISTORY_MIN_WINDOW_SEC = 5;
 export const HISTORY_MAX_WINDOW_SEC = 7200;
 
 /** Number of segments for the horizontal time-axis tick labels on the loudness history chart. */
 export const HISTORY_TIME_TICK_STEPS = 4;
-
-/**
- * @param {number} index
- */
-function rowAt(entries, index) {
-  if (!entries) return undefined;
-  if (typeof entries.rowAt === "function") return entries.rowAt(index);
-  if (typeof entries.at === "function" && !Array.isArray(entries)) return entries.at(index);
-  return entries[index];
-}
 
 /**
  * One field of one row. A packed history answers this straight out of its column; materialising a

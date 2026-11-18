@@ -1,3 +1,5 @@
+import { rowAt } from "./historyRow.js";
+
 /**
  * Two-timeline snapshot reconciliation, extracted from useSnapshot.
  *
@@ -12,16 +14,6 @@
  */
 function lengthOf(entries) {
   return entries ? entries.length : 0;
-}
-
-/**
- * @param {number} index
- */
-function rowAt(entries, index) {
-  if (!entries) return undefined;
-  if (typeof entries.rowAt === "function") return entries.rowAt(index);
-  if (typeof entries.at === "function" && !Array.isArray(entries)) return entries.at(index);
-  return entries[index];
 }
 
 /**

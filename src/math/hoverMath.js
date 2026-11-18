@@ -4,16 +4,7 @@ import { hzFromFrac } from "./spectrogramMath.js";
 import { inWindowRange } from "./spectrogramTimeline.js";
 import { STEREO_MAP_MODES } from "./stereoMapMath.js";
 import { nearestTimestampIndex } from "../lib/snapshotResolve.js";
-
-/**
- * @param {number} index
- */
-function rowAt(entries, index) {
-  if (!entries) return undefined;
-  if (typeof entries.rowAt === "function") return entries.rowAt(index);
-  if (typeof entries.at === "function" && !Array.isArray(entries)) return entries.at(index);
-  return entries[index];
-}
+import { rowAt } from "../lib/historyRow.js";
 
 /**
  * Formats a history hover age as a human-readable "X ago" string.

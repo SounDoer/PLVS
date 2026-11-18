@@ -1,14 +1,6 @@
-const MAX_WAVEFORM_SUB_SAMPLES_PER_BUCKET = 16;
+import { rowAt } from "../lib/historyRow.js";
 
-/**
- * @param {number} index
- */
-function rowAt(entries, index) {
-  if (!entries) return undefined;
-  if (typeof entries.rowAt === "function") return entries.rowAt(index);
-  if (typeof entries.at === "function" && !Array.isArray(entries)) return entries.at(index);
-  return entries[index];
-}
+const MAX_WAVEFORM_SUB_SAMPLES_PER_BUCKET = 16;
 
 /**
  * Decimate the visible sub-block history to one min/max bucket per device pixel,

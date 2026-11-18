@@ -6,12 +6,7 @@
  * blank space and the heatmap shares one time-linear x mapping with the time axis, selection line,
  * and frequency markers.
  */
-function rowAt(entries, index) {
-  if (!entries) return undefined;
-  if (typeof entries.rowAt === "function") return entries.rowAt(index);
-  if (typeof entries.at === "function" && !Array.isArray(entries)) return entries.at(index);
-  return entries[index];
-}
+import { rowAt } from "../lib/historyRow.js";
 
 /**
  * @param {number} index
