@@ -6,8 +6,9 @@ recordings come from GitHub Actions run `41280426903` on 2026-11-01, commit
 `c76d2d90499a31c3fe6f40f14bc039166101fbec`. Each contains 1,440 ten-second samples and one
 successful final report. Run `41591156604` on 2026-11-03, commit
 `c9c1fd9a4d299ef58cd03ddcfcc13de0fee95add`, added a second recording per platform under the same
-rig revision and contract. Two references per platform are still too few to establish a normal
-variation range.
+rig revision and contract. Run `44232642119` on 2026-11-18, commit
+`1a1630d61741ac07fca8cefca1ad7b9345d19ca0`, added a third recording per platform under those
+conditions. The observed spreads cover this small set of reviewed runs.
 
 `manifest.json` pins both gzip and decoded series hashes, the original artifact series hash,
 source commit, run ID/attempt, platform, runner, rig revision and measurement contract. Gzip

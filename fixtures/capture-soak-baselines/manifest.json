@@ -216,6 +216,114 @@
         "seriesAvailable": false
       },
       "driverVersion": null
+    },
+    {
+      "sourceSha": "1a1630d61741ac07fca8cefca1ad7b9345d19ca0",
+      "platform": "windows",
+      "runId": "44232642119",
+      "runAttempt": "1",
+      "seconds": 14400,
+      "every": 10,
+      "startedAt": "2026-11-18T03:47:11.140Z",
+      "file": "2026-11-18/windows-lgwin.jsonl.gz",
+      "runnerName": "plvs-rig-windows-lgwin",
+      "rigRevision": "1",
+      "contract": {
+        "revision": "continuous-stereo-tone-v1",
+        "signal": {
+          "sampleRateHz": 48000,
+          "freqHz": 1000,
+          "peakLDb": -20,
+          "peakRDb": -26
+        },
+        "seconds": 14400,
+        "every": 10,
+        "warmupSeconds": 60,
+        "maximumWarmupSeconds": 120,
+        "driftLimitDb": 0.01,
+        "maximumToIntegratedDb": 0.05
+      },
+      "sha256": "1bbb28fe98598c17a9e0c3e12a652c7ef3bf81126307e4bf0cac04b2cc91b9d6",
+      "seriesSha256": "e26336045deb48de045498eba8a35eaf93c1467545c38786f979e898d653e881",
+      "originalSeriesSha256": "b4deaf3b9c8a692bfd0a28fbb0683e0caafd949cdfb2926fa7724353f572b1f6",
+      "rssMb": {
+        "first": 17.3,
+        "last": 17.9,
+        "seriesAvailable": false
+      },
+      "driverVersion": null
+    },
+    {
+      "sourceSha": "1a1630d61741ac07fca8cefca1ad7b9345d19ca0",
+      "platform": "macos",
+      "runId": "44232642119",
+      "runAttempt": "1",
+      "seconds": 14400,
+      "every": 10,
+      "startedAt": "2026-11-18T03:45:54.604Z",
+      "file": "2026-11-18/macos-mac-mini.jsonl.gz",
+      "runnerName": "plvs-rig-mac-Xichen-Mac-Mini",
+      "rigRevision": "1",
+      "contract": {
+        "revision": "continuous-stereo-tone-v1",
+        "signal": {
+          "sampleRateHz": 48000,
+          "freqHz": 1000,
+          "peakLDb": -20,
+          "peakRDb": -26
+        },
+        "seconds": 14400,
+        "every": 10,
+        "warmupSeconds": 60,
+        "maximumWarmupSeconds": 120,
+        "driftLimitDb": 0.01,
+        "maximumToIntegratedDb": 0.05
+      },
+      "sha256": "5959bc2498503a821994fa6ff1a24a34aee1f983a28a9fe4749b92e8754cad3d",
+      "seriesSha256": "b34eed5e4ea8256771203741624f26a0d29dc3611306462d8e181dff2de58454",
+      "originalSeriesSha256": "99e2e2fdf96f90be979748c3c1600df9fb502cae3b4712c3a63ef1939ef55808",
+      "rssMb": {
+        "first": 17.3,
+        "last": 17.9,
+        "seriesAvailable": false
+      },
+      "driverVersion": null
+    },
+    {
+      "sourceSha": "1a1630d61741ac07fca8cefca1ad7b9345d19ca0",
+      "platform": "linux",
+      "runId": "44232642119",
+      "runAttempt": "1",
+      "seconds": 14400,
+      "every": 10,
+      "startedAt": "2026-11-18T03:45:56.483Z",
+      "file": "2026-11-18/linux-ubuntu.jsonl.gz",
+      "runnerName": "plvs-rig-ubuntu-equb",
+      "rigRevision": "1",
+      "contract": {
+        "revision": "continuous-stereo-tone-v1",
+        "signal": {
+          "sampleRateHz": 48000,
+          "freqHz": 1000,
+          "peakLDb": -20,
+          "peakRDb": -26
+        },
+        "seconds": 14400,
+        "every": 10,
+        "warmupSeconds": 60,
+        "maximumWarmupSeconds": 120,
+        "driftLimitDb": 0.01,
+        "maximumToIntegratedDb": 0.05
+      },
+      "sha256": "d390da22cc76b425e4a4b12010fc46549fdbf594035d0c2676bd49af3e57ae19",
+      "seriesSha256": "229f7d0f1bdadd3a5401f6026c2425dcbe710466172afa85779e0544690864a9",
+      "originalSeriesSha256": "3adaae1af7937a7a8930f14a2f8456b3a61c208d726b1cefc19bd85f430c1eb4",
+      "rssMb": {
+        "first": 48.9,
+        "last": 49.3,
+        "seriesAvailable": false
+      },
+      "driverVersion": null
     }
   ]
 }
