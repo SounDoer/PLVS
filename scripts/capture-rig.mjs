@@ -506,6 +506,16 @@ async function takeRig({ wait }) {
   }
 }
 
+/** Keep the lease across a scenario that changes the test endpoint itself. */
+export async function withCaptureRig(operation, { wait = false } = {}) {
+  await takeRig({ wait });
+  try {
+    return await operation();
+  } finally {
+    releaseRig();
+  }
+}
+
 /**
  * Play `wavPath` into `endpointId` and nothing else. Deliberately does not touch
  * the system default playback device: that is intrusive, and 60s of 1 kHz sine
@@ -596,13 +606,13 @@ export function resolveLinuxCaptureRoute({
     playerTarget: sinkName,
     release() {
       if (released) return;
-      released = true;
       const removed = run("pactl", ["unload-module", moduleId], { encoding: "utf8" });
       if (removed.error || removed.status !== 0) {
         throw new RigError(
           `Could not remove Linux null sink module ${moduleId}: ${removed.stderr?.trim() || removed.error?.message || "unknown error"}`
         );
       }
+      released = true;
     },
   };
 }
@@ -640,7 +650,7 @@ export async function startPlayer(playerTarget, wavPath, { wait = false, loop = 
  * purposes — and it ran on the argument-validation path too, so a typo'd flag
  * would have taken their media player with it.
  */
-export function stopPlayer(child) {
+export function stopPlayer(child, { keepLease = false } = {}) {
   try {
     if (!child || child.exitCode !== null || child.signalCode !== null) {
       return;
@@ -676,7 +686,7 @@ export function stopPlayer(child) {
       }
     }
   } finally {
-    releaseRig();
+    if (!keepLease) releaseRig();
   }
 }
 

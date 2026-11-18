@@ -14,12 +14,17 @@ on:
         type: choice
         default: all
         options: [all, windows, macos, linux]
+      scenario:
+        description: Desktop acceptance suite or Live source reconnect on the Windows and Linux rigs
+        type: choice
+        default: desktop
+        options: [desktop, live-source-reconnect]
 
 permissions:
   contents: read
 
 concurrency:
-  group: agent-control-acceptance-${{ inputs.commit_sha }}
+  group: agent-control-acceptance-${{ inputs.scenario }}-${{ inputs.commit_sha }}
   cancel-in-progress: false
 
 jobs:
@@ -27,7 +32,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        platform: ${{ inputs.platform == 'all' && fromJSON('["windows","macos","linux"]') || fromJSON(format('["{0}"]', inputs.platform)) }}
+        platform: ${{ inputs.platform == 'all' && (inputs.scenario == 'live-source-reconnect' && fromJSON('["windows","linux"]') || fromJSON('["windows","macos","linux"]')) || fromJSON(format('["{0}"]', inputs.platform)) }}
     runs-on: [self-hosted, plvs-rig, "${{ matrix.platform }}"]
     timeout-minutes: 90
     defaults:
@@ -78,6 +83,7 @@ jobs:
             --no-default-features --features dev-identity --target-dir src-tauri/target/dev-identity
 
       - name: Run desktop acceptance
+        if: inputs.scenario == 'desktop'
         run: |
           args=(node scripts/run-agent-control-acceptance.mjs
             "artifacts/agent-control-workflow/$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT")
@@ -85,6 +91,21 @@ jobs:
             caffeinate -d -i "${args[@]}"
           else
             "${args[@]}"
+          fi
+
+      - name: Run Live source reconnect smoke
+        if: inputs.scenario == 'live-source-reconnect'
+        run: |
+          node scripts/smoke-live-source-reconnect.mjs \
+            "artifacts/agent-control-workflow/$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT"
+
+      - name: Restore the Windows test endpoint
+        if: ${{ always() && inputs.scenario == 'live-source-reconnect' && matrix.platform == 'windows' }}
+        timeout-minutes: 3
+        run: |
+          output="artifacts/agent-control-workflow/$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT"
+          if [[ -f "$output/windows-endpoint.json" ]]; then
+            node scripts/smoke-live-source-reconnect.mjs "$output" --restore-windows
           fi
 
       - name: Upload Agent Control summary

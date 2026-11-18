@@ -74,13 +74,25 @@ async function inspectLinuxWorkbenchProcesses(dataRoot) {
   );
 }
 
-export async function runIsolatedAgentControl({ executable, root, outDir, scenario, runDesktop }) {
+export async function runIsolatedAgentControl({
+  executable,
+  root,
+  outDir,
+  scenario,
+  runDesktop,
+  runLiveReconnect,
+  environment = {},
+}) {
   await mkdir(outDir, { recursive: true });
   const temporaryRoot = resolve(tmpdir());
   const profilePrefix = "plvs-agent-control-";
   const profile = await mkdtemp(join(temporaryRoot, profilePrefix));
   const dataRoot = join(profile, "app");
-  const env = { ...process.env, PLVS_TEST_IDENTITY_ROOT: join(dataRoot, "multi-instance") };
+  const env = {
+    ...process.env,
+    ...environment,
+    PLVS_TEST_IDENTITY_ROOT: join(dataRoot, "multi-instance"),
+  };
   delete env.PLVS_INSTANCE_ID;
   const cliLog = [];
   const evidencePath = join(outDir, `${scenario}.json`);
@@ -372,7 +384,9 @@ export async function runIsolatedAgentControl({ executable, root, outDir, scenar
         steps: evidence.steps,
         firstInstance: instance,
       });
-    else await fileDialogueRestart();
+    else if (scenario === "live-source-reconnect") {
+      await runLiveReconnect({ invoke, until });
+    } else await fileDialogueRestart();
   } catch (error) {
     failure = error;
     evidence.failure = {
