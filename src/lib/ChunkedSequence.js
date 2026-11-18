@@ -73,7 +73,6 @@ class SequenceView {
     return this.at(index);
   }
 
-  /** @this {SequenceView & SequenceState} */
   /**
    * @this {SequenceView & SequenceState}
    */

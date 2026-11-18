@@ -33,7 +33,6 @@ export class RaggedFloatColumn {
     return this._values.byteLength + this._offsets.byteLength;
   }
 
-  /** Appends one row's values. Rows are written in order and never revisited. */
   /**
    * Appends one row's values. Rows are written in order and never revisited.
    */

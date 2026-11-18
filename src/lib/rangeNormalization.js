@@ -4,13 +4,6 @@
  * controls own the control table, `workspace/axisViewports.js` owns the axis kinds, and each needs
  * a row from the other's world repaired the same way.
  */
-
-/**
- * Repairing a stored min/max pair, shared by the per-panel controls and by the shared viewport a
- * linked group navigates. It lives apart from both so that neither has to import the other: panel
- * controls own the control table, `workspace/axisViewports.js` owns the axis kinds, and each needs
- * a row from the other's world repaired the same way.
- */
 export function isNumber(value) {
   return typeof value === "number" && Number.isFinite(value);
 }
@@ -26,7 +19,6 @@ export function clampNumber(raw, min, max, fallback) {
   return Math.min(max, Math.max(min, raw));
 }
 
-/** Reads a control's stored value, falling back to the keys it used to live under. */
 /**
  * Reads a control's stored value, falling back to the keys it used to live under.
  */
@@ -38,11 +30,6 @@ export function readStored(raw, row) {
   return value;
 }
 
-/**
- * Repairs a min/max pair together: each bound clamps to the row's absolute limits, then the pair
- * is opened up to the row's minimum span. Which bound moves depends on which one the caller
- * actually supplied -- a stored max with no min means the min is the one to move.
- * */
 /**
  * Repairs a min/max pair together: each bound clamps to the row's absolute limits, then the pair
  * is opened up to the row's minimum span. Which bound moves depends on which one the caller

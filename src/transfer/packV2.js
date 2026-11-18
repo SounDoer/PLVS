@@ -70,7 +70,6 @@ function exceedsDepthLimit(raw) {
   return false;
 }
 
-/** Resource checks shared by legacy and strict Pack parsing. */
 /**
  * Resource checks shared by legacy and strict Pack parsing.
  */
@@ -97,7 +96,6 @@ export function collectPackResourceIssues(raw) {
   return issues;
 }
 
-/** Strictly validates the family-neutral part of a Pack V2 envelope. */
 /**
  * Strictly validates the family-neutral part of a Pack V2 envelope.
  */
@@ -230,9 +228,6 @@ export function collectPackV2EnvelopeIssues(raw, { allowedDependencyKind = null 
   return issues;
 }
 
-/**
- * Validates IDs and converts every primary Item while aggregating all detectable issues.
- */
 /**
  * Validates IDs and converts every primary Item while aggregating all detectable issues.
  */

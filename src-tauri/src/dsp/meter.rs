@@ -7,16 +7,16 @@ use crate::dsp::speech::VadEngineKind;
 pub struct PcmContext<'a> {
   pub interleaved: &'a [f32],
   pub channels: u16,
-  #[allow(dead_code)] // Retained for the cfg(test) legacy SpectrumMeter reference until Task 11.
+  #[allow(dead_code)] // Read by the test-only SpectrumMeter reference.
   pub now_sec: f64,
   pub loudness_weights: Option<Vec<f64>>,
   /// Resolved channel roles for dialogue detection. `None` means the layout is unknown, so the
   /// dialogue sidechain treats every channel independently and cannot apply centre priority.
   pub dialogue_channel_roles: Option<&'a [String]>,
   pub vectorscope_pair: (u16, u16),
-  #[allow(dead_code)] // Retained for the cfg(test) legacy SpectrumMeter reference until Task 11.
+  #[allow(dead_code)] // Read by the test-only SpectrumMeter reference.
   pub spectrum_channel: SpectrumChannelSel,
-  #[allow(dead_code)] // Retained for the cfg(test) legacy SpectrumMeter reference until Task 11.
+  #[allow(dead_code)] // Read by the test-only SpectrumMeter reference.
   pub spectrum_view: SpectrumView,
   /// When true, run the speech-activity sidechain and populate the dialogue-gated readouts.
   pub dialogue_gating: bool,

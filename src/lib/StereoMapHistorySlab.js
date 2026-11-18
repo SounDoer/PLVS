@@ -127,16 +127,6 @@ function createChunk(sequenceStart, bandCount, epoch) {
 }
 
 /**
- * Snapshot the chunk's running Hold prefix every {@link HOLD_CHECKPOINT_STRIDE} rows, so a query
- * targeting a row inside this chunk can start from the nearest checkpoint instead of re-deriving
- * every row from the chunk's start. `holdCheckpoints[j]` covers rows `[0, (j + 1) * stride)`.
- *
- * This is free beyond the copy itself: `chunk.holdSummary` is already the running prefix that
- * {@link StereoMapHistorySlab#append} maintains row by row, so a checkpoint is a memcpy of it, not
- * a re-derivation. A full chunk needs no final checkpoint — its own `holdSummary` already covers
- * every row, and a query including all of them merges that whole-chunk summary instead.
- */
-/**
  * Snapshot the chunk's running Hold prefix every
  * {@link HOLD_CHECKPOINT_STRIDE}
  *  rows, so a query
@@ -364,25 +354,6 @@ function foldChunkPrefix(state, chunk, endSequenceExclusive, summary, stats) {
   }
 }
 
-/**
- * Push a cached "prefix Hold" for a newly-sealed chunk about to be appended at `state.chunks[i]`:
- * the merge of every chunk strictly between the retained front chunk (index 0, exclusive — it may
- * still be partially evicted, so it is deliberately never folded into any cached prefix) and this
- * new chunk. `state.holdPrefixCache[1]` is always empty by definition; every later entry is one
- * incremental merge step from the previous chunk's own cached prefix plus its own already-final
- * holdSummary — O(bandCount), not a rescan of the whole retained history.
- *
- * The cache is a plain array parallel to `state.chunks`, owned by this state alone — never a
- * field on the (possibly cross-view-shared) chunk object itself. A sealed chunk object can be
- * referenced by both a live slab and one or more frozen snapshots of it, each with its own chunk
- * array and therefore its own valid prefix at a given position; caching on the shared object would
- * let one view's rebuild silently corrupt another's.
- *
- * When the cache is currently dirty (a prior eviction hasn't been rebuilt yet), this leaves the
- * array short: `ensureHoldPrefixCache` will fill in every entry from index 1 onward in one pass
- * the next time a query needs it, so no work is wasted computing an incremental step from a stale
- * base.
- */
 /**
  * Push a cached "prefix Hold" for a newly-sealed chunk about to be appended at `state.chunks[i]`:
  * the merge of every chunk strictly between the retained front chunk (index 0, exclusive — it may

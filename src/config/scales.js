@@ -7,7 +7,6 @@ export const PEAK_DB_MIN = -60;
 export const PEAK_DB_MAX = 3;
 const PEAK_DB_RNG = PEAK_DB_MAX - PEAK_DB_MIN;
 
-/** 0..1 linear position: +3 dB → 1, -60 dB → 0 */
 /**
  * 0..1 linear position: +3 dB → 1, -60 dB → 0
  */
@@ -37,7 +36,6 @@ export const LOUDNESS_DB_MIN = -64;
 export const LOUDNESS_DB_MAX = 0;
 const LOUDNESS_DB_RNG = LOUDNESS_DB_MAX - LOUDNESS_DB_MIN;
 
-/** Loudness: from-top normalized position; -3 dB → 0, -64 dB → 1 on this axis. */
 /**
  * Loudness: from-top normalized position; -3 dB → 0, -64 dB → 1 on this axis.
  */
@@ -59,7 +57,6 @@ export function loudnessFromTopFrac(v, range = {}) {
   return 1 - (c - LOUDNESS_DB_MIN) / LOUDNESS_DB_RNG;
 }
 
-/** Loudness History y for SVG viewBox height 220 (must match App buildHistoryPath). */
 /**
  * Loudness History y for SVG viewBox height 220 (must match App buildHistoryPath).
  */
@@ -390,11 +387,6 @@ export function buildAdaptiveFreqTicks(minHz, maxHz, axisPx = 500) {
   return dedupeAdjacentLabels(spaced);
 }
 
-/**
- * Drops interior ticks whose formatted label repeats a neighbour (both endpoints kept).
- * Narrow log ranges produce more pixel slots than distinct round labels, which otherwise
- * renders runs like "1k, 1k, 1.1k, 1.1k"; collapse those to one tick per label.
- */
 /**
  * Drops interior ticks whose formatted label repeats a neighbour (both endpoints kept).
  * Narrow log ranges produce more pixel slots than distinct round labels, which otherwise

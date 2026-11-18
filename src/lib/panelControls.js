@@ -174,7 +174,6 @@ function levelMeterThresholdRow(mode, minKey, maxKey, defaultMin, defaultMax) {
 }
 
 const KINDS = {
-  /** One of a fixed id list; anything else falls back to the default. */
   /**
    * One of a fixed id list; anything else falls back to the default.
    */
@@ -193,7 +192,6 @@ const KINDS = {
     return row.round ? Math.round(value) : value;
   },
 
-  /** Wraps into [0, 360) rather than clamping -- spinning past 360 in a drag is legitimate. */
   /**
    * Wraps into [0, 360) rather than clamping -- spinning past 360 in a drag is legitimate.
    */
@@ -203,10 +201,6 @@ const KINDS = {
     return ((value % 360) + 360) % 360;
   },
 
-  /**
-   * A channel-index pair `{ x, y }`. `legacyMembers` names the fields a control used to store the
-   * pair under, for the same reason `legacyKeys` exists one level up.
-   */
   /**
    * A channel-index pair `{ x, y }`. `legacyMembers` names the fields a control used to store the
    * pair under, for the same reason `legacyKeys` exists one level up.
@@ -221,7 +215,6 @@ const KINDS = {
     return { ...row.default };
   },
 
-  /** A subset of known ids, deduped, unknown ids dropped, order as stored. */
   /**
    * A subset of known ids, deduped, unknown ids dropped, order as stored.
    */
@@ -238,7 +231,6 @@ const KINDS = {
     return normalized;
   },
 
-  /** Every known id exactly once: stored order first, then the template backfills the rest. */
   /**
    * Every known id exactly once: stored order first, then the template backfills the rest.
    */
@@ -1182,7 +1174,6 @@ const CONTROLS = [
   ...AXIS_LINK_CONTROLS,
 ];
 
-/** A row's contribution to a normalized record: `{ key: value }`, or both bounds for a range. */
 /**
  * A row's contribution to a normalized record: `{ key: value }`, or both bounds for a range.
  */
@@ -1217,7 +1208,6 @@ function buildDefaults() {
 
 export const DEFAULT_PANEL_CONTROLS = buildDefaults();
 
-/** @returns {import("../workspace/types.js").PanelControls} */
 /**
  * @returns {import("../workspace/types.js").PanelControls}
  */

@@ -69,7 +69,6 @@ export function buildSharesetsThemePresentation(
   };
 }
 
-/** A public page cannot ship vague compatibility copy while the release mapping is unresolved. */
 /**
  * A public page cannot ship vague compatibility copy while the release mapping is unresolved.
  */

@@ -13,10 +13,6 @@ function issue(code, path, message) {
  * Validate public override intent against the current Role Registry. Shape and
  * color syntax belong to themeSchema/themeLibrary and are intentionally absent.
  */
-/**
- * Validate public override intent against the current Role Registry. Shape and
- * color syntax belong to themeSchema/themeLibrary and are intentionally absent.
- */
 export function validateThemeRegistryCompatibility(theme) {
   const issues = [];
   if (!theme?.overrides || typeof theme.overrides !== "object" || Array.isArray(theme.overrides)) {

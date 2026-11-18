@@ -229,7 +229,6 @@ export class ThemeDocumentError extends Error {
   }
 }
 
-/** Strictly validate and normalize a complete, id-free current public Theme document. */
 /**
  * Strictly validate and normalize a complete, id-free current public Theme document.
  */

@@ -68,10 +68,6 @@ function validateRule(raw, index, issues) {
  * Strictly validates an id-free public authoring document, then passes it through the same
  * normalizer used by editor preview and persistence. Returns a normalized, id-free clone.
  */
-/**
- * Strictly validates an id-free public authoring document, then passes it through the same
- * normalizer used by editor preview and persistence. Returns a normalized, id-free clone.
- */
 export function validateLoudnessProfileDocument(raw) {
   if (!isPlainObject(raw)) {
     throw new LoudnessProfileDocumentError([

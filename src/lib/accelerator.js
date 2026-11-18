@@ -2,7 +2,6 @@ const MOD_ORDER = ["CmdOrCtrl", "Alt", "Shift"];
 const BARE_MODIFIER_KEYS = ["Control", "Meta", "Alt", "Shift", "OS", "Dead"];
 const DISPLAY_SPECIAL = { Escape: "Esc" };
 
-/** Build a Tauri accelerator string from a KeyboardEvent-like object, or null if invalid. */
 /**
  * Build a Tauri accelerator string from a KeyboardEvent-like object, or null if invalid.
  */

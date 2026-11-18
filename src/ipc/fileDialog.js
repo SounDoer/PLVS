@@ -70,7 +70,6 @@ export async function saveFileAnalysisReportFile(
   return typeof selected === "string" ? selected : null;
 }
 
-/** @returns {Promise<string | null>} Absolute path, or null if the user cancelled. */
 /**
  * @returns {Promise<string | null>} Absolute path, or null if the user cancelled.
  */

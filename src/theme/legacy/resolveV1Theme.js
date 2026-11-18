@@ -4,14 +4,7 @@ import { oklchToHex, SHADCN_SEMANTIC_CSS_VAR_BINDINGS } from "../shadcnSemanticP
 /**
  * Resolve the shipped V1 theme shape without importing any Theme V2 code.
  *
- * This function is deliberately isolated: Phase 2 uses it to lock the compatibility baseline and
- * Phase 3 migration can keep reading old documents after the production runtime moves to V2.
- */
-/**
- * Resolve the shipped V1 theme shape without importing any Theme V2 code.
- *
- * This function is deliberately isolated: Phase 2 uses it to lock the compatibility baseline and
- * Phase 3 migration can keep reading old documents after the production runtime moves to V2.
+ * The V1 migration and compatibility tests use this resolver to preserve the original colors.
  */
 export function resolveV1Theme(theme) {
   const css = {};

@@ -1,6 +1,5 @@
 import { isValidAccelerator } from "../lib/accelerator.js";
 
-/** Read-only reference list of the app's existing keyboard shortcuts. */
 /**
  * Read-only reference list of the app's existing keyboard shortcuts.
  */

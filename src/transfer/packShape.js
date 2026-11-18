@@ -607,7 +607,6 @@ function parsePortableThemeTransfer(raw, { invalidMessage, newerMessage }) {
   };
 }
 
-/** Parse the canonical portable Theme copied by a sharesets page, without inventing a new format. */
 /**
  * Parse the canonical portable Theme copied by a sharesets page, without inventing a new format.
  */

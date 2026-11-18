@@ -11,12 +11,6 @@ import { decodeFrameWire } from "./frameWire.js";
  * as an ArrayBuffer, so what reaches `onFrame` is the same frame shape as before, with those rows
  * as typed array views.
  */
-/**
- * Frames arrive as one binary message: a JSON envelope with Spectrum's band rows moved into typed
- * sections behind it (`src-tauri/src/ipc/frame_encode.rs`). Tauri hands a `Raw` body to the channel
- * as an ArrayBuffer, so what reaches `onFrame` is the same frame shape as before, with those rows
- * as typed array views.
- */
 function frameFromChannelMessage(message) {
   const body =
     message && typeof message === "object" && "message" in message ? message.message : message;
@@ -284,7 +278,6 @@ export function getVisualCaptureCapabilities() {
   return invoke("visual_capture_capabilities");
 }
 
-/** Capture one settled PLVS WebView region into the app-owned artifact staging directory. */
 /**
  * Capture one settled PLVS WebView region into the app-owned artifact staging directory.
  */
@@ -292,7 +285,6 @@ export function captureVisualScreenshot(request) {
   return invoke("visual_capture_screenshot", { request });
 }
 
-/** Start a native video-only recording from settled semantic geometry. */
 /**
  * Start a native video-only recording from settled semantic geometry.
  */
@@ -309,7 +301,6 @@ export function inspectVisualRecording(recordingId) {
   return invoke("visual_recording_inspect", { request: { recordingId } });
 }
 
-/** Forward a private ResizeObserver update to the active native session. */
 /**
  * Forward a private ResizeObserver update to the active native session.
  */
@@ -317,7 +308,6 @@ export function updateVisualRecordingGeometry(request) {
   return invoke("visual_recording_update_geometry", { request });
 }
 
-/** Forward the current Live/File lifecycle state to measured-source silence accounting. */
 /**
  * Forward the current Live/File lifecycle state to measured-source silence accounting.
  */

@@ -400,10 +400,6 @@ export class FrameIntake {
    * The keys whose history is worth keeping, and the retention window in milliseconds. Supplied by
    * the app from the open panels; see `deriveRetainedAnalysisKeys`.
    */
-  /**
-   * The keys whose history is worth keeping, and the retention window in milliseconds. Supplied by
-   * the app from the open panels; see `deriveRetainedAnalysisKeys`.
-   */
   setRetainedVisualKeys(keysByFamily, windowMs) {
     this._retainedVisualKeys = keysByFamily ?? null;
     this._visualRetentionWindowMs = Number.isFinite(windowMs) ? windowMs : null;
@@ -413,11 +409,6 @@ export class FrameIntake {
     }
   }
 
-  /**
-   * Drops slabs no open panel needs, and slabs whose newest row has aged out of the retention
-   * window. Runs on frame arrival rather than on a timer, which is what makes eviction pause while
-   * capture is stopped: no frames, no sweep, and the recording in memory stays whole.
-   */
   /**
    * Drops slabs no open panel needs, and slabs whose newest row has aged out of the retention
    * window. Runs on frame arrival rather than on a timer, which is what makes eviction pause while

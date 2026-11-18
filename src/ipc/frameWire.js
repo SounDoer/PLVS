@@ -44,10 +44,6 @@ function isDescriptor(value) {
  * Walk the envelope, collecting every `$bin` descriptor together with where it sits, so the caller
  * can overwrite it once the section offsets are known. Descriptors never nest inside one another.
  */
-/**
- * Walk the envelope, collecting every `$bin` descriptor together with where it sits, so the caller
- * can overwrite it once the section offsets are known. Descriptors never nest inside one another.
- */
 function collectDescriptors(node, found) {
   if (node === null || typeof node !== "object") return;
   if (Array.isArray(node)) {

@@ -34,7 +34,6 @@ function metadataAt(changes, sequence) {
  */
 
 class MetadataView {
-  /** @this {MetadataView & MetadataState} */
   /**
    * @this {MetadataView & MetadataState}
    */

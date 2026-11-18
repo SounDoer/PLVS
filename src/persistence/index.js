@@ -161,7 +161,7 @@ export async function appendLibraryCollections(additions, kinds, validate, appen
   }
 }
 
-/** Whole-app snapshot of every persisted domain (foundation for problem #5). */
+/** Whole-app snapshot of every persisted domain. */
 export function exportAll() {
   return {
     settings: settingsStore.export(),
@@ -171,7 +171,7 @@ export function exportAll() {
   };
 }
 
-/** Wipe every persisted domain (foundation for problem #5). */
+/** Wipe every persisted domain. */
 export function resetAll() {
   settingsStore.reset();
   workspaceStore.reset();

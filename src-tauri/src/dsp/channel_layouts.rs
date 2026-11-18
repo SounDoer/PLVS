@@ -13,7 +13,7 @@ pub const CHANNEL_LAYOUTS_JSON: &str = include_str!("../../../shared/channel-lay
 #[derive(Debug, Clone, Deserialize)]
 pub(crate) struct RoleEntry {
   pub id: String,
-  // Consumed once the manual layout picker UI (Task 5) renders role labels.
+  // The frontend reads this label directly from the shared JSON.
   #[allow(dead_code)]
   pub label: String,
   pub weight: f64,
@@ -22,7 +22,7 @@ pub(crate) struct RoleEntry {
 #[derive(Debug, Clone, Deserialize)]
 pub(crate) struct LayoutEntry {
   pub id: String,
-  // Consumed once the manual layout picker UI (Task 5) renders layout names.
+  // The frontend reads this name directly from the shared JSON.
   #[allow(dead_code)]
   pub name: String,
   pub roles: Vec<String>,
@@ -55,8 +55,6 @@ pub(crate) fn role_weight(role: &str) -> Option<f64> {
 }
 
 /// Ordered roles of a layout id.
-// Exercised by this module's tests and by `channel_weights.rs`'s cross-check test; no production
-// call site yet.
 #[allow(dead_code)]
 pub(crate) fn roles_for_layout(layout_id: &str) -> Option<&'static [String]> {
   layouts()
@@ -74,10 +72,7 @@ pub(crate) fn layout_id_for_roles(roles: &[String]) -> Option<&'static str> {
     .map(|l| l.id.as_str())
 }
 
-/// Layouts with exactly `channels` channels, in table order.
-// No production call site yet; the Settings layout picker (a later task) needs the full list for
-// an 8-channel choice between 7.1 and 5.1.2. The per-chunk hot path uses
-// `first_layout_for_channel_count` instead, which does not allocate.
+/// Layouts with exactly `channels` channels, in table order, for tests of the shared table.
 #[allow(dead_code)]
 pub(crate) fn layouts_for_channel_count(channels: usize) -> Vec<&'static LayoutEntry> {
   layouts()
@@ -89,8 +84,7 @@ pub(crate) fn layouts_for_channel_count(channels: usize) -> Vec<&'static LayoutE
 /// The first layout with exactly `channels` channels, in table order — the same choice
 /// `layouts_for_channel_count(channels).first()` would make, but without allocating a `Vec`.
 /// `standard_layout_name` calls this on every audio chunk in Auto mode, so it must stay
-/// allocation-free; `layouts_for_channel_count` remains for non-hot callers that need the full
-/// list (e.g. the Settings layout picker).
+/// allocation-free.
 pub(crate) fn first_layout_for_channel_count(channels: usize) -> Option<&'static LayoutEntry> {
   layouts().iter().find(|l| l.roles.len() == channels)
 }

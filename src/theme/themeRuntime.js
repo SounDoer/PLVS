@@ -73,7 +73,6 @@ export function createThemeRuntime({ apply = applyResolvedThemeToDocument } = {}
     return publishAuthoring(authoring ?? BUILTIN_THEMES_V2["plvs-dark"]);
   }
 
-  /** @returns {() => void} unsubscribe */
   /**
    * @returns {() => void} unsubscribe
    */

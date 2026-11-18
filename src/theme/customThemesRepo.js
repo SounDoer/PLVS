@@ -60,7 +60,6 @@ export function upsertCustomTheme(theme) {
   });
 }
 
-/** Replace the complete ordered custom Theme library and notify its React owner once. */
 /**
  * Replace the complete ordered custom Theme library and notify its React owner once.
  */

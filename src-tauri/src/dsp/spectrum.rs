@@ -117,8 +117,7 @@ pub struct SpectrumMeter {
   has_secondary: bool,
 }
 
-// Retained as the Task-11 differential reference after production ownership moved to the shared
-// runtime.
+// Reference implementation for differential tests of the shared runtime.
 #[cfg(test)]
 #[allow(dead_code)]
 impl SpectrumMeter {

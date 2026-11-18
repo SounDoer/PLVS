@@ -145,7 +145,6 @@ function overrideFromCss(value) {
   };
 }
 
-/** Convert one valid legacy custom-theme document into current authoring intent. */
 /**
  * Convert one valid legacy custom-theme document into current authoring intent.
  */
@@ -236,7 +235,6 @@ export function migrateV1Theme(raw) {
   });
 }
 
-/** Explicitly migrate the former single-version Theme V2 shape. */
 /**
  * Explicitly migrate the former single-version Theme V2 shape.
  */
@@ -366,7 +364,6 @@ export function migrateThemeDocument(raw) {
   };
 }
 
-/** One versioned ingress for individual persisted custom-theme documents. */
 /**
  * One versioned ingress for individual persisted custom-theme documents.
  */

@@ -58,7 +58,6 @@ function portableFromAuthoring(document) {
   };
 }
 
-/** Strictly validates and canonicalizes an id-free portable Loudness Profile. */
 /**
  * Strictly validates and canonicalizes an id-free portable Loudness Profile.
  */
@@ -163,7 +162,6 @@ export function validatePortableLoudnessProfile(raw) {
   return portableFromAuthoring(authoring);
 }
 
-/** Converts a readable stored Profile into its stable, id-free portable document. */
 /**
  * Converts a readable stored Profile into its stable, id-free portable document.
  */
@@ -184,7 +182,6 @@ export function loudnessProfileToPortable(raw) {
   return validatePortableLoudnessProfile(portableFromAuthoring(validated));
 }
 
-/** Converts a portable document into the current stored shape using a caller-owned local ID. */
 /**
  * Converts a portable document into the current stored shape using a caller-owned local ID.
  */
@@ -203,7 +200,6 @@ export function portableToStoredLoudnessProfile(raw, id) {
   };
 }
 
-/** Strict Sharesets-intake result shared by the future catalogue validator and CI. */
 /**
  * Strict Sharesets-intake result shared by the future catalogue validator and CI.
  */
@@ -218,7 +214,6 @@ export function assessPortableLoudnessProfileSharesetsPublication(raw) {
   };
 }
 
-/** Canonical UTF-8 JSON input used for portable Loudness Profile identity. */
 /**
  * Canonical UTF-8 JSON input used for portable Loudness Profile identity.
  */
@@ -226,7 +221,6 @@ export function serializePortableLoudnessProfile(raw) {
   return JSON.stringify(validatePortableLoudnessProfile(raw));
 }
 
-/** A reproducible content identity that deliberately excludes the pack-local item ID. */
 /**
  * A reproducible content identity that deliberately excludes the pack-local item ID.
  */

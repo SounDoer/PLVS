@@ -62,10 +62,6 @@ export class ChunkedHistorySlab {
    * Appends one row. `writeRow(chunk, row)` fills in the metric's own fields; the timestamp and
    * all the bookkeeping around it are written here.
    */
-  /**
-   * Appends one row. `writeRow(chunk, row)` fills in the metric's own fields; the timestamp and
-   * all the bookkeeping around it are written here.
-   */
   appendRow(timestampMs, writeRow) {
     const sequence = this._nextSequence;
     let active = this._chunks[this._chunks.length - 1];
@@ -258,7 +254,6 @@ export function chunkOffsetForSequence(sequence) {
   return sequence % VISUAL_HISTORY_CHUNK_ROWS;
 }
 
-/** The per-chunk fields the core owns; a schema spreads this into its own chunk shape. */
 /**
  * The per-chunk fields the core owns; a schema spreads this into its own chunk shape.
  */

@@ -50,10 +50,6 @@ const SCHEMA = { name: "LoudnessHistorySlab", createChunk, cloneChunk, payloadBy
  * Sub-blocks are stored flat at stride 2 * channelCount, and the channel count is whatever this
  * row's extrema carried, so the count is derived rather than stored.
  */
-/**
- * Sub-blocks are stored flat at stride 2 * channelCount, and the channel count is whatever this
- * row's extrema carried, so the count is derived rather than stored.
- */
 function subCountFrom(chunk, row) {
   const channels = chunk.waveformMin.lengthAt(row) || chunk.waveformMax.lengthAt(row);
   if (channels === 0) return 0;

@@ -10,19 +10,6 @@
  * Pure: no React, no FrameIntake, no SVG. The hook builds SVG paths from the returned data
  * and owns the freeze lifecycle.
  */
-
-/**
- * Two-timeline snapshot reconciliation, extracted from useSnapshot.
- *
- * History snaps fill at HIST_SAMPLE_SEC (10 Hz); visual snaps at VISUAL_HIST_SAMPLE_SEC
- * (25 Hz). When a history point is selected, each timeline is matched to the selected
- * timestamp independently (or by cadence when entries carry no timestamp). Band centers are
- * session-constant, so taking them from the hist-rate entry while taking dbList from the
- * visual-rate entry is intentional and time-safe.
- *
- * Pure: no React, no FrameIntake, no SVG. The hook builds SVG paths from the returned data
- * and owns the freeze lifecycle.
- */
 function lengthOf(entries) {
   return entries ? entries.length : 0;
 }

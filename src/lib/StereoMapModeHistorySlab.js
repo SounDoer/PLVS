@@ -245,7 +245,6 @@ class StereoMapModeHistoryView {
     );
   }
 
-  /** @this {StereoMapModeHistoryView & StereoMapModeHistoryState} */
   /**
    * @this {StereoMapModeHistoryView & StereoMapModeHistoryState}
    */

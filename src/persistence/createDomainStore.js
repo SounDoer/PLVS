@@ -62,7 +62,6 @@ export function createDomainStore({
     if (!notifySameContext) return;
     listeners.forEach((fn) => fn());
   }
-  /** Writes stored state with any pending values, then `partial`, applied on top in that order. */
   /**
    * Writes stored state with any pending values, then `partial`, applied on top in that order.
    */
@@ -110,11 +109,6 @@ export function createDomainStore({
       writeMerged(partial);
       notify();
     },
-    /**
-     * Same result as `patch`, but collapses a burst into one write. For continuous inputs only
-     * -- a slider drag otherwise costs one get + parse + merge + stringify + set per pointer
-     * move, on the main thread, and the workspace domain carries the whole layout tree.
-     */
     /**
      * Same result as `patch`, but collapses a burst into one write. For continuous inputs only
      * -- a slider drag otherwise costs one get + parse + merge + stringify + set per pointer

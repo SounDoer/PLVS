@@ -205,15 +205,6 @@ export function deriveAnalysisRequests(
  * unavailable is still open and still wants its history. Deriving retention from the request list
  * would delete it.
  */
-/**
- * The analysis keys whose history is worth keeping: one per open panel, with no dock merge and no
- * availability gate.
- *
- * This deliberately does not reuse `deriveAnalysisRequests`. That answers "what should Rust
- * compute right now", which is a different question -- a panel whose channel pair is momentarily
- * unavailable is still open and still wants its history. Deriving retention from the request list
- * would delete it.
- */
 export function deriveRetainedAnalysisKeys(state) {
   const panelIdsInTree = collectPanelIdsFromTree(state?.tree, state?.panelsById);
   const orderedPanelIds = (state?.panelOrder ?? []).filter((id) => panelIdsInTree.includes(id));

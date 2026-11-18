@@ -192,7 +192,6 @@ function omitDefaultControls(controls, defaults) {
   );
 }
 
-/** Converts one saved local Preset into the id-free portable authoring document. */
 /**
  * Converts one saved local Preset into the id-free portable authoring document.
  */
@@ -814,7 +813,6 @@ function compilePortablePreset(raw, { resolveDependencyId = (id) => id } = {}) {
   };
 }
 
-/** Strictly validates and canonicalizes an id-free Portable Preset V1 document. */
 /**
  * Strictly validates and canonicalizes an id-free Portable Preset V1 document.
  */

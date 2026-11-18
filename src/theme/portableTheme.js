@@ -156,7 +156,6 @@ export class PortableThemeError extends Error {
   }
 }
 
-/** Strictly validate and canonicalize a portable, id-free Theme document. */
 /**
  * Strictly validate and canonicalize a portable, id-free Theme document.
  */
@@ -237,11 +236,6 @@ export function validatePortableTheme(raw) {
  * PortableThemeError; valid documents retain all visual findings for review, but visual quality
  * never changes sharesetsPublication eligibility.
  */
-/**
- * Strict sharesets-intake result for one portable Theme. Invalid documents throw
- * PortableThemeError; valid documents retain all visual findings for review, but visual quality
- * never changes sharesetsPublication eligibility.
- */
 export function assessPortableThemeSharesetsPublication(raw) {
   const document = validatePortableTheme(raw);
   const authoring = validateThemeDocument(asAuthoringDocument(document));
@@ -251,7 +245,6 @@ export function assessPortableThemeSharesetsPublication(raw) {
   };
 }
 
-/** Convert any readable persisted Theme into its stable, provenance-free portable form. */
 /**
  * Convert any readable persisted Theme into its stable, provenance-free portable form.
  */
@@ -285,7 +278,6 @@ export function portableToStoredTheme(raw, id) {
   return { id: normalizedId, ...authoring };
 }
 
-/** Canonical UTF-8 JSON input used for portable Theme identity. */
 /**
  * Canonical UTF-8 JSON input used for portable Theme identity.
  */
@@ -293,7 +285,6 @@ export function serializePortableTheme(raw) {
   return JSON.stringify(validatePortableTheme(raw));
 }
 
-/** A reproducible content identity that deliberately excludes local IDs and preset provenance. */
 /**
  * A reproducible content identity that deliberately excludes local IDs and preset provenance.
  */

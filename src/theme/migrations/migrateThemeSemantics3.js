@@ -5,11 +5,6 @@ import { normalizeThemeDocumentShape } from "../themeSchema.js";
  * Explicit Advanced overrides retain their authored values; Auto roles resolve through
  * the current registry after migration.
  */
-/**
- * Adopt the redesigned automatic data-state and interface-feedback relationships.
- * Explicit Advanced overrides retain their authored values; Auto roles resolve through
- * the current registry after migration.
- */
 export function migrateThemeSemantics3(raw) {
   if (raw?.formatVersion !== 2 || raw?.semanticsVersion !== 3) return null;
   return normalizeThemeDocumentShape({ ...raw, semanticsVersion: 5 });

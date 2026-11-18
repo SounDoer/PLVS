@@ -155,13 +155,6 @@ export function writeLocalRange(kindId, moduleId, viewport) {
  * Repairs the whole `axisViewports` map. Payloads written before a kind existed get its default,
  * and a kind that has since been removed is dropped rather than carried forever -- the table above
  * is the only list of what exists.
- *
- * @returns {AxisViewports}
- */
-/**
- * Repairs the whole `axisViewports` map. Payloads written before a kind existed get its default,
- * and a kind that has since been removed is dropped rather than carried forever -- the table above
- * is the only list of what exists.
  * @returns {AxisViewports}
  */
 export function normalizeAxisViewportsState(raw) {
@@ -228,11 +221,6 @@ export function resolveAxisViewport(state, panelId, kindId) {
   return { ...readLocalRange(kindId, moduleId, controls), linked: false };
 }
 
-/**
- * Which axis kind a panel-settings range row belongs to, matched by the control key it edits. Lets
- * the data-driven row renderer hang a link toggle on the right row without a second table naming
- * the same keys.
- */
 /**
  * Which axis kind a panel-settings range row belongs to, matched by the control key it edits. Lets
  * the data-driven row renderer hang a link toggle on the right row without a second table naming

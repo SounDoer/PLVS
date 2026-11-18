@@ -67,7 +67,6 @@ export function decodeStereoMapOpacity(code) {
   return (code - 0.5) / STEREO_MAP_OPACITY_RAMP_LEVELS;
 }
 
-/** The opacity a live row renders with, without going through storage. */
 /**
  * The opacity a live row renders with, without going through storage.
  */

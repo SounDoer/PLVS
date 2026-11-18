@@ -86,7 +86,6 @@ function resolveOverride(entry, override, roles, automaticValue) {
   return structuredClone(roles[override.source]);
 }
 
-/** Purely compile one current, normalized Theme authoring document into runtime output. */
 /**
  * Purely compile one current, normalized Theme authoring document into runtime output.
  */
