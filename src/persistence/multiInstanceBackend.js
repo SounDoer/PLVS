@@ -250,23 +250,54 @@ export function createMultiInstanceBackend() {
     persistedDocuments.set(kind, clone(nextDocuments));
   }
 
-  async function persistGlobalPreferences(values) {
-    const changed = Object.fromEntries(
-      Object.entries(values).filter(
-        ([key, value]) => signature(persistedGlobalPreferences.get(key)) !== signature(value)
+  async function persistGlobalPreference(key, attempted) {
+    if (
+      keyOrderInsensitiveSignature(persistedGlobalPreferences.get(key)) ===
+      keyOrderInsensitiveSignature(attempted)
+    )
+      return;
+    const revision = globalPreferenceRevisions.get(key) ?? 0;
+    try {
+      const revisions = await invoke("persistence_save_global_preferences", {
+        values: { [key]: attempted },
+        expectedRevisions: { [key]: revision },
+      });
+      persistedGlobalPreferences.set(key, attempted);
+      globalPreferenceRevisions.set(key, revisions[key]);
+    } catch (error) {
+      if (error?.reason !== "conflict") throw error;
+      // Reconcile just the rejected field. The settings domain also contains local edits
+      // that should still reach disk, even when the refresh itself fails.
+      const hydrated = await invoke("persistence_hydrate").catch(() => null);
+      const value = hydrated
+        ? hydrated.globalPreferences?.[key]
+        : persistedGlobalPreferences.get(key);
+      if (hydrated) {
+        const currentRevision = hydrated.globalPreferenceRevisions?.[key] ?? 0;
+        persistedGlobalPreferences.set(key, clone(value));
+        globalPreferenceRevisions.set(key, currentRevision);
+        seed.globalPreferences = { ...seed.globalPreferences, [key]: clone(value) };
+        metadata.globalPreferenceRevisions = {
+          ...metadata.globalPreferenceRevisions,
+          [key]: currentRevision,
+        };
+      }
+      if (
+        hydrated &&
+        keyOrderInsensitiveSignature(value) === keyOrderInsensitiveSignature(attempted)
       )
-    );
-    if (!Object.keys(changed).length) return;
-    const expectedRevisions = Object.fromEntries(
-      Object.keys(changed).map((key) => [key, globalPreferenceRevisions.get(key) ?? 0])
-    );
-    const revisions = await invoke("persistence_save_global_preferences", {
-      values: changed,
-      expectedRevisions,
-    });
-    for (const [key, value] of Object.entries(changed)) persistedGlobalPreferences.set(key, value);
-    for (const [key, revision] of Object.entries(revisions))
-      globalPreferenceRevisions.set(key, revision);
+        return;
+      unreportedFailure ??= Object.assign(new Error(error.message), {
+        reason: "globalPreferenceConflict",
+        preference: key,
+      });
+      const settings = cache.get("plvs:settings") || {};
+      if (keyOrderInsensitiveSignature(settings[key]) === keyOrderInsensitiveSignature(attempted)) {
+        cache.set("plvs:settings", { ...settings, [key]: clone(value) });
+        notify("plvs:settings", { origin: "remote" });
+      }
+      if (hydrated) window.dispatchEvent(new CustomEvent("plvs-global-preferences-changed"));
+    }
   }
 
   /**
@@ -275,13 +306,13 @@ export function createMultiInstanceBackend() {
   async function persistKey(key) {
     const value = cache.get(key) || {};
     if (key === "plvs:settings" && Object.hasOwn(value, "askToSendCrashReports")) {
-      await persistGlobalPreferences({ askToSendCrashReports: value.askToSendCrashReports });
+      await persistGlobalPreference("askToSendCrashReports", value.askToSendCrashReports);
     }
     if (key === "plvs:settings" && Object.hasOwn(value, "updatePreferences")) {
-      await persistGlobalPreferences({ updatePreferences: value.updatePreferences });
+      await persistGlobalPreference("updatePreferences", value.updatePreferences);
     }
     if (key === "plvs:settings" && Object.hasOwn(value, "quickTour")) {
-      await persistGlobalPreferences({ quickTour: value.quickTour });
+      await persistGlobalPreference("quickTour", value.quickTour);
     }
     const kind = kindFor(key);
     if (kind) await persistCollection(kind, documentsFor(key, value));
@@ -392,23 +423,31 @@ export function createMultiInstanceBackend() {
           if (canApply(collectionKey(kind))) applyRemoteCollection(kind, hydrated);
         }
         if (!canApply("plvs:settings")) return;
-        const nextGlobals = hydrated.globalPreferences || {};
+        const nextGlobals = { ...hydrated.globalPreferences };
+        const nextRevisions = { ...hydrated.globalPreferenceRevisions };
+        // A direct writer (for example, Open at Login) can complete while hydration is in flight.
+        for (const [key, revision] of Object.entries(metadata.globalPreferenceRevisions || {})) {
+          if (revision > (nextRevisions[key] ?? 0)) {
+            nextGlobals[key] = seed.globalPreferences?.[key];
+            nextRevisions[key] = revision;
+          }
+        }
         if (
-          signature(
-            [...persistedGlobalPreferences].sort(([left], [right]) => left.localeCompare(right))
-          ) !==
-          signature(
-            Object.entries(nextGlobals).sort(([left], [right]) => left.localeCompare(right))
-          )
+          keyOrderInsensitiveSignature([
+            seed.globalPreferences ?? {},
+            metadata.globalPreferenceRevisions ?? {},
+          ]) !== keyOrderInsensitiveSignature([nextGlobals, nextRevisions]) ||
+          keyOrderInsensitiveSignature(Object.fromEntries(persistedGlobalPreferences)) !==
+            keyOrderInsensitiveSignature(nextGlobals)
         ) {
           persistedGlobalPreferences.clear();
           for (const [key, value] of Object.entries(nextGlobals))
             persistedGlobalPreferences.set(key, clone(value));
           globalPreferenceRevisions.clear();
-          for (const [key, revision] of Object.entries(hydrated.globalPreferenceRevisions || {}))
+          for (const [key, revision] of Object.entries(nextRevisions))
             globalPreferenceRevisions.set(key, revision);
           seed.globalPreferences = clone(nextGlobals);
-          metadata.globalPreferenceRevisions = clone(hydrated.globalPreferenceRevisions || {});
+          metadata.globalPreferenceRevisions = nextRevisions;
           const settings = cache.get("plvs:settings") || {};
           // Every identity-wide preference this workbench caches in its settings must follow a
           // peer's write. A stale cached value would be written back by this workbench's next

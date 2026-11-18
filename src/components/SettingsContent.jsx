@@ -175,6 +175,7 @@ function IconButton({ children, className, ...props }) {
  *   autostartEnabled?: boolean,
  *   setAutostartEnabled?: (...args: any[]) => any,
  *   autostartReady?: boolean,
+ *   autostartError?: string,
  *   closeAction?: string,
  *   setCloseAction?: (...args: any[]) => any,
  *   historyRetentionSec?: number,
@@ -250,6 +251,7 @@ export function SettingsContent({
   autostartEnabled = false,
   setAutostartEnabled = () => {},
   autostartReady = false,
+  autostartError = "",
   closeAction = "ask",
   setCloseAction = () => {},
   historyRetentionSec = 3600,
@@ -530,6 +532,14 @@ export function SettingsContent({
               disabled={!autostartReady}
             />
           </SettingsRow>
+          {autostartError ? (
+            <span
+              role="status"
+              className="px-2 text-right text-[length:var(--ui-fs-axis)] text-destructive"
+            >
+              {autostartError}
+            </span>
+          ) : null}
           <SettingsRow label="Close Behavior">
             <Select
               value={closeAction}

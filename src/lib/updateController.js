@@ -55,6 +55,7 @@ export function createUpdateController({
   let generation = 0;
   let checking = false;
   let transfer = null;
+  let cancellation = null;
   let confirming = false;
   let startupConsumed = false;
   let available = false;
@@ -116,12 +117,23 @@ export function createUpdateController({
     generation += 1;
     // Explicitly confirmed manual work is independent of automatic preferences.
     if (confirming || transfer?.automatic === false) return;
-    try {
-      await invoke("update_cancel");
-      emit({ ready: null, downloading: false, downloadError: null, checkStatus: "idle" });
-    } catch (error) {
-      emit({ error: String(error) });
-    }
+    cancellation ??= invoke("update_cancel")
+      .catch((error) => String(error))
+      .then((error) => {
+        const details = state.details;
+        emit({
+          ready: null,
+          details: details?.staged ? { ...details, staged: false } : details,
+          downloading: Boolean(transfer),
+          downloadError: null,
+          checkStatus: "idle",
+          ...(error && { error }),
+        });
+      })
+      .finally(() => {
+        cancellation = null;
+      });
+    await cancellation;
   }
 
   async function download(target, automatic) {
@@ -137,7 +149,7 @@ export function createUpdateController({
         const details = state.details;
         const stagedDetails =
           details && details.target.version === ready.version
-            ? { ...details, target: ready, staged: true }
+            ? { ...details, target: ready, candidate: target, staged: true }
             : details;
         emit({ ready, details: stagedDetails, error: null });
       }
@@ -156,6 +168,7 @@ export function createUpdateController({
   }
 
   async function check(automatic = false) {
+    if (cancellation) await cancellation;
     if (!available || checking || (automatic && !preferences.autoCheck)) return;
     const requestGeneration = generation;
     checking = true;
@@ -185,7 +198,7 @@ export function createUpdateController({
           // Until verification promotes it, the newer target shows download progress and blocks
           // confirmation, so the older package cannot be installed while it is being replaced.
           emit({
-            details: { ...details, target: candidate, staged: false },
+            details: { ...details, target: candidate, candidate, staged: false },
             error: failedAttemptError(candidate),
           });
         }
@@ -216,12 +229,18 @@ export function createUpdateController({
     }
     // Freeze the selected version across later checks. Completion of that version's own download
     // may still promote the descriptor to the verified staged package.
+    const staged = target.id === state.ready?.id;
     emit({
       details: {
         target,
         // A tutorial preview opens through the real status entry but stays a fixture.
         origin: target.preview ? "fixture" : origin,
-        staged: target.id === state.ready?.id,
+        staged,
+        candidate: !staged
+          ? target
+          : state.candidate?.version === target.version
+            ? state.candidate
+            : null,
         presentation: ++presentation,
       },
       installStatus: "idle",
@@ -234,6 +253,7 @@ export function createUpdateController({
   }
 
   async function confirmInstall(expectedId = state.details?.target.id) {
+    if (cancellation) await cancellation;
     const details = state.details;
     if (busy() || !available || !details || details.target.id !== expectedId) return;
     if (details.origin === "fixture") {
@@ -254,7 +274,15 @@ export function createUpdateController({
     let operation;
     let commitAttempted = false;
     try {
-      const ready = details.staged ? details.target : await download(details.target, false);
+      let ready = state.ready?.id === details.target.id ? state.ready : null;
+      if (!ready) {
+        const candidate = details.candidate ?? (await invoke("update_check", { automatic: false }));
+        if (candidate?.version !== details.target.version) {
+          emit({ candidate, details: null });
+          throw new Error("This update is no longer available. Check again.");
+        }
+        ready = await download(candidate, false);
+      }
       if (!ready) throw new Error("This update is no longer ready. Check again.");
       // Startup peer eligibility is checked under the native entry gate BEFORE stopping capture.
       token = await invoke("update_prepare_install", {

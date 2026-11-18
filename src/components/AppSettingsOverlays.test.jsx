@@ -26,14 +26,10 @@ const mocks = vi.hoisted(() => ({
   pickSharedPackFile: vi.fn(),
   writeProfileFile: vi.fn(),
   fixtureAdapters: new Map(),
-  participantInstance: false,
 }));
 
 vi.mock("../dev/DevelopmentEventFixturesContext.jsx", () => ({
   useDevelopmentEventFixtureAdapter: (name, adapter) => mocks.fixtureAdapters.set(name, adapter),
-}));
-vi.mock("../lib/runtimeRole.js", () => ({
-  isParticipantInstance: () => mocks.participantInstance,
 }));
 
 vi.mock("../ipc/env.js", () => ({ isTauri: () => mocks.isTauri() }));
@@ -129,22 +125,6 @@ vi.mock("./ThemeEditor.jsx", () => ({
   ThemeEditor: ({ dirty }) => <div data-testid="theme-editor">{String(dirty)}</div>,
 }));
 
-vi.mock("./UpdateDialog.jsx", () => ({
-  UpdateDialog: ({ open, currentVersion, releaseNotes, onConfirm, onCancel }) =>
-    open ? (
-      <div role="dialog" aria-label="update">
-        <span>{currentVersion}</span>
-        <span>{releaseNotes}</span>
-        <button type="button" onClick={onCancel}>
-          Cancel update
-        </button>
-        <button type="button" onClick={onConfirm}>
-          Confirm update
-        </button>
-      </div>
-    ) : null,
-}));
-
 function makeSettings(overrides = {}) {
   return {
     settingsOpen: true,
@@ -195,11 +175,7 @@ function renderOverlays(settings = makeSettings(), updateOverrides = {}, overlay
   const updateControls = {
     updateInfo: null,
     refreshUpdateCheck: vi.fn(),
-    installStatus: "idle",
-    install: vi.fn(),
-    restartToApply: vi.fn(),
-    resetInstall: vi.fn(),
-    downloadProgress: undefined,
+    openDetails: vi.fn(),
     ...updateOverrides,
   };
   const channelSettings = {
@@ -245,10 +221,6 @@ function renderOverlays(settings = makeSettings(), updateOverrides = {}, overlay
   return {
     ...view,
     updateControls,
-    rerenderUpdate(nextUpdateControls) {
-      Object.assign(updateControls, nextUpdateControls);
-      view.rerender(renderView());
-    },
   };
 }
 
@@ -354,7 +326,6 @@ describe("AppSettingsOverlays", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mocks.fixtureAdapters.clear();
-    mocks.participantInstance = false;
     // `clearAllMocks` drops recorded calls but keeps implementations, so the desktop-mode test
     // below would otherwise leave `isTauri` true for whatever runs after it. Restore the defaults
     // here rather than in that test's own teardown, so test order never matters.
@@ -420,78 +391,15 @@ describe("AppSettingsOverlays", () => {
     expect(screen.queryByRole("dialog", { name: "feedback" })).toBe(null);
   });
 
-  it("opens the changelog dialog before starting an update", () => {
-    const update = { downloadAndInstall: vi.fn() };
-    const install = vi.fn();
-    const resetInstall = vi.fn();
+  it("routes Settings Update to the shared update details", () => {
+    const openDetails = vi.fn();
     renderOverlays(makeSettings(), {
-      updateInfo: {
-        hasUpdate: true,
-        latestVersion: "0.9.5",
-        releaseNotes: "### Fixed",
-        update,
-      },
-      install,
-      resetInstall,
+      updateInfo: { hasUpdate: true, latestVersion: "0.9.5" },
+      openDetails,
     });
-
     fireEvent.click(screen.getByRole("button", { name: "Update" }));
-
-    expect(screen.getByRole("dialog", { name: "update" })).toBeTruthy();
-    expect(screen.getByText("0.0.0")).toBeTruthy();
-    expect(screen.getByText("### Fixed")).toBeTruthy();
-    expect(resetInstall).toHaveBeenCalledTimes(1);
-    expect(install).not.toHaveBeenCalled();
-
-    fireEvent.click(screen.getByRole("button", { name: "Confirm update" }));
-    expect(install).toHaveBeenCalledWith(update);
-  });
-
-  it("opens release notes through the footer action with Settings closed", () => {
-    const ref = { current: null };
-    const settings = makeSettings({ settingsOpen: false });
-    const install = vi.fn();
-    const update = { downloadAndInstall: vi.fn() };
-    renderOverlays(
-      settings,
-      { updateInfo: { hasUpdate: true, releaseNotes: "Footer release notes", update }, install },
-      { ref }
-    );
-
-    act(() => ref.current.openUpdateDialog());
-    expect(screen.getByRole("dialog", { name: "update" })).toBeTruthy();
-    expect(screen.getByText("Footer release notes")).toBeTruthy();
-    expect(settings.setSettingsOpen).not.toHaveBeenCalled();
-    expect(install).not.toHaveBeenCalled();
-
-    fireEvent.click(screen.getByRole("button", { name: "Cancel update" }));
-    expect(screen.queryByRole("dialog", { name: "update" })).toBeNull();
-    expect(settings.setSettingsOpen).not.toHaveBeenCalled();
-    expect(install).not.toHaveBeenCalled();
-
-    act(() => ref.current.openUpdateDialog());
-    fireEvent.click(screen.getByRole("button", { name: "Confirm update" }));
-    expect(install).toHaveBeenCalledWith(update);
-  });
-
-  it("establishes and resets only the exact update development fixture without installing", () => {
-    const install = vi.fn();
-    const resetInstall = vi.fn();
-    renderOverlays(makeSettings(), { install, resetInstall });
-    let fixture = mocks.fixtureAdapters.get("update.available");
-
-    act(() => fixture.establish("fixture-aaaaaaaaaaaaaaaa"));
-    fixture = mocks.fixtureAdapters.get("update.available");
-    expect(screen.getByRole("dialog", { name: "update" })).toBeTruthy();
-    expect(screen.getByText(/Development fixture/)).toBeTruthy();
-    expect(fixture.matches("fixture-aaaaaaaaaaaaaaaa")).toBe(true);
-
-    act(() => fixture.reset("fixture-bbbbbbbbbbbbbbbb"));
-    expect(screen.getByRole("dialog", { name: "update" })).toBeTruthy();
-    act(() => fixture.reset("fixture-aaaaaaaaaaaaaaaa"));
-    expect(screen.queryByRole("dialog", { name: "update" })).toBeNull();
-    expect(install).not.toHaveBeenCalled();
-    expect(resetInstall).toHaveBeenCalledTimes(2);
+    expect(openDetails).toHaveBeenCalledExactlyOnceWith();
+    expect(mocks.fixtureAdapters.has("update.available")).toBe(false);
   });
 
   it("opens and resets only the exact Library Export development fixture", () => {
@@ -509,67 +417,6 @@ describe("AppSettingsOverlays", () => {
     expect(screen.getByText("Export Saved Items")).toBeTruthy();
     act(() => fixture.reset("fixture-aaaaaaaaaaaaaaaa"));
     expect(screen.queryByText("Export Saved Items")).toBeNull();
-  });
-
-  it("refuses the update development fixture in a participant workbench", () => {
-    mocks.participantInstance = true;
-    renderOverlays();
-
-    expect(mocks.fixtureAdapters.get("update.available").canEstablish()).toBe(false);
-  });
-
-  it("closes the changelog dialog without installing when canceled", () => {
-    const install = vi.fn();
-    const resetInstall = vi.fn();
-    renderOverlays(makeSettings(), {
-      updateInfo: {
-        hasUpdate: true,
-        latestVersion: "0.9.5",
-        releaseNotes: "### Fixed",
-        update: { downloadAndInstall: vi.fn() },
-      },
-      install,
-      resetInstall,
-    });
-
-    fireEvent.click(screen.getByRole("button", { name: "Update" }));
-    fireEvent.click(screen.getByRole("button", { name: "Cancel update" }));
-
-    expect(screen.queryByRole("dialog", { name: "update" })).toBeNull();
-    expect(screen.getByRole("button", { name: "Update" })).toBeTruthy();
-    expect(resetInstall).toHaveBeenCalledTimes(2);
-    expect(install).not.toHaveBeenCalled();
-  });
-
-  it("keeps the opened update stable when a background check replaces updateInfo", () => {
-    const firstUpdate = { downloadAndInstall: vi.fn() };
-    const secondUpdate = { downloadAndInstall: vi.fn() };
-    const install = vi.fn();
-    const { rerenderUpdate } = renderOverlays(makeSettings(), {
-      updateInfo: {
-        hasUpdate: true,
-        latestVersion: "0.9.5",
-        releaseNotes: "First release notes",
-        update: firstUpdate,
-      },
-      install,
-    });
-
-    fireEvent.click(screen.getByRole("button", { name: "Update" }));
-    rerenderUpdate({
-      updateInfo: {
-        hasUpdate: true,
-        latestVersion: "0.9.6",
-        releaseNotes: "Second release notes",
-        update: secondUpdate,
-      },
-    });
-
-    expect(screen.getByText("First release notes")).toBeTruthy();
-    expect(screen.queryByText("Second release notes")).toBeNull();
-
-    fireEvent.click(screen.getByRole("button", { name: "Confirm update" }));
-    expect(install).toHaveBeenCalledWith(firstUpdate);
   });
 
   it("reports the settled enabled value when the agent-control toggle succeeds", async () => {
@@ -751,11 +598,7 @@ describe("Loudness Profile editor wiring", () => {
             updateControls={{
               updateInfo: null,
               refreshUpdateCheck: vi.fn(),
-              installStatus: "idle",
-              install: vi.fn(),
-              restartToApply: vi.fn(),
-              downloadProgress: undefined,
-              resetInstall: undefined,
+              openDetails: vi.fn(),
             }}
             appVersion="0.0.0"
             loudnessProfile={hook.result.current}

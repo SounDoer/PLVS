@@ -57,7 +57,8 @@ when adjustment finishes.
 
 **Open at Login** launches PLVS when you sign in. It is one shared preference when several
 workbenches are open; the current coordinator owns the operating-system registration and restores
-the saved workbench set. **Close
+the saved workbench set. If a change fails to save, Settings shows an error and PLVS restores the
+saved login setting. **Close
 Behavior** chooses whether closing the window keeps PLVS running in the system tray or quits it.
 Before either action, PLVS finishes saving pending settings. If saving fails, the window stays open
 and offers **Retry** or **Cancel**.
@@ -120,8 +121,9 @@ automatic checking is off. With **Auto Download Updates** on, **Check** also dow
 version in the background. Preferences are shared across workbenches and are not imported from a
 configuration profile.
 
-Turning automatic downloading off cancels background work and removes the staged update. A manual
-update you have explicitly confirmed is separate from this preference. Installed Windows, macOS
+Turning automatic downloading off cancels background work and removes the staged update. If update
+details are open, **Update and Restart** downloads the package again on request. A manual update
+you have explicitly confirmed is separate from this preference. Installed Windows, macOS
 and stable Ubuntu `.deb` copies support verified local staging; Portable copies use the
 release-page download instead.
 Preview does not offer the updater. On macOS, automatic updates are unavailable on a read-only

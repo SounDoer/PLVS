@@ -24,11 +24,7 @@ function Harness() {
   const updateControls = {
     updateInfo: null,
     refreshUpdateCheck: vi.fn(),
-    installStatus: "idle",
-    install: vi.fn(),
-    restartToApply: vi.fn(),
-    resetInstall: vi.fn(),
-    downloadProgress: undefined,
+    openDetails: vi.fn(),
   };
   return (
     <>

@@ -107,4 +107,34 @@ describe("useAutostart", () => {
 
     await waitFor(() => expect(invoke).toHaveBeenCalledWith("plugin:autostart|enable"));
   });
+
+  it("restores the saved native setting and reports a failed write", async () => {
+    vi.mocked(isTauri).mockReturnValue(true);
+    window.__PLVS_INITIAL_STATE__ = {
+      globalPreferences: { openAtLogin: false },
+      multiInstancePersistence: { globalPreferenceRevisions: { openAtLogin: 3 } },
+    };
+    let nativeEnabled = false;
+    vi.mocked(invoke).mockImplementation(async (command) => {
+      if (command === "plugin:autostart|is_enabled") return nativeEnabled;
+      if (command === "plugin:autostart|enable") nativeEnabled = true;
+      if (command === "plugin:autostart|disable") nativeEnabled = false;
+      if (command === "persistence_save_global_preferences") throw { reason: "conflict" };
+      if (command === "persistence_hydrate")
+        return {
+          globalPreferences: { openAtLogin: false },
+          globalPreferenceRevisions: { openAtLogin: 4 },
+        };
+    });
+    const { result } = renderHook(() => useAutostart());
+    await act(() => result.current.setAutostartEnabled(true));
+    expect(invoke).toHaveBeenCalledWith("plugin:autostart|enable");
+    expect(invoke).toHaveBeenCalledWith("plugin:autostart|disable");
+    expect(result.current.autostartEnabled).toBe(false);
+    expect(nativeEnabled).toBe(false);
+    expect(result.current.autostartError).toContain("Could not save");
+    expect(
+      window.__PLVS_INITIAL_STATE__.multiInstancePersistence.globalPreferenceRevisions.openAtLogin
+    ).toBe(4);
+  });
 });

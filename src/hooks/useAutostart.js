@@ -1,7 +1,7 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { isTauri } from "../ipc/env.js";
-import { useCoordinatorRole } from "../lib/runtimeRole.js";
+import { ownsCoordinatorResources, useCoordinatorRole } from "../lib/runtimeRole.js";
 
 const KEY = "openAtLogin";
 
@@ -14,19 +14,27 @@ function bootPreference() {
   return typeof value === "boolean" ? value : null;
 }
 
-async function savePreference(enabled) {
-  if (!transactionalBoot()) return;
+function preferenceRevision() {
+  return transactionalBoot()?.globalPreferenceRevisions?.[KEY] ?? 0;
+}
+
+function rememberPreference(enabled, revision) {
   const initial = window.__PLVS_INITIAL_STATE__;
-  const expectedRevision = initial.multiInstancePersistence.globalPreferenceRevisions?.[KEY] ?? 0;
+  if (revision < preferenceRevision()) return;
+  initial.globalPreferences = { ...initial.globalPreferences, [KEY]: enabled };
+  initial.multiInstancePersistence.globalPreferenceRevisions = {
+    ...initial.multiInstancePersistence.globalPreferenceRevisions,
+    [KEY]: revision,
+  };
+}
+
+async function savePreference(enabled, expectedRevision = preferenceRevision()) {
+  if (!transactionalBoot()) return;
   const revisions = await invoke("persistence_save_global_preferences", {
     values: { [KEY]: enabled },
     expectedRevisions: { [KEY]: expectedRevision },
   });
-  initial.globalPreferences = { ...(initial.globalPreferences || {}), [KEY]: enabled };
-  initial.multiInstancePersistence.globalPreferenceRevisions = {
-    ...(initial.multiInstancePersistence.globalPreferenceRevisions || {}),
-    ...revisions,
-  };
+  rememberPreference(enabled, revisions[KEY]);
 }
 
 /**
@@ -39,12 +47,24 @@ async function applyNativePreference(enabled) {
   }
 }
 
+function applySharedPreference() {
+  const saved = bootPreference();
+  if (saved !== null && ownsCoordinatorResources()) return applyNativePreference(saved);
+}
+
 export function useAutostart() {
   const isCoordinator = useCoordinatorRole();
   const [autostartEnabled, setAutostartEnabledState] = useState(() => bootPreference() ?? false);
   const [autostartReady, setAutostartReady] = useState(
     () => isTauri() && (bootPreference() !== null || !isCoordinator)
   );
+  const [autostartError, setAutostartError] = useState("");
+  const pending = useRef(Promise.resolve());
+  const enqueue = useCallback((action) => {
+    const work = pending.current.then(action);
+    pending.current = work.catch(() => {});
+    return work;
+  }, []);
 
   useEffect(() => {
     if (!isTauri()) return;
@@ -52,7 +72,9 @@ export function useAutostart() {
     const shared = bootPreference();
     if (shared !== null) {
       if (isCoordinator) {
-        applyNativePreference(shared).catch(() => {
+        enqueue(() => {
+          if (!cancelled) return applySharedPreference();
+        }).catch(() => {
           if (!cancelled) setAutostartReady(false);
         });
       }
@@ -65,20 +87,21 @@ export function useAutostart() {
         cancelled = true;
       };
     }
-    invoke("plugin:autostart|is_enabled")
-      .then(async (enabled) => {
-        if (cancelled) return;
-        setAutostartEnabledState(enabled);
-        setAutostartReady(true);
-        await savePreference(enabled);
-      })
-      .catch(() => {
-        if (!cancelled) setAutostartReady(false);
-      });
+    enqueue(async () => {
+      if (cancelled || !ownsCoordinatorResources()) return;
+      const enabled = await invoke("plugin:autostart|is_enabled");
+      if (cancelled || !ownsCoordinatorResources()) return;
+      await savePreference(enabled);
+      if (cancelled) return;
+      setAutostartEnabledState(enabled);
+      setAutostartReady(true);
+    }).catch(() => {
+      if (!cancelled) setAutostartReady(false);
+    });
     return () => {
       cancelled = true;
     };
-  }, [isCoordinator]);
+  }, [enqueue, isCoordinator]);
 
   useEffect(() => {
     const sync = () => {
@@ -86,20 +109,54 @@ export function useAutostart() {
       if (shared === null) return;
       setAutostartEnabledState(shared);
       setAutostartReady(true);
-      if (isCoordinator) void applyNativePreference(shared);
+      if (isCoordinator) {
+        void enqueue(applySharedPreference).catch(() =>
+          setAutostartError("Could not apply Open at Login. Try again.")
+        );
+      }
     };
     window.addEventListener("plvs-global-preferences-changed", sync);
     return () => window.removeEventListener("plvs-global-preferences-changed", sync);
-  }, [isCoordinator]);
+  }, [enqueue, isCoordinator]);
 
   const setAutostartEnabledForControl = useCallback(
-    async (enabled) => {
-      if (!isTauri() || !autostartReady) throw new Error("Autostart is unavailable.");
-      if (isCoordinator) await applyNativePreference(enabled);
-      await savePreference(enabled);
-      setAutostartEnabledState(enabled);
-    },
-    [autostartReady, isCoordinator]
+    (enabled) =>
+      enqueue(async () => {
+        if (!isTauri() || !autostartReady) throw new Error("Autostart is unavailable.");
+        const coordinator = ownsCoordinatorResources();
+        const revision = preferenceRevision();
+        setAutostartError("");
+        try {
+          if (coordinator) await applyNativePreference(enabled);
+          await savePreference(enabled, revision);
+          setAutostartEnabledState(bootPreference() ?? enabled);
+        } catch (error) {
+          if (transactionalBoot()) {
+            const hydrated = await invoke("persistence_hydrate").catch(() => null);
+            const saved = hydrated?.globalPreferences?.[KEY];
+            if (typeof saved === "boolean") {
+              rememberPreference(saved, hydrated.globalPreferenceRevisions?.[KEY] ?? 0);
+            }
+          }
+          const saved = bootPreference() ?? autostartEnabled;
+          setAutostartEnabledState(saved);
+          if (coordinator && ownsCoordinatorResources()) {
+            try {
+              await applyNativePreference(saved);
+            } catch (restoreError) {
+              setAutostartError("Could not restore the system login setting. Try again.");
+              throw new AggregateError(
+                [error, restoreError],
+                "Could not save or restore Open at Login.",
+                { cause: restoreError }
+              );
+            }
+          }
+          setAutostartError("Could not save Open at Login. Try again.");
+          throw error;
+        }
+      }),
+    [autostartEnabled, autostartReady, enqueue]
   );
 
   const setAutostartEnabled = useCallback(
@@ -116,5 +173,6 @@ export function useAutostart() {
     setAutostartEnabled,
     setAutostartEnabledForControl,
     autostartReady,
+    autostartError,
   };
 }

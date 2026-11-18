@@ -46,6 +46,62 @@ function seed() {
 }
 
 describe("multiInstanceBackend", () => {
+  it.each(["already saved", "different value", "unavailable"])(
+    "keeps Workspace writes moving when a shared preference conflicts and hydration is %s",
+    async (outcome) => {
+      const conflict = { reason: "conflict", message: "Expected revision 5, found 6" };
+      invoke.mockImplementation(async (command, args) => {
+        if (command === "persistence_hydrate") {
+          if (outcome === "unavailable") throw new Error("Temporarily unavailable");
+          return {
+            globalPreferences: { askToSendCrashReports: outcome !== "already saved" },
+            globalPreferenceRevisions: { askToSendCrashReports: 6 },
+          };
+        }
+        if (command === "persistence_save_global_preferences") {
+          if (args.expectedRevisions.askToSendCrashReports === 5) throw conflict;
+          return { askToSendCrashReports: 7 };
+        }
+      });
+      const { createMultiInstanceBackend } = await import("./multiInstanceBackend.js");
+      const backend = createMultiInstanceBackend();
+      backend.set("plvs:settings", {
+        ...backend.get("plvs:settings"),
+        askToSendCrashReports: false,
+        referenceLufs: -20,
+      });
+      const workspace = { panelOrder: ["waveform"] };
+      backend.set("plvs:workspace", workspace);
+
+      if (outcome === "already saved") await backend.flush();
+      else
+        await expect(backend.flush()).rejects.toMatchObject({
+          reason: "globalPreferenceConflict",
+          preference: "askToSendCrashReports",
+        });
+      expect(backend.get("plvs:settings")).toMatchObject({
+        askToSendCrashReports: outcome !== "already saved",
+        referenceLufs: -20,
+      });
+      expect(invoke).toHaveBeenCalledWith("persistence_save_domain", {
+        domain: "workspace",
+        value: workspace,
+      });
+      await expect(backend.flush()).resolves.toBeUndefined();
+      if (outcome === "different value") {
+        backend.set("plvs:settings", {
+          ...backend.get("plvs:settings"),
+          askToSendCrashReports: false,
+        });
+        await backend.flush();
+        expect(invoke).toHaveBeenCalledWith("persistence_save_global_preferences", {
+          values: { askToSendCrashReports: false },
+          expectedRevisions: { askToSendCrashReports: 6 },
+        });
+      }
+    }
+  );
+
   it("holds writes from a stale workbench while a configuration change awaits restart", async () => {
     invoke.mockResolvedValue(undefined);
     const { createMultiInstanceBackend } = await import("./multiInstanceBackend.js");

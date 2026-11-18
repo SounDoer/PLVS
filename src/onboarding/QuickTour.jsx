@@ -226,7 +226,9 @@ export function QuickTour({
       settingsStore.notifyLocal();
       return true;
     } catch (failure) {
-      settingsStore.patch({ quickTour: previous });
+      if (failure?.reason !== "globalPreferenceConflict") {
+        settingsStore.patch({ quickTour: previous });
+      }
       setError(`Unable to save tour preference: ${String(failure)}`);
       return false;
     } finally {

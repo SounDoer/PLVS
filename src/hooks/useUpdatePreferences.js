@@ -14,7 +14,9 @@ export function useUpdatePreferences() {
     try {
       await flushPersistence();
     } catch (error) {
-      settingsStore.patch({ updatePreferences: previous });
+      if (error?.reason !== "globalPreferenceConflict") {
+        settingsStore.patch({ updatePreferences: previous });
+      }
       throw error;
     }
     setState(next);

@@ -368,6 +368,38 @@ describe("shared update controller", () => {
     expect(invoke).not.toHaveBeenCalledWith("update_download", expect.anything());
   });
 
+  it.each([true, false])(
+    "manually downloads after cancelling the staged package (known candidate: %s)",
+    async (knownCandidate) => {
+      const { controller, invoke } = setup();
+      await controller.setPreferences(prefs);
+      if (!knownCandidate)
+        invoke.mockResolvedValueOnce({
+          enabled: true,
+          installationSupported: true,
+          ready: { ...a, id: "boot-staged" },
+        });
+      await controller.initialize();
+      if (knownCandidate) await controller.check();
+      controller.openDetails();
+      const cancelled = deferred();
+      invoke.mockReturnValueOnce(cancelled.promise);
+      const changing = controller.setPreferences({ ...prefs, autoDownload: false });
+      const confirming = controller.confirmInstall();
+      expect(invoke).not.toHaveBeenCalledWith("update_prepare_install", expect.anything());
+      cancelled.resolve(null);
+      await Promise.all([changing, confirming]);
+      expect(invoke).toHaveBeenCalledWith("update_download", {
+        candidateId: "a",
+        automatic: false,
+      });
+      expect(invoke).toHaveBeenCalledWith("update_prepare_install", {
+        packageId: "staged-a",
+        startup: false,
+      });
+    }
+  );
+
   it("prefers a newer checked version over an older staged package", () => {
     expect(newestUpdateTarget({ ready: a, candidate: b, details: null })).toBe(b);
     expect(newestUpdateTarget({ ready: a, candidate: { ...a, id: "x" }, details: null })).toBe(a);

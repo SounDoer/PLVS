@@ -1,7 +1,6 @@
-import { useCallback, useMemo, useEffect, useImperativeHandle, useRef, useState } from "react";
+import { useCallback, useMemo, useEffect, useState } from "react";
 import { useDockSettingsWindow } from "../dock/useDockSettingsWindow.js";
 import { openExternalUrl, PRIVACY_POLICY_URL } from "../ipc/openExternal.js";
-import { sliceChangelogSince } from "../lib/changelogAggregate.js";
 import { useAgentControlSettings } from "../hooks/useAgentControlSettings.js";
 import { useConfigurationProfileActions } from "../hooks/useConfigurationProfileActions.js";
 import { getAdapter } from "../transfer/libraryAdapters.js";
@@ -14,15 +13,11 @@ import { LibraryExportDialog } from "./LibraryExportDialog.jsx";
 import { LoudnessProfileEditor } from "./LoudnessProfileEditor.jsx";
 import { SettingsPanel } from "./SettingsPanel.jsx";
 import { ThemeEditor } from "./ThemeEditor.jsx";
-import { UpdateDialog } from "./UpdateDialog.jsx";
 import { LAYER_PRIORITY } from "./ui/layers.js";
 import { BUILTIN_THEMES_V2 } from "../theme/builtinThemesV2.js";
 import { createUiNavigationError } from "../uiNavigation/uiNavigationModel.js";
 import { useUiNavigationTarget, useUiSurface } from "../uiNavigation/UiNavigationContext.jsx";
 import { useDevelopmentEventFixtureAdapter } from "../dev/DevelopmentEventFixturesContext.jsx";
-import { DEVELOPMENT_UPDATE } from "../dev/developmentEventFixtureData.js";
-import { isParticipantInstance } from "../lib/runtimeRole.js";
-import { releaseUrlForVersion } from "../lib/updateController.js";
 import { useEditorDraftSurface } from "../agentControl/EditorDraftContext.jsx";
 
 /**
@@ -30,10 +25,9 @@ import { useEditorDraftSurface } from "../agentControl/EditorDraftContext.jsx";
  *   presentationEnabled?: boolean,
  *   updateSetupPending?: boolean,
  *   dockPresentation?: any,
- *   ref?: import("react").Ref<{ openUpdateDialog: () => void }>,
  *   settings: ReturnType<typeof import("../hooks/useSettings.js").useSettings>,
  *   channelSettings: { channelCount: number, channelLabelTokens: string[], channelLabelHasOverride: boolean, selectedLayoutId: string, setChannelLayout: (...args: any[]) => any, setChannelLabelToken: (...args: any[]) => any, resetChannelLabels: (...args: any[]) => any },
- *   updateControls: { updateInfo: { status: string, [key: string]: any }, refreshUpdateCheck: (...args: any[]) => any, installStatus: string, downloading?: boolean, downloadProgress: any, install: (...args: any[]) => any, restartToApply: (...args: any[]) => any, details?: any, resetInstall: (...args: any[]) => any, openDetails?: () => void, enabled?: boolean, installationSupported?: boolean, installationUnavailableReason?: string | null },
+ *   updateControls: { updateInfo: { status: string, [key: string]: any }, refreshUpdateCheck: (...args: any[]) => any, details?: any, openDetails: () => void, enabled?: boolean, installationSupported?: boolean, installationUnavailableReason?: string | null },
  *   appVersion: string,
  *   loudnessProfile: ReturnType<typeof import("../hooks/LoudnessProfileContext.jsx").useLoudnessProfile>,
  *   presets: ReturnType<typeof import("../hooks/usePresets.js").usePresets>,
@@ -48,7 +42,6 @@ export function AppSettingsOverlays({
   presentationEnabled = true,
   updateSetupPending = false,
   dockPresentation = null,
-  ref,
   settings,
   channelSettings,
   updateControls,
@@ -63,9 +56,6 @@ export function AppSettingsOverlays({
 }) {
   const [feedbackOpen, setFeedbackOpen] = useState(false);
   const [feedbackDirty, setFeedbackDirty] = useState(false);
-  const [updateDialogOpen, setUpdateDialogOpen] = useState(false);
-  const [selectedUpdate, setSelectedUpdate] = useState(null);
-  const updateDevelopmentFixtureIdRef = useRef(null);
   // Held here, beside the theme editor's position, because both panels are floating overlays this
   // component owns; nothing outside it needs to know where they sit.
   const [loudnessProfilePos, setLoudnessProfilePos] = useState({ x: 120, y: 120 });
@@ -107,16 +97,7 @@ export function AppSettingsOverlays({
   const { agentControlStatus, agentControlBusy, setAgentControlEnabled } = useAgentControlSettings({
     settingsOpen: settings.settingsOpen,
   });
-  const {
-    updateInfo,
-    refreshUpdateCheck,
-    installStatus,
-    downloading,
-    downloadProgress,
-    install,
-    restartToApply,
-    resetInstall,
-  } = updateControls;
+  const { updateInfo, refreshUpdateCheck, openDetails } = updateControls;
   const { editor, editorPos, moveEditor } = settings;
   const [settingsReady, setSettingsReady] = useState(null);
   const [authoringReady, setAuthoringReady] = useState(null);
@@ -294,43 +275,6 @@ export function AppSettingsOverlays({
     return () => window.removeEventListener("paste", onPaste);
   }, [beginPaste, presentationEnabled]);
 
-  function openUpdateDialogFromInfo(info, developmentFixtureId = null) {
-    resetInstall();
-    updateDevelopmentFixtureIdRef.current = developmentFixtureId;
-    setSelectedUpdate({
-      releaseNotes: sliceChangelogSince(info?.releaseNotes, appVersion),
-      update: info?.update,
-    });
-    setUpdateDialogOpen(true);
-  }
-
-  function openUpdateDialog() {
-    if (updateControls.openDetails) {
-      updateControls.openDetails();
-      return;
-    }
-    openUpdateDialogFromInfo(updateInfo);
-  }
-
-  useImperativeHandle(ref, () => ({ openUpdateDialog }));
-
-  function closeUpdateDialog() {
-    resetInstall();
-    updateDevelopmentFixtureIdRef.current = null;
-    setUpdateDialogOpen(false);
-    setSelectedUpdate(null);
-  }
-
-  useDevelopmentEventFixtureAdapter(updateControls.openDetails ? null : "update.available", {
-    establish: (fixtureId) => openUpdateDialogFromInfo(DEVELOPMENT_UPDATE, fixtureId),
-    reset: (fixtureId) => {
-      if (updateDevelopmentFixtureIdRef.current === fixtureId) closeUpdateDialog();
-    },
-    matches: (fixtureId) => updateDialogOpen && updateDevelopmentFixtureIdRef.current === fixtureId,
-    canEstablish: () => installStatus === "idle" && !isParticipantInstance(),
-    canReset: () => installStatus === "idle",
-    surface: { kind: "update", target: { phase: "idle" } },
-  });
   useDevelopmentEventFixtureAdapter("library-export.pending", {
     establish: (fixtureId) => {
       setLibraryExportFixtureId(fixtureId);
@@ -433,7 +377,7 @@ export function AppSettingsOverlays({
       updateStatus: updateInfo?.status,
       updateActivity: updateInfo?.activity,
       onCheckForUpdate: refreshUpdateCheck,
-      onInstallUpdate: openUpdateDialog,
+      onInstallUpdate: () => openDetails(),
       updatePreferences: updateControls.enabled ? settings.updatePreferences : null,
       setUpdatePreferences: settings.setUpdatePreferences,
       updateInstallationSupported: updateControls.installationSupported,
@@ -442,6 +386,7 @@ export function AppSettingsOverlays({
       autostartEnabled: settings.autostartEnabled,
       setAutostartEnabled: settings.setAutostartEnabled,
       autostartReady: settings.autostartReady,
+      autostartError: settings.autostartError,
       closeAction: settings.closeAction,
       setCloseAction: settings.setCloseAction,
       historyRetentionSec: settings.historyRetentionSec,
@@ -602,26 +547,6 @@ export function AppSettingsOverlays({
   return (
     <>
       <SettingsPanel {...views.settings} />
-
-      <UpdateDialog
-        open={updateDialogOpen}
-        targetId={selectedUpdate?.update?.version}
-        currentVersion={appVersion}
-        targetVersion={selectedUpdate?.update?.version}
-        manualDownloadUrl={
-          updateDevelopmentFixtureIdRef.current
-            ? null
-            : releaseUrlForVersion(selectedUpdate?.update?.version)
-        }
-        releaseNotes={selectedUpdate?.releaseNotes}
-        installStatus={installStatus}
-        downloading={downloading}
-        downloadProgress={downloadProgress}
-        onConfirm={() => install(selectedUpdate?.update)}
-        onCancel={closeUpdateDialog}
-        onRestart={restartToApply}
-        openExternalUrl={openExternalUrl}
-      />
 
       {feedbackOpen ? <FeedbackContent controller={feedback} onClose={cancelFeedback} /> : null}
 

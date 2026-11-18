@@ -85,7 +85,6 @@ export function useUpdateController({ preferences, startupEligible }) {
       },
       hasUpdate: Boolean(target),
       latestVersion: target?.version,
-      releaseNotes: target?.manifest?.notes ?? "",
       releaseUrl: RELEASES_URL,
       update: target,
     },
@@ -96,9 +95,5 @@ export function useUpdateController({ preferences, startupEligible }) {
     clearPreview: controller.clearPreview,
     dismissDetails: controller.dismissDetails,
     confirmInstall: controller.confirmInstall,
-    // Legacy presentation adapters remain while fixture-driven dialogs use the same button API.
-    install: () => controller.confirmInstall(),
-    restartToApply: () => controller.confirmInstall(),
-    resetInstall: () => {},
   };
 }

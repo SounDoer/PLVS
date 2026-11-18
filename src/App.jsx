@@ -166,7 +166,6 @@ export default function App() {
 
 function AppContent() {
   const [quickTourRequest, setQuickTourRequest] = useState(0);
-  const settingsOverlaysRef = useRef(null);
   const meterRuntime = useMeterRuntime();
   const { notice, selectedOffset, setSelectedOffset, selectSnapshot, showClock } =
     useMeterDisplayState();
@@ -815,7 +814,6 @@ function AppContent() {
               onError: onSettingsError,
               exportProfileRef,
             }}
-            ref={settingsOverlaysRef}
             settings={settings}
             crashReportSetting={crashReportSetting}
             crashReporting={crashReporting}
