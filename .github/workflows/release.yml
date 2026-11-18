@@ -148,9 +148,6 @@ jobs:
       - name: Smoke test file analysis with FFmpeg sidecars
         run: npm run smoke:file-analysis
 
-      - name: Build frontend (Vite)
-        run: npm run build
-
       - name: Build Tauri bundle (NSIS + release binaries for portable)
         run: npm run desktop:stable-nsis
 

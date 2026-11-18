@@ -15,6 +15,7 @@ import {
 import path from "node:path";
 import process from "node:process";
 import { pathToFileURL } from "node:url";
+import { isDeepStrictEqual } from "node:util";
 
 import { ensureLinuxDisplay, keepDisplayAwake } from "./release-package-smoke.mjs";
 import { createAcceptanceFeed } from "./serve-update-acceptance.mjs";
@@ -107,6 +108,17 @@ export function comparableDock(dock) {
       controls: panel.controls,
     })),
   };
+}
+
+export function changedPersistenceSections(before, after) {
+  return ["settings", "workspace"].flatMap((section) => {
+    const previous = before?.[section];
+    const current = after?.[section];
+    if (!previous || !current) return [section];
+    return [...new Set([...Object.keys(previous), ...Object.keys(current)])]
+      .filter((key) => !isDeepStrictEqual(previous[key], current[key]))
+      .map((key) => section + "." + key);
+  });
 }
 
 const sleep = (milliseconds) => new Promise((resolve) => setTimeout(resolve, milliseconds));
@@ -525,13 +537,6 @@ async function runGuidedAcceptance({
     if (capabilities.result.runtime?.identifier !== receipt.identity) {
       throw new Error("Running app identity does not match the acceptance receipt");
     }
-    const before = await waitFor(
-      "packaged app inspection",
-      () => cliJson(cli, dataRoot, ["inspect"]),
-      (value) => Number.isSafeInteger(value.result?.revision),
-      60_000
-    );
-    writeJsonAtomic(path.join(runDir, "before.json"), before);
     const preferencesUi = await waitFor(
       "update preferences",
       () => cliJson(cli, dataRoot, ["ui", "inspect"]),
@@ -604,6 +609,18 @@ async function runGuidedAcceptance({
       () => readReady(dataRoot),
       (value) => value?.value.ready
     );
+    // The chooser intentionally changes preferences. Compare the saved, pre-install state
+    // after the older app has relaunched and downloaded an update with those preferences.
+    const before = await waitFor(
+      "saved preferences in the pre-update snapshot",
+      () => cliJson(cli, dataRoot, ["inspect"]),
+      (value) => {
+        const preferences = value.result?.settings?.updates;
+        return preferences?.autoCheck === true && preferences.autoDownload === true;
+      },
+      60_000
+    );
+    writeJsonAtomic(path.join(runDir, "before.json"), before);
     await closeFeed();
     const quitUi = cliJson(cli, dataRoot, ["ui", "inspect"]);
     developmentUpdateAction(cli, dataRoot, "quit", quitUi);
@@ -770,9 +787,10 @@ async function runGuidedAcceptance({
     }
     const beforeResult = before.result;
     const afterResult = after.result;
-    const stateEqual =
-      JSON.stringify(beforeResult.settings) === JSON.stringify(afterResult.settings) &&
-      JSON.stringify(beforeResult.workspace) === JSON.stringify(afterResult.workspace);
+    const changedSections = changedPersistenceSections(beforeResult, afterResult);
+    if (changedSections.length) {
+      console.error("Persistence changed after upgrade: " + changedSections.join(", "));
+    }
     const dockEqual =
       JSON.stringify(comparableDock(beforeResult.dock)) ===
       JSON.stringify(comparableDock(afterResult.dock));
@@ -782,7 +800,7 @@ async function runGuidedAcceptance({
       { id: "writable-path-offline-update", status: "passed" },
       { id: "cached-offer-survives-restart", status: "passed" },
       { id: "version-and-cli-advance", status: "passed" },
-      { id: "persistence-restored", status: scenarioStatus(stateEqual) },
+      { id: "persistence-restored", status: scenarioStatus(changedSections.length === 0) },
       { id: "dock-restored", status: scenarioStatus(dockEqual) },
       { id: "helper-finished", status: "passed" },
       { id: "helper-interruption-recovered", status: "passed" },

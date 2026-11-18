@@ -92,8 +92,10 @@ the executable end-to-end release sequence.
   lanes. The website lane still runs on every push and pull request.
 - **Ordinary package checks**: [`.github/workflows/package-check.yml`](.github/workflows/package-check.yml)
   builds only affected platforms on GitHub-hosted runners. Shared package inputs select Windows,
-  macOS and Ubuntu together; platform-only inputs select one. A weekly all-platform run catches
-  omissions in the classifier. Signing, physical capture and updater acceptance remain release gates.
+  macOS and Ubuntu together; platform-only inputs select one. Changes limited to application
+  version fields in release metadata do not trigger ordinary packaging, and still run the regular
+  CI checks. A weekly all-platform run catches omissions in the classifier. Signing, physical
+  capture and updater acceptance remain release gates.
 - **Publishing a release**: after the release commit's `ci.yml` push run succeeds, dispatch
   [`.github/workflows/release.yml`](.github/workflows/release.yml) with its version and full commit
   SHA. The workflow builds each platform once, smoke-tests those exact files, assembles a draft

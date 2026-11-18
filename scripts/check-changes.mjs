@@ -1,5 +1,5 @@
 import { execFileSync, spawnSync } from "node:child_process";
-import { appendFileSync } from "node:fs";
+import { appendFileSync, readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 
@@ -49,6 +49,40 @@ const linuxPackageFiles = new Set([
   "scripts/verify-linux-deb.sh",
   "scripts/verify-linux-desktop.py",
 ]);
+// These are the application version fields written by bump-version.mjs.
+const versionedJsonFiles = new Set([
+  "package.json",
+  "package-lock.json",
+  "src-tauri/tauri.conf.json",
+  "src-tauri/plvs-agent.json",
+  "src-tauri/plvs-preview-agent.json",
+]);
+const versionedTextFiles = new Map([
+  ["src-tauri/Cargo.toml", /^(\[workspace\.package\]\nversion = )"\d+\.\d+\.\d+"$/m],
+  [
+    "src-tauri/Cargo.lock",
+    /^(\[\[package\]\]\nname = "(?:plvs|plvs-cli|plvs-update-installer)"\nversion = )"\d+\.\d+\.\d+"$(?!\nsource = )/gm,
+  ],
+  ...["agent-discovery", "installer-hooks", "preview-installer-hooks"].map((file) => [
+    "src-tauri/nsis/" + file + ".nsh",
+    /^(!define PLVS_AGENT_VERSION )"\d+\.\d+\.\d+"$/m,
+  ]),
+]);
+
+function withoutAppVersion(file, contents) {
+  if (!versionedJsonFiles.has(file)) {
+    return contents.replace(versionedTextFiles.get(file), '$1"<version>"');
+  }
+  const json = JSON.parse(contents);
+  if (typeof json?.version !== "string" || !/^\d+\.\d+\.\d+$/.test(json.version)) return undefined;
+  if (file === "package-lock.json") {
+    if (json.packages?.[""]?.version !== json.version) return undefined;
+    delete json.packages[""].version;
+  }
+  delete json.version;
+  return JSON.stringify(json);
+}
+
 const contractRoots = [
   ".agents/",
   ".claude/",
@@ -120,7 +154,7 @@ const fullLanes = {
   package_linux: true,
 };
 
-export function classifyPaths(paths) {
+export function classifyPaths(paths, { versionOnlyFiles = new Set() } = {}) {
   const files = [...new Set(paths)].sort();
   let frontend = false;
   let native = false;
@@ -132,11 +166,12 @@ export function classifyPaths(paths) {
     const lane = laneForPath(file);
     frontend ||= lane.frontend;
     native ||= lane.native;
+    if (!lane.known) unknown.push(file);
+    if (versionOnlyFiles.has(file)) continue;
     const packages = packageLanesForPath(file);
     packageWindows ||= packages.package_windows;
     packageMacos ||= packages.package_macos;
     packageLinux ||= packages.package_linux;
-    if (!lane.known) unknown.push(file);
   }
   if (!files.length) {
     return { scope: "native", files, unknown, lanes: { ...fullLanes } };
@@ -168,36 +203,55 @@ export function inspectChanges({ base, head = "HEAD", working = true, cwd = proc
     const headSha = git("rev-parse", "--verify", `${head}^{commit}`).trim();
     const baseSha = git("rev-parse", "--verify", base + "^{commit}").trim();
     git("merge-base", "--is-ancestor", baseSha, headSha);
-    const files = git("diff", "--name-only", "--no-renames", "-z", baseSha, headSha).split("\0");
+    const files = new Set();
+    const packageInputsChanged = new Set();
+    const recordChanges = (...args) => {
+      const fields = git(...args, "--raw", "--no-abbrev", "--no-renames", "-z").split("\0");
+      for (let i = 0; i < fields.length - 1; i += 2) {
+        const [mode, newMode, before, after, status] = fields[i].slice(1).split(" ");
+        const file = fields[i + 1];
+        files.add(file);
+        // Any substantive edit anywhere in the range keeps the package checks selected.
+        if (packageInputsChanged.has(file)) continue;
+        if (
+          status === "M" &&
+          mode === "100644" &&
+          newMode === mode &&
+          (versionedJsonFiles.has(file) || versionedTextFiles.has(file))
+        ) {
+          try {
+            const original = withoutAppVersion(file, git("cat-file", "blob", before));
+            const changed = /^0+$/.test(after)
+              ? readFileSync(resolve(cwd, file), "utf8")
+              : git("cat-file", "blob", after);
+            if (original !== undefined && original === withoutAppVersion(file, changed)) continue;
+          } catch {
+            // Treat unreadable or malformed content as a substantive change.
+          }
+        }
+        packageInputsChanged.add(file);
+      }
+    };
+    recordChanges("diff", baseSha, headSha);
     // Include every pending commit, including changes subsequently reverted within the push.
-    for (const commit of git("rev-list", `${baseSha}..${headSha}`)
+    for (const commit of git("rev-list", baseSha + ".." + headSha)
       .trim()
       .split(/\s+/)
       .filter(Boolean)) {
-      files.push(
-        ...git(
-          "diff-tree",
-          "--root",
-          "-m",
-          "-r",
-          "--no-commit-id",
-          "--name-only",
-          "--no-renames",
-          "-z",
-          commit
-        ).split("\0")
-      );
+      recordChanges("diff-tree", "--root", "-m", "-r", "--no-commit-id", commit);
     }
     if (working) {
       // Index and worktree must be checked separately: unstaged edits can undo a staged change.
-      files.push(
-        ...git("diff", "--cached", "--name-only", "--no-renames", "-z", "HEAD").split("\0")
-      );
-      files.push(...git("diff", "--name-only", "--no-renames", "-z").split("\0"));
-      files.push(...git("ls-files", "--others", "--exclude-standard", "-z").split("\0"));
+      recordChanges("diff", "--cached", "HEAD");
+      recordChanges("diff");
+      for (const file of git("ls-files", "--others", "--exclude-standard", "-z").split("\0")) {
+        if (!file) continue;
+        files.add(file);
+        packageInputsChanged.add(file);
+      }
     }
     return {
-      ...classifyPaths(files.filter(Boolean)),
+      ...classifyPaths(files, { versionOnlyFiles: files.difference(packageInputsChanged) }),
       base: baseSha,
       head: headSha,
     };

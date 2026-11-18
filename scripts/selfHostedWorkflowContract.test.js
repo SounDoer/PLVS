@@ -109,6 +109,7 @@ describe("self-hosted runners on a public repository", () => {
     const index = (name) => steps.findIndex((step) => step.name === name);
     expect(index("Require the commit on main")).toBe(index("Checkout the exact commit") + 1);
     expect(text).toContain(BUILD_HARNESS);
+    expect(text).not.toContain("npm ci");
     expect(index("Capture smoke")).toBeGreaterThan(index("Build the capture harness"));
     expect(index("Four-hour capture soak")).toBeGreaterThan(
       index("Verify exact-commit smoke evidence")

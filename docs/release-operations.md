@@ -63,6 +63,10 @@ installation attempts, and quits through the normal application business path. N
 operator checkpoint is part of a valid run. `update:acceptance:serve` remains a debugging command,
 not a release step.
 
+The persistence comparison uses the older app's snapshot after it relaunches with the saved update
+preferences and downloads the update. After installation, the runner compares settings and workspace
+with that snapshot and reports the names of changed fields on failure.
+
 Stable releases call `update-acceptance.yml`. When the product update chain changed
 (`UPDATE_ACCEPTANCE_PATHS` in `scripts/update-acceptance-code-changed.mjs`), its
 self-hosted Windows, macOS and Linux jobs build and run the exact commit, export evidence without

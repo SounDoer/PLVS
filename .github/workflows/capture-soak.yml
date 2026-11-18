@@ -73,9 +73,7 @@ jobs:
       - name: Rust toolchain
         run: rustup toolchain install --no-self-update
 
-      - name: Install dependencies
-        run: npm ci
-
+      # The capture scripts use Node built-ins and the harness is built directly with Cargo.
       - name: Fetch FFmpeg sidecars
         run: npm run ffmpeg:fetch
 

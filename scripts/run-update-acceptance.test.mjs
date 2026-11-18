@@ -6,6 +6,7 @@ import { normalizeCloseAction } from "../src/settings/defaults.js";
 
 import {
   acceptanceBootstrapMarker,
+  changedPersistenceSections,
   comparableDock,
   findUpdateSurface,
   hasFeedPackageRequest,
@@ -24,6 +25,28 @@ import {
 } from "./run-update-acceptance.mjs";
 
 describe("update acceptance runner", () => {
+  it("reports changed persistence fields without treating key order as a change", () => {
+    const before = {
+      settings: { updates: { autoCheck: true, autoDownload: true }, interfaceSize: "small" },
+      workspace: { layout: ["first", "second"] },
+    };
+    expect(
+      changedPersistenceSections(before, {
+        settings: { interfaceSize: "small", updates: { autoDownload: true, autoCheck: true } },
+        workspace: { layout: ["first", "second"] },
+      })
+    ).toEqual([]);
+    expect(
+      changedPersistenceSections(before, {
+        settings: { interfaceSize: "small", updates: { autoCheck: true, autoDownload: false } },
+        workspace: { layout: ["second", "first"] },
+      })
+    ).toEqual(["settings.updates", "workspace.layout"]);
+    expect(changedPersistenceSections(before, { settings: before.settings })).toEqual([
+      "workspace",
+    ]);
+  });
+
   it("launches the exact macOS bundle executable with isolated data", () => {
     expect(
       macAcceptanceLaunch("/tmp/install with spaces/Test.app", "/tmp/data with spaces")

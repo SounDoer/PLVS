@@ -150,4 +150,73 @@ describe("change scope", () => {
       rmSync(cwd, { recursive: true, force: true });
     }
   });
+
+  it("skips packaging for version fields but catches dependency edits even if reverted", () => {
+    const cwd = mkdtempSync(join(tmpdir(), "plvs-check-version-"));
+    const git = (...args) =>
+      execFileSync("git", args, { cwd, encoding: "utf8", stdio: "pipe" }).trim();
+    const commit = () => {
+      git("add", ".");
+      git("commit", "-m", "fixture");
+      return git("rev-parse", "HEAD");
+    };
+    const writeVersion = (version, dependency = "1.0.0") => {
+      const write = (file, contents) => writeFileSync(join(cwd, file), contents);
+      const writeJson = (file, data) => write(file, JSON.stringify(data) + "\n");
+      writeJson("package.json", { version, dependencies: { example: dependency } });
+      writeJson("package-lock.json", {
+        version,
+        packages: { "": { version }, "node_modules/example": { version: dependency } },
+      });
+      writeJson("src-tauri/tauri.conf.json", { version, identifier: "com.soundoer.plvs" });
+      writeJson("src-tauri/plvs-agent.json", { version, identifier: "com.soundoer.plvs" });
+      write("src-tauri/Cargo.toml", '[workspace.package]\nversion = "' + version + '"\n');
+      write(
+        "src-tauri/Cargo.lock",
+        '[[package]]\nname = "plvs"\nversion = "' +
+          version +
+          '"\n' +
+          '\n[[package]]\nname = "example"\nversion = "' +
+          dependency +
+          '"\n'
+      );
+      write("src-tauri/nsis/installer-hooks.nsh", '!define PLVS_AGENT_VERSION "' + version + '"\n');
+    };
+    try {
+      git("init");
+      git("config", "user.name", "Test");
+      git("config", "user.email", "test@example.com");
+      mkdirSync(join(cwd, "src-tauri", "nsis"), { recursive: true });
+      writeVersion("1.0.0");
+      const base = commit();
+      writeVersion("1.0.1");
+      git("add", ".");
+      writeVersion("1.0.2");
+      expect(inspectChanges({ base, cwd }).lanes).toMatchObject({
+        contracts: true,
+        frontend: true,
+        native: true,
+        package_windows: false,
+        package_macos: false,
+        package_linux: false,
+      });
+      const bumped = commit();
+      expect(inspectChanges({ base, cwd, working: false }).lanes.package_windows).toBe(false);
+      writeVersion("1.0.2", "2.0.0");
+      git("add", ".");
+      writeVersion("1.0.2");
+      expect(inspectChanges({ base: bumped, cwd }).lanes.package_windows).toBe(true);
+      writeVersion("1.0.2", "2.0.0");
+      commit();
+      writeVersion("1.0.3");
+      commit();
+      expect(inspectChanges({ base: bumped, cwd, working: false }).lanes).toMatchObject({
+        package_windows: true,
+        package_macos: true,
+        package_linux: true,
+      });
+    } finally {
+      rmSync(cwd, { recursive: true, force: true });
+    }
+  });
 });
