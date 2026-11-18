@@ -194,16 +194,17 @@ Each job verifies its own `result.json` names the commit and platform and is `co
 uploads it as `capture-evidence-<platform>`. The runner workspace is reused and cleaned by later
 checkouts; the uploaded artifact is the record.
 
-Use the standalone Agent Control workflow to exercise Live Source disconnect and reconnect on
-the Windows and Linux rigs:
+The manual Agent Control Acceptance workflow includes Live Source disconnect and reconnect on
+every selected platform:
 
 ```bash
-gh workflow run agent-control-acceptance.yml -f commit_sha=$(git rev-parse HEAD) -f scenario=live-source-reconnect
+gh workflow run agent-control-acceptance.yml -f commit_sha=$(git rev-parse HEAD)
 ```
 
-The smoke waits for the machine-wide capture lease before touching audio. It disables and restores
-only the VB-Cable recording endpoint on Windows and removes and recreates a private null sink
-on Linux. It verifies that PLVS stops and keeps the exact Source selected, rejects Start while it is
+The workflow holds the machine-wide capture lease throughout acceptance. The reconnect case
+disables and restores only the VB-Cable recording endpoint on Windows, removes and recreates a
+temporary aggregate input backed by BlackHole on macOS, and removes and recreates a private null
+sink on Linux. It verifies that PLVS stops and keeps the exact Source selected, rejects Start while it is
 unavailable, and only measures again after an explicit Start following reconnection. Cleanup
 restores the test route and any recording defaults it changed. The Actions artifact contains
 case results without local device identifiers.

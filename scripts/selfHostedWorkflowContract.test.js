@@ -178,27 +178,19 @@ describe("self-hosted runners on a public repository", () => {
       options: ["all", "windows", "macos", "linux"],
     });
     expect(job.strategy.matrix.platform).toContain('["windows","macos","linux"]');
-    expect(workflow.on.workflow_dispatch.inputs.scenario).toMatchObject({
-      default: "desktop",
-      options: ["desktop", "live-source-reconnect"],
-    });
-    expect(job.strategy.matrix.platform).toContain(
-      `inputs.scenario == 'live-source-reconnect' && fromJSON('["windows","linux"]')`
-    );
+    expect(Object.keys(workflow.on.workflow_dispatch.inputs)).toEqual(["commit_sha", "platform"]);
     expect(workflow.concurrency).toMatchObject({
-      group: "agent-control-acceptance-${{ inputs.scenario }}-${{ inputs.commit_sha }}",
+      group: "agent-control-acceptance-${{ inputs.commit_sha }}",
       "cancel-in-progress": false,
     });
     expect(job["runs-on"]).toEqual(["self-hosted", "plvs-rig", "${{ matrix.platform }}"]);
-    expect(job.steps.find(({ name }) => name === "Run desktop acceptance").run).toContain(
-      "scripts/run-agent-control-acceptance.mjs"
-    );
-    const reconnect = job.steps.find(({ name }) => name === "Run Live source reconnect smoke");
-    expect(reconnect.if).toBe("inputs.scenario == 'live-source-reconnect'");
-    expect(reconnect.run).toContain("scripts/smoke-live-source-reconnect.mjs");
-    const restore = job.steps.find(({ name }) => name === "Restore the Windows test endpoint");
+    const run = job.steps.find(({ name }) => name === "Run desktop acceptance");
+    expect(run.if).toBeUndefined();
+    expect(run.run).toContain("scripts/run-agent-control-acceptance.mjs");
+    const restore = job.steps.find(({ name }) => name === "Restore test endpoints");
     expect(restore.if).toContain("always()");
-    expect(restore.run).toContain("--restore-windows");
+    expect(restore.run).toContain("details/live-source-reconnect");
+    expect(restore.run).toContain("--restore-rig");
     const upload = job.steps.find(({ uses }) => uses?.startsWith("actions/upload-artifact@"));
     expect(upload.if).toBe("always()");
     expect(upload.with.path).toMatch(/\/summary\.json$/);

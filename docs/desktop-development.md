@@ -83,7 +83,8 @@ platform; Linux validation must use an unlocked real GNOME Wayland session with 
 
 Run the **Agent Control Acceptance** workflow manually from Actions with a full commit SHA on
 `main`. Each desktop runner builds the dev app for that commit, uses a temporary profile, and
-checks the desktop suite, File Dialogue restart, configuration relaunch, Window, and Workbench.
+checks the desktop suite, File Dialogue restart, configuration relaunch, Window, Workbench, and
+Live Source reconnect. The summary lists the six scenarios individually on each platform.
 The workflow uploads a JSON summary for each platform for 14 days. After a scenario fails,
 the summary includes the recent command IDs and error codes from before cleanup. It uses the
 machine-wide rig lease and runs independently of stable release gates.

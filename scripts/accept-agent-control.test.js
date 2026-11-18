@@ -26,16 +26,18 @@ describe("Agent Control acceptance arguments", () => {
     expect(() => parseAgentControlAcceptanceArgs(["--unknown", "value"])).toThrow("Usage");
   });
 
-  it.each(["configuration-relaunch", "window-platform-contract", "workbench-platform-contract"])(
-    "runs %s only with a dedicated instance",
-    (scenario) => {
-      const args = ["--scenario", scenario];
-      expect(parseAgentControlAcceptanceArgs(args).scenario).toBe(scenario);
-      expect(() => parseAgentControlAcceptanceArgs([...args, "--instance", "existing"])).toThrow(
-        "starts its own instance"
-      );
-    }
-  );
+  it.each([
+    "configuration-relaunch",
+    "window-platform-contract",
+    "workbench-platform-contract",
+    "live-source-reconnect",
+  ])("runs %s only with a dedicated instance", (scenario) => {
+    const args = ["--scenario", scenario];
+    expect(parseAgentControlAcceptanceArgs(args).scenario).toBe(scenario);
+    expect(() => parseAgentControlAcceptanceArgs([...args, "--instance", "existing"])).toThrow(
+      "starts its own instance"
+    );
+  });
 });
 
 describe("Agent Control acceptance invocation", () => {

@@ -7,14 +7,9 @@ import { fileURLToPath, pathToFileURL } from "node:url";
 import manifest from "../src/agentControl/commandManifest.json" with { type: "json" };
 import { ISOLATED_SCENARIOS } from "./accept-agent-control.mjs";
 import { hostPlatform, resolveEvidenceSourceSha, writeJsonAtomic } from "./acceptance-evidence.mjs";
-import {
-  currentOwner,
-  ensureLeaseDirectory,
-  leasePath,
-  machineLeaseDirectory,
-  releaseLease,
-  waitForLease,
-} from "./rig-lease.mjs";
+import { DEV_IDENTITY_TARGET_DIRECTORY } from "./build-plvs-cli.mjs";
+import { withCaptureRig } from "./capture-rig.mjs";
+import { LIVE_SOURCE_RECONNECT, runLiveSourceReconnect } from "./smoke-live-source-reconnect.mjs";
 
 const root = fileURLToPath(new URL("../", import.meta.url));
 const acceptance = join(root, "scripts", "accept-agent-control.mjs");
@@ -181,47 +176,58 @@ async function main([out, ...extra]) {
   await mkdir(outDir, { mode: 0o700 });
   const summaryPath = join(outDir, "summary.json");
   await writeJsonAtomic(summaryPath, report);
-  const lease = await waitForLease(
-    leasePath(ensureLeaseDirectory(machineLeaseDirectory())),
-    currentOwner({ worktree: root, command: "Agent Control desktop acceptance" }),
-    { onBusy: () => process.stdout.write("Waiting for the desktop rig lease.\n") }
-  );
-  try {
-    for (const [index, scenario] of ISOLATED_SCENARIOS.entries()) {
-      const directory = join(outDir, "details", scenario);
-      await mkdir(directory, { recursive: true });
-      const log = openSync(join(directory, "command.log"), "w", 0o600);
-      let child;
-      try {
-        child = spawnSync(
-          process.execPath,
-          [acceptance, "--scenario", scenario, "--out-dir", directory],
-          {
-            cwd: root,
-            env: { ...process.env, PLVS_ACCEPTANCE_OWN_VITE: "1" },
-            stdio: ["ignore", log, log],
-          }
-        );
-      } finally {
-        closeSync(log);
+  await withCaptureRig(
+    async () => {
+      for (const [index, scenario] of ISOLATED_SCENARIOS.entries()) {
+        const directory = join(outDir, "details", scenario);
+        await mkdir(directory, { recursive: true });
+        if (scenario === LIVE_SOURCE_RECONNECT) {
+          const executable = join(
+            DEV_IDENTITY_TARGET_DIRECTORY,
+            "debug",
+            report.platform.os === "windows" ? "plvs-cli.exe" : "plvs-cli"
+          );
+          report.scenarios[index] = await runLiveSourceReconnect({
+            executable,
+            outDir: directory,
+            platform: report.platform.os,
+          });
+          console.log(`${scenario}: ${report.scenarios[index].status}`);
+          await writeJsonAtomic(summaryPath, report);
+          continue;
+        }
+        const log = openSync(join(directory, "command.log"), "w", 0o600);
+        let child;
+        try {
+          child = spawnSync(
+            process.execPath,
+            [acceptance, "--scenario", scenario, "--out-dir", directory],
+            {
+              cwd: root,
+              env: { ...process.env, PLVS_ACCEPTANCE_OWN_VITE: "1" },
+              stdio: ["ignore", log, log],
+            }
+          );
+        } finally {
+          closeSync(log);
+        }
+        if (child.error) throw child.error;
+        const trace = await readEvidence(join(directory, `${scenario}.json`));
+        const desktop =
+          scenario === "desktop" ? await readEvidence(join(directory, "result.json")) : null;
+        const summary = summarizeScenario(scenario, sourceSha, child.status, trace, desktop);
+        report.scenarios[index] = summary;
+        process.stdout.write(`${scenario}: ${summary.status}\n`);
+        await writeJsonAtomic(summaryPath, report);
+        // A failed cleanup may have left a workbench still running. Leave subsequent scenarios unrun.
+        if (trace?.cleanupError) break;
       }
-      if (child.error) throw child.error;
-      const trace = await readEvidence(join(directory, `${scenario}.json`));
-      const desktop =
-        scenario === "desktop" ? await readEvidence(join(directory, "result.json")) : null;
-      const summary = summarizeScenario(scenario, sourceSha, child.status, trace, desktop);
-      report.scenarios[index] = summary;
-      process.stdout.write(`${scenario}: ${summary.status}\n`);
-      await writeJsonAtomic(summaryPath, report);
-      // A failed cleanup may have left a workbench still running. Leave subsequent scenarios unrun.
-      if (trace?.cleanupError) break;
-    }
-    if (report.scenarios.some(({ status }) => status !== "passed")) {
-      process.exitCode = 1;
-    }
-  } finally {
-    releaseLease(lease);
-  }
+      if (report.scenarios.some(({ status }) => status !== "passed")) {
+        process.exitCode = 1;
+      }
+    },
+    { wait: true }
+  );
 }
 
 if (import.meta.url === pathToFileURL(process.argv[1] ?? "").href) {

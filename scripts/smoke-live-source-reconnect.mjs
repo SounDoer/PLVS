@@ -1,18 +1,19 @@
 #!/usr/bin/env node
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
+import { randomUUID } from "node:crypto";
 import { existsSync } from "node:fs";
-import { mkdir, rm } from "node:fs/promises";
+import { mkdir, readFile, rm } from "node:fs/promises";
 import { join, resolve } from "node:path";
 import { setTimeout as delay } from "node:timers/promises";
 import { pathToFileURL } from "node:url";
 import { runIsolatedAgentControl } from "./accept-isolated-agent-control.mjs";
-import { hostPlatform, resolveEvidenceSourceSha, writeJsonAtomic } from "./acceptance-evidence.mjs";
-import { DEV_IDENTITY_TARGET_DIRECTORY } from "./build-plvs-cli.mjs";
+import { writeJsonAtomic } from "./acceptance-evidence.mjs";
 import {
   ROOT,
   RigError,
   resolveLinuxCaptureRoute,
+  resolveMacRenderDevice,
   resolveRenderEndpointId,
   startPlayer,
   stopPlayer,
@@ -21,7 +22,7 @@ import {
 } from "./capture-rig.mjs";
 import { ensureLinuxDisplay, judgeTone, selectRigDevice } from "./release-package-smoke.mjs";
 
-const SCENARIO = "live-source-reconnect";
+export const LIVE_SOURCE_RECONNECT = "live-source-reconnect";
 const CHECKS = [
   "test-endpoint-ready",
   "exact-source-measures",
@@ -59,6 +60,48 @@ function windowsEndpoint(action, stateFile) {
   }
 }
 
+const MAC_ENDPOINT_STATE = "macos-endpoint.json";
+
+function runMacHelper(command, args) {
+  const child = spawnSync(command, args, { encoding: "utf8", timeout: 60_000 });
+  if (child.error || child.status !== 0) {
+    throw Object.assign(
+      new RigError(
+        child.stderr?.trim() || child.error?.message || "The Core Audio aggregate helper failed."
+      ),
+      { code: "macos-aggregate" }
+    );
+  }
+}
+
+async function macAggregate(outDir) {
+  const blackHole = resolveMacRenderDevice();
+  const binary = join(outDir, "capture-rig-aggregate");
+  const suffix = randomUUID().toUpperCase();
+  const uid = "com.soundoer.plvs.reconnect." + suffix;
+  runMacHelper("/usr/bin/xcrun", [
+    "swiftc",
+    join(ROOT, "scripts", "macos", "capture-rig-aggregate.swift"),
+    "-o",
+    binary,
+  ]);
+  await writeJsonAtomic(join(outDir, MAC_ENDPOINT_STATE), { uid });
+  return {
+    captureDevice: "PLVS Reconnect " + suffix.slice(-8),
+    playerTarget: String(blackHole.audioObjectId),
+    create: () => runMacHelper(binary, ["create", uid, blackHole.uid]),
+    release: () => runMacHelper(binary, ["destroy", uid]),
+  };
+}
+
+async function restoreMacEndpoint(outDir) {
+  const stateFile = join(outDir, MAC_ENDPOINT_STATE);
+  if (!existsSync(stateFile)) return;
+  const { uid } = JSON.parse(await readFile(stateFile, "utf8"));
+  runMacHelper(join(outDir, "capture-rig-aggregate"), ["destroy", uid]);
+  await rm(stateFile);
+}
+
 function validateSelection(selection, id, available) {
   assert.equal(selection.requestedId, id, "PLVS changed the requested Source.");
   assert.equal(selection.mode, "exact", "PLVS fell back to Automatic.");
@@ -76,6 +119,12 @@ async function exercise({ invoke, until, disconnect, reconnect, captureDevice, p
   const inventory = await until(() => {
     const current = invoke(["device", "list"]);
     try {
+      if (platform === "macos") {
+        const selected = current.devices.find(
+          ({ label, direction }) => direction === "input" && label === captureDevice
+        );
+        return selected ? { current, selected } : null;
+      }
       return {
         current,
         selected: selectRigDevice(platform, current.devices, { linuxSinkName: captureDevice }),
@@ -181,157 +230,147 @@ async function restoreWindowsEndpoint(stateFile) {
 }
 
 async function main([out, mode, ...extra]) {
-  if (!out || (mode && mode !== "--restore-windows") || extra.length) {
+  if (!out || mode !== "--restore-rig" || extra.length || process.platform === "linux") {
     throw new Error(
-      "Usage: node scripts/smoke-live-source-reconnect.mjs <output-directory> [--restore-windows]"
+      "Usage: node scripts/smoke-live-source-reconnect.mjs <output-directory> --restore-rig"
     );
   }
   const outDir = resolve(out);
-  const stateFile = join(outDir, "windows-endpoint.json");
-  if (mode) {
-    if (process.platform !== "win32") throw new Error("Endpoint restoration is Windows only.");
-    if (existsSync(stateFile)) {
-      try {
-        await withCaptureRig(() => restoreWindowsEndpoint(stateFile), { wait: true });
-      } catch (error) {
-        await writeJsonAtomic(join(outDir, "restore-failure.json"), { message: error.message });
-        throw new Error(
-          "Could not restore the Windows rig endpoint. Inspect the runner's recovery log."
-        );
-      }
-    }
-    return;
+  const restore =
+    process.platform === "win32"
+      ? () => restoreWindowsEndpoint(join(outDir, "windows-endpoint.json"))
+      : () => restoreMacEndpoint(outDir);
+  try {
+    await withCaptureRig(restore, { wait: true });
+  } catch (error) {
+    await writeJsonAtomic(join(outDir, "restore-failure.json"), { message: error.message });
+    throw new Error(
+      "Could not restore the capture rig endpoint. Inspect the runner's recovery log."
+    );
   }
-  const platform = hostPlatform().os;
-  if (!["windows", "linux"].includes(platform)) {
-    throw new Error("This smoke requires a Windows or Linux desktop rig.");
-  }
-  const sourceSha = resolveEvidenceSourceSha(ROOT);
+}
+
+/** Run under the caller's machine-wide capture lease, including device restoration. */
+export async function runLiveSourceReconnect({ outDir, platform, executable }) {
   await mkdir(outDir, { recursive: true, mode: 0o700 });
-  const summary = {
-    sourceSha,
-    platform: hostPlatform(),
-    scenarios: [
-      { id: SCENARIO, status: "failed", checks: CHECKS.map((id) => ({ id, status: "notRun" })) },
-    ],
+  const stateFile = join(outDir, "windows-endpoint.json");
+  const tone = join(outDir, "reconnect.wav");
+  const result = {
+    id: LIVE_SOURCE_RECONNECT,
+    status: "failed",
+    checks: CHECKS.map((id) => ({ id, status: "notRun" })),
   };
-  const result = summary.scenarios[0];
-  const summaryPath = join(outDir, "summary.json");
   const pass = (id) => {
     result.checks.find((check) => check.id === id).status = "passed";
     console.log(`${id}: passed`);
   };
-  await writeJsonAtomic(summaryPath, summary);
+
+  let route;
+  let display;
+  let player;
+  let failure;
+  let playbackError;
+  const linux = platform === "linux";
+  const macos = platform === "macos";
   try {
-    await withCaptureRig(
-      async () => {
-        let route;
-        let display;
-        let player;
-        let failure;
-        let playbackError;
-        const tone = join(outDir, "details", "reconnect.wav");
-        try {
-          const linux = platform === "linux";
-          if (linux) {
-            route = resolveLinuxCaptureRoute();
-            display = await ensureLinuxDisplay();
-          } else {
-            windowsEndpoint("snapshot", stateFile);
-          }
-          const playerTarget = linux ? route.playerTarget : resolveRenderEndpointId();
-          const captureDevice = route?.captureDevice;
-          const executable = join(
-            DEV_IDENTITY_TARGET_DIRECTORY,
-            "debug",
-            linux ? "plvs-cli" : "plvs-cli.exe"
-          );
-          await mkdir(join(outDir, "details"), { recursive: true, mode: 0o700 });
-          await synthesizeSignal(tone);
-          const play = async () => {
-            player = await startPlayer(playerTarget, tone);
-            player.on("error", (error) => {
-              playbackError = error;
-            });
-          };
-          await play();
-          const evidencePath = await runIsolatedAgentControl({
-            executable,
-            root: ROOT,
-            outDir: join(outDir, "details"),
-            scenario: SCENARIO,
-            environment: { ...display?.env, PLVS_ACCEPTANCE_OWN_VITE: "1" },
-            runLiveReconnect: ({ invoke, until }) =>
-              exercise({
-                invoke,
-                until,
-                pass,
-                platform,
-                captureDevice,
-                disconnect: () => {
-                  if (linux) {
-                    // Stop playback before removing the sink so Pulse cannot move the tone elsewhere.
-                    stopPlayer(player, { keepLease: true });
-                    player = null;
-                    route.release();
-                  } else {
-                    windowsEndpoint("disconnect", stateFile);
-                  }
-                },
-                reconnect: async () => {
-                  if (linux) {
-                    route = resolveLinuxCaptureRoute({ sinkName: captureDevice });
-                    await play();
-                  } else {
-                    windowsEndpoint("restore", stateFile);
-                  }
-                },
-              }),
-          });
-          assert.ok(existsSync(evidencePath));
-        } catch (error) {
-          failure = playbackError ?? error;
-        } finally {
-          try {
-            stopPlayer(player, { keepLease: true });
-            if (platform === "windows") await restoreWindowsEndpoint(stateFile);
-            else route?.release();
-            await rm(tone, { force: true });
-            pass("rig-restored");
-          } catch (error) {
-            result.checks.find(({ id }) => id === "rig-restored").status = "failed";
-            failure ??= error;
-          } finally {
-            display?.stop();
-          }
-        }
-        if (failure) throw failure;
-      },
-      { wait: true }
-    );
+    if (linux) {
+      route = resolveLinuxCaptureRoute();
+      display = await ensureLinuxDisplay();
+    } else if (macos) {
+      route = await macAggregate(outDir);
+      route.create();
+    } else {
+      windowsEndpoint("snapshot", stateFile);
+    }
+    const playerTarget = route?.playerTarget ?? resolveRenderEndpointId();
+    const captureDevice = route?.captureDevice;
+    await synthesizeSignal(tone);
+    const play = async () => {
+      player = await startPlayer(playerTarget, tone);
+      player.on("error", (error) => {
+        playbackError = error;
+      });
+    };
+    await play();
+    await runIsolatedAgentControl({
+      executable,
+      root: ROOT,
+      outDir,
+      scenario: LIVE_SOURCE_RECONNECT,
+      environment: { ...display?.env, PLVS_ACCEPTANCE_OWN_VITE: "1" },
+      runLiveReconnect: ({ invoke, until }) =>
+        exercise({
+          invoke,
+          until,
+          pass,
+          platform,
+          captureDevice,
+          disconnect: () => {
+            if (linux) {
+              // Stop playback before removing the sink so Pulse cannot move the tone elsewhere.
+              stopPlayer(player, { keepLease: true });
+              player = null;
+            }
+            if (route) route.release();
+            else windowsEndpoint("disconnect", stateFile);
+          },
+          reconnect: async () => {
+            if (linux) {
+              route = resolveLinuxCaptureRoute({ sinkName: captureDevice });
+              await play();
+            } else if (macos) {
+              route.create();
+            } else {
+              windowsEndpoint("restore", stateFile);
+            }
+          },
+        }),
+    });
+  } catch (error) {
+    failure = playbackError ?? error;
+  } finally {
+    try {
+      stopPlayer(player, { keepLease: true });
+      if (macos) await restoreMacEndpoint(outDir);
+      else if (linux) route?.release();
+      else await restoreWindowsEndpoint(stateFile);
+      await rm(tone, { force: true });
+      pass("rig-restored");
+    } catch (error) {
+      result.checks.find(({ id }) => id === "rig-restored").status = "failed";
+      failure = failure
+        ? new AggregateError([failure, error], failure.message, { cause: failure })
+        : error;
+    } finally {
+      display?.stop();
+    }
+  }
+  if (!failure) {
     assert.ok(result.checks.every(({ status }) => status === "passed"));
     result.status = "passed";
-  } catch (error) {
+  } else {
     const pending = result.checks.find(({ status }) => status === "notRun");
     if (pending) pending.status = "failed";
+    const rootError = failure.cause ?? failure;
+    const knownCodes = [
+      "acceptanceTimeout",
+      "ERR_ASSERTION",
+      "macos-aggregate",
+      "windows-endpoint-snapshot",
+      "windows-endpoint-disconnect",
+      "windows-endpoint-restore",
+    ];
     result.diagnostic = {
-      code: [
-        "acceptanceTimeout",
-        "ERR_ASSERTION",
-        "windows-endpoint-snapshot",
-        "windows-endpoint-disconnect",
-        "windows-endpoint-restore",
-      ].includes(error.code)
-        ? error.code
-        : "scenarioFailed",
-      ...(error.hresult ? { hresult: error.hresult } : {}),
+      code: knownCodes.includes(rootError.code) ? rootError.code : "scenarioFailed",
+      ...(rootError.hresult ? { hresult: rootError.hresult } : {}),
     };
-    await writeJsonAtomic(join(outDir, "failure.json"), { message: error.message });
-    console.error(`${SCENARIO}: failed (${result.diagnostic.code})`);
-    process.exitCode = 1;
-  } finally {
-    await writeJsonAtomic(summaryPath, summary);
+    await writeJsonAtomic(join(outDir, "failure.json"), {
+      message: failure.message,
+      ...(failure instanceof AggregateError ? { cleanup: failure.errors[1].message } : {}),
+    });
+    console.error(`${LIVE_SOURCE_RECONNECT}: failed (${result.diagnostic.code})`);
   }
+  return result;
 }
 
 if (import.meta.url === pathToFileURL(process.argv[1] ?? "").href) {

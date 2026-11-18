@@ -859,6 +859,11 @@ Detection regression on its own dev processes and temporary app profile. It chec
 reanalyzes the same session, restarts the app, and verifies that the new process uses the saved
 preference. The run writes a JSON trace, app log, and screenshots to its evidence directory.
 
+`npm run acceptance:agent-control -- --scenario live-source-reconnect` runs the Live Source
+disconnect and reconnect case on a configured capture rig. It verifies that capture stops when
+the selected Source disappears and resumes only after the operator selects Start. The case uses
+an isolated dev profile and shares the machine-wide capture lease with other audio checks.
+
 Dock monitor discovery and entry, and Preset application, read the current monitor inventory on
 each request, including dry-run. Hot-plugging a monitor does not require restarting PLVS. A failed
 inventory read refuses the request without mutation; the next request retries the read.

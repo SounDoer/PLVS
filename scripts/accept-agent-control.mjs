@@ -20,6 +20,8 @@ import { runAgentControlSmoke, selectSmokeInstance } from "./smoke-agent-control
 import { runUiVisualWalkthrough } from "./ui-visual-walkthrough.mjs";
 import { createRunJournalStore } from "./ui-walkthrough/journal.mjs";
 import { runIsolatedAgentControl } from "./accept-isolated-agent-control.mjs";
+import { withCaptureRig } from "./capture-rig.mjs";
+import { LIVE_SOURCE_RECONNECT, runLiveSourceReconnect } from "./smoke-live-source-reconnect.mjs";
 import { AGENT_CONTROL_ACCEPTANCE_SCENARIOS } from "./agent-control-acceptance-catalog.mjs";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
@@ -38,6 +40,7 @@ export const ISOLATED_SCENARIOS = [
   "configuration-relaunch",
   "window-platform-contract",
   "workbench-platform-contract",
+  LIVE_SOURCE_RECONNECT,
 ];
 
 export function parseAgentControlAcceptanceArgs(args) {
@@ -580,6 +583,19 @@ async function main() {
       throw ffmpeg.error ?? new Error("Could not prepare the FFmpeg sidecars.");
     }
     const { executable } = buildPlvsCli({ identity: "dev" });
+    if (options.scenario === LIVE_SOURCE_RECONNECT) {
+      const sourceSha = resolveEvidenceSourceSha(root);
+      const platform = hostPlatform();
+      const result = await withCaptureRig(
+        () => runLiveSourceReconnect({ executable, outDir: options.outDir, platform: platform.os }),
+        { wait: true }
+      );
+      const evidencePath = join(options.outDir, "summary.json");
+      await writeJsonAtomic(evidencePath, { sourceSha, platform, scenarios: [result] });
+      console.log(`Evidence: ${evidencePath}`);
+      if (result.status !== "passed") process.exitCode = 1;
+      return;
+    }
     const evidencePath = await runIsolatedAgentControl({
       executable,
       root,
