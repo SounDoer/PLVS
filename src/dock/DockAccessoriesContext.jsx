@@ -12,6 +12,7 @@ import {
   useMemo,
   useRef,
   useState,
+  useSyncExternalStore,
 } from "react";
 import { useWorkspaceStore } from "../workspace/WorkspaceContext.jsx";
 import { useLoudnessProfile } from "../hooks/LoudnessProfileContext.jsx";
@@ -46,6 +47,11 @@ import { dialogueVadEngineOption } from "../lib/dialogueVadEngines.js";
 import { useDevelopmentEventFixtureAdapter } from "../dev/DevelopmentEventFixturesContext.jsx";
 import { developmentStatusItems } from "../dev/developmentStatusFixtureData.js";
 import { createUiNavigationError } from "../uiNavigation/uiNavigationModel.js";
+import {
+  configurationRestartStatus,
+  reloadAfterProfileChange,
+  subscribeConfigurationRestart,
+} from "../persistence/profile.js";
 
 /** The toolbar menu each Dock editor view is, and the header button that opens it. */
 const DOCK_MENUS = {
@@ -350,6 +356,10 @@ export function DockAccessoriesProvider({ children }) {
   const openUpdateDetails = updateControls.openDetails;
   const dockUpdate = dockUpdateStatus(updateControls);
   const dockUpdateKey = JSON.stringify(dockUpdate);
+  const configurationRestart = useSyncExternalStore(
+    subscribeConfigurationRestart,
+    configurationRestartStatus
+  );
   const statusKey = JSON.stringify(
     statusFixture
       ? developmentStatusItems(statusFixture.phase)
@@ -359,6 +369,7 @@ export function DockAccessoriesProvider({ children }) {
           autoChannelRoles: displayAudio?.autoChannelRoles,
           audioDrop: sourceMode === "live" ? liveAudioDrop : null,
           update: dockUpdate,
+          configurationRestart,
         })
   );
   const statusItems = useMemo(() => JSON.parse(statusKey), [statusKey]);
@@ -368,7 +379,13 @@ export function DockAccessoriesProvider({ children }) {
       if (action === "update") openUpdateDetails();
       else if (action === "check-update") await updateControls.refreshUpdateCheck();
       else if (action === "settings") setSettingsOpen(true);
-      else if (action === "help") {
+      else if (action === "restart-configuration" && configurationRestartStatus() === "required") {
+        try {
+          await reloadAfterProfileChange();
+        } catch (error) {
+          console.warn("Unable to restart after saving the configuration:", error);
+        }
+      } else if (action === "help") {
         const url = troubleshootingUrl(topic);
         if (url) {
           await openExternalUrl(url);
@@ -391,6 +408,17 @@ export function DockAccessoriesProvider({ children }) {
       }
       if (item.action === "update" && !updateControls.updateInfo?.update) {
         throw createUiNavigationError("uiActionUnavailable", { target });
+      }
+      if (item.action === "restart-configuration") {
+        if (configurationRestartStatus() !== "required") {
+          throw createUiNavigationError("uiActionUnavailable", { target });
+        }
+        return {
+          afterResponse: async () => {
+            await closeStatus();
+            await runStatusAction(item.action);
+          },
+        };
       }
       await closeStatus();
       await runStatusAction(item.action);

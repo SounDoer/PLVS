@@ -46,6 +46,25 @@ function seed() {
 }
 
 describe("multiInstanceBackend", () => {
+  it("holds writes from a stale workbench while a configuration change awaits restart", async () => {
+    invoke.mockResolvedValue(undefined);
+    const { createMultiInstanceBackend } = await import("./multiInstanceBackend.js");
+    const backend = createMultiInstanceBackend();
+    const resumeWrites = await backend.pauseWrites();
+    const value = { ...backend.get("plvs:settings"), referenceLufs: -20 };
+    backend.set("plvs:settings", value);
+    await backend.flush();
+    await backend.refresh();
+    expect(invoke).not.toHaveBeenCalled();
+
+    resumeWrites();
+    await backend.flush();
+    expect(invoke).toHaveBeenCalledExactlyOnceWith("persistence_save_domain", {
+      domain: "settings",
+      value,
+    });
+  });
+
   it("persists the tour disposition as an identity-wide preference with its revision", async () => {
     window.__PLVS_INITIAL_STATE__["plvs:settings"].quickTour = "pending";
     window.__PLVS_INITIAL_STATE__.globalPreferences.quickTour = "pending";

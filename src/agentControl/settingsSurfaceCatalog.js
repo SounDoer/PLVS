@@ -32,7 +32,6 @@ export const SETTINGS_SURFACE_CONTROLS = Object.freeze([
   { id: "transfer.configurationExport", owner: "configuration" },
   { id: "transfer.configurationImport", owner: "configuration" },
   { id: "transfer.configurationReset", owner: "configuration" },
-  { id: "transfer.configurationRestart", owner: "configuration" },
   { id: "agentControl.enabled", owner: "userOnly", reason: "permissionBoundary" },
   { id: "updates.autoCheck", owner: "settings", field: "updates" },
   { id: "updates.autoDownload", owner: "settings", field: "updates" },

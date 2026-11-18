@@ -15,7 +15,7 @@ export function statusActionTarget(item) {
 
 /**
  * Current conditions, rather than a history of old notifications.
- * @param {{ notice?: {kind?: string, text: string, details?: string, helpTopic?: string, requiresAttention?: boolean}, layoutUnknown?: boolean, autoChannelRoles?: string[], audioDrop?: {chunks: number, since: number}, update?: {phase: string, text: string, action?: string} }} input
+ * @param {{ notice?: {kind?: string, text: string, details?: string, helpTopic?: string, requiresAttention?: boolean}, layoutUnknown?: boolean, autoChannelRoles?: string[], audioDrop?: {chunks: number, since: number}, update?: {phase: string, text: string, action?: string}, configurationRestart?: "required" | "restarting" | null }} input
  */
 export function buildAppStatusItems({
   notice = null,
@@ -23,6 +23,7 @@ export function buildAppStatusItems({
   autoChannelRoles = null,
   audioDrop = null,
   update = null,
+  configurationRestart = null,
 } = {}) {
   /** @type {AppStatusItem[]} */
   const items = [];
@@ -35,6 +36,18 @@ export function buildAppStatusItems({
       ...(notice.helpTopic ? { helpTopic: notice.helpTopic } : null),
       requiresAttention: notice.requiresAttention === true,
     });
+  if (configurationRestart) {
+    const restarting = configurationRestart === "restarting";
+    items.push({
+      id: "configuration-restart",
+      kind: "warning",
+      text: restarting ? "Restarting PLVS…" : "Restart Required",
+      details: restarting
+        ? "Configuration saved. PLVS is restarting."
+        : "Configuration saved. Restart PLVS to finish.",
+      ...(!restarting && { action: "restart-configuration" }),
+    });
+  }
   if (audioDrop)
     items.push({
       id: "audio-drop",

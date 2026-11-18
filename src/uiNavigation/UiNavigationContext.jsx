@@ -642,6 +642,7 @@ export function UiNavigationProvider({
           }
         };
         const result = await controller.run(target, closeStatus);
+        if (result?.afterResponse) return { accepted: true, afterResponse: result.afterResponse };
         if (result?.showUpdate) {
           const surface = await waitForSurface("update", {});
           return { surface };

@@ -205,9 +205,7 @@ function IconButton({ children, className, ...props }) {
  *   onExportConfiguration?: (...args: any[]) => any,
  *   onImportConfiguration?: (...args: any[]) => any,
  *   onResetConfiguration?: (...args: any[]) => any,
- *   onRetryConfigurationRestart?: (...args: any[]) => any,
  *   configurationBusy?: boolean,
- *   configurationRestartPending?: boolean,
  *   configurationStatus?: string,
  *   onLibraryExport?: (...args: any[]) => any,
  *   onSharedPackImport?: (...args: any[]) => any,
@@ -281,9 +279,7 @@ export function SettingsContent({
   onExportConfiguration = () => {},
   onImportConfiguration = () => {},
   onResetConfiguration = () => {},
-  onRetryConfigurationRestart = () => {},
   configurationBusy = false,
-  configurationRestartPending = false,
   configurationStatus = "",
   onLibraryExport = () => {},
   onSharedPackImport = () => {},
@@ -925,7 +921,7 @@ export function SettingsContent({
               <Button
                 variant="ghost"
                 onClick={onExportConfiguration}
-                disabled={configurationBusy || configurationRestartPending}
+                disabled={configurationBusy}
                 aria-label="Export complete setup"
                 data-ui-target="setting:transfer.configurationExport"
               >
@@ -934,7 +930,7 @@ export function SettingsContent({
               <Button
                 variant="ghost"
                 onClick={onImportConfiguration}
-                disabled={configurationBusy || configurationRestartPending}
+                disabled={configurationBusy}
                 aria-label="Import complete setup"
                 data-ui-target="setting:transfer.configurationImport"
               >
@@ -948,7 +944,7 @@ export function SettingsContent({
             <Button
               variant="ghost"
               onClick={() => setResetConfirmOpen(true)}
-              disabled={configurationBusy || configurationRestartPending}
+              disabled={configurationBusy}
               aria-label="Reset PLVS to default"
               data-ui-target="setting:transfer.configurationReset"
               className="text-muted-foreground hover:text-destructive focus-visible:text-destructive active:text-destructive"
@@ -956,21 +952,12 @@ export function SettingsContent({
               Reset PLVS to Default
             </Button>
           </SettingsRow>
-          {configurationStatus || configurationRestartPending ? (
-            <div className="flex items-center justify-end gap-2 px-2 text-right text-[length:var(--ui-fs-axis)] text-muted-foreground">
-              <span role="status">
-                {configurationStatus || "Configuration saved. Restart PLVS to finish."}
-              </span>
-              {configurationRestartPending ? (
-                <Button
-                  variant="ghost"
-                  onClick={onRetryConfigurationRestart}
-                  disabled={configurationBusy}
-                  data-ui-target="setting:transfer.configurationRestart"
-                >
-                  Retry Restart
-                </Button>
-              ) : null}
+          {configurationStatus ? (
+            <div
+              role="status"
+              className="px-2 text-right text-[length:var(--ui-fs-axis)] text-muted-foreground"
+            >
+              {configurationStatus}
             </div>
           ) : null}
         </SettingsSection>

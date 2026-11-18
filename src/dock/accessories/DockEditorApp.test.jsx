@@ -53,6 +53,24 @@ describe("DockEditorApp window behavior", () => {
     fireEvent.keyDown(window, { key: "Escape" });
     expect(action).toHaveBeenCalledWith("close-editor");
   });
+  it("routes configuration restart to the owning workbench", () => {
+    client.payload = {
+      ...PRESETS_PAYLOAD,
+      view: "status",
+      statusItems: [
+        {
+          id: "configuration-restart",
+          kind: "warning",
+          text: "Restart Required",
+          details: "Configuration saved. Restart PLVS to finish.",
+          action: "restart-configuration",
+        },
+      ],
+    };
+    render(<DockEditorApp />);
+    fireEvent.click(screen.getByRole("button", { name: "Restart PLVS" }));
+    expect(action).toHaveBeenCalledWith("status-action", { action: "restart-configuration" });
+  });
   beforeEach(() => {
     action.mockClear();
     client.payload = PRESETS_PAYLOAD;

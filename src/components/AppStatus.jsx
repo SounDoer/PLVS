@@ -15,6 +15,13 @@ import { troubleshootingUrl } from "../lib/troubleshooting.js";
 import { cn } from "../lib/utils.js";
 import { useCallback, useEffect, useState } from "react";
 
+const STATUS_ACTION_LABELS = {
+  update: "View Update Details",
+  "check-update": "Check Again",
+  "restart-configuration": "Restart PLVS",
+  settings: "Open Settings",
+};
+
 export function StatusIcon({ item, className = "size-3.5 shrink-0" }) {
   const Icon =
     item?.id === "update"
@@ -77,11 +84,7 @@ export function AppStatusList({
                     onClick={() => onAction(item.action)}
                     className="mt-1 text-primary hover:underline"
                   >
-                    {item.action === "update"
-                      ? "View Update Details"
-                      : item.action === "check-update"
-                        ? "Check Again"
-                        : "Open Settings"}
+                    {STATUS_ACTION_LABELS[item.action] ?? "Open Settings"}
                   </LinkButton>
                 ) : null}
                 {statusHelpTarget(item) ? (

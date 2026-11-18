@@ -224,7 +224,13 @@ export function focusUiSurface(state, surfaceId) {
   });
 }
 
-export const UI_STATUS_IDS = Object.freeze(["notice", "audio-drop", "channel-layout", "update"]);
+export const UI_STATUS_IDS = Object.freeze([
+  "notice",
+  "configuration-restart",
+  "audio-drop",
+  "channel-layout",
+  "update",
+]);
 
 /** The status entry's conditions by identity and kind only; texts and details stay private. */
 export function projectUiStatus(items) {

@@ -15,7 +15,8 @@ supported close/cancel actions, and only the state needed to navigate it safely.
 feedback text, diagnostics, DOM details, geometry, and other authored content are never returned.
 
 `status` lists the conditions behind the toolbar status entry, in the order it shows them, by
-`id` (`notice`, `audio-drop`, `channel-layout`, `update`) and `kind`. Where available, entries also
+`id` (`notice`, `configuration-restart`, `audio-drop`, `channel-layout`, `update`) and `kind`.
+Where available, entries also
 include `helpTopic`, `helpTarget`, `action`, and `actionTarget`. Notice wording and details stay
 out. A change in this list does not advance `uiGeneration`, so action IDs encode the current help
 topic or action and are checked again immediately before dispatch.
@@ -98,6 +99,8 @@ command. Pass the entry's `helpTarget` for Troubleshooting or `actionTarget` for
 action. A closed Status menu or a target that no longer applies is refused. Use `ui locate`
 with `helpTarget` to find the rendered Troubleshooting control in the main window or Dock.
 The pointer target for an in-app Status action remains `status-action:<id>`.
+The **Restart Required** notice uses `status-action:configuration-restart:restart-configuration`
+for `ui action`. PLVS starts the restart after the response is delivered.
 
 Fixed help destinations are `help:docs`, `help:releases`, `help:sharesets`, and
 `help:dialogue-detector`. The last uses the current Dialogue Detection setting. They

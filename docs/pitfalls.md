@@ -208,5 +208,9 @@ For a persistence check, let writes settle, restart the application and verify t
 under the relevant identity and Workspace. Vite reload can replay the original boot snapshot.
 Keep the pre-paint hydration boundary in Rust; a later page-load injection can race first reads.
 
+Configuration import and reset pause Workspace and Library writes from the current webview before
+the replacement. If the save fails, writes resume. After a successful save, the webview still holds
+the old state, so its queued writes must stay paused until restart.
+
 Keep Agent Control consent local to the identity. Profile transfer must not carry the permission
 to another machine.

@@ -171,31 +171,32 @@ describe("useConfigurationProfileActions", () => {
     await act(async () => result.current.importConfiguration());
 
     expect(result.current.configurationStatus).toBe("Import failed");
-    expect(result.current.configurationRestartPending).toBe(false);
+    expect(result.current.configurationBusy).toBe(false);
     expect(mocks.reloadAfterProfileChange).not.toHaveBeenCalled();
   });
 
-  it("keeps the saved configuration pending when restart fails and retries it without re-importing", async () => {
+  it("leaves Settings and preserves the saved state when restart fails", async () => {
     mocks.isTauri.mockReturnValue(true);
     mocks.pickConfigurationProfileFile.mockResolvedValue("C:/profile.plvsconfig");
     mocks.readProfileFile.mockResolvedValue('{"app":"PLVS","kind":"configuration-profile"}');
     mocks.importProfile.mockImplementationOnce(async () => {
       mocks.configurationRestartPending.mockReturnValue(true);
     });
-    mocks.reloadAfterProfileChange
-      .mockRejectedValueOnce(new Error("peer failed"))
-      .mockImplementationOnce(async () => mocks.configurationRestartPending.mockReturnValue(false));
-    const { result } = renderHook(() => useConfigurationProfileActions());
+    mocks.reloadAfterProfileChange.mockRejectedValueOnce(new Error("peer failed"));
+    const onRestartRequired = vi.fn();
+    const warning = vi.spyOn(console, "warn").mockImplementation(() => {});
+    try {
+      const { result } = renderHook(() => useConfigurationProfileActions(onRestartRequired));
 
-    await act(async () => result.current.importConfiguration());
+      await act(async () => result.current.importConfiguration());
 
-    expect(result.current.configurationStatus).toBe("Configuration saved. PLVS could not restart.");
-    expect(result.current.configurationRestartPending).toBe(true);
-    expect(result.current.configurationBusy).toBe(false);
-    await act(async () => result.current.retryConfigurationRestart());
-
-    expect(mocks.importProfile).toHaveBeenCalledTimes(1);
-    expect(mocks.reloadAfterProfileChange).toHaveBeenCalledTimes(2);
-    expect(result.current.configurationRestartPending).toBe(false);
+      expect(result.current.configurationStatus).toBe("");
+      expect(result.current.configurationBusy).toBe(true);
+      expect(onRestartRequired).toHaveBeenCalledOnce();
+      expect(mocks.importProfile).toHaveBeenCalledTimes(1);
+      expect(mocks.reloadAfterProfileChange).toHaveBeenCalledTimes(1);
+    } finally {
+      warning.mockRestore();
+    }
   });
 });

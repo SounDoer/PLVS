@@ -55,8 +55,8 @@ The frontend relaunches PLVS after Rust confirms response delivery. Windows conf
 after the CLI reads the named-pipe response. macOS and Linux use a CLI acknowledgement over the
 Unix socket. The revision in the result belongs to the ending process. Rediscover the relaunched
 app and call `inspect` to obtain the new process's revision.
-If that restart cannot finish, the configuration remains saved. **Retry Restart** in Settings
-retries the restart while keeping the saved configuration.
+If that restart cannot finish, the configuration remains saved. The toolbar's **Restart Required**
+notice offers **Restart PLVS** to finish with the saved configuration.
 
 ## Reset
 

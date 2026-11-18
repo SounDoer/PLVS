@@ -9,6 +9,7 @@ import { DEFAULT_KEYBOARD_SHORTCUTS } from "../data/keyboardShortcutActions.js";
 import {
   exportAll,
   flushPersistence,
+  pauseTransactionalPersistence,
   presetsStore,
   resetAll,
   settingsStore,
@@ -34,6 +35,11 @@ export function configurationRestartPending() {
   return pendingProfileRestart !== null;
 }
 
+export function configurationRestartStatus() {
+  if (!configurationRestartPending()) return null;
+  return restartingProfile ? "restarting" : "required";
+}
+
 export function subscribeConfigurationRestart(listener) {
   restartListeners.add(listener);
   return () => restartListeners.delete(listener);
@@ -41,6 +47,10 @@ export function subscribeConfigurationRestart(listener) {
 
 function setPendingProfileRestart(pending) {
   pendingProfileRestart = pending;
+  notifyConfigurationRestart();
+}
+
+function notifyConfigurationRestart() {
   for (const listener of restartListeners) listener();
 }
 
@@ -51,9 +61,12 @@ async function saveDesktopProfile(save) {
   savingProfile = true;
   try {
     const operation = await prepareGlobalOperation();
+    // The current window still has pre-import state until the next boot.
+    const resumeWrites = await pauseTransactionalPersistence();
     try {
       await save();
     } catch (error) {
+      resumeWrites?.();
       await abortGlobalOperation(operation);
       throw error;
     }
@@ -137,9 +150,13 @@ async function restartDesktopAfterProfileChange() {
 
 export async function reloadAfterProfileChange() {
   if (isTauri()) {
-    restartingProfile ??= restartDesktopAfterProfileChange().finally(() => {
-      restartingProfile = null;
-    });
+    if (!restartingProfile) {
+      restartingProfile = restartDesktopAfterProfileChange().finally(() => {
+        restartingProfile = null;
+        if (configurationRestartPending()) notifyConfigurationRestart();
+      });
+      if (configurationRestartPending()) notifyConfigurationRestart();
+    }
     return restartingProfile;
   }
   window.location.reload();

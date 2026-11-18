@@ -131,6 +131,12 @@ describe("UiNavigationProvider", () => {
         phase: "ready",
         action: "update",
       },
+      {
+        id: "configuration-restart",
+        kind: "warning",
+        text: "Restart Required",
+        action: "restart-configuration",
+      },
     ];
     const { result } = renderHook(
       () => {
@@ -152,6 +158,12 @@ describe("UiNavigationProvider", () => {
         kind: "update",
         action: "update",
         actionTarget: "status-action:update:update",
+      },
+      {
+        id: "configuration-restart",
+        kind: "warning",
+        action: "restart-configuration",
+        actionTarget: "status-action:configuration-restart:restart-configuration",
       },
     ]);
   });
@@ -204,6 +216,33 @@ describe("UiNavigationProvider", () => {
     rerender({ form: "dock", visible: false });
 
     expect(result.current.inspectUi().window).toEqual({ form: "dock", visible: false });
+  });
+
+  it("defers a Status restart until the Agent Control response is delivered", async () => {
+    const restart = vi.fn(async () => {});
+    const { result } = renderHook(
+      () => {
+        useUiNavigationTarget("statusAction", { run: async () => ({ afterResponse: restart }) });
+        useUiSurface({
+          active: true,
+          kind: "toolbarMenu",
+          origin: "navigable",
+          target: { menu: "status" },
+        });
+        return useUiNavigation();
+      },
+      { wrapper }
+    );
+
+    const response = await result.current.runNamedAction({
+      target: "status-action:configuration-restart:restart-configuration",
+      expectedRevision: 7,
+      expectedUiGeneration: result.current.inspectUi().uiGeneration,
+    });
+    expect(response.accepted).toBe(true);
+    expect(restart).not.toHaveBeenCalled();
+    await response.afterResponse();
+    expect(restart).toHaveBeenCalledOnce();
   });
 
   it("publishes a mounted semantic surface through inspection", () => {

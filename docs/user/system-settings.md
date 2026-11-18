@@ -326,8 +326,9 @@ their saved Library. The next time the importing workbench opens, its recovery j
 its previous local settings. PLVS preserves recovery snapshots from older versions under the
 application data directory in `multi-instance/transactions/` with a `.legacy-*.json` suffix.
 
-If the configuration saves but PLVS cannot restart, Settings confirms that it was saved and
-offers **Retry Restart**. This retries the restart without importing the configuration again.
+If the configuration saves but PLVS cannot restart, the toolbar's **Status Notices** show
+**Restart Required**. Open the notice and choose **Restart PLVS** to finish with the saved
+configuration. In Dock, use the Status menu in the expanded toolbar.
 
 New Loudness Profile exports use a strict portable format intended for sharing between installations.
 Every exported rule must have a threshold, and a Profile must contain a reference or at least one

@@ -268,18 +268,28 @@ describe("profile API", () => {
         .mockRejectedValueOnce(new Error("launch failed"))
         .mockResolvedValueOnce(undefined),
     };
-    const { configurationRestartPending, resetProfile, reloadAfterProfileChange } =
-      await importProfileModule({ tauri: true, commandMocks: mocks });
+    const {
+      configurationRestartStatus,
+      subscribeConfigurationRestart,
+      resetProfile,
+      reloadAfterProfileChange,
+    } = await importProfileModule({ tauri: true, commandMocks: mocks });
+    const phases = [];
+    const unsubscribe = subscribeConfigurationRestart(() =>
+      phases.push(configurationRestartStatus())
+    );
     await resetProfile();
 
     await expect(reloadAfterProfileChange()).rejects.toThrow("launch failed");
-    expect(configurationRestartPending()).toBe(true);
+    expect(configurationRestartStatus()).toBe("required");
     await reloadAfterProfileChange();
 
     expect(mocks.commitGlobalOperation).toHaveBeenCalledTimes(1);
     expect(mocks.resetProfileCommand).toHaveBeenCalledTimes(1);
     expect(mocks.relaunch).toHaveBeenCalledTimes(2);
-    expect(configurationRestartPending()).toBe(false);
+    expect(configurationRestartStatus()).toBeNull();
+    expect(phases).toEqual(["required", "restarting", "required", "restarting", null]);
+    unsubscribe();
   });
 
   it("falls back to webview reload outside Tauri", async () => {

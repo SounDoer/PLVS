@@ -1,4 +1,4 @@
-import { useMemo, useEffect, useImperativeHandle, useRef, useState } from "react";
+import { useCallback, useMemo, useEffect, useImperativeHandle, useRef, useState } from "react";
 import { useDockSettingsWindow } from "../dock/useDockSettingsWindow.js";
 import { openExternalUrl, PRIVACY_POLICY_URL } from "../ipc/openExternal.js";
 import { sliceChangelogSince } from "../lib/changelogAggregate.js";
@@ -71,15 +71,15 @@ export function AppSettingsOverlays({
   const [loudnessProfilePos, setLoudnessProfilePos] = useState({ x: 120, y: 120 });
   const [libraryExportOpen, setLibraryExportOpen] = useState(false);
   const [libraryExportFixtureId, setLibraryExportFixtureId] = useState(null);
+  const { setSettingsOpen } = settings;
+  const closeSettingsForRestart = useCallback(() => setSettingsOpen(false), [setSettingsOpen]);
   const {
     configurationBusy,
     configurationStatus,
-    configurationRestartPending,
     exportConfiguration,
     importConfiguration,
     resetConfiguration,
-    retryConfigurationRestart,
-  } = useConfigurationProfileActions();
+  } = useConfigurationProfileActions(closeSettingsForRestart);
   const localPack = usePackTransfer();
   const pack = packTransfer ?? localPack;
   const exportProfileRef = dockPresentation?.exportProfileRef;
@@ -465,10 +465,8 @@ export function AppSettingsOverlays({
       onExportConfiguration: exportConfiguration,
       onImportConfiguration: importConfiguration,
       onResetConfiguration: resetConfiguration,
-      onRetryConfigurationRestart: retryConfigurationRestart,
       configurationBusy: configurationBusy,
       configurationStatus: configurationStatus,
-      configurationRestartPending,
       onLibraryExport: () => setLibraryExportOpen(true),
       onSharedPackImport: pack.beginSharedImport,
       packBusy: pack.busy,

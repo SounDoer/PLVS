@@ -6,6 +6,29 @@ import { buildAppStatusItems } from "../lib/appStatus.js";
 import { dockUpdateStatus } from "../dock/dockUpdateStatus.js";
 
 describe("status details", () => {
+  it("keeps configuration recovery in Status and offers restart only when available", () => {
+    const onAction = vi.fn();
+    const { rerender } = render(
+      <AppStatusPopover
+        items={buildAppStatusItems({ configurationRestart: "required" })}
+        onAction={onAction}
+      />
+    );
+    const summary = screen.getByRole("button", { name: "status: Restart Required" });
+    fireEvent.click(summary);
+    expect(screen.getByText("Configuration saved. Restart PLVS to finish.")).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Restart PLVS" }));
+    expect(onAction).toHaveBeenCalledWith("restart-configuration");
+
+    rerender(
+      <AppStatusPopover items={buildAppStatusItems({ configurationRestart: "restarting" })} />
+    );
+    fireEvent.click(screen.getByRole("button", { name: "status: Restarting PLVS…" }));
+    expect(screen.queryByRole("button", { name: "Restart PLVS" })).toBeNull();
+
+    rerender(<AppStatusPopover items={buildAppStatusItems()} />);
+    expect(screen.queryByRole("button", { name: /status:/ })).toBeNull();
+  });
   it("offers a check retry without a target and disappears once the check recovers", () => {
     const onAction = vi.fn();
     const items = buildAppStatusItems({

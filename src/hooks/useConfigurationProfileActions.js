@@ -12,7 +12,7 @@ import {
   subscribeConfigurationRestart,
 } from "../persistence/profile.js";
 
-export function useConfigurationProfileActions() {
+export function useConfigurationProfileActions(onRestartRequired = () => {}) {
   const [configurationBusy, setConfigurationBusy] = useState(false);
   const [configurationStatus, setConfigurationStatus] = useTransientStatus();
   const restartPending = useSyncExternalStore(
@@ -27,23 +27,11 @@ export function useConfigurationProfileActions() {
   const restart = useCallback(async () => {
     try {
       await reloadAfterProfileChange();
-    } catch (_) {
-      setConfigurationStatus("Configuration saved. PLVS could not restart.");
+    } catch (error) {
+      console.warn("Unable to restart after saving the configuration:", error);
+      onRestartRequired();
     }
-  }, [setConfigurationStatus]);
-
-  const retryConfigurationRestart = useCallback(async () => {
-    if (operationActiveRef.current || !configurationRestartPending()) return;
-    operationActiveRef.current = true;
-    setConfigurationBusy(true);
-    setConfigurationStatus("");
-    try {
-      await restart();
-    } finally {
-      operationActiveRef.current = false;
-      setConfigurationBusy(false);
-    }
-  }, [restart, setConfigurationStatus]);
+  }, [onRestartRequired]);
 
   const exportConfiguration = useCallback(async () => {
     if (operationActiveRef.current || configurationRestartPending()) return;
@@ -123,10 +111,8 @@ export function useConfigurationProfileActions() {
   }, [restart, setConfigurationStatus]);
 
   return {
-    configurationBusy,
+    configurationBusy: configurationBusy || restartPending,
     configurationStatus,
-    configurationRestartPending: restartPending,
-    retryConfigurationRestart,
     exportConfiguration,
     importConfiguration,
     resetConfiguration,

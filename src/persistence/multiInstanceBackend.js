@@ -144,6 +144,7 @@ export function createMultiInstanceBackend() {
   let activeDrain = null;
   let activeRefresh = null;
   let activeAppend = null;
+  let writesPaused = false;
   let unreportedFailure = null;
   let pendingConflict = null;
   let pendingDeleteFailure = null;
@@ -303,7 +304,7 @@ export function createMultiInstanceBackend() {
   }
 
   async function drain() {
-    for (let keys = writableKeys(); keys.length; keys = writableKeys()) {
+    for (let keys = writableKeys(); !writesPaused && keys.length; keys = writableKeys()) {
       for (const key of keys) dirty.delete(key);
       for (let index = 0; index < keys.length; index += 1) {
         try {
@@ -318,7 +319,7 @@ export function createMultiInstanceBackend() {
   }
 
   function ensureDrain() {
-    if (activeAppend) return null;
+    if (activeAppend || writesPaused) return null;
     if (!writableKeys().length) return activeDrain;
     if (activeDrain) return activeDrain;
     const running = drain().catch((error) => {
@@ -378,13 +379,13 @@ export function createMultiInstanceBackend() {
   }
 
   async function refresh() {
-    if (activeAppend || activeDrain || dirty.size) return;
+    if (writesPaused || activeAppend || activeDrain || dirty.size) return;
     if (activeRefresh) return activeRefresh;
     const startedAt = new Map(editGenerations);
     // A save can begin and finish while hydration is in flight. Compare edit generations as
     // well as dirty state so a response cannot replace the baseline of that save.
     const canApply = (key) =>
-      !hasPendingDelete(key) && startedAt.get(key) === editGenerations.get(key);
+      !writesPaused && !hasPendingDelete(key) && startedAt.get(key) === editGenerations.get(key);
     const refreshing = invoke("persistence_hydrate")
       .then((hydrated) => {
         for (const kind of ["preset", "theme", "loudnessProfile"]) {
@@ -456,10 +457,21 @@ export function createMultiInstanceBackend() {
     if (pendingDeleteFailure) throw pendingDeleteFailure;
   }
 
+  async function pauseWrites() {
+    writesPaused = true;
+    await activeAppend?.catch(() => {});
+    await activeDrain;
+    return () => {
+      writesPaused = false;
+      schedule();
+    };
+  }
+
   async function appendLibrary(additions, kinds, validate) {
     for (const kind of Object.keys(additions)) assertWritableSurface(collectionKey(kind));
     await flush();
     if (
+      writesPaused ||
       activeAppend ||
       activeDrain ||
       writableKeys().length ||
@@ -683,5 +695,6 @@ export function createMultiInstanceBackend() {
     refresh,
     flush,
     appendLibrary,
+    pauseWrites,
   };
 }
