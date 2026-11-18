@@ -5904,8 +5904,7 @@ describe("useAgentControlBridge", () => {
     });
 
     it("imports a pack and reports the plan", async () => {
-      const flush = vi.fn(async () => {});
-      mount({ flush });
+      mount();
       await waitUntilReady();
 
       const response = await send(
@@ -5920,7 +5919,6 @@ describe("useAgentControlBridge", () => {
       expect(response.result.plan.items[0].disposition).toBe("added");
       expect(response.result.state.themes).toEqual([{ id: "t-1", name: "Studio" }]);
       expect(readThemeLibrary()).toEqual([{ id: "t-1", name: "Studio" }]);
-      expect(flush).toHaveBeenCalledTimes(1);
     });
 
     it("increments the revision exactly once for one import", async () => {

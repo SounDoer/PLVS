@@ -88,17 +88,80 @@ impl LibraryRepository {
     id: &str,
     document: &Value,
   ) -> Result<LibraryItem, LibraryError> {
+    let mut connection = self.connection()?;
+    let transaction = connection
+      .transaction_with_behavior(TransactionBehavior::Immediate)
+      .map_err(map_sqlite_error)?;
+    let item = Self::insert_item(&transaction, kind, id, document)?;
+    Self::advance_collection(&transaction, kind)?;
+    transaction.commit().map_err(map_sqlite_error)?;
+    Ok(item)
+  }
+
+  pub fn append_collections(
+    &self,
+    additions: &BTreeMap<String, Vec<Value>>,
+    expected_revisions: &BTreeMap<String, i64>,
+    expected_item_revisions: &BTreeMap<String, BTreeMap<String, i64>>,
+  ) -> Result<BTreeMap<String, i64>, LibraryError> {
+    if additions
+      .keys()
+      .any(|kind| !expected_revisions.contains_key(kind))
+      || expected_revisions.keys().ne(expected_item_revisions.keys())
+    {
+      return Err(LibraryError::Storage(
+        "A Library revision is required for each collection.".into(),
+      ));
+    }
+    let mut connection = self.connection()?;
+    let transaction = connection
+      .transaction_with_behavior(TransactionBehavior::Immediate)
+      .map_err(map_sqlite_error)?;
+    for (kind, expected) in expected_revisions {
+      validate_key(kind, "Library kind")?;
+      let current_items = Self::list_items(&transaction, kind)?
+        .into_iter()
+        .map(|item| (item.id, item.revision))
+        .collect::<BTreeMap<_, _>>();
+      if Self::read_collection_revision(&transaction, kind)? != *expected
+        || current_items != expected_item_revisions[kind]
+      {
+        return Err(LibraryError::Conflict(format!(
+          "The {kind} Library changed while reviewing the import."
+        )));
+      }
+    }
+    let mut revisions = BTreeMap::new();
+    for (kind, documents) in additions {
+      if documents.is_empty() {
+        continue;
+      }
+      for document in documents {
+        let id = document
+          .get("id")
+          .and_then(Value::as_str)
+          .ok_or_else(|| LibraryError::Storage("Library item has no ID.".into()))?;
+        Self::insert_item(&transaction, kind, id, document)?;
+      }
+      revisions.insert(kind.clone(), Self::advance_collection(&transaction, kind)?);
+    }
+    transaction.commit().map_err(map_sqlite_error)?;
+    Ok(revisions)
+  }
+
+  fn insert_item(
+    connection: &Connection,
+    kind: &str,
+    id: &str,
+    document: &Value,
+  ) -> Result<LibraryItem, LibraryError> {
     validate_key(kind, "Library kind")?;
     validate_key(id, "Library item ID")?;
     let document_json = serde_json::to_string(document).map_err(|error| {
       LibraryError::Storage(format!("Unable to serialize Library item: {error}"))
     })?;
     let content_hash = content_hash(&document_json);
-    let mut connection = self.connection()?;
-    let transaction = connection
-      .transaction_with_behavior(TransactionBehavior::Immediate)
-      .map_err(map_sqlite_error)?;
-    let inserted = transaction.execute(
+    let inserted = connection.execute(
       "INSERT OR IGNORE INTO library_items
          (kind, item_id, revision, document_json, content_hash)
        VALUES (?1, ?2, 1, ?3, ?4)",
@@ -109,27 +172,32 @@ impl LibraryRepository {
         "A {kind} Library item with ID {id} already exists."
       )));
     }
-    transaction.execute(
+    connection.execute(
       "INSERT INTO library_order (kind, item_id, position)
        SELECT ?1, ?2, COALESCE(MAX(position) + 1, 0)
        FROM library_order
        WHERE kind = ?1",
       params![kind, id],
     )?;
-    transaction.execute(
-      "INSERT INTO library_collections (kind, revision)
-       VALUES (?1, 1)
-       ON CONFLICT(kind) DO UPDATE SET revision = revision + 1",
-      [kind],
-    )?;
-    transaction.commit().map_err(map_sqlite_error)?;
-
     Ok(LibraryItem {
       kind: kind.to_string(),
       id: id.to_string(),
       revision: 1,
       document: document.clone(),
     })
+  }
+
+  fn advance_collection(connection: &Connection, kind: &str) -> Result<i64, LibraryError> {
+    connection
+      .query_row(
+        "INSERT INTO library_collections (kind, revision)
+         VALUES (?1, 1)
+         ON CONFLICT(kind) DO UPDATE SET revision = revision + 1
+         RETURNING revision",
+        [kind],
+        |row| row.get(0),
+      )
+      .map_err(map_sqlite_error)
   }
 
   pub fn update(
@@ -275,7 +343,10 @@ impl LibraryRepository {
 
   pub fn collection_revision(&self, kind: &str) -> Result<i64, LibraryError> {
     validate_key(kind, "Library kind")?;
-    let connection = self.connection()?;
+    Self::read_collection_revision(&self.connection()?, kind)
+  }
+
+  fn read_collection_revision(connection: &Connection, kind: &str) -> Result<i64, LibraryError> {
     connection
       .query_row(
         "SELECT revision FROM library_collections WHERE kind = ?1",
@@ -289,7 +360,30 @@ impl LibraryRepository {
 
   pub fn list(&self, kind: &str) -> Result<Vec<LibraryItem>, LibraryError> {
     validate_key(kind, "Library kind")?;
-    let connection = self.connection()?;
+    Self::list_items(&self.connection()?, kind)
+  }
+
+  pub(crate) fn collections(
+    &self,
+    kinds: &[&str],
+  ) -> Result<BTreeMap<String, LibraryCollection>, LibraryError> {
+    let mut connection = self.connection()?;
+    let transaction = connection.transaction().map_err(map_sqlite_error)?;
+    kinds
+      .iter()
+      .map(|&kind| {
+        Ok((
+          kind.to_string(),
+          LibraryCollection {
+            collection_revision: Self::read_collection_revision(&transaction, kind)?,
+            items: Self::list_items(&transaction, kind)?,
+          },
+        ))
+      })
+      .collect()
+  }
+
+  fn list_items(connection: &Connection, kind: &str) -> Result<Vec<LibraryItem>, LibraryError> {
     let mut statement = connection
       .prepare(
         "SELECT items.item_id, items.revision, items.document_json

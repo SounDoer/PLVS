@@ -36,4 +36,15 @@ describe("LibraryConflictDialog", () => {
 
     await waitFor(() => expect(controls.resolveLibraryConflict).toHaveBeenCalledWith("copy"));
   });
+
+  it("asks the user to reload before deciding whether to retry a deletion", async () => {
+    render(<LibraryConflictDialog />);
+    controls.publish({ kind: "preset", id: "one", operation: "delete" });
+
+    expect(await screen.findByText("Preset Changed Elsewhere")).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "Save as Copy" })).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "Reload" }));
+
+    await waitFor(() => expect(controls.resolveLibraryConflict).toHaveBeenCalledWith("reload"));
+  });
 });

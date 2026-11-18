@@ -344,8 +344,10 @@ setting that version does not have.
 Before a shared file is added, the import review lists each Item as **Add**, **Already in your
 library**, or **Import as a copy**, shows bundled Loudness Profile dependencies, and calls out safe
 adaptations such as collision renaming or a missing legacy dependency. Confirming the review is the
-only step that writes to the Library. The completion then reports each Item as **Added**, **Already
-in your library**, or **Imported as a copy**.
+only step that writes to the Library. A Preset and its bundled Loudness Profiles are saved together
+in one operation. **Import Complete** appears after the save and reports each Item as **Added**,
+**Already in your library**, or **Imported as a copy**. If the Library changed during review, open
+the import again to refresh the review.
 
 Import only adds saved Library content, so it remains available while a Theme or Loudness Profile
 draft is open and never discards that draft. After a single Item is imported, PLVS offers a separate
@@ -360,6 +362,8 @@ If two workbenches edit the same Library item, the second save never overwrites 
 choose **Reload** for the committed version or **Save as Copy** to preserve the local edit under a
 new ID. An open Theme or Loudness Profile editor keeps its local draft and shows a warning as soon
 as PLVS observes that its saved source changed elsewhere.
+If an item changes while you are deleting it, choose **Reload** to see the saved version before
+deciding whether to delete it again.
 
 A `.plvstheme` file carries portable Theme authoring choices rather than device-local state. It
 keeps the Theme's name, Dark/Light scheme, Core and Palette colors, and Advanced customizations;

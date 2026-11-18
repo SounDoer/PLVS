@@ -56,6 +56,7 @@ export function LibraryConflictDialog() {
   }
 
   const label = LABELS[conflict?.kind] || "Library item";
+  const deleting = conflict?.operation === "delete";
   useUiSurface({
     active: conflict !== null,
     kind: "libraryConflict",
@@ -67,7 +68,7 @@ export function LibraryConflictDialog() {
     supportedActions: [],
     choices: [
       { id: "reload", label: "Reload", run: () => resolve("reload") },
-      { id: "copy", label: "Save as Copy", run: () => resolve("copy") },
+      { id: "copy", label: "Save as Copy", run: () => resolve("copy"), disabled: deleting },
     ],
     target: { phase: error ? "error" : busy ? "busy" : "decision" },
   });
@@ -76,8 +77,9 @@ export function LibraryConflictDialog() {
       <DialogContent layer={LAYER_CONFLICT}>
         <DialogTitle>{label} Changed Elsewhere</DialogTitle>
         <DialogDescription>
-          Another PLVS workbench saved this item first. Reload its saved version, or keep your
-          version as a new copy.
+          {deleting
+            ? "The saved item changed while you were deleting it. Reload the Library before trying again."
+            : "Another PLVS workbench saved this item first. Reload its saved version, or keep your version as a new copy."}
         </DialogDescription>
         {error ? (
           <p className="mt-2 text-[length:var(--ui-fs-control)] text-destructive">{error}</p>
@@ -86,9 +88,11 @@ export function LibraryConflictDialog() {
           <Button variant="ghost" disabled={busy} onClick={() => void resolve("reload")}>
             Reload
           </Button>
-          <Button disabled={busy} onClick={() => void resolve("copy")}>
-            Save as Copy
-          </Button>
+          {deleting ? null : (
+            <Button disabled={busy} onClick={() => void resolve("copy")}>
+              Save as Copy
+            </Button>
+          )}
         </DialogFooter>
       </DialogContent>
     </Dialog>

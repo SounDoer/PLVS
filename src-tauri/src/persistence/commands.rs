@@ -351,6 +351,31 @@ pub fn persistence_library_reorder(
 }
 
 #[tauri::command]
+pub fn persistence_library_append(
+  runtime: State<'_, PersistenceRuntime>,
+  additions: BTreeMap<String, Vec<Value>>,
+  expected_revisions: BTreeMap<String, i64>,
+  expected_item_revisions: BTreeMap<String, BTreeMap<String, i64>>,
+) -> Result<BTreeMap<String, i64>, PersistenceCommandError> {
+  if additions
+    .keys()
+    .chain(expected_revisions.keys())
+    .any(|kind| !matches!(kind.as_str(), "preset" | "theme" | "loudnessProfile"))
+  {
+    return Err(PersistenceCommandError {
+      reason: PersistenceErrorReason::InvalidDomain,
+      message: "Unknown Library kind.".to_string(),
+    });
+  }
+  runtime.with_session(|session| {
+    session
+      .library()
+      .append_collections(&additions, &expected_revisions, &expected_item_revisions)
+      .map_err(Into::into)
+  })
+}
+
+#[tauri::command]
 pub fn persistence_library_replace(
   runtime: State<'_, PersistenceRuntime>,
   kind: String,

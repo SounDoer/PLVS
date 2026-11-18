@@ -276,6 +276,8 @@ This family reuses the existing envelope and codes and adds these semantic reaso
   of PLVS. Invalid Theme content additionally carries `details.issues`, with a code, JSON path, and
   message for every detected problem. Exit code 3.
 
-`revisionConflict`, `persistenceFailed`, and `commandFailed` behave as they do everywhere else. A
-`persistenceFailed` after the library committed reports `stateCommitted: true` and the resulting
-revision; the caller must inspect again rather than resubmit.
+`revisionConflict`, `persistenceFailed`, and `commandFailed` use the shared error envelope. Desktop
+imports save all additions, including bundled Loudness Profiles, in one Library transaction before
+publishing the result. If that transaction fails, `persistenceFailed` reports the cause and the
+import adds no items. When the Library changed during preparation, inspect the current contents and
+plan the import again.

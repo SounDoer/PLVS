@@ -6,9 +6,8 @@
 /// `src/transfer/`, which the GUI calls too. Nothing here restates any of it.
 
 import { collectPackItems } from "../transfer/collectPackItems.js";
-import { getAdapter } from "../transfer/libraryAdapters.js";
+import { getAdapter, preparePackImport } from "../transfer/libraryAdapters.js";
 import { buildPack, packDescriptor, parsePack } from "../transfer/packShape.js";
-import { planPackImport } from "../transfer/mergeIntoLibrary.js";
 
 /// Keyed by Agent Control family name; `packType` is `src/transfer/`'s internal name for the same
 /// library. The two vocabularies differ (`preset` vs `presets`, `loudnessProfile` vs `loudness`)
@@ -61,17 +60,14 @@ export function planLibraryExport(family, ids) {
  * file and is passed through verbatim.
  *
  * @returns {{ changed: boolean, writes: string[], warnings: object[], plan: { items: object[],
- *   loudnessProfiles: object[] }, commit: () => void }} `commit` performs the append; a dry run
+ *   loudnessProfiles: object[] }, commit: () => Promise<void> }} `commit` performs the append; a dry run
  *   simply never calls it. `writes` names the families `commit` will actually write.
  * @param {string} family
  */
 export function planLibraryImport(family, raw) {
   const { packType } = libraryFamily(family);
   const pack = parsePack(raw, packType);
-  const planned = planPackImport(packType, pack, {
-    existingItems: getAdapter(packType).list(),
-    existingProfiles: packType === "presets" ? getAdapter("loudness").list() : [],
-  });
+  const planned = preparePackImport(packType, pack);
 
   /// A Preset pack carries Loudness Profiles, so the families a commit writes are not the family
   /// that was asked for: a pack whose Presets are all identical to local ones and whose Profile is
@@ -92,15 +88,7 @@ export function planLibraryImport(family, raw) {
       items: planned.itemPlan,
       loudnessProfiles: planned.profilePlan,
     },
-    /// Writes through the adapters and nothing else. They are what announce the write to the
-    /// React state that owns each library (`notifyLocal`); reaching a store directly here would
-    /// land the data and leave the list on screen unchanged.
-    commit() {
-      if (planned.profileAdditions.length > 0) {
-        getAdapter("loudness").append(planned.profileAdditions);
-      }
-      getAdapter(packType).append(planned.itemAdditions);
-    },
+    commit: planned.commit,
   };
 }
 

@@ -7,7 +7,13 @@ import {
   useRef,
   useState,
 } from "react";
-import { presetsStore, reportLibraryConflict, settingsStore } from "../persistence/index.js";
+import {
+  flushPersistence,
+  presetsStore,
+  reportLibraryConflict,
+  settingsStore,
+  usesTransactionalPersistence,
+} from "../persistence/index.js";
 import { markStarterItemsSeeded } from "../persistence/starterItemsSeed.js";
 import { useBlockingEditor } from "./BlockingEditorsContext.jsx";
 import { SCENE_OPERATIONS, SceneOperationBlockedError } from "../lib/sceneOperations.js";
@@ -86,7 +92,7 @@ import {
  *   normalizePresetSelection: (raw: unknown) => string,
  *   control: Record<
  *     | "assertAllowed" | "planSelect" | "planCreate" | "planUpdate" | "planRename" | "planDelete"
- *     | "planReorder" | "commit" | "select" | "create" | "update" | "rename" | "delete" | "reorder",
+ *     | "planReorder" | "commit" | "commitDelete" | "select" | "create" | "update" | "rename" | "delete" | "reorder",
  *     (...args: any[]) => any
  *   >,
  * }} LoudnessProfileApi
@@ -443,6 +449,27 @@ export function LoudnessProfileProvider({ children, seedColdStart = true }) {
     return planLoudnessProfileReorder(stateRef.current, profileIds);
   }, []);
 
+  const commitDeletePlan = useCallback(
+    (planned) => {
+      if (!usesTransactionalPersistence || !planned.affectedPresetIds?.length) {
+        return commitPlan(planned);
+      }
+      // Clear Preset references only once the shared Profile deletion has passed its revision check.
+      commitPlan({ ...planned, presets: undefined });
+      return flushPersistence().then(() => {
+        const { deletedProfile } = planned;
+        const linkedPresets = planLoudnessProfileDelete(
+          { active: LOUDNESS_PROFILE_OFF, profiles: [deletedProfile] },
+          readPresets(),
+          deletedProfile.id
+        ).presets;
+        commitPlan({ ...planned, loudnessProfiles: undefined, presets: linkedPresets });
+        return planned;
+      });
+    },
+    [commitPlan]
+  );
+
   const controlSelect = useCallback(
     (profileId) => {
       assertProfileActionAllowed("loudnessProfile.select");
@@ -478,9 +505,9 @@ export function LoudnessProfileProvider({ children, seedColdStart = true }) {
   const controlDelete = useCallback(
     (profileId) => {
       assertProfileActionAllowed("loudnessProfile.delete");
-      return commitPlan(planDelete(profileId));
+      return commitDeletePlan(planDelete(profileId));
     },
-    [assertProfileActionAllowed, commitPlan, planDelete]
+    [assertProfileActionAllowed, commitDeletePlan, planDelete]
   );
 
   const controlReorder = useCallback(
@@ -590,9 +617,12 @@ export function LoudnessProfileProvider({ children, seedColdStart = true }) {
   const removeProfile = useCallback(
     (id) => {
       if (draftBlocks()) return;
-      commitPlan(planDelete(id));
+      void Promise.resolve(commitDeletePlan(planDelete(id))).catch((error) => {
+        if (error?.reason !== "conflict")
+          console.error("Unable to delete Loudness Profile:", error);
+      });
     },
-    [commitPlan, draftBlocks, planDelete]
+    [commitDeletePlan, draftBlocks, planDelete]
   );
 
   /// Pure reordering of the library: never touches `active`, so it cannot dirty a preset and
@@ -679,6 +709,7 @@ export function LoudnessProfileProvider({ children, seedColdStart = true }) {
         planDelete,
         planReorder,
         commit: commitPlan,
+        commitDelete: commitDeletePlan,
         select: controlSelect,
         create: controlCreate,
         update: controlUpdate,
@@ -730,6 +761,7 @@ export function LoudnessProfileProvider({ children, seedColdStart = true }) {
       controlUpdate,
       controlRename,
       controlDelete,
+      commitDeletePlan,
       controlReorder,
     ]
   );

@@ -22,7 +22,7 @@ const defaultMakeId = () => crypto.randomUUID();
 /// Value equality over the plain-JSON documents these libraries store. `JSON.stringify` would be
 /// shorter and wrong: a preset normalizer spreads the incoming object, so key order follows the
 /// file rather than the local entry, and two identical presets would compare as different.
-function deepEqual(a, b) {
+export function deepEqual(a, b) {
   if (a === b) return true;
   if (typeof a !== typeof b) return false;
   if (a === null || b === null) return false;

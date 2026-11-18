@@ -16,8 +16,9 @@ import { normalizeDialogueVadEngine, normalizeSurfaceOpacity } from "../settings
 
 const transactionalBoot =
   typeof window !== "undefined" && window.__PLVS_INITIAL_STATE__?.multiInstancePersistence;
+export const usesTransactionalPersistence = isTauri() && Boolean(transactionalBoot);
 const backend = isTauri()
-  ? transactionalBoot
+  ? usesTransactionalPersistence
     ? createMultiInstanceBackend()
     : createPluginStoreBackend()
   : createLocalStorageBackend();
@@ -136,13 +137,28 @@ export function resetDevelopmentLibraryConflict(fixtureId) {
   backend.resetDevelopmentLibraryConflict?.(fixtureId);
 }
 
-/** Force every coalesced domain update into the selected backend, then wait for durable settling. */
-export async function flushPersistence() {
+function flushDomainPatches() {
   settingsStore.flush();
   workspaceStore.flush();
   presetsStore.flush();
   themesStore.flush();
+}
+
+/** Force every coalesced domain update into the selected backend, then wait for durable settling. */
+export async function flushPersistence() {
+  flushDomainPatches();
   await backend.flush();
+}
+
+export async function appendLibraryCollections(additions, kinds, validate, appendFallback) {
+  if (backend.appendLibrary) {
+    flushDomainPatches();
+    await backend.appendLibrary(additions, kinds, validate);
+  } else {
+    validate();
+    appendFallback();
+    await flushPersistence();
+  }
 }
 
 /** Whole-app snapshot of every persisted domain (foundation for problem #5). */

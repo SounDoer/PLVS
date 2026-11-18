@@ -4,6 +4,15 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 const invoke = vi.fn();
 vi.mock("@tauri-apps/api/core", () => ({ invoke }));
 
+function deferred() {
+  /** @type {(value?: any) => void} */
+  let resolve = () => {};
+  const promise = new Promise((next) => {
+    resolve = next;
+  });
+  return { promise, resolve };
+}
+
 function seed() {
   window.__PLVS_INITIAL_STATE__ = {
     "plvs:settings": {
@@ -381,6 +390,145 @@ describe("multiInstanceBackend", () => {
       domain: "workspace",
       value: { panelOrder: ["spectrum"] },
     });
+  });
+
+  it.each(["before", "after"])(
+    "keeps a peer edit when hydration returns %s the local write settles",
+    async (timing) => {
+      const pending = deferred();
+      const initial = structuredClone(window.__PLVS_INITIAL_STATE__);
+      const local = { id: "one", name: "Local Edit" };
+      const peer = { id: "two", name: "Peer Edit" };
+      const hydrated = {
+        presets: { list: [initial["plvs:presets"].list[0], peer] },
+        libraryItemRevisions: { preset: { one: 3, two: 5 } },
+        libraryCollectionRevisions: { preset: 8 },
+      };
+      invoke
+        .mockReturnValueOnce(pending.promise)
+        .mockResolvedValueOnce({ item: { id: "one", revision: 4 }, collectionRevision: 9 })
+        .mockResolvedValueOnce(undefined)
+        .mockResolvedValueOnce({
+          ...hydrated,
+          presets: { list: [local, peer] },
+          libraryItemRevisions: { preset: { one: 4, two: 5 } },
+          libraryCollectionRevisions: { preset: 9 },
+        });
+      const { createMultiInstanceBackend } = await import("./multiInstanceBackend.js");
+      const backend = createMultiInstanceBackend();
+      const refreshing = backend.refresh();
+      backend.set("plvs:presets", {
+        ...backend.get("plvs:presets"),
+        list: [local, initial["plvs:presets"].list[1]],
+      });
+      if (timing === "before") {
+        pending.resolve(hydrated);
+        await refreshing;
+      }
+      await backend.flush();
+      if (timing === "after") {
+        pending.resolve(hydrated);
+        await refreshing;
+      }
+
+      expect(invoke).toHaveBeenCalledWith("persistence_library_update", {
+        kind: "preset",
+        id: "one",
+        expectedRevision: 3,
+        document: local,
+      });
+      expect(invoke.mock.calls.map(([command]) => command)).not.toContain(
+        "persistence_library_replace"
+      );
+      await backend.refresh();
+      expect(backend.get("plvs:presets").list).toEqual([local, peer]);
+    }
+  );
+
+  it("deletes only the selected item and reloads after a delete conflict", async () => {
+    const conflict = { reason: "conflict", message: "Item changed elsewhere" };
+    const peer = { id: "one", name: "Peer Edit" };
+    const remaining = { id: "two", name: "Two" };
+    invoke
+      .mockRejectedValueOnce(conflict)
+      .mockResolvedValueOnce({
+        presets: { list: [peer, remaining] },
+        libraryItemRevisions: { preset: { one: 4, two: 4 } },
+        libraryCollectionRevisions: { preset: 8 },
+      })
+      .mockResolvedValueOnce(9)
+      .mockResolvedValueOnce(undefined);
+
+    const { createMultiInstanceBackend } = await import("./multiInstanceBackend.js");
+    const backend = createMultiInstanceBackend();
+    const observe = vi.fn();
+    backend.subscribeLibraryConflicts(observe);
+    const remove = () => backend.set("plvs:presets", { list: [remaining], activeId: null });
+    remove();
+
+    await expect(backend.flush()).rejects.toBe(conflict);
+    expect(observe).toHaveBeenLastCalledWith({ kind: "preset", id: "one", operation: "delete" });
+    await expect(backend.flush()).rejects.toBe(conflict);
+    expect(invoke).toHaveBeenCalledTimes(1);
+    expect(invoke).toHaveBeenCalledWith("persistence_library_delete", {
+      kind: "preset",
+      id: "one",
+      expectedRevision: 3,
+    });
+
+    await backend.resolveLibraryConflict("reload");
+    expect(observe).toHaveBeenLastCalledWith(null);
+    expect(backend.get("plvs:presets").list).toEqual([peer, remaining]);
+    remove();
+    await backend.flush();
+    expect(invoke).toHaveBeenNthCalledWith(3, "persistence_library_delete", {
+      kind: "preset",
+      id: "one",
+      expectedRevision: 4,
+    });
+  });
+
+  it("publishes both imported collections together only after the transaction succeeds", async () => {
+    const pending = deferred();
+    const preset = { id: "new", loudnessProfileActive: "profile:bundled" };
+    const profile = { id: "bundled", name: "Bundled" };
+    const additions = { preset: [preset], loudnessProfile: [profile] };
+    const kinds = ["preset", "loudnessProfile"];
+    const validate = vi.fn();
+    const failure = { reason: "storage", message: "Disk full" };
+    invoke.mockRejectedValueOnce(failure).mockReturnValueOnce(pending.promise);
+
+    const { createMultiInstanceBackend } = await import("./multiInstanceBackend.js");
+    const backend = createMultiInstanceBackend();
+    const observer = vi.fn(() => {
+      expect(backend.get("plvs:presets").list.at(-1)).toEqual(preset);
+      expect(backend.get("plvs:settings").loudnessProfiles.profiles.at(-1)).toEqual(profile);
+    });
+    const unsubscribe = backend.subscribe("plvs:presets", observer);
+    const unsubscribeSettings = backend.subscribe("plvs:settings", observer);
+    try {
+      await expect(backend.appendLibrary(additions, kinds, validate)).rejects.toBe(failure);
+      expect(backend.get("plvs:presets").list.map(({ id }) => id)).toEqual(["one", "two"]);
+      expect(backend.get("plvs:settings").loudnessProfiles.profiles.map(({ id }) => id)).toEqual([
+        "broadcast",
+      ]);
+      expect(observer).not.toHaveBeenCalled();
+
+      const appending = backend.appendLibrary(additions, kinds, validate);
+      await Promise.resolve();
+      expect(observer).not.toHaveBeenCalled();
+      expect(invoke).toHaveBeenLastCalledWith("persistence_library_append", {
+        additions,
+        expectedRevisions: { preset: 7, loudnessProfile: 2 },
+        expectedItemRevisions: { preset: { one: 3, two: 4 }, loudnessProfile: { broadcast: 2 } },
+      });
+      pending.resolve({ preset: 8, loudnessProfile: 3 });
+      await appending;
+      expect(observer).toHaveBeenCalledTimes(2);
+    } finally {
+      unsubscribe();
+      unsubscribeSettings();
+    }
   });
 
   it("refreshes a peer Library change without replacing the active Preset selection", async () => {

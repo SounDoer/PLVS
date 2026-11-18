@@ -11,7 +11,7 @@ import { activeLoudnessProfileId } from "../bridge/signatures.js";
 
 /** @param {import("../bridge/types.js").BridgeContext} ctx */
 async function listExportOrImport(ctx) {
-  const { request, requestId, clock, settlement, flush } = ctx;
+  const { request, requestId, clock, settlement } = ctx;
   // The method table routes exactly the `<family>.<action>` methods registered below.
   const [family, action] = request.method.split(".");
   const { stateKey, notFoundCode } = libraryFamily(family);
@@ -128,20 +128,13 @@ async function listExportOrImport(ctx) {
   }
 
   const committed = settlement.arm("library", { families: planned.writes });
-  planned.commit();
+  try {
+    await planned.commit();
+  } catch (error) {
+    throw semanticFailure("persistenceFailed", "$", error?.message || String(error), -32030);
+  }
   result.state = { [stateKey]: buildLibraryList(family) };
   result.revision = await settlement.observed("library", committed, "The library import");
-  try {
-    await flush();
-  } catch (error) {
-    throw semanticFailure(
-      "persistenceFailed",
-      "$",
-      `Library committed but persistence failed: ${error?.message || String(error)}`,
-      -32030,
-      { stateCommitted: true, revision: result.revision }
-    );
-  }
   return { requestId, result };
 }
 

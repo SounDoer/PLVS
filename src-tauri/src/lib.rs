@@ -313,6 +313,7 @@ pub fn run() {
       persistence::commands::persistence_library_delete,
       persistence::commands::persistence_library_reorder,
       persistence::commands::persistence_library_replace,
+      persistence::commands::persistence_library_append,
       coordinator::runtime_publish_instance_state,
       coordinator::runtime_list_instances,
       runtime_open_workbench,

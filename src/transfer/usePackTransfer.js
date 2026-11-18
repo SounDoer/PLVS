@@ -12,8 +12,7 @@ import { readProfileFile, writeProfileFile } from "../ipc/commands.js";
 import { isTauri } from "../ipc/env.js";
 import { pickPackFile, pickSharedPackFile, savePackFile } from "../ipc/fileDialog.js";
 import { collectPackItems } from "./collectPackItems.js";
-import { getAdapter } from "./libraryAdapters.js";
-import { planPackImport } from "./mergeIntoLibrary.js";
+import { preparePackImport } from "./libraryAdapters.js";
 import {
   PackValidationError,
   buildPack,
@@ -54,9 +53,6 @@ export function usePackTransfer() {
   // Items action look unavailable while the user is only choosing a file or destination.
   const operationActiveRef = useRef(false);
 
-  // No `flushPersistence()` here: unlike `profile.js`'s `exportProfile()`, which round-trips
-  // through a Rust command that reads the store file from disk, this hook's reads never leave
-  // the in-memory JS store.
   /**
    * @returns {Promise<"written" | "cancelled" | "failed">} what happened, so the caller can decide
    * whether to close its picker. Cancelling the save dialog must not discard the selection: the
@@ -116,10 +112,7 @@ export function usePackTransfer() {
         setBusy(true);
         const text = await readProfileFile(path);
         const pack = parsePackText(text, type);
-        const planned = planPackImport(type, pack, {
-          existingItems: getAdapter(type).list(),
-          existingProfiles: type === "presets" ? getAdapter("loudness").list() : [],
-        });
+        const planned = preparePackImport(type, pack);
         setReview({ type, origin: "file", pack, ...planned });
       } catch (error) {
         // The specific messages cover problems with the file's *contents* -- what a recipient of
@@ -152,10 +145,7 @@ export function usePackTransfer() {
       setBusy(true);
       const text = await readProfileFile(path);
       const { type, pack } = parseSharedPackText(text);
-      const planned = planPackImport(type, pack, {
-        existingItems: getAdapter(type).list(),
-        existingProfiles: type === "presets" ? getAdapter("loudness").list() : [],
-      });
+      const planned = preparePackImport(type, pack);
       setReview({ type, origin: "file", pack, ...planned });
     } catch (error) {
       setStatus(error instanceof PackValidationError ? error.message : "Import failed");
@@ -173,10 +163,7 @@ export function usePackTransfer() {
       setStatus("");
       try {
         const { type, pack } = parseClipboardItem(text);
-        const planned = planPackImport(type, pack, {
-          existingItems: getAdapter(type).list(),
-          existingProfiles: type === "presets" ? getAdapter("loudness").list() : [],
-        });
+        const planned = preparePackImport(type, pack);
         setReview({ type, origin: "clipboard", pack, ...planned });
       } catch (error) {
         setStatus(
@@ -192,21 +179,25 @@ export function usePackTransfer() {
     [setStatus, review, completion]
   );
 
-  const confirmImport = useCallback(() => {
-    if (!review) return;
-    const { type, profileAdditions, itemAdditions } = review;
-    if (profileAdditions.length > 0) getAdapter("loudness").append(profileAdditions);
-    getAdapter(type).append(itemAdditions);
+  const confirmImport = useCallback(async () => {
+    if (!review || operationActiveRef.current) return;
+    operationActiveRef.current = true;
+    setBusy(true);
     setStatus("");
-    setCompletion({
-      type,
-      origin: review.origin,
-      itemPlan: review.itemPlan,
-    });
-    setReview(null);
+    try {
+      await review.commit();
+      setCompletion({ type: review.type, origin: review.origin, itemPlan: review.itemPlan });
+      setReview(null);
+    } catch (error) {
+      setStatus(error?.message || "Import failed");
+    } finally {
+      operationActiveRef.current = false;
+      setBusy(false);
+    }
   }, [review, setStatus]);
 
   const cancelImport = useCallback(() => {
+    if (operationActiveRef.current) return;
     setReview(null);
     setStatus("");
   }, [setStatus]);
@@ -288,10 +279,7 @@ export function usePackTransfer() {
     return {
       type,
       pack,
-      ...planPackImport(type, pack, {
-        existingItems: getAdapter(type).list(),
-        existingProfiles: getAdapter("loudness").list(),
-      }),
+      ...preparePackImport(type, pack),
     };
   }
   const developmentFixtures = {

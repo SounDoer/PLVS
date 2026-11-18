@@ -10,6 +10,11 @@ import { DEFAULT_WORKSPACE_STATE } from "../workspace/constants.js";
 // TDZ ReferenceError the moment that import resolves.
 vi.mock("../ipc/env.js", () => ({ isTauri: vi.fn(() => true) }));
 
+const saveStore = vi.fn(async () => {});
+vi.mock("@tauri-apps/plugin-store", () => ({
+  Store: { load: async () => ({ set: async () => {}, delete: async () => {}, save: saveStore }) },
+}));
+
 const readProfileFile = vi.fn();
 const writeProfileFile = vi.fn();
 vi.mock("../ipc/commands.js", () => ({
@@ -47,10 +52,13 @@ function clipboardTheme(name = "Sharesets Theme") {
 function deferred() {
   /** @type {(value?: any) => void} */
   let resolve;
-  const promise = new Promise((next) => {
+  /** @type {(reason?: unknown) => void} */
+  let reject = () => {};
+  const promise = new Promise((next, fail) => {
     resolve = next;
+    reject = fail;
   });
-  return { promise, resolve };
+  return { promise, resolve, reject };
 }
 
 beforeEach(() => {
@@ -370,15 +378,43 @@ describe("usePackTransfer import", () => {
     await act(async () => {
       await result.current.beginImport("loudness");
     });
-    act(() => {
-      result.current.confirmImport();
-    });
+    await act(async () => result.current.confirmImport());
 
     expect(settingsStore.read().loudnessProfiles.profiles.map((p) => p.id)).toEqual(["a"]);
     expect(result.current.completion).toMatchObject({
       type: "loudness",
       itemPlan: [{ finalId: "a", name: "A" }],
     });
+  });
+
+  it("waits for the save and keeps the review on failure", async () => {
+    pickPackFile.mockResolvedValue("C:/in.plvsloudness");
+    readProfileFile.mockResolvedValue(
+      JSON.stringify({
+        app: "PLVS",
+        kind: "loudness-pack",
+        version: 1,
+        items: [{ id: "a", name: "A", referenceLufs: -23, rules: [] }],
+      })
+    );
+    const pendingSave = deferred();
+    saveStore.mockReturnValueOnce(pendingSave.promise);
+    const { result } = renderHook(() => usePackTransfer());
+    await act(async () => result.current.beginImport("loudness"));
+    let importing;
+    act(() => {
+      importing = result.current.confirmImport();
+    });
+    expect(result.current.busy).toBe(true);
+    expect(result.current.completion).toBeNull();
+    await act(async () => {
+      pendingSave.reject(new Error("Disk full"));
+      await importing;
+    });
+    expect(result.current.busy).toBe(false);
+    expect(result.current.completion).toBeNull();
+    expect(result.current.review).not.toBeNull();
+    expect(result.current.status).toBe("Disk full");
   });
 
   it("keeps an imported item when its explicit follow-up action is refused", async () => {
@@ -395,7 +431,7 @@ describe("usePackTransfer import", () => {
 
     const { result } = renderHook(() => usePackTransfer());
     await act(async () => result.current.beginImport("loudness"));
-    act(() => result.current.confirmImport());
+    await act(async () => result.current.confirmImport());
     await act(async () => result.current.runCompletionAction(refused));
 
     expect(refused).toHaveBeenCalledWith("loudness", "a");
@@ -418,7 +454,7 @@ describe("usePackTransfer import", () => {
 
     const { result } = renderHook(() => usePackTransfer());
     await act(async () => result.current.beginImport("loudness"));
-    act(() => result.current.confirmImport());
+    await act(async () => result.current.confirmImport());
     await act(async () => result.current.runCompletionAction(() => true));
 
     expect(result.current.completion).toBeNull();
@@ -468,7 +504,7 @@ describe("usePackTransfer paste", () => {
     });
     expect(themesStore.read()).toEqual({});
 
-    act(() => result.current.confirmImport());
+    await act(async () => result.current.confirmImport());
     expect(Object.values(themesStore.read().themes).map(({ name }) => name)).toEqual([
       "Sharesets Theme",
     ]);
@@ -493,7 +529,7 @@ describe("usePackTransfer paste", () => {
     });
     expect(settingsStore.read().loudnessProfiles?.profiles ?? []).toEqual([]);
 
-    act(() => result.current.confirmImport());
+    await act(async () => result.current.confirmImport());
     expect(settingsStore.read().loudnessProfiles.profiles.map(({ name }) => name)).toEqual([
       "Spotify",
     ]);
@@ -516,7 +552,7 @@ describe("usePackTransfer paste", () => {
     });
     expect(presetsStore.read()).toEqual({});
 
-    act(() => result.current.confirmImport());
+    await act(async () => result.current.confirmImport());
     expect(result.current.status).toBe("");
   });
 
@@ -583,7 +619,7 @@ it("uses an already-present pasted Theme without appending another item", async 
   await act(async () => {
     await result.current.beginPaste(clipboardTheme());
   });
-  act(() => result.current.confirmImport());
+  await act(async () => result.current.confirmImport());
   act(() => result.current.dismissCompletion());
   const before = structuredClone(themesStore.read());
   await act(async () => {
@@ -606,7 +642,7 @@ it("retains an existing-item review if the follow-up action is refused", async (
   await act(async () => {
     await result.current.beginPaste(clipboardTheme());
   });
-  act(() => result.current.confirmImport());
+  await act(async () => result.current.confirmImport());
   act(() => result.current.dismissCompletion());
   await act(async () => {
     await result.current.beginPaste(clipboardTheme());

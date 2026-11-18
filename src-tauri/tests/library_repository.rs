@@ -331,3 +331,62 @@ fn replacing_a_collection_is_atomic_and_requires_its_base_revision() {
   assert!(library.read("preset", "peer").unwrap().is_none());
   let _ = std::fs::remove_dir_all(root);
 }
+
+#[test]
+fn a_preset_import_rolls_back_its_bundled_profile_when_the_preset_insert_fails() {
+  let root = temp_root();
+  let repository = LibraryRepository::open(&root).expect("open library repository");
+  let existing = json!({ "id": "existing", "name": "Existing" });
+  repository.create("preset", "existing", &existing).unwrap();
+  let additions = BTreeMap::from([
+    ("loudnessProfile".into(), vec![json!({ "id": "bundled" })]),
+    ("preset".into(), vec![json!({ "id": "existing" })]),
+  ]);
+  let revisions = BTreeMap::from([("loudnessProfile".into(), 0), ("preset".into(), 1)]);
+  let items = BTreeMap::from([
+    ("loudnessProfile".into(), BTreeMap::new()),
+    ("preset".into(), BTreeMap::from([("existing".into(), 1)])),
+  ]);
+
+  assert!(matches!(
+    repository.append_collections(&additions, &revisions, &items),
+    Err(LibraryError::Conflict(_))
+  ));
+  assert!(repository.list("loudnessProfile").unwrap().is_empty());
+  assert_eq!(
+    repository.collection_revision("loudnessProfile").unwrap(),
+    0
+  );
+  assert_eq!(repository.list("preset").unwrap()[0].document, existing);
+
+  let mut additions = additions;
+  additions.get_mut("preset").unwrap()[0] = json!({
+    "id": "new",
+    "loudnessProfileActive": "profile:bundled"
+  });
+  let stale_items = BTreeMap::from([
+    ("loudnessProfile".into(), BTreeMap::new()),
+    ("preset".into(), BTreeMap::from([("existing".into(), 2)])),
+  ]);
+  assert!(matches!(
+    repository.append_collections(&additions, &revisions, &stale_items),
+    Err(LibraryError::Conflict(_))
+  ));
+  assert!(repository.list("loudnessProfile").unwrap().is_empty());
+
+  assert_eq!(
+    repository
+      .append_collections(&additions, &revisions, &items)
+      .unwrap(),
+    BTreeMap::from([("loudnessProfile".into(), 1), ("preset".into(), 2)])
+  );
+  assert_eq!(repository.list("loudnessProfile").unwrap()[0].id, "bundled");
+  let presets = repository.list("preset").unwrap();
+  assert_eq!(
+    presets
+      .iter()
+      .map(|item| item.id.as_str())
+      .collect::<Vec<_>>(),
+    ["existing", "new"]
+  );
+}

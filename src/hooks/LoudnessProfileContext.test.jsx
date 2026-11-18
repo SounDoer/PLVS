@@ -7,6 +7,15 @@ import { LOUDNESS_PROFILE_OFF, profileSelectionId } from "../lib/loudnessProfile
 import { LoudnessProfileProvider, useLoudnessProfile } from "./LoudnessProfileContext.jsx";
 import { getAdapter } from "../transfer/libraryAdapters.js";
 
+const persistence = vi.hoisted(() => ({ transactional: false, flush: vi.fn() }));
+vi.mock("../persistence/index.js", async (importOriginal) => ({
+  ...(await importOriginal()),
+  get usesTransactionalPersistence() {
+    return persistence.transactional;
+  },
+  flushPersistence: persistence.flush,
+}));
+
 const wrapper = ({ children }) => <LoudnessProfileProvider>{children}</LoudnessProfileProvider>;
 
 function profile(id, name = id, referenceLufs = null) {
@@ -19,8 +28,26 @@ function seed(profiles, active = LOUDNESS_PROFILE_OFF) {
 
 beforeEach(() => {
   vi.restoreAllMocks();
+  persistence.transactional = false;
+  persistence.flush.mockReset();
   settingsStore.reset();
   presetsStore.reset();
+});
+
+it("keeps Preset references if deleting their Profile conflicts", async () => {
+  persistence.transactional = true;
+  const conflict = { reason: "conflict", message: "Profile changed elsewhere" };
+  persistence.flush.mockRejectedValueOnce(conflict);
+  seed([profile("linked")]);
+  const preset = { id: "p", loudnessProfileActive: profileSelectionId("linked") };
+  presetsStore.patch({ list: [preset] });
+  const { result } = renderHook(() => useLoudnessProfile(), { wrapper });
+  const planned = result.current.control.planDelete("linked");
+
+  await act(async () => {
+    await expect(result.current.control.commitDelete(planned)).rejects.toBe(conflict);
+  });
+  expect(presetsStore.read().list).toEqual([preset]);
 });
 
 describe("cold initialization", () => {

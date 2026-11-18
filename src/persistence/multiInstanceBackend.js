@@ -1,4 +1,5 @@
 import { invoke } from "@tauri-apps/api/core";
+import { LOUDNESS_PROFILE_OFF, profileSelectionId } from "../lib/loudnessProfileCatalog.js";
 
 const FLUSH_DELAY_MS = 200;
 const REFRESH_INTERVAL_MS = 1000;
@@ -54,6 +55,21 @@ function domainFor(key) {
   if (key === "plvs:workspace") return "workspace";
   if (key === "plvs:presets") return "presets";
   return null;
+}
+
+function collectionKey(kind) {
+  return kind === "preset" ? "plvs:presets" : kind === "theme" ? "plvs:themes" : "plvs:settings";
+}
+
+function withCollection(kind, current, documents) {
+  if (kind === "preset") return { ...current, list: documents };
+  if (kind === "theme") {
+    return {
+      themes: Object.fromEntries(documents.map((item) => [item.id, item])),
+      order: documents.map((item) => item.id),
+    };
+  }
+  return { ...current, loudnessProfiles: { ...current.loudnessProfiles, profiles: documents } };
 }
 
 function signature(value) {
@@ -121,18 +137,22 @@ export function createMultiInstanceBackend() {
   }
 
   const dirty = new Map();
+  const editGenerations = new Map();
   const subscribers = new Map();
   let flushTimer = null;
   let refreshTimer = null;
   let activeDrain = null;
   let activeRefresh = null;
+  let activeAppend = null;
   let unreportedFailure = null;
   let pendingConflict = null;
+  let pendingDeleteFailure = null;
   let pendingConflictDevelopmentFixtureId = null;
   const conflictSubscribers = new Set();
 
   function publishConflict(conflict, developmentFixtureId = null) {
     pendingConflict = conflict;
+    if (conflict.operation !== "delete") pendingDeleteFailure = null;
     pendingConflictDevelopmentFixtureId = developmentFixtureId;
     for (const listener of conflictSubscribers) listener(clone(conflict));
   }
@@ -186,13 +206,27 @@ export function createMultiInstanceBackend() {
       });
       revisions.set(id, result.item.revision);
       collectionRevisions.set(kind, result.collectionRevision);
-    } else if (removed.length === 1 && !added.length && !changed.length && !orderChanged) {
+    } else if (
+      removed.length === 1 &&
+      !added.length &&
+      !changed.length &&
+      signature(previousOrder.filter((id) => id !== removed[0])) === signature(nextOrder)
+    ) {
       const id = removed[0];
-      const collectionRevision = await invoke("persistence_library_delete", {
-        kind,
-        id,
-        expectedRevision: revisions.get(id),
-      });
+      let collectionRevision;
+      try {
+        collectionRevision = await invoke("persistence_library_delete", {
+          kind,
+          id,
+          expectedRevision: revisions.get(id),
+        });
+      } catch (error) {
+        if (error?.reason === "conflict") {
+          pendingDeleteFailure = error;
+          publishConflict({ kind, id, operation: "delete" });
+        }
+        throw error;
+      }
       revisions.delete(id);
       collectionRevisions.set(kind, collectionRevision);
     } else if (!added.length && !removed.length && !changed.length && orderChanged) {
@@ -254,15 +288,29 @@ export function createMultiInstanceBackend() {
     if (domain) await invoke("persistence_save_domain", { domain, value });
   }
 
+  function hasPendingDelete(key) {
+    return pendingConflict?.operation === "delete" && collectionKey(pendingConflict.kind) === key;
+  }
+
+  function writableKeys() {
+    return [...dirty.keys()].filter((key) => !hasPendingDelete(key));
+  }
+
+  function markDirty(key) {
+    editGenerations.set(key, (editGenerations.get(key) ?? 0) + 1);
+    dirty.set(key, true);
+    schedule();
+  }
+
   async function drain() {
-    while (dirty.size) {
-      const keys = [...dirty.keys()];
-      dirty.clear();
+    for (let keys = writableKeys(); keys.length; keys = writableKeys()) {
+      for (const key of keys) dirty.delete(key);
       for (let index = 0; index < keys.length; index += 1) {
         try {
           await persistKey(keys[index]);
         } catch (error) {
-          for (const pendingKey of keys.slice(index)) dirty.set(pendingKey, true);
+          const firstPending = hasPendingDelete(keys[index]) ? index + 1 : index;
+          for (const pendingKey of keys.slice(firstPending)) dirty.set(pendingKey, true);
           throw error;
         }
       }
@@ -270,7 +318,8 @@ export function createMultiInstanceBackend() {
   }
 
   function ensureDrain() {
-    if (!dirty.size) return activeDrain;
+    if (activeAppend) return null;
+    if (!writableKeys().length) return activeDrain;
     if (activeDrain) return activeDrain;
     const running = drain().catch((error) => {
       unreportedFailure ??= error;
@@ -279,7 +328,7 @@ export function createMultiInstanceBackend() {
     running.then(() => {
       if (activeDrain !== running) return;
       activeDrain = null;
-      if (dirty.size && !unreportedFailure) ensureDrain();
+      if (!unreportedFailure) ensureDrain();
     });
     return running;
   }
@@ -303,29 +352,18 @@ export function createMultiInstanceBackend() {
   /**
    * @param {string} kind
    */
-  function applyRemoteCollection(kind, hydrated) {
+  function applyRemoteCollection(kind, hydrated, force = false) {
     const remoteRevision = hydrated.libraryCollectionRevisions?.[kind] ?? 0;
-    const key =
-      kind === "preset" ? "plvs:presets" : kind === "theme" ? "plvs:themes" : "plvs:settings";
+    const key = collectionKey(kind);
+    if (dirty.has(key)) return;
     const current = cache.get(key) || {};
-    let next;
-    if (kind === "preset") {
-      next = { ...current, list: hydrated.presets?.list || [] };
-    } else if (kind === "theme") {
-      next = hydrated.themes || { themes: {}, order: [] };
-    } else {
-      next = {
-        ...current,
-        loudnessProfiles: {
-          ...(current.loudnessProfiles || {}),
-          profiles: hydrated.settings?.loudnessProfiles?.profiles || [],
-        },
-      };
-    }
-    const remoteDocuments = documentsFor(key, next);
+    const domain = key.slice("plvs:".length);
+    const remoteDocuments = documentsFor(key, hydrated[domain]);
+    const next = withCollection(kind, current, remoteDocuments);
     const currentRevision = collectionRevisions.get(kind) ?? 0;
     if (remoteRevision < currentRevision) return;
     if (
+      !force &&
       remoteRevision === currentRevision &&
       keyOrderInsensitiveSignature(remoteDocuments) ===
         keyOrderInsensitiveSignature(persistedDocuments.get(kind) || [])
@@ -335,18 +373,24 @@ export function createMultiInstanceBackend() {
     persistedDocuments.set(kind, clone(remoteDocuments));
     itemRevisions.set(kind, new Map(Object.entries(hydrated.libraryItemRevisions?.[kind] || {})));
     collectionRevisions.set(kind, remoteRevision);
-    if (dirty.has(key)) return;
     cache.set(key, clone(next));
     notify(key, { origin: "remote" });
   }
 
   async function refresh() {
-    if (activeDrain || dirty.size) return;
+    if (activeAppend || activeDrain || dirty.size) return;
     if (activeRefresh) return activeRefresh;
+    const startedAt = new Map(editGenerations);
+    // A save can begin and finish while hydration is in flight. Compare edit generations as
+    // well as dirty state so a response cannot replace the baseline of that save.
+    const canApply = (key) =>
+      !hasPendingDelete(key) && startedAt.get(key) === editGenerations.get(key);
     const refreshing = invoke("persistence_hydrate")
       .then((hydrated) => {
-        for (const kind of ["preset", "theme", "loudnessProfile"])
-          applyRemoteCollection(kind, hydrated);
+        for (const kind of ["preset", "theme", "loudnessProfile"]) {
+          if (canApply(collectionKey(kind))) applyRemoteCollection(kind, hydrated);
+        }
+        if (!canApply("plvs:settings")) return;
         const nextGlobals = hydrated.globalPreferences || {};
         if (
           signature(
@@ -396,6 +440,73 @@ export function createMultiInstanceBackend() {
     return refreshing;
   }
 
+  async function flush() {
+    while (activeAppend) await activeAppend.catch(() => {});
+    if (flushTimer) {
+      clearTimeout(flushTimer);
+      flushTimer = null;
+    }
+    ensureDrain();
+    while (activeDrain) await activeDrain;
+    if (unreportedFailure) {
+      const failure = unreportedFailure;
+      unreportedFailure = null;
+      throw failure;
+    }
+    if (pendingDeleteFailure) throw pendingDeleteFailure;
+  }
+
+  async function appendLibrary(additions, kinds, validate) {
+    for (const kind of Object.keys(additions)) assertWritableSurface(collectionKey(kind));
+    await flush();
+    if (
+      activeAppend ||
+      activeDrain ||
+      writableKeys().length ||
+      kinds.some((kind) => hasPendingDelete(collectionKey(kind)))
+    ) {
+      throw new Error("The Library is still saving. Try importing again.");
+    }
+    validate();
+    const expectedRevisions = Object.fromEntries(
+      kinds.map((kind) => [kind, collectionRevisions.get(kind) ?? 0])
+    );
+    const expectedItemRevisions = Object.fromEntries(
+      kinds.map((kind) => [kind, Object.fromEntries(itemRevisions.get(kind) ?? [])])
+    );
+    for (const kind of kinds) {
+      const key = collectionKey(kind);
+      editGenerations.set(key, (editGenerations.get(key) ?? 0) + 1);
+    }
+    const appending = invoke("persistence_library_append", {
+      additions,
+      expectedRevisions,
+      expectedItemRevisions,
+    }).then((revisions) => {
+      const keys = [];
+      for (const [kind, items] of Object.entries(additions)) {
+        const key = collectionKey(kind);
+        const current = cache.get(key) || {};
+        const visible = documentsFor(key, current);
+        const itemVersions = itemRevisions.get(kind) ?? new Map();
+        for (const item of items) itemVersions.set(item.id, 1);
+        itemRevisions.set(kind, itemVersions);
+        collectionRevisions.set(kind, revisions[kind]);
+        persistedDocuments.set(kind, clone([...(persistedDocuments.get(kind) || []), ...items]));
+        cache.set(key, clone(withCollection(kind, current, [...visible, ...items])));
+        keys.push(key);
+      }
+      for (const key of keys) notify(key, { origin: "import" });
+    });
+    activeAppend = appending;
+    try {
+      await appending;
+    } finally {
+      activeAppend = null;
+      ensureDrain();
+    }
+  }
+
   /**
    * @param {string} action
    */
@@ -405,23 +516,50 @@ export function createMultiInstanceBackend() {
   ) {
     if (!pendingConflict) return null;
     const conflict = pendingConflict;
-    const key =
-      conflict.kind === "preset"
-        ? "plvs:presets"
-        : conflict.kind === "theme"
-          ? "plvs:themes"
-          : "plvs:settings";
-    dirty.delete(key);
-    unreportedFailure = null;
+    if (action !== "reload" && (action !== "copy" || conflict.operation === "delete")) {
+      throw new Error("Unknown Library conflict action.");
+    }
+    const key = collectionKey(conflict.kind);
+    if (activeDrain) await activeDrain;
     const hydrated = await invoke("persistence_hydrate");
-    applyRemoteCollection(conflict.kind, hydrated);
+    editGenerations.set(key, (editGenerations.get(key) ?? 0) + 1);
+    const hadPendingChanges = dirty.delete(key);
+    unreportedFailure = null;
+    const deleting = conflict.operation === "delete";
+    if (deleting) {
+      const current = cache.get(key);
+      if (
+        conflict.kind === "preset" &&
+        current?.activeId === null &&
+        hydrated.presets?.activeId === conflict.id &&
+        hydrated.presets.list?.some(({ id }) => id === conflict.id)
+      ) {
+        cache.set(key, { ...current, activeId: conflict.id });
+      } else if (
+        conflict.kind === "loudnessProfile" &&
+        current?.loudnessProfiles?.active === LOUDNESS_PROFILE_OFF
+      ) {
+        const profileState = hydrated.settings?.loudnessProfiles;
+        if (
+          profileState?.active === profileSelectionId(conflict.id) &&
+          profileState.profiles?.some(({ id }) => id === conflict.id)
+        ) {
+          cache.set(key, {
+            ...current,
+            loudnessProfiles: { ...current.loudnessProfiles, active: profileState.active },
+          });
+        }
+      }
+    }
+    applyRemoteCollection(conflict.kind, hydrated, deleting);
     if (action === "reload") {
       pendingConflict = null;
+      pendingDeleteFailure = null;
       pendingConflictDevelopmentFixtureId = null;
       for (const listener of conflictSubscribers) listener(null);
+      if (deleting && hadPendingChanges && domainFor(key)) markDirty(key);
       return null;
     }
-    if (action !== "copy") throw new Error("Unknown Library conflict action.");
     const id = conflict.kind === "theme" ? `custom-${makeId()}` : makeId();
     const document = {
       ...conflict.document,
@@ -484,8 +622,7 @@ export function createMultiInstanceBackend() {
     set(key, value) {
       assertWritableSurface(key);
       cache.set(key, clone(value));
-      dirty.set(key, true);
-      schedule();
+      markDirty(key);
     },
     /**
      * @param {string} key
@@ -493,8 +630,7 @@ export function createMultiInstanceBackend() {
     remove(key) {
       assertWritableSurface(key);
       cache.delete(key);
-      dirty.set(key, true);
-      schedule();
+      markDirty(key);
     },
     /**
      * @param {string} key
@@ -545,18 +681,7 @@ export function createMultiInstanceBackend() {
     },
     resolveLibraryConflict: resolveConflict,
     refresh,
-    async flush() {
-      if (flushTimer) {
-        clearTimeout(flushTimer);
-        flushTimer = null;
-      }
-      ensureDrain();
-      while (activeDrain) await activeDrain;
-      if (unreportedFailure) {
-        const failure = unreportedFailure;
-        unreportedFailure = null;
-        throw failure;
-      }
-    },
+    flush,
+    appendLibrary,
   };
 }

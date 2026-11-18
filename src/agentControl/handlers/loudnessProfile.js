@@ -172,7 +172,18 @@ async function mutate(ctx) {
     committed = registerSettlement(planned);
   } else {
     committed = registerSettlement(planned);
-    control.commit(planned);
+    if (request.method === "loudnessProfile.delete") {
+      try {
+        await control.commitDelete(planned);
+      } catch (error) {
+        throw semanticFailure("persistenceFailed", "$", error?.message || String(error), -32030, {
+          stateCommitted: true,
+          revision: clock.current(),
+        });
+      }
+    } else {
+      control.commit(planned);
+    }
   }
   result.plan = profilePlan();
   result.state = compactLoudnessProfileState(planned.loudnessProfiles);

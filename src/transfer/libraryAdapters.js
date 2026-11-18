@@ -6,8 +6,14 @@
 /// overwrites an existing entry, and nothing here touches a selection: `active`, `activeId`,
 /// `dirty` and `settings.themeId` are all left exactly as they were.
 
-import { presetsStore, settingsStore, themesStore } from "../persistence/index.js";
+import {
+  appendLibraryCollections,
+  presetsStore,
+  settingsStore,
+  themesStore,
+} from "../persistence/index.js";
 import { normalizeRuleDocument } from "../lib/loudnessProfileNormalize.js";
+import { deepEqual, planPackImport } from "./mergeIntoLibrary.js";
 import {
   listCustomThemes,
   listCustomThemesOrdered,
@@ -89,4 +95,42 @@ export function getAdapter(type) {
   const adapter = adapters[type];
   if (!adapter) throw new Error(`Unknown library type: ${type}`);
   return adapter;
+}
+
+const COLLECTION_KINDS = { presets: "preset", loudness: "loudnessProfile", themes: "theme" };
+
+export function preparePackImport(type, pack) {
+  const adapter = getAdapter(type);
+  const profiles = type === "presets" ? getAdapter("loudness") : null;
+  const existingItems = structuredClone(adapter.list());
+  const existingProfiles = structuredClone(profiles?.list() ?? []);
+  const planned = planPackImport(type, pack, { existingItems, existingProfiles });
+  const kind = COLLECTION_KINDS[type];
+  const kinds = profiles ? [kind, "loudnessProfile"] : [kind];
+  const additions = {
+    ...(planned.itemAdditions.length ? { [kind]: planned.itemAdditions } : {}),
+    ...(planned.profileAdditions.length ? { loudnessProfile: planned.profileAdditions } : {}),
+  };
+  async function commit() {
+    if (!Object.keys(additions).length) return;
+    await appendLibraryCollections(
+      additions,
+      kinds,
+      () => {
+        if (
+          !deepEqual(existingItems, adapter.list()) ||
+          !deepEqual(existingProfiles, profiles?.list() ?? [])
+        ) {
+          throw new Error(
+            "The Library changed while reviewing the import. Open the import again to refresh the review."
+          );
+        }
+      },
+      () => {
+        profiles?.append(planned.profileAdditions);
+        adapter.append(planned.itemAdditions);
+      }
+    );
+  }
+  return { ...planned, commit };
 }

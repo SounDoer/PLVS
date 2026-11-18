@@ -55,15 +55,12 @@ pub fn hydrate_workspace(
     }
   }
 
-  let preset_items = repository
-    .list("preset")
+  let collections = repository
+    .collections(&["preset", "theme", "loudnessProfile"])
     .map_err(|error| error.to_string())?;
-  let theme_items = repository
-    .list("theme")
-    .map_err(|error| error.to_string())?;
-  let profile_items = repository
-    .list("loudnessProfile")
-    .map_err(|error| error.to_string())?;
+  let preset_items = &collections["preset"].items;
+  let theme_items = &collections["theme"].items;
+  let profile_items = &collections["loudnessProfile"].items;
 
   let mut settings = object_at(state, "plvs:settings");
   if let Some(preference) = global_preferences.get("quickTour") {
@@ -122,27 +119,18 @@ pub fn hydrate_workspace(
     .map(|item| (item.id.clone(), item.document.clone()))
     .collect();
 
-  let kinds = [
-    ("preset", &preset_items),
-    ("theme", &theme_items),
-    ("loudnessProfile", &profile_items),
-  ];
   let mut library_item_revisions = BTreeMap::new();
   let mut library_collection_revisions = BTreeMap::new();
-  for (kind, items) in kinds {
+  for (kind, collection) in collections {
     library_item_revisions.insert(
-      kind.to_string(),
-      items
-        .iter()
-        .map(|item| (item.id.clone(), item.revision))
+      kind.clone(),
+      collection
+        .items
+        .into_iter()
+        .map(|item| (item.id, item.revision))
         .collect(),
     );
-    library_collection_revisions.insert(
-      kind.to_string(),
-      repository
-        .collection_revision(kind)
-        .map_err(|error| error.to_string())?,
-    );
+    library_collection_revisions.insert(kind, collection.collection_revision);
   }
 
   Ok(HydratedWorkspace {

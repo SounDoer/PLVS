@@ -193,9 +193,10 @@ export function ItemPickerDialog({
   const shownDependencies = dependencies.filter((dep) => neededProfileIds.has(dep.id));
   const profilePlan = review?.profilePlan ?? [];
   const warnings = review?.warnings ?? [];
+  const dismissBlocked = busy && (statistics || mode === "review");
 
   function handleDismiss() {
-    if (!statistics || !busy) onClose();
+    if (!dismissBlocked) onClose();
   }
 
   const surfaceKind = statistics
@@ -212,15 +213,16 @@ export function ItemPickerDialog({
     origin: "nested",
     developmentFixture: ITEM_PICKER_FIXTURES[fixtureMode],
     blocking: false,
-    busy: statistics && busy,
-    dismissible: !statistics || !busy,
-    supportedActions: statistics && busy ? [] : mode === "complete" ? ["close"] : ["cancel"],
+    busy: dismissBlocked,
+    dismissible: !dismissBlocked,
+    supportedActions: dismissBlocked ? [] : mode === "complete" ? ["close"] : ["cancel"],
     target: { phase: mode },
     choices: [
       {
         id: mode === "complete" || allExisting ? "done" : onBack ? "back" : "cancel",
         label: mode === "complete" || allExisting ? "Done" : onBack ? "Back" : "Cancel",
         run: onBack ?? handleDismiss,
+        disabled: dismissBlocked,
       },
       ...(mode === "pick"
         ? [
@@ -355,7 +357,7 @@ export function ItemPickerDialog({
           </p>
         ) : null}
         <DialogFooter divided>
-          <Button variant="ghost" disabled={statistics && busy} onClick={onBack ?? handleDismiss}>
+          <Button variant="ghost" disabled={dismissBlocked} onClick={onBack ?? handleDismiss}>
             {mode === "complete" || allExisting ? "Done" : onBack ? "Back" : "Cancel"}
           </Button>
           {mode === "pick" ? (
@@ -374,7 +376,7 @@ export function ItemPickerDialog({
               {COMPLETION_ACTION_LABEL[type]}
             </Button>
           ) : (
-            <Button onClick={onConfirm}>
+            <Button disabled={busy} onClick={onConfirm}>
               {pasted && review?.itemPlan?.some((entry) => entry.disposition !== "skipped")
                 ? `Add ${itemLabel}`
                 : "Import"}
