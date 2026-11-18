@@ -14,6 +14,9 @@ only the assigned speaker channels and places recognised layouts in standard cha
 mixing them together. For example, a 16-channel interface configured as Stereo produces **L** and
 **R**, even when the system assigns those speakers to device channels 3 and 4.
 
+On macOS, a two-channel output with unlabeled channels can use the left and right assignments
+that Core Audio provides for stereo playback, including on built-in speakers.
+
 On Windows, if the audio engine supplies a complete, explicitly mapped L/R stereo stream while
 the output retains a surround speaker configuration that includes L/R, PLVS monitors that stereo
 stream. This can occur when changing spatial sound settings. It measures the supplied stereo mix,

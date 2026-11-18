@@ -668,8 +668,13 @@ int macos_output_channel_labels(const char *uid_utf8, uint32_t channels, uint32_
         layout->mNumberChannelDescriptions == channels &&
         size >= offsetof(AudioChannelLayout, mChannelDescriptions) + channels * sizeof(AudioChannelDescription)) {
       for (UInt32 i = 0; i < channels; i++) labels[i] = layout->mChannelDescriptions[i].mChannelLabel;
-      free(layout);
-      return 0;
+      // Some built-in outputs report two unknown labels here but expose a valid stereo pair.
+      // Only consult that pair when it can account for the entire unlabeled output.
+      if (channels != 2 || labels[0] != kAudioChannelLabel_Unknown ||
+          labels[1] != kAudioChannelLabel_Unknown) {
+        free(layout);
+        return 0;
+      }
     }
     free(layout);
   }
@@ -678,6 +683,7 @@ int macos_output_channel_labels(const char *uid_utf8, uint32_t channels, uint32_
   UInt32 stereo[2] = {0, 0};
   size = sizeof(stereo);
   if (AudioObjectGetPropertyData(device, &address, 0, NULL, &size, stereo) != noErr ||
+      size != sizeof(stereo) ||
       stereo[0] == 0 || stereo[1] == 0 || stereo[0] > channels || stereo[1] > channels ||
       stereo[0] == stereo[1]) return -1;
   labels[stereo[0] - 1] = kAudioChannelLabel_Left;
