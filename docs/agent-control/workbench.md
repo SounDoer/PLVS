@@ -33,6 +33,10 @@ with `scope` `workbench` or `all`. It is delivered before the process exits, so 
 reads it; afterwards the workbench's Agent Control endpoint disappears. If saving fails after the
 response, the window stays open with the save error's Retry and Cancel, as it does for the Tray.
 On Linux, an exited child waiting to be reaped is excluded from discovery.
+For an inter-workbench quit, the target checks readiness before handing off to one native
+acknowledgement-and-exit operation. A completed mailbox acknowledgement commits that exit; a later
+frontend state update cannot turn it into a refusal. An unresolved Library conflict is a blocking
+editor for quit and identity-wide preparation.
 
 ## Revision and timing
 

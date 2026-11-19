@@ -352,6 +352,40 @@ describe("useDockMode", () => {
     expect(result.current.reserveSpace).toBe(false);
   });
 
+  it("refuses queued entry when an unsupported editor opens before execution", async () => {
+    let release;
+    mocks.setDockReserveSpace.mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          release = resolve;
+        })
+    );
+    const { result, rerender } = renderHook(
+      ({ blocked }) => {
+        useBlockingEditor("unsupported", blocked);
+        const { assertSceneOperationAllowed } = useBlockingEditors();
+        return useDockMode({ assertSceneOperationAllowed });
+      },
+      { initialProps: { blocked: false }, wrapper: BlockingEditorsProvider }
+    );
+    let reservation;
+    let entering;
+    await act(async () => {
+      reservation = result.current.setReserveSpace(false);
+      entering = result.current.enterDockMode("bottom");
+      entering.catch(() => {});
+    });
+    rerender({ blocked: true });
+    await act(async () => {
+      release();
+      await reservation;
+      await expect(entering).rejects.toMatchObject({ code: "editorActive" });
+    });
+    expect(mocks.enterDock).not.toHaveBeenCalled();
+    expect(result.current.dockEnabled).toBe(false);
+    expect(result.current.dockEdge).toBe("top");
+  });
+
   it("starts disabled without injected state", () => {
     const { result } = renderHook(() => useDockMode());
     expect(result.current.dockEnabled).toBe(false);

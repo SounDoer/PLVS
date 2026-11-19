@@ -304,6 +304,39 @@ impl RuntimeCommandMailbox {
     Ok(())
   }
 
+  /// The frontend has finished its business guards. Once completion is published there must be
+  /// no further fallible step or frontend continuation that can veto this process's exit.
+  pub fn commit_exit(
+    &self,
+    instance_id: &str,
+    command_id: &str,
+    exit: impl FnOnce(),
+  ) -> Result<(), String> {
+    let _lock = self.lock_mailbox()?;
+    let command = self
+      .poll(instance_id)?
+      .filter(|command| command.command_id == command_id)
+      .ok_or_else(|| "The runtime command is no longer pending.".to_string())?;
+    if !matches!(command.action.as_str(), "quitInstance" | "commitGlobal") {
+      return Err("Only a pending quit command can commit exit.".into());
+    }
+    let ack = RuntimeCommandAck {
+      schema_version: COMMAND_SCHEMA_VERSION,
+      command_id: command.command_id.clone(),
+      operation_id: command.operation_id,
+      instance_id: command.instance_id,
+      outcome: "completed".into(),
+      detail: None,
+    };
+    write_json_atomic(&self.ack_path(command_id), &ack)?;
+    // Completion is now durable. Cleanup failure must not turn an accepted exit into a refusal.
+    if let Err(error) = fs::remove_file(self.pending_path(instance_id)) {
+      log::warn!("Unable to consume committed quit command: {error}");
+    }
+    exit();
+    Ok(())
+  }
+
   pub fn wait_for(
     &self,
     issued: &[IssuedRuntimeCommand],
@@ -506,6 +539,51 @@ mod tests {
       "plvs-runtime-commands-{name}-{}",
       std::process::id()
     ))
+  }
+
+  #[test]
+  fn committed_quit_publishes_completion_and_consumes_the_command_before_exit() {
+    for action in ["quitInstance", "commitGlobal"] {
+      let root = tempfile::tempdir().unwrap();
+      let mailbox = RuntimeCommandMailbox::open(root.path()).unwrap();
+      let issued = mailbox.issue("peer", "operation", action).unwrap();
+      let mut exited = false;
+      mailbox
+        .commit_exit("peer", &issued.command_id, || {
+          let ack: RuntimeCommandAck =
+            serde_json::from_slice(&fs::read(mailbox.ack_path(&issued.command_id)).unwrap())
+              .unwrap();
+          assert_eq!(ack.outcome, "completed");
+          assert!(mailbox.poll("peer").unwrap().is_none());
+          exited = true;
+        })
+        .unwrap();
+      assert!(exited);
+    }
+  }
+
+  #[test]
+  fn failed_or_mismatched_quit_commit_never_publishes_success_or_exits() {
+    let root = tempfile::tempdir().unwrap();
+    let mailbox = RuntimeCommandMailbox::open(root.path()).unwrap();
+    let issued = mailbox.issue("peer", "operation", "quitInstance").unwrap();
+    assert!(mailbox
+      .commit_exit("peer", "wrong-command", || panic!("must not exit"))
+      .is_err());
+    fs::create_dir(mailbox.ack_path(&issued.command_id)).unwrap();
+    assert!(mailbox
+      .commit_exit("peer", &issued.command_id, || panic!("must not exit"))
+      .is_err());
+    assert_eq!(
+      mailbox.poll("peer").unwrap().unwrap().command_id,
+      issued.command_id
+    );
+
+    let other = mailbox.issue("other", "operation", "show").unwrap();
+    assert!(mailbox
+      .commit_exit("other", &other.command_id, || panic!("must not exit"))
+      .is_err());
+    assert!(!mailbox.ack_path(&other.command_id).exists());
   }
 
   #[test]

@@ -18,14 +18,15 @@ function desktopPoint(position, scale) {
 }
 
 /** @param {any} monitor */
-function publicMonitor(monitor) {
+function publicMonitor(monitor, cssToLogical = 1) {
   if (typeof monitor?.name !== "string" || !monitor.workArea) return null;
   const scale = monitor.scaleFactor || 1;
   return {
     id: monitor.name,
     scale,
+    cssScale: scale * cssToLogical,
     // Desktop units per CSS pixel on this monitor, in the space `origin` uses.
-    unitsPerCss: isMacOS() ? 1 : scale,
+    unitsPerCss: (isMacOS() ? 1 : scale) * cssToLogical,
     origin: desktopPoint(monitor.workArea.position, scale),
     workArea: {
       x: monitor.workArea.position.x,
@@ -53,19 +54,20 @@ export async function readWindowGeometry() {
     currentMonitor(),
   ]);
   const scale = globalThis.devicePixelRatio || 1;
+  const nativeScale = monitor?.scaleFactor || scale;
   return {
     viewport: { width: globalThis.innerWidth, height: globalThis.innerHeight },
     scale,
-    nativeScale: monitor?.scaleFactor || scale,
+    nativeScale,
     inner: { width: inner.width, height: inner.height },
     outer: { width: outer.width, height: outer.height },
     // GTK adds client-side decorations to resize requests. Reported native sizes include them.
     sizeSetterUsesViewport: isLinux(),
     position: { x: position.x, y: position.y },
-    origin: desktopPoint(position, scale),
+    origin: desktopPoint(position, nativeScale),
     maximized,
     minimized,
-    monitor: publicMonitor(monitor),
+    monitor: publicMonitor(monitor, scale / nativeScale),
     workArea: monitor?.workArea
       ? { width: monitor.workArea.size.width, height: monitor.workArea.size.height }
       : null,
@@ -78,7 +80,9 @@ export async function readWindowGeometry() {
  * @returns {Promise<import("../agentControl/windowControl.js").WindowMonitor[]>}
  */
 export async function readWindowMonitors() {
-  return (await availableMonitors()).map(publicMonitor).filter(Boolean);
+  const [monitors, current] = await Promise.all([availableMonitors(), currentMonitor()]);
+  const cssToLogical = (globalThis.devicePixelRatio || 1) / (current?.scaleFactor || 1);
+  return monitors.map((monitor) => publicMonitor(monitor, cssToLogical)).filter(Boolean);
 }
 
 /**

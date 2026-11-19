@@ -456,6 +456,20 @@ pub fn runtime_ack_command(
 }
 
 #[tauri::command]
+pub fn runtime_commit_exit(
+  app: tauri::AppHandle,
+  identity: State<'_, RuntimeIdentity>,
+  persistence: State<'_, crate::persistence::commands::PersistenceRuntime>,
+  command_id: String,
+) -> Result<(), String> {
+  RuntimeCommandMailbox::open(&persistence.identity_root()?)?.commit_exit(
+    identity.instance_id(),
+    &command_id,
+    || app.exit(0),
+  )
+}
+
+#[tauri::command]
 pub async fn runtime_wait_commands(
   persistence: State<'_, crate::persistence::commands::PersistenceRuntime>,
   issued: Vec<IssuedRuntimeCommand>,

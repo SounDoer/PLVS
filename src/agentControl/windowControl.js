@@ -12,6 +12,7 @@ export const WINDOW_OFFSET_MAX = 7680;
  * @typedef {{
  *   id: string,
  *   scale: number,
+ *   cssScale?: number,
  *   unitsPerCss: number,
  *   origin: { x: number, y: number },
  *   workArea: { x: number, y: number, width: number, height: number },
@@ -172,9 +173,11 @@ export function planWindowMove({ form }, geometry, monitors, { monitor: monitorI
     height: monitor.workArea.height / monitor.scale,
   };
   const inner = nativeInnerSize(geometry, geometry.viewport);
+  const logicalX = x * cssToLogical;
+  const logicalY = y * cssToLogical;
   if (
-    x + inner.width * cssToLogical + frame.width > workArea.width ||
-    y + inner.height * cssToLogical + frame.height > workArea.height
+    logicalX + inner.width * cssToLogical + frame.width > workArea.width ||
+    logicalY + inner.height * cssToLogical + frame.height > workArea.height
   ) {
     return { refusal: "windowPositionUnavailable", monitor };
   }
@@ -183,8 +186,8 @@ export function planWindowMove({ form }, geometry, monitors, { monitor: monitorI
     monitor,
     target: {
       monitor: monitor.id,
-      x,
-      y,
+      x: logicalX,
+      y: logicalY,
       width: setterSize.width * cssToLogical,
       height: setterSize.height * cssToLogical,
     },

@@ -18,6 +18,7 @@ import {
 import { useDevelopmentEventFixtureAdapter } from "../dev/DevelopmentEventFixturesContext.jsx";
 import { DEVELOPMENT_LIBRARY_CONFLICT } from "../dev/developmentEventFixtureData.js";
 import { useUiSurface } from "../uiNavigation/UiNavigationContext.jsx";
+import { useBlockingEditor } from "../hooks/BlockingEditorsContext.jsx";
 
 const LABELS = {
   preset: "Preset",
@@ -29,6 +30,7 @@ export function LibraryConflictDialog() {
   const [conflict, setConflict] = useState(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState(null);
+  useBlockingEditor("libraryConflict", conflict !== null);
 
   useEffect(() => subscribeLibraryConflicts(setConflict), []);
   useDevelopmentEventFixtureAdapter("library-conflict.pending", {

@@ -98,13 +98,12 @@ it.each(["local", "all", "remote", "remote-global"])(
         vi.advanceTimersByTime(250);
       });
     }
-    expect(mocks.exit).toHaveBeenCalledExactlyOnceWith(0);
     if (route === "remote" || route === "remote-global") {
-      expect(mocks.invoke).toHaveBeenCalledWith(
-        "runtime_ack_command",
-        expect.objectContaining({ outcome: "completed" })
-      );
-    }
+      expect(mocks.invoke).toHaveBeenCalledWith("runtime_commit_exit", {
+        commandId: route === "remote" ? "prepare" : "commit",
+      });
+      expect(mocks.exit).not.toHaveBeenCalled();
+    } else expect(mocks.exit).toHaveBeenCalledExactlyOnceWith(0);
   }
 );
 
@@ -179,7 +178,7 @@ it("refuses coordinated quit when measurement starts in the persistence continua
   expect(mocks.exit).not.toHaveBeenCalled();
 });
 
-it("rechecks a prepared peer after delivering its close acknowledgement", async () => {
+it("hands acknowledgement and exit to native without a later frontend veto", async () => {
   const { result, commands } = await mountRunning();
   act(() => result.current.transport.markStopped());
   commands.push({ commandId: "prepare", operationId: "op", action: "prepareGlobal" });
@@ -188,11 +187,7 @@ it("rechecks a prepared peer after delivering its close acknowledgement", async 
   });
   const invoke = mocks.invoke.getMockImplementation();
   mocks.invoke.mockImplementation(async (name, params) => {
-    if (
-      name === "runtime_ack_command" &&
-      params.commandId === "commit" &&
-      params.outcome === "completed"
-    ) {
+    if (name === "runtime_commit_exit" && params.commandId === "commit") {
       result.current.transport.startLive();
     }
     return invoke(name, params);
@@ -202,13 +197,10 @@ it("rechecks a prepared peer after delivering its close acknowledgement", async 
     vi.advanceTimersByTime(250);
   });
   expect(mocks.exit).not.toHaveBeenCalled();
-  expect(mocks.invoke).toHaveBeenCalledWith(
+  expect(mocks.invoke).toHaveBeenCalledWith("runtime_commit_exit", { commandId: "commit" });
+  expect(mocks.invoke).not.toHaveBeenCalledWith(
     "runtime_ack_command",
-    expect.objectContaining({
-      commandId: "commit",
-      outcome: "failed",
-      detail: expect.stringContaining("Measurement resumed"),
-    })
+    expect.objectContaining({ commandId: "commit" })
   );
 });
 

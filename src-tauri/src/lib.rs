@@ -327,6 +327,7 @@ pub fn run() {
       coordinator::runtime_issue_commands,
       coordinator::runtime_poll_command,
       coordinator::runtime_ack_command,
+      coordinator::runtime_commit_exit,
       coordinator::runtime_wait_commands,
       coordinator::runtime_finish_operation,
       update_runtime::update_status,

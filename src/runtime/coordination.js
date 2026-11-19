@@ -123,7 +123,9 @@ async function handleRuntimeCommand(command, prepared) {
         await acknowledge(command, "blocked", current.blockingEditors.join(", "));
         return;
       }
-      await quitCurrentWorkbench({ beforeExit: () => acknowledge(command, "completed") });
+      await quitCurrentWorkbench({
+        commitExit: () => invoke("runtime_commit_exit", { commandId: command.commandId }),
+      });
       return;
     }
     if (command.action === "prepareGlobal") {
@@ -186,10 +188,9 @@ async function handleRuntimeCommand(command, prepared) {
         await acknowledge(command, "blocked", "This workbench is no longer ready to close.");
         return;
       }
-      await acknowledge(command, "completed");
       assertLocalQuitAllowed();
       assertMeasurementIdle(current);
-      await exit(0);
+      await invoke("runtime_commit_exit", { commandId: command.commandId });
       prepared.delete(command.operationId);
     }
   } catch (error) {
@@ -308,6 +309,7 @@ function isMeasurementBusy(current) {
 export async function quitCurrentWorkbench({
   beforeStop = async () => {},
   beforeExit = async () => {},
+  commitExit = () => exit(0),
   onSaveFailure = () => {},
 } = {}) {
   const current = lifecycle;
@@ -325,7 +327,7 @@ export async function quitCurrentWorkbench({
     await beforeExit();
     assertLocalQuitAllowed();
     assertMeasurementIdle(current);
-    await exit(0);
+    await commitExit();
   } catch (error) {
     const recoveries = [];
     if (Number.isInteger(retiredPosition))

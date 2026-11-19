@@ -1,5 +1,5 @@
 /** @vitest-environment jsdom */
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const controls = vi.hoisted(() => ({
@@ -8,8 +8,14 @@ const controls = vi.hoisted(() => ({
   establishDevelopmentLibraryConflict: vi.fn(),
   matchesDevelopmentLibraryConflict: vi.fn(() => false),
   resetDevelopmentLibraryConflict: vi.fn(),
+  invoke: vi.fn(async () => null),
+  exit: vi.fn(async () => {}),
 }));
+vi.mock("@tauri-apps/api/core", () => ({ invoke: controls.invoke }));
+vi.mock("@tauri-apps/plugin-process", () => ({ exit: controls.exit }));
+vi.mock("../ipc/env.js", () => ({ isTauri: () => true }));
 vi.mock("../persistence/index.js", () => ({
+  flushPersistence: async () => {},
   subscribeLibraryConflicts: (listener) => {
     controls.publish = listener;
     listener(null);
@@ -22,6 +28,12 @@ vi.mock("../persistence/index.js", () => ({
 }));
 
 import { LibraryConflictDialog } from "./LibraryConflictDialog.jsx";
+import { BlockingEditorsProvider, useBlockingEditors } from "../hooks/BlockingEditorsContext.jsx";
+import {
+  prepareGlobalOperation,
+  quitCurrentWorkbench,
+  useRuntimeCoordination,
+} from "../runtime/coordination.js";
 
 describe("LibraryConflictDialog", () => {
   beforeEach(() => controls.resolveLibraryConflict.mockReset().mockResolvedValue(undefined));
@@ -56,5 +68,43 @@ describe("LibraryConflictDialog", () => {
     expect(screen.queryByRole("button", { name: "Save as Copy" })).toBeNull();
     fireEvent.click(screen.getByRole("button", { name: "Reload" }));
     await waitFor(() => expect(controls.resolveLibraryConflict).toHaveBeenCalledWith("reload"));
+  });
+
+  it("blocks quit and scene mutations until the Library conflict has been resolved", async () => {
+    let guard;
+    function Coordination() {
+      guard = useBlockingEditors();
+      useRuntimeCoordination({
+        blockingEditors: guard.activeBlockingEditors,
+        running: false,
+        stop: async () => {},
+        start: async () => {},
+        show: async () => {},
+      });
+      return null;
+    }
+    render(
+      <BlockingEditorsProvider>
+        <Coordination />
+        <LibraryConflictDialog />
+      </BlockingEditorsProvider>
+    );
+    act(() => controls.publish({ kind: "preset", operation: "collection" }));
+    controls.invoke.mockClear();
+    controls.exit.mockClear();
+    await act(async () => {
+      await expect(quitCurrentWorkbench()).rejects.toMatchObject({ code: "editorActive" });
+      await expect(prepareGlobalOperation()).rejects.toMatchObject({ code: "editorActive" });
+    });
+    expect(() => guard.assertSceneOperationAllowed("preset.apply")).toThrow();
+    expect(() => guard.assertSceneOperationAllowed("dock.enter")).toThrow();
+    expect(controls.invoke).not.toHaveBeenCalledWith("runtime_retire_current_workspace");
+    expect(controls.invoke).not.toHaveBeenCalledWith("runtime_issue_commands", expect.anything());
+    expect(controls.exit).not.toHaveBeenCalled();
+    act(() => controls.publish(null));
+    await act(async () => {
+      await quitCurrentWorkbench();
+    });
+    expect(controls.exit).toHaveBeenCalledExactlyOnceWith(0);
   });
 });

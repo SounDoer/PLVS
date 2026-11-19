@@ -289,11 +289,7 @@ describe("runtime coordination", () => {
     const start = vi.fn().mockResolvedValue(undefined);
     mocks.invoke.mockImplementation(async (name, params) => {
       if (name === "runtime_poll_command") return commands.shift() ?? null;
-      if (
-        name === "runtime_ack_command" &&
-        params.commandId === "commit" &&
-        params.outcome === "completed"
-      )
+      if (name === "runtime_commit_exit" && params.commandId === "commit")
         throw new Error("Unable to write acknowledgement");
     });
     const { unmount } = renderHook(() =>
@@ -746,11 +742,10 @@ describe("runtime coordination", () => {
   it("restores retirement and capture when a remote quit acknowledgement fails", async () => {
     const command = { commandId: "quit-probe", operationId: "quit", action: "quitInstance" };
     const start = vi.fn(async () => {});
-    mocks.invoke.mockImplementation(async (name, params) => {
+    mocks.invoke.mockImplementation(async (name) => {
       if (name === "runtime_poll_command") return command;
       if (name === "runtime_retire_current_workspace") return 2;
-      if (name === "runtime_ack_command" && params.outcome === "completed")
-        throw new Error("Unable to save acknowledgement");
+      if (name === "runtime_commit_exit") throw new Error("Unable to save acknowledgement");
     });
     renderHook(() =>
       useRuntimeCoordination({

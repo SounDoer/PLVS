@@ -65,11 +65,11 @@ async function inspect(ctx) {
       revision: clock.current(),
       ...buildWindowInspection(windowControl, geometry),
       // The choices `window move` accepts, with each work area in that monitor's CSS pixels.
-      monitors: monitors.map(({ id, scale, workArea }) => ({
+      monitors: monitors.map(({ id, scale, cssScale = scale, workArea }) => ({
         id,
         workArea: {
-          width: Math.floor(workArea.width / scale),
-          height: Math.floor(workArea.height / scale),
+          width: Math.floor(workArea.width / cssScale),
+          height: Math.floor(workArea.height / cssScale),
         },
       })),
     },

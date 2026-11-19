@@ -184,6 +184,8 @@ export function useDockMode({ assertSceneOperationAllowed = () => {} } = {}) {
       }
       if (!isTauri()) return Promise.resolve();
       return enqueueTransition(async () => {
+        // A draft can open while a preceding native transition is still pending.
+        assertSceneOperationAllowed(SCENE_OPERATIONS.dockEnter);
         const current = dockRef.current;
         const hasReserveOverride = typeof reserveSpaceOverride === "boolean";
         const normalizedReserveOverride = hasReserveOverride

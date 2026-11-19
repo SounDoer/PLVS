@@ -39,8 +39,9 @@ scale factors, and fails with `uiNotSettled` otherwise.
 `window move --monitor --x --y` places the window's top-left corner at a CSS-pixel offset from the
 named monitor's work-area origin, the same coordinate `window inspect` reports. The window keeps its
 CSS WebView size, so on a monitor with another scale factor its physical size follows that factor.
-On Windows, size calculations also account for the system Text size setting. The command restores
-a maximized window first. Once the move settles, it saves the actual normal-window
+On Windows, move offsets, sizes and both work-area observations account for the system Text size
+setting using the same WebView CSS scale. The command restores a maximized window first.
+Once the move settles, it saves the actual normal-window
 placement before returning success.
 
 A monitor that is not connected fails with `monitorNotFound`. A position at which the window,

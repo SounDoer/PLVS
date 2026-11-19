@@ -203,7 +203,7 @@ describe("Window Control", () => {
   });
 
   it("preserves the WebView size across monitors when Windows text zoom differs from DPI", async () => {
-    const side = { ...MAIN, id: "Side", scale: 1.25, unitsPerCss: 1.25 };
+    const side = { ...MAIN, id: "Side", scale: 1.25, cssScale: 1.5625, unitsPerCss: 1.5625 };
     const initial = geometry({
       scale: 2.5,
       viewport: { width: 800, height: 480 },
@@ -237,8 +237,8 @@ describe("Window Control", () => {
     );
     expect(moveTo).toHaveBeenCalledWith({
       monitor: side.id,
-      x: 12,
-      y: 4,
+      x: 15,
+      y: 5,
       width: 1000,
       height: 600,
     });

@@ -125,9 +125,11 @@ can resolve before React publishes the stopped state; conversely, a new start ca
 retirement or an acknowledgement is awaiting IPC. Checking only the last committed snapshot either
 refuses a completed stop or misses that restart. A commit barrier covers Live, File cancellation and
 editor state together without maintaining a second readiness model or relying on a timed delay.
-These reads belong to business operations outside render and effects. Local and peer quit recheck
-readiness after the final acknowledgement before exiting; recovery and update relaunch use the same
-current-state boundary.
+These reads belong to business operations outside render and effects. Peer quit performs its final
+readiness checks before one native command publishes the mailbox completion and commits process exit.
+There is no frontend continuation that can veto exit after that completion. A failed acknowledgement
+leaves the process open and its preparation available for recovery. Recovery and update relaunch use
+the same current-state boundary.
 
 Update preferences belong to the identity-wide settings domain, independently of imported
 workspaces/configuration profiles. Fresh initialization leaves consent unresolved; migration of
