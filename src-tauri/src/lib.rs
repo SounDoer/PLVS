@@ -884,7 +884,7 @@ pub fn run() {
       std::thread::Builder::new()
         .name("device-watch".into())
         .spawn(move || {
-          let mut prev: Option<(Vec<crate::audio::DeviceInfo>, Option<String>)> = None;
+          let mut prev = None;
           loop {
             std::thread::sleep(Duration::from_secs(2));
             if let Ok(list) =
@@ -892,9 +892,7 @@ pub fn run() {
             {
               // Switching the system default output leaves the list untouched but moves
               // Automatic capture to another device, so the observation includes the default.
-              let default_output = crate::audio::cpal_backend::preview_device("default")
-                .ok()
-                .map(|(label, ..)| label);
+              let default_output = crate::ipc::commands::read_audio_device_preview("default").ok();
               let observed = (list, default_output);
               if prev.as_ref() != Some(&observed) {
                 let list = observed.0.clone();

@@ -44,12 +44,13 @@ async function waitFor(issued) {
   return invoke("runtime_wait_commands", { issued, timeoutMs: COMMAND_TIMEOUT_MS });
 }
 
-async function stopAndFlush(current) {
+async function stopAndFlush(current, onSaveFailure = () => {}) {
   const wasRunning = current.running === true;
   await current.stop();
   try {
     await flushPersistence();
   } catch (error) {
+    onSaveFailure();
     if (wasRunning) await current.start();
     throw error;
   }
@@ -110,34 +111,7 @@ async function handleRuntimeCommand(command, prepared) {
         await acknowledge(command, "blocked", current.blockingEditors.join(", "));
         return;
       }
-      const wasRunning = await stopAndFlush(current);
-      let retiredPosition = null;
-      try {
-        assertNoBlockingEditors(current);
-        retiredPosition = await invoke("runtime_retire_current_workspace");
-        await acknowledge(command, "completed");
-        await exit(0);
-      } catch (error) {
-        const recoveries = [];
-        if (Number.isInteger(retiredPosition))
-          recoveries.push(
-            invoke("runtime_restore_retired_workspace", { position: retiredPosition })
-          );
-        if (wasRunning) recoveries.push(Promise.resolve().then(() => current.start()));
-        const failures = (await Promise.allSettled(recoveries)).filter(
-          (result) => result.status === "rejected"
-        );
-        if (failures.length) {
-          throw new AggregateError(
-            [error, ...failures.map(({ reason }) => reason)],
-            `${failureDetail(error)} Recovery failed: ${failures
-              .map(({ reason }) => failureDetail(reason))
-              .join(" ")}`,
-            { cause: error }
-          );
-        }
-        throw error;
-      }
+      await quitCurrentWorkbench({ beforeExit: () => acknowledge(command, "completed") });
       return;
     }
     if (command.action === "prepareGlobal") {
@@ -281,8 +255,9 @@ export function useRuntimeCoordination({
 function assertNoBlockingEditors(current) {
   if (!current) throw new Error("Runtime coordination is not ready.");
   if (current.blockingEditors.length) {
-    throw new Error(
-      `Close the open editor before continuing: ${current.blockingEditors.join(", ")}`
+    throw Object.assign(
+      new Error(`Close the open editor before continuing: ${current.blockingEditors.join(", ")}`),
+      { code: "editorActive" }
     );
   }
 }
@@ -294,7 +269,52 @@ function assertLocalQuitAllowed() {
 
 function assertLocalCommitReady() {
   assertNoBlockingEditors(lifecycle);
-  if (lifecycle.measurementBusy) throw new Error(MEASUREMENT_RESUMED);
+  assertMeasurementIdle(lifecycle);
+}
+
+function assertMeasurementIdle(current) {
+  if (current.measurementBusy) throw new Error(MEASUREMENT_RESUMED);
+}
+
+export async function quitCurrentWorkbench({
+  beforeStop = async () => {},
+  beforeExit = async () => {},
+  onSaveFailure = () => {},
+} = {}) {
+  const current = lifecycle;
+  assertLocalQuitAllowed();
+  await beforeStop();
+  assertLocalQuitAllowed();
+  const wasRunning = await stopAndFlush(current, onSaveFailure);
+  let retiredPosition = null;
+  try {
+    assertLocalQuitAllowed();
+    assertMeasurementIdle(current);
+    retiredPosition = await invoke("runtime_retire_current_workspace");
+    assertLocalQuitAllowed();
+    assertMeasurementIdle(current);
+    await beforeExit();
+    await exit(0);
+  } catch (error) {
+    const recoveries = [];
+    if (Number.isInteger(retiredPosition))
+      recoveries.push(invoke("runtime_restore_retired_workspace", { position: retiredPosition }));
+    if (wasRunning && !current.measurementBusy)
+      recoveries.push(Promise.resolve().then(() => current.start()));
+    const failures = (await Promise.allSettled(recoveries)).filter(
+      (result) => result.status === "rejected"
+    );
+    if (failures.length) {
+      throw new AggregateError(
+        [error, ...failures.map(({ reason }) => reason)],
+        `${failureDetail(error)} Recovery failed: ${failures
+          .map(({ reason }) => failureDetail(reason))
+          .join(" ")}`,
+        { cause: error }
+      );
+    }
+    throw error;
+  }
 }
 
 export function canRestartAfterPeerClose() {

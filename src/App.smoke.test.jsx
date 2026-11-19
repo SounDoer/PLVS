@@ -65,6 +65,7 @@ vi.mock("./ipc/commands.js", () => ({
     isMaximized: false,
   }),
   listAudioDevices: vi.fn().mockResolvedValue([]),
+  listCaptureApplications: vi.fn().mockResolvedValue([]),
   previewAudioDevice: vi
     .fn()
     .mockResolvedValue({ sampleRateHz: 48000, channels: 2, label: "Mock" }),

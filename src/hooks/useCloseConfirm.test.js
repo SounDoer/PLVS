@@ -1,7 +1,20 @@
 /** @vitest-environment jsdom */
 import { describe, it, expect, beforeEach, vi, afterEach } from "vitest";
 import { renderHook, act } from "@testing-library/react";
-import { useCloseConfirm } from "./useCloseConfirm.js";
+import { useCloseConfirm as useCloseConfirmHook } from "./useCloseConfirm.js";
+import { useRuntimeCoordination } from "../runtime/coordination.js";
+
+/** @param {Parameters<typeof useCloseConfirmHook>[0] & { blockingEditors?: string[] }} input */
+function useCloseConfirm({ blockingEditors = [], ...options }) {
+  useRuntimeCoordination({
+    blockingEditors,
+    running: false,
+    stop: async () => {},
+    start: async () => {},
+    show: async () => {},
+  });
+  return useCloseConfirmHook(options);
+}
 
 const { mockExit, mockInvoke, mockFlushPersistence, closeRequestedCallback } = vi.hoisted(() => {
   const cb = { current: null, registration: null };
@@ -144,6 +157,42 @@ describe("useCloseConfirm", () => {
     );
   });
 
+  it("leaves a blocking editor and its draft open when the saved window action is Quit", async () => {
+    localStorage.setItem("plvs:settings", JSON.stringify({ closeAction: "quit" }));
+    const report = vi.spyOn(console, "error").mockImplementation(() => {});
+    try {
+      const { result } = renderHook(() =>
+        useCloseConfirm({ onHideWindow: vi.fn(), blockingEditors: ["theme-editor"] })
+      );
+      await act(async () => closeRequestedCallback.current({ preventDefault: vi.fn() }));
+      expect(mockExit).not.toHaveBeenCalled();
+      expect(mockFlushPersistence).not.toHaveBeenCalled();
+      expect(mockInvoke).not.toHaveBeenCalledWith("runtime_retire_current_workspace");
+      expect(result.current.closeError).toContain("Close the open editor");
+    } finally {
+      report.mockRestore();
+    }
+  });
+
+  it("restores the saved workbench position if the native quit fails", async () => {
+    mockInvoke.mockImplementation(async (name) =>
+      name === "runtime_retire_current_workspace" ? 2 : undefined
+    );
+    mockExit.mockRejectedValueOnce(new Error("Quit failed"));
+    const report = vi.spyOn(console, "error").mockImplementation(() => {});
+    try {
+      const { result } = renderHook(() => useCloseConfirm({ onHideWindow: vi.fn() }));
+      await act(async () => {
+        expect(await result.current.requestCloseAction("quit")).toBe(false);
+      });
+      expect(mockInvoke).toHaveBeenCalledWith("runtime_restore_retired_workspace", { position: 2 });
+      expect(result.current.dialogOpen).toBe(true);
+    } finally {
+      report.mockRestore();
+      mockInvoke.mockReset().mockResolvedValue(undefined);
+    }
+  });
+
   it("blocks close requests during an update even when quit is saved", async () => {
     localStorage.setItem("plvs:settings", JSON.stringify({ closeAction: "quit" }));
     const onHideWindow = vi.fn();
@@ -197,11 +246,14 @@ describe("useCloseConfirm", () => {
       await result.current.handleConfirm("quit", false);
     });
     expect(mockExit).toHaveBeenCalledWith(0);
-    expect(mockInvoke).toHaveBeenCalledWith("runtime_retire_current_workspace");
-    expect(mockFlushPersistence.mock.invocationCallOrder[0]).toBeLessThan(
-      mockInvoke.mock.invocationCallOrder[0]
+    const retireCall = mockInvoke.mock.calls.findIndex(
+      ([command]) => command === "runtime_retire_current_workspace"
     );
-    expect(mockInvoke.mock.invocationCallOrder[0]).toBeLessThan(
+    expect(retireCall).toBeGreaterThanOrEqual(0);
+    expect(mockFlushPersistence.mock.invocationCallOrder[0]).toBeLessThan(
+      mockInvoke.mock.invocationCallOrder[retireCall]
+    );
+    expect(mockInvoke.mock.invocationCallOrder[retireCall]).toBeLessThan(
       mockExit.mock.invocationCallOrder[0]
     );
   });

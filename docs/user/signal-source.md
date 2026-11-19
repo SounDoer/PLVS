@@ -11,6 +11,8 @@ without restarting the measurement.
 
 Binds to your system's current default output and follows it when the default changes. A good
 default for most sessions.
+Outputs with the same name and format are tracked separately. If a device-list refresh fails,
+PLVS keeps the last successful list and waits for a confirmed change before treating a source as disconnected.
 
 ## System playback
 
@@ -52,6 +54,8 @@ Meter one running audio application instead of the complete system mix.
   application's helper processes with it, and captures through the current default output device.
 
 PLVS recognises the application again when it restarts and reconnects to it.
+While the selected application is unavailable, Sources and the Tray keep the application
+selection and show **Selected Application Unavailable**.
 
 ## Long source lists
 

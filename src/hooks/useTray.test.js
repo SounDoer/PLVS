@@ -1042,6 +1042,23 @@ describe("useTray", () => {
     expect(onSelectSource).toHaveBeenCalledWith(application.id);
   });
 
+  it("shows an unavailable application source without checking Automatic", async () => {
+    renderHook(() =>
+      useTray({
+        ...defaultProps,
+        safeAudioDeviceId: "app-00112233445566778899aabbccddeeff",
+        captureApplications: [],
+      })
+    );
+    await act(async () => {});
+
+    expect(findText(submenuOptions(), "Source: Application · Not connected")).toBeTruthy();
+    expect(findText(menuItemOptions(), "Selected Application Unavailable")).toMatchObject({
+      enabled: false,
+    });
+    expect(findText(checkItemOptions(), "Automatic")).toMatchObject({ checked: false });
+  });
+
   it("builds the Presets submenu with the active preset checked and dirty marked", async () => {
     const apply = vi.fn();
     renderHook(() =>

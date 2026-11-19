@@ -23,3 +23,9 @@ export function formatAudioDeviceLabel(label) {
   const compact = full.split(/\s+[—–]\s+/)[0]?.trim() || full;
   return { ...splitPrimaryAndSecondary(compact), full };
 }
+export function isUnavailableApplicationSource(sourceId, applications) {
+  return (
+    /^app-[0-9a-f]{32}$/.test(sourceId) &&
+    !applications.some((application) => application.id === sourceId)
+  );
+}

@@ -205,20 +205,11 @@ pub(crate) fn resolve_default_output() -> Result<(cpal::Device, cpal::SupportedS
 {
   let host = cpal::default_host();
   if let Some(def) = host.default_output_device() {
-    let def_name = device_id_key(&def)?;
-    for device in host.output_devices().map_err(|e| e.to_string())? {
-      let Ok(name) = device_id_key(&device) else {
-        continue;
-      };
-      if name == def_name {
-        let cfg = device
-          .default_output_config()
-          .map_err(|e| format!("default output format: {e}"))?;
-        return Ok((device, cfg));
-      }
-    }
+    let cfg = def
+      .default_output_config()
+      .map_err(|e| format!("default output format: {e}"))?;
+    return Ok((def, cfg));
   }
-  let host = cpal::default_host();
   for device in host.output_devices().map_err(|e| e.to_string())? {
     if let Ok(cfg) = device.default_output_config() {
       return Ok((device, cfg));

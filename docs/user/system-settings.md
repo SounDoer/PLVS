@@ -67,6 +67,8 @@ If PLVS cannot hide or quit the window after saving, the close dialog offers the
 
 Quitting one additional workbench removes it from the next restore set. If a workbench crashes, its
 saved workspace remains recoverable instead of being treated as an intentional removal.
+An open draft blocks Quit from the window and Tray. If Quit fails after removing a workbench from
+the restore set, PLVS attempts to restore its previous place.
 
 With several workbenches open, only the current coordinator checks for and installs application
 updates. Before installation, every workbench must have no open draft editor, stop capture and

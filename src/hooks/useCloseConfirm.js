@@ -1,9 +1,9 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { getCurrentWindow } from "@tauri-apps/api/window";
-import { invoke } from "@tauri-apps/api/core";
 import { exit } from "@tauri-apps/plugin-process";
 import { isTauri } from "../ipc/env.js";
 import { flushPersistence, settingsStore } from "../persistence/index.js";
+import { quitCurrentWorkbench } from "../runtime/coordination.js";
 
 const PERSISTENCE_ERROR =
   "PLVS couldn't save your latest settings. The window was left open so you can retry or cancel.";
@@ -34,25 +34,36 @@ export function useCloseConfirm({ onHideWindow, onShowWindow = NOOP_ASYNC, close
       setCloseError(null);
       setClosing(true);
       let failureMessage = PERSISTENCE_ERROR;
+      const rememberChoice = async () => {
+        if (!dontAskAgain) return;
+        await settingsStore.persist({ closeAction: action });
+        settingsStore.notifyLocal();
+      };
       try {
-        if (dontAskAgain) {
-          await settingsStore.persist({ closeAction: action });
-          settingsStore.notifyLocal();
-        }
-        await flushPersistence();
         if (action === "quit" && isTauri()) {
-          await invoke("runtime_retire_current_workspace");
-        }
-        failureMessage = action === "tray" ? HIDE_ERROR : QUIT_ERROR;
-        if (action === "tray") {
-          await onHideWindow();
+          failureMessage = QUIT_ERROR;
+          await quitCurrentWorkbench({
+            beforeStop: async () => {
+              failureMessage = PERSISTENCE_ERROR;
+              await rememberChoice();
+              failureMessage = QUIT_ERROR;
+            },
+            onSaveFailure: () => {
+              failureMessage = PERSISTENCE_ERROR;
+            },
+          });
         } else {
-          await exit(0);
+          await rememberChoice();
+          await flushPersistence();
+          failureMessage = action === "tray" ? HIDE_ERROR : QUIT_ERROR;
+          if (action === "tray") await onHideWindow();
+          else await exit(0);
         }
         setDialogOpen(false);
         pendingActionRef.current = null;
         return true;
       } catch (error) {
+        if (error?.code === "editorActive") failureMessage = error.message;
         console.error(failureMessage, error);
         await onShowWindow().catch((showError) => {
           console.error("Failed to reveal the close error", showError);

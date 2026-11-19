@@ -257,7 +257,7 @@ describe("useAudioDevices", () => {
     await waitFor(() => expect(result.current.snapshot.inventoryReady).toBe(true));
     await waitFor(() => expect(result.current.captureDeviceId).toBe(APP));
 
-    expect(result.current.safeAudioDeviceId).toBe("default");
+    expect(result.current.safeAudioDeviceId).toBe(APP);
     expect(mocks.migrateCaptureDeviceId).not.toHaveBeenCalled();
   });
 
@@ -400,6 +400,57 @@ describe("useAudioDevices", () => {
     expect(result.current.captureDeviceId).toBe(CAP);
     expect(result.current.snapshot.migrationState).toBeNull();
     expect(mocks.saveCaptureDeviceId).not.toHaveBeenCalled();
+  });
+
+  it("keeps the last observation when listing devices or previewing Automatic fails", async () => {
+    mocks.readCaptureDeviceIdFromLocalStorage.mockReturnValue(CAP);
+    mocks.loadCaptureDeviceId.mockResolvedValue(CAP);
+    const { result } = renderHook(() => useAudioDevices());
+    await waitFor(() =>
+      expect(result.current.audioDevices.some(({ id }) => id === CAP)).toBe(true)
+    );
+    const generation = result.current.snapshot.generation;
+    mocks.listAudioDevices.mockRejectedValueOnce(new Error("Audio service unavailable"));
+    await act(async () => result.current.refreshInventory());
+    expect(result.current.snapshot.generation).toBe(generation);
+    expect(result.current.audioDevices.some(({ id }) => id === CAP)).toBe(true);
+
+    mocks.previewAudioDevice.mockRejectedValueOnce(new Error("Default output query unavailable"));
+    await act(async () => mocks.deviceListHandler([device(LB, "Speakers", true)]));
+    expect(result.current.audioDevices.some(({ id }) => id === CAP)).toBe(false);
+    expect(result.current.defaultOutputLabel).toBe("Speakers");
+  });
+
+  it("keeps the latest application process when an older full refresh returns late", async () => {
+    const app = { id: APP, label: "VLC", processId: 100 };
+    mocks.listCaptureApplications.mockResolvedValue([app]);
+    const { result } = renderHook(() => useAudioDevices());
+    await waitFor(() => expect(result.current.captureApplications[0]?.processId).toBe(100));
+    const slow = deferred();
+    mocks.listCaptureApplications.mockReturnValueOnce(slow.promise);
+    let pending;
+    act(() => {
+      pending = result.current.refreshInventory();
+    });
+    mocks.listCaptureApplications.mockResolvedValueOnce([{ ...app, processId: 200 }]);
+    await act(async () => result.current.refreshCaptureApplications());
+    await act(async () => {
+      slow.resolve([app]);
+      await pending;
+    });
+    expect(result.current.captureApplications[0]?.processId).toBe(200);
+  });
+
+  it("detects a new Automatic endpoint with the same label and format", async () => {
+    const preview = { label: "Speakers", sampleRateHz: 48_000, channels: 2 };
+    mocks.previewAudioDevice.mockResolvedValue({ ...preview, endpointId: "first" });
+    const { result } = renderHook(() => useAudioDevices());
+    await waitFor(() => expect(result.current.snapshot.inventoryReady).toBe(true));
+    const before = result.current.defaultOutputFormatSig;
+    mocks.previewAudioDevice.mockResolvedValue({ ...preview, endpointId: "second" });
+    await act(async () => result.current.refreshInventory());
+    expect(result.current.defaultOutputFormatSig).not.toBe(before);
+    expect(result.current.defaultOutputLabel).toBe("Speakers");
   });
 
   it("migrates a stored legacy ID when its device becomes available later", async () => {

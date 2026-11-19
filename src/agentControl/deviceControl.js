@@ -45,6 +45,7 @@ function normalizeAutomatic(preview) {
     resolved: available
       ? {
           label: boundedLabel(preview.label),
+          ...(typeof preview.endpointId === "string" ? { endpointId: preview.endpointId } : {}),
           sampleRateHz: positiveIntegerOrNull(preview.sampleRateHz),
           channelCount: positiveIntegerOrNull(preview.channels),
           ...(typeof preview.monitorSignature === "string"
@@ -239,7 +240,7 @@ export function buildDeviceList(snapshot) {
       resolved: snapshot.automatic.resolved
         ? Object.fromEntries(
             Object.entries(snapshot.automatic.resolved).filter(
-              ([key]) => key !== "monitorSignature"
+              ([key]) => key !== "monitorSignature" && key !== "endpointId"
             )
           )
         : null,

@@ -254,41 +254,44 @@ export function useAudioDevices({
     async (providedDevices) => {
       if (!isTauri()) return snapshotRef.current;
       const sequence = ++refreshSequenceRef.current;
-      let devices;
-      let captureApplications;
-      try {
-        [devices, captureApplications] = await Promise.all([
-          providedDevices === undefined ? listAudioDevices() : providedDevices,
-          listCaptureApplications().catch(() => []),
-        ]);
-      } catch (_) {
-        devices = [];
-        captureApplications = [];
-      }
-      let automaticPreview = null;
-      try {
-        automaticPreview = await previewAudioDevice("default");
-      } catch (_) {}
+      const applicationSequence = ++applicationRefreshSequenceRef.current;
+      const [devices, applications, preview] = await Promise.allSettled([
+        providedDevices ?? listAudioDevices(),
+        listCaptureApplications(),
+        previewAudioDevice("default"),
+      ]);
       if (!mountedRef.current || sequence !== refreshSequenceRef.current) {
         return snapshotRef.current;
       }
-      const normalized = normalizeDeviceInventory(
-        Array.isArray(devices) ? devices : [],
-        automaticPreview,
-        new Date()
-      );
-      const advanced = advanceDeviceGeneration(snapshotRef.current, normalized);
-      const { requestedId, migrationState } = snapshotRef.current;
+      const previous = snapshotRef.current;
+      const resolved = previous.automatic.resolved;
+      const automaticPreview =
+        preview.status === "fulfilled"
+          ? preview.value
+          : resolved && { ...resolved, channels: resolved.channelCount };
+      const receivedDevices = devices.status === "fulfilled" && Array.isArray(devices.value);
+      const advanced = receivedDevices
+        ? advanceDeviceGeneration(
+            previous,
+            normalizeDeviceInventory(devices.value, automaticPreview)
+          )
+        : previous;
+      const { requestedId, migrationState } = previous;
       const next = {
         ...advanced,
-        captureApplications: normalizeCaptureApplications(captureApplications),
+        captureApplications:
+          applications.status === "fulfilled" &&
+          Array.isArray(applications.value) &&
+          applicationSequence === applicationRefreshSequenceRef.current
+            ? normalizeCaptureApplications(applications.value)
+            : previous.captureApplications,
         requestedId,
         migrationState:
           migrationState?.requestedId === requestedId &&
           advanced.allDevices.some((device) => device.id === requestedId)
             ? null
             : migrationState,
-        inventoryReady: true,
+        inventoryReady: receivedDevices || previous.inventoryReady,
       };
       publish(next);
       return next;
@@ -320,7 +323,7 @@ export function useAudioDevices({
     let unlisten = () => {};
     void refreshInventory();
     void onDeviceListChanged((devices) => {
-      if (!disposed) void refreshInventory(Array.isArray(devices) ? devices : []);
+      if (!disposed) void refreshInventory(Array.isArray(devices) ? devices : undefined);
     }).then((stop) => {
       if (disposed) stop();
       else unlisten = stop;
@@ -418,16 +421,6 @@ export function useAudioDevices({
     }, finishUnresolved);
   }, [selectCaptureDevice, snapshot, updateSnapshot]);
 
-  const safeAudioDeviceId = useMemo(() => {
-    if (
-      /^app-[0-9a-f]{32}$/.test(snapshot.requestedId) &&
-      !snapshot.captureApplications.some((application) => application.id === snapshot.requestedId)
-    ) {
-      return "default";
-    }
-    return snapshot.requestedId;
-  }, [snapshot.captureApplications, snapshot.requestedId]);
-
   const audioDevices = useMemo(
     () =>
       snapshot.allDevices.map((device) => ({
@@ -447,18 +440,16 @@ export function useAudioDevices({
     audioDevices,
     captureApplications: snapshot.captureApplications,
     captureDeviceId: snapshot.requestedId,
-    safeAudioDeviceId,
+    safeAudioDeviceId: snapshot.requestedId,
     selectCaptureDevice,
     commitCaptureDevice,
     retryCaptureDevicePersistence,
-    setCaptureDeviceIdAndPersist: selectCaptureDevice,
     previewSelection,
     refreshInventory,
     refreshCaptureApplications,
-    // The label belongs in the signature: switching the system default between two outputs with
-    // the same format must still restart Automatic capture onto the new device.
+    // Endpoint identity distinguishes outputs with the same label and format.
     defaultOutputFormatSig: snapshot.automatic.resolved
-      ? `${snapshot.automatic.resolved.label}|${snapshot.automatic.resolved.channelCount}:${snapshot.automatic.resolved.sampleRateHz}${snapshot.automatic.resolved.monitorSignature ? `|${snapshot.automatic.resolved.monitorSignature}` : ""}`
+      ? JSON.stringify(snapshot.automatic.resolved)
       : "",
     defaultOutputLabel: snapshot.automatic.resolved?.label ?? "",
   };

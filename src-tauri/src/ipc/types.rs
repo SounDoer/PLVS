@@ -120,11 +120,13 @@ pub struct UiFrameDiagnostics {
   pub inflight_limit: u64,
 }
 
-/// Resolved device name and format for UI (e.g. before `audio_start` with `deviceId: "default"`).
-#[derive(Debug, Clone, Serialize, Deserialize)]
+/// Resolved device identity and format for the WebView.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
 pub struct AudioDevicePreview {
   pub label: String,
+  #[serde(skip_serializing_if = "Option::is_none")]
+  pub endpoint_id: Option<String>,
   #[serde(skip_serializing_if = "Option::is_none")]
   pub monitor_signature: Option<String>,
   pub sample_rate_hz: u32,

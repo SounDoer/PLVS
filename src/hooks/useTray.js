@@ -7,7 +7,10 @@ import { Image } from "@tauri-apps/api/image";
 import { resolveResource } from "@tauri-apps/api/path";
 import { isTauri } from "../ipc/env.js";
 import { isMacOS } from "../lib/platform.js";
-import { formatAudioDeviceLabel } from "../lib/audioDeviceLabels.js";
+import {
+  formatAudioDeviceLabel,
+  isUnavailableApplicationSource,
+} from "../lib/audioDeviceLabels.js";
 import {
   clearCurrentTrayIcon,
   closeTrayIcon,
@@ -50,6 +53,9 @@ function sourceLabelFor({
   }
   const application = captureApplications.find((candidate) => candidate.id === safeAudioDeviceId);
   if (application) return `Application · ${application.label}`;
+  if (isUnavailableApplicationSource(safeAudioDeviceId, captureApplications)) {
+    return "Application · Not connected";
+  }
   const output = audioOutputs.find((device) => device.id === safeAudioDeviceId);
   if (output) return `Output · ${menuDeviceText(output.label)}`;
   const input = audioInputs.find((device) => device.id === safeAudioDeviceId);
@@ -90,6 +96,11 @@ function sourceDefinitions(cfg, prefix) {
       checked: cfg.safeAudioDeviceId === "default",
     },
   ];
+  if (isUnavailableApplicationSource(cfg.safeAudioDeviceId, cfg.captureApplications)) {
+    items.push(
+      menuItem(`${prefix}:application-unavailable`, "Selected Application Unavailable", null, false)
+    );
+  }
   for (const [group, sources] of [
     ["Output", cfg.audioOutputs],
     ["Input", cfg.audioInputs],

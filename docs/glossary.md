@@ -89,6 +89,9 @@ the UI disagree, the UI on `main` wins and this file is corrected.
 | Restart PLVS           | Reopens PLVS to finish applying a saved configuration                                               | 重启 PLVS        |                             |
 | Skip This Time         | Declines the update offer for this launch and keeps the downloaded package                          | 本次跳过         |                             |
 
+**Selected Application Unavailable**（所选应用暂不可用） appears in Sources and the Tray
+when the selected application cannot currently be captured.
+
 ## Panels
 
 Panel names are kept in English, in subtitles and voice-over: they are the names on screen, and

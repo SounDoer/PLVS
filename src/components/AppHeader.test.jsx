@@ -258,6 +258,15 @@ describe("AppHeader", () => {
     expect(scrollArea.contains(screen.getByRole("button", { name: "Automatic" }))).toBe(false);
   });
 
+  it("keeps Automatic unselected when the requested application is unavailable", () => {
+    renderHeader({ safeAudioDeviceId: "app-00112233445566778899aabbccddeeff" });
+    fireEvent.click(screen.getByRole("button", { name: "Sources" }));
+    expect(screen.getByText("Selected Application Unavailable")).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Automatic" }).hasAttribute("aria-current")).toBe(
+      false
+    );
+  });
+
   it("keeps collapsed source rows in layout so expanding a group cannot change the width", () => {
     renderHeader({
       captureApplications: [

@@ -1,6 +1,9 @@
 import { useState } from "react";
 import { ChevronRight } from "lucide-react";
-import { formatAudioDeviceLabel } from "../lib/audioDeviceLabels.js";
+import {
+  formatAudioDeviceLabel,
+  isUnavailableApplicationSource,
+} from "../lib/audioDeviceLabels.js";
 import { cn } from "../lib/utils.js";
 import { MenuRow } from "./ui/row";
 import { useUiNavigationTarget, useUiSurface } from "../uiNavigation/UiNavigationContext.jsx";
@@ -8,7 +11,12 @@ import { useUiNavigationTarget, useUiSurface } from "../uiNavigation/UiNavigatio
 /** @param {{ primary: string, secondary?: string, selected: boolean, onSelect: (...args: any[]) => any, ariaLabel: string, uiTarget?: string }} props */
 function SourceRow({ primary, secondary, selected, onSelect, ariaLabel, uiTarget }) {
   return (
-    <MenuRow aria-label={ariaLabel} data-ui-target={uiTarget} onClick={onSelect}>
+    <MenuRow
+      aria-label={ariaLabel}
+      aria-current={selected ? "true" : undefined}
+      data-ui-target={uiTarget}
+      onClick={onSelect}
+    >
       <span
         aria-hidden="true"
         className={cn(
@@ -140,6 +148,11 @@ export function DeviceSelectionContent({
         selected={safeAudioDeviceId === "default"}
         onSelect={() => onSelect("default")}
       />
+      {isUnavailableApplicationSource(safeAudioDeviceId, captureApplications) ? (
+        <p className="px-2 py-1 text-[length:var(--ui-fs-caption)] text-muted-foreground">
+          Selected Application Unavailable
+        </p>
+      ) : null}
       <div
         data-source-scroll
         className="min-h-0 overflow-x-hidden overflow-y-auto overscroll-contain [scrollbar-gutter:stable]"
