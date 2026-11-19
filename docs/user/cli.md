@@ -155,6 +155,9 @@ paths, options, policies, and top-level wire parameters. The current families ar
 - `config` and `update`;
 - `transport`, `device`, and `dock`.
 
+`workspace apply` accepts a file or stdin containing JSON `null` to remove all Workspace panels.
+This is the layout value returned by `inspect` when the Workspace is empty.
+
 `workspace reset` and `dock layout reset` are the Reset Layout actions of the Panels menu and the
 Dock Panels editor.
 

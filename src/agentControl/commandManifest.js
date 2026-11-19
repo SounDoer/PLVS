@@ -31,6 +31,7 @@ const SCHEMA_FIELDS = new Set([
   "items",
   "additionalProperties",
   "schemaRef",
+  "nullable",
   "title",
   "description",
   "unit",
@@ -80,6 +81,9 @@ function validateSchema(schema, path) {
   }
   if (schema.type === undefined && schema.schemaRef === undefined) {
     fail(path, "must define type or schemaRef");
+  }
+  if (schema.nullable !== undefined && typeof schema.nullable !== "boolean") {
+    fail(`${path}.nullable`, "must be boolean");
   }
   if (schema.properties !== undefined) {
     if (!plainObject(schema.properties)) fail(`${path}.properties`, "must be an object");

@@ -26,6 +26,11 @@ function clone(value) {
   return JSON.parse(JSON.stringify(value));
 }
 
+function presetApplyError(error, stage) {
+  const failure = error instanceof Error ? error : new Error(error?.message || String(error));
+  return Object.assign(failure, { stage });
+}
+
 /// The Presets state as the app renders it, which is not the stored record verbatim: Presets
 /// built from modules this build does not know are hidden, an `activeId` naming none of the rest
 /// is no selection. Whether the active one is modified is not stored: `usePresets` derives it.
@@ -45,7 +50,7 @@ export function normalizePresets(raw) {
 function isFirstRun() {
   return (
     !starterItemsSeeded() &&
-    !workspaceStore.read().tree &&
+    workspaceStore.read().tree === undefined &&
     normalizePresets(presetsStore.read()).list.length === 0
   );
 }
@@ -175,10 +180,18 @@ export function usePresets({
 } = {}) {
   const { state: workspaceState, setView } = useWorkspaceStore();
   const [presets, setPresets] = useState(() => normalizePresets(presetsStore.read()));
+  const applyingFailureCommitRef = useRef(null);
   // The bounds Rust last persisted, which already leave out minimised and docked windows. Undefined
   // outside Tauri, where bounds are not compared.
   const [windowBounds, setWindowBounds] = useState(undefined);
   const [displayVersion, setDisplayVersion] = useState(0);
+
+  useEffect(() => {
+    applyingFailureCommitRef.current?.();
+    applyingFailureCommitRef.current = null;
+  }, [presets]);
+
+  useEffect(() => () => applyingFailureCommitRef.current?.(), []);
 
   useEffect(
     () =>
@@ -425,9 +438,7 @@ export function usePresets({
         try {
           surfaceOpacityShadowApplied = await applySurfaceOpacity(presetSurfaceOpacity);
         } catch (error) {
-          write({ activeId: null });
-          error.stage = "window";
-          throw error;
+          throw presetApplyError(error, "window");
         }
       }
       const rollbackSurfaceOpacityShadow = async () => {
@@ -448,9 +459,7 @@ export function usePresets({
         });
       } catch (error) {
         await rollbackSurfaceOpacityShadow();
-        write({ activeId: null });
-        error.stage = "dock";
-        throw error;
+        throw presetApplyError(error, "dock");
       }
       if (
         !presetDock.enabled &&
@@ -458,6 +467,9 @@ export function usePresets({
         !windowBoundsAppliedByDockExit &&
         isTauri()
       ) {
+        const previousDecorations = !(focusView.autoHideControls || focusView.borderless);
+        const nextDecorations =
+          presetFocusView && !(presetFocusView.autoHideControls || presetFocusView.borderless);
         try {
           // Chrome before geometry. windowBounds pairs an outer position with an
           // inner size, so the frame must already match the preset's when the
@@ -467,16 +479,16 @@ export function usePresets({
           // to the client and growing the window by that much. The dock path
           // already gets this right by passing decorations into exit_dock.
           if (presetFocusView) {
-            await setWindowDecorations(
-              !(presetFocusView.autoHideControls || presetFocusView.borderless)
-            );
+            await setWindowDecorations(nextDecorations);
           }
           await applyWindowBounds(preset.windowBounds);
         } catch (error) {
+          if (presetFocusView && nextDecorations !== previousDecorations) {
+            // The native decoration can already have changed when chrome synchronization fails.
+            await setWindowDecorations(previousDecorations).catch(() => {});
+          }
           await rollbackSurfaceOpacityShadow();
-          write({ activeId: null });
-          error.stage = "window";
-          throw error;
+          throw presetApplyError(error, "window");
         }
       }
       if (typeof preset.windowPinned === "boolean") {
@@ -523,17 +535,31 @@ export function usePresets({
   );
 
   const applySnapshot = useCallback(
-    async (id, { applyWorkspace = true, presetOverride = null } = {}) => {
+    async (
+      id,
+      { applyWorkspace = true, presetOverride = null, awaitFailureCommit = false } = {}
+    ) => {
       const preflight = preflightApplySnapshot(id, { presetOverride });
       if (!preflight) return false;
       applyingPresetRef.current = true;
       try {
         return await applyPreparedSnapshot(id, preflight, applyWorkspace);
+      } catch (error) {
+        // Report a partial application after the shell has published its actual scene.
+        if (awaitFailureCommit) {
+          await new Promise((resolve) => {
+            applyingFailureCommitRef.current = resolve;
+            write({ activeId: null });
+          });
+        } else {
+          write({ activeId: null });
+        }
+        throw error;
       } finally {
         applyingPresetRef.current = false;
       }
     },
-    [applyPreparedSnapshot, preflightApplySnapshot]
+    [applyPreparedSnapshot, preflightApplySnapshot, write]
   );
 
   const activateSnapshot = useCallback(

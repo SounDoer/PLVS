@@ -54,6 +54,21 @@ function physicalBounds(bounds) {
   return { x, y, width, height, isMaximized: isMaximized === true };
 }
 
+export function presetFailureChanges(before, after, beforePreset, afterPreset) {
+  const beforeBounds = physicalBounds(before.windowBounds);
+  const afterBounds = physicalBounds(after.windowBounds);
+  const changed = SNAPSHOT_GROUPS.filter(([, keys]) =>
+    keys.some((key) =>
+      key === "windowBounds"
+        ? beforeBounds && afterBounds && !sameValue(beforeBounds, afterBounds)
+        : !sameValue(before[key], after[key])
+    )
+  ).map(([path]) => path);
+  if (beforePreset.activeId !== afterPreset.activeId) changed.push("presets.activeId");
+  if (beforePreset.dirty !== afterPreset.dirty) changed.push("presets.dirty");
+  return changed;
+}
+
 export function planPresetApplyResources(preset, context = {}) {
   const warnings = [];
   const issues = [];

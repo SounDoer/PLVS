@@ -49,16 +49,17 @@ function persistedWorkspaceMatches(left, right) {
 
 function initState() {
   const parsed = workspaceStore.read();
-  if (!parsed.tree || !parsed.panelsById || !Array.isArray(parsed.panelOrder)) {
-    return {
-      ...DEFAULT_WORKSPACE_STATE,
-      panelControlsById: normalizePanelControlsById(
-        DEFAULT_WORKSPACE_STATE.panelsById,
-        DEFAULT_WORKSPACE_STATE.panelControlsById
-      ),
-    };
-  }
-  if (!hasKnownModulesOnly(parsed)) {
+  const hasPanels =
+    parsed.panelsById &&
+    typeof parsed.panelsById === "object" &&
+    !Array.isArray(parsed.panelsById) &&
+    Array.isArray(parsed.panelOrder);
+  const empty =
+    hasPanels &&
+    parsed.tree === null &&
+    parsed.panelOrder.length === 0 &&
+    Object.keys(parsed.panelsById).length === 0;
+  if (!hasPanels || (!parsed.tree && !empty) || !hasKnownModulesOnly(parsed)) {
     return {
       ...DEFAULT_WORKSPACE_STATE,
       panelControlsById: normalizePanelControlsById(
@@ -107,21 +108,46 @@ export function WorkspaceProvider({ children }) {
     workspaceStore.patchCoalesced(ownedWorkspaceState(state));
     persistedWorkspaceRef.current = state;
     for (const waiter of persistenceWaitersRef.current) {
-      if (persistedWorkspaceMatches(state, waiter.view)) {
-        persistenceWaitersRef.current.delete(waiter);
-        waiter.resolve();
-      }
+      if (waiter.matches(state)) waiter.finish();
     }
   }, [state]);
 
-  const waitForWorkspacePersistenceEnqueue = useCallback((view) => {
-    const persisted = persistedWorkspaceRef.current;
-    if (persistedWorkspaceMatches(persisted, view)) {
-      return Promise.resolve();
-    }
-    return new Promise((resolve) => {
-      persistenceWaitersRef.current.add({ view, resolve });
-    });
+  const waitForWorkspacePersistenceEnqueue = useCallback(
+    /**
+     * @param {import("./types.js").WorkspaceState} view
+     * @param {{ matches?: (state: import("./types.js").WorkspaceState) => boolean, signal?: AbortSignal }} [options]
+     */
+    (view, { matches = (state) => persistedWorkspaceMatches(state, view), signal } = {}) => {
+      const persisted = persistedWorkspaceRef.current;
+      if (persisted && matches(persisted)) return Promise.resolve();
+      const waiters = persistenceWaitersRef.current;
+      return new Promise((resolve, reject) => {
+        const waiter = {
+          matches,
+          finish(error) {
+            waiters.delete(waiter);
+            signal?.removeEventListener("abort", abort);
+            if (error) reject(error);
+            else resolve(undefined);
+          },
+        };
+        const abort = () => waiter.finish(signal.reason);
+        if (signal?.aborted) {
+          abort();
+          return;
+        }
+        waiters.add(waiter);
+        signal?.addEventListener("abort", abort, { once: true });
+      });
+    },
+    []
+  );
+
+  useEffect(() => {
+    const waiters = persistenceWaitersRef.current;
+    return () => {
+      for (const waiter of waiters) waiter.finish(new Error("Workspace closed before saving."));
+    };
   }, []);
 
   const value = useMemo(

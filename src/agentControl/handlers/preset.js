@@ -7,8 +7,9 @@ import {
   planPresetApplyResources,
   planPresetSave,
   planPresetUpdate,
+  presetFailureChanges,
 } from "../presetScene.js";
-import { awaitSettlement } from "../bridge/settlement.js";
+import { awaitSettlement, awaitWorkspacePersistence } from "../bridge/settlement.js";
 import { semanticFailure } from "../bridge/failures.js";
 import { presetLibrarySignature, workspaceMatchesPresetView } from "../bridge/signatures.js";
 
@@ -148,7 +149,7 @@ async function saveOrUpdate(ctx) {
 
 /** @param {import("../bridge/types.js").BridgeContext} ctx */
 async function apply(ctx) {
-  const { request, requestId, clock, settlement, flush, dockRequestContext } = ctx;
+  const { request, requestId, clock, settlement, flush, dockRequestContext, live } = ctx;
   const {
     waitForWorkspacePersistenceEnqueue,
     presets,
@@ -264,6 +265,7 @@ async function apply(ctx) {
       const applied = await presets.applySnapshot(request.params.presetId, {
         applyWorkspace: planned.changed.includes("workspace"),
         presetOverride: resources.preset,
+        awaitFailureCommit: true,
       });
       if (!applied) throw new Error("Preset target disappeared before application.");
     } else if (!presets.activateSnapshot(request.params.presetId)) {
@@ -273,6 +275,13 @@ async function apply(ctx) {
     settlement.clear("workspace");
     settlement.clear("presets");
     if (isSceneOperationRefused(error)) throw error;
+    const actualPresets = live().presets;
+    const actualSnapshot = await actualPresets.captureSnapshot();
+    const presetState = {
+      activeId: actualPresets.activeId ?? null,
+      dirty: actualPresets.dirty === true,
+    };
+    const changed = presetFailureChanges(currentSnapshot, actualSnapshot, state, presetState);
     throw semanticFailure(
       "applicationFailed",
       "$",
@@ -280,10 +289,10 @@ async function apply(ctx) {
       -32050,
       {
         stage: typeof error?.stage === "string" ? error.stage : "scene",
-        partial: planned.applyScene,
-        changed: planned.changed,
+        partial: changed.length > 0,
+        changed,
         revision: clock.current(),
-        presetState: { activeId: null, dirty: false },
+        presetState,
       }
     );
   }
@@ -300,9 +309,9 @@ async function apply(ctx) {
   );
   result.revision = clock.current();
   if (workspaceCommitted) {
-    await awaitSettlement(
-      waitForWorkspacePersistenceEnqueue(targetView),
-      () => {},
+    await awaitWorkspacePersistence(
+      waitForWorkspacePersistenceEnqueue,
+      targetView,
       "The Preset Workspace"
     );
   }

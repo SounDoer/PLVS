@@ -12,12 +12,12 @@
  */
 
 export { UI_PREFERENCES } from "./preferences/data.js";
-export { readSystemPrefersDark } from "./preferences/layoutPersistence.js";
 export {
   DEFAULT_THEME_ID,
   isThemeId,
   parsePersistedUiStateJson,
   readPersistedShellThemeFields,
+  readSystemPrefersDark,
   resolveThemeId,
   THEME_IDS,
 } from "./preferences/themeResolve.js";

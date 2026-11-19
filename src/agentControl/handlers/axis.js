@@ -10,6 +10,7 @@ import { panelResultPreset } from "./shared.js";
 import { semanticFailure } from "../bridge/failures.js";
 import { paced } from "./paced.js";
 import { axisStateMatches } from "../bridge/signatures.js";
+import { awaitWorkspacePersistence } from "../bridge/settlement.js";
 
 /** @param {import("../bridge/types.js").BridgeContext} ctx */
 async function describeOrInspect(ctx) {
@@ -111,13 +112,19 @@ async function updateOrReset(ctx) {
     return { requestId, result };
   }
 
+  const matches = (currentWorkspace) => axisStateMatches(currentWorkspace, planned.workspace);
   const committed = settlement.arm("workspace", {
     view: planned.workspace,
-    matches: (currentWorkspace) => axisStateMatches(currentWorkspace, planned.workspace),
+    matches,
   });
   replaceWorkspace(planned.workspace);
   result.revision = await settlement.observed("workspace", committed, "The axis change");
-  await waitForWorkspacePersistenceEnqueue(planned.workspace);
+  await awaitWorkspacePersistence(
+    waitForWorkspacePersistenceEnqueue,
+    planned.workspace,
+    "The axis change",
+    matches
+  );
   try {
     await flush();
   } catch (error) {

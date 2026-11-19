@@ -120,6 +120,39 @@ describe("WorkspaceContext workspace replacement", () => {
     return actions;
   }
 
+  it("reopens an empty Workspace after removing and saving every panel", () => {
+    /** @type {ReturnType<typeof useWorkspaceStore>} */
+    let actions;
+    const mount = () =>
+      render(
+        <WorkspaceProvider>
+          <ActionsProbe onActions={(next) => (actions = next)} />
+        </WorkspaceProvider>
+      );
+    const first = mount();
+    act(() => actions.state.panelOrder.forEach((id) => actions.removePanel(id)));
+    workspaceStore.flush();
+    expect(workspaceStore.read()).toMatchObject({ tree: null, panelsById: {}, panelOrder: [] });
+    first.unmount();
+    mount();
+    expect(actions.state).toMatchObject({ tree: null, panelsById: {}, panelOrder: [] });
+  });
+
+  it("removes a canceled persistence waiter before the Workspace changes again", async () => {
+    const actions = renderActions();
+    const controller = new AbortController();
+    const matches = vi.fn(() => false);
+    const waiting = actions.waitForWorkspacePersistenceEnqueue(actions.state, {
+      matches,
+      signal: controller.signal,
+    });
+    const rejection = expect(waiting).rejects.toMatchObject({ name: "AbortError" });
+    controller.abort();
+    await rejection;
+    act(() => actions.renamePanel("levelMeter", "Main Meter"));
+    expect(matches).toHaveBeenCalledTimes(1);
+  });
+
   it("does not clear presets.activeId when applying setView", () => {
     presetsStore.patch({ list: [{ id: "p1", name: "Preset" }], activeId: "p1" });
     const actions = renderActions();

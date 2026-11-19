@@ -39,7 +39,8 @@ Escape; it is not restored on the next launch.
 ## Panels and presets
 
 The **Panels** menu adds panels, including a second instance of a meter you want to watch two ways
-at once. The **Presets** menu saves and switches between whole layouts. When none exist yet, name
+at once. Removing every panel leaves an empty Workspace that stays empty when PLVS reopens.
+The **Presets** menu saves and switches between whole layouts. When none exist yet, name
 your first Preset in the create field and select **Add**. The selected Preset shows as modified
 while anything it restores differs from the current layout, and the mark clears as soon as you
 return to the same settings.
@@ -52,6 +53,8 @@ centered window stays centered and a window against an edge stays at that edge. 
 its logical content size or shrinks to fit the work area. **Update** captures the current
 placement, including the display. Older Presets keep their original pixel-based behavior until
 updated. Sharesets and other portable Presets carry the layout without window placement.
+If PLVS cannot restore a Preset's normal window placement after changing its frame, it attempts to
+restore the previously configured frame. Other parts of the Preset may already be applied.
 
 Toolbar configuration entries such as Loudness Profile, Views, and Presets remain neutral while
 closed, even when their configuration is active. Hover and an open menu use the same neutral

@@ -293,7 +293,7 @@ export function compileWorkspaceLayout(layout, workspace) {
     fail("unknown_node_type", `${path}.type`, `Unknown layout node type: ${String(node.type)}.`);
   }
 
-  const tree = compileNode(layout, "$", 1);
+  const tree = layout === null ? null : compileNode(layout, "$", 1);
   const panelControlsById = normalizePanelControlsById(panelsById, workspace?.panelControlsById);
   for (const panelId of Object.values(createdPanels)) {
     panelControlsById[panelId] = createDefaultPanelControls();

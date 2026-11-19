@@ -69,6 +69,8 @@ pub struct SchemaNode {
   #[serde(skip_serializing_if = "Option::is_none")]
   pub schema_ref: Option<String>,
   #[serde(skip_serializing_if = "Option::is_none")]
+  pub nullable: Option<bool>,
+  #[serde(skip_serializing_if = "Option::is_none")]
   pub title: Option<String>,
   #[serde(skip_serializing_if = "Option::is_none")]
   pub description: Option<String>,
@@ -341,6 +343,16 @@ mod tests {
       Some("visual.recording")
     );
     assert_eq!(command_by_id("schema.list").unwrap().execution, "offline");
+    assert_eq!(
+      command_by_id("workspace.applyLayout")
+        .unwrap()
+        .wire_params
+        .properties
+        .as_ref()
+        .unwrap()["layout"]
+        .nullable,
+      Some(true)
+    );
   }
 
   #[test]

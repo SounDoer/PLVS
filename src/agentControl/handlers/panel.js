@@ -5,6 +5,7 @@ import { assertExpectedRevision, panelResultPreset } from "./shared.js";
 import { semanticFailure } from "../bridge/failures.js";
 import { paced } from "./paced.js";
 import { panelControlsMatch } from "../bridge/signatures.js";
+import { awaitWorkspacePersistence } from "../bridge/settlement.js";
 
 /** @param {import("../bridge/types.js").BridgeContext} ctx */
 async function describe(ctx) {
@@ -103,18 +104,20 @@ async function updateOrReset(ctx) {
       [panelId]: planned.panelControls,
     },
   };
+  const snapshotPanel = (currentWorkspace) =>
+    buildAgentControlPanelSnapshot({
+      workspace: currentWorkspace,
+      panelId,
+      hasLoudnessReference,
+      analysisContext,
+    });
   const result = {
     dryRun: request.params.dryRun === true,
     revision: currentRevision,
     changed: planned.changed.length > 0,
     warnings: planned.warnings,
     state: {
-      panel: buildAgentControlPanelSnapshot({
-        workspace: nextWorkspace,
-        panelId,
-        hasLoudnessReference,
-        analysisContext,
-      }),
+      panel: snapshotPanel(nextWorkspace),
       preset: panelResultPreset(presets, planned.changed),
     },
   };
@@ -122,13 +125,26 @@ async function updateOrReset(ctx) {
     return { requestId, result };
   }
 
+  let enqueuedWorkspace = nextWorkspace;
+  const matches = (currentWorkspace) =>
+    panelControlsMatch(currentWorkspace, nextWorkspace, panelId);
   const committed = settlement.arm("workspace", {
     view: nextWorkspace,
-    matches: (currentWorkspace) => panelControlsMatch(currentWorkspace, nextWorkspace, panelId),
+    matches,
   });
   setPanelControlsForPanel(panelId, planned.panelControls);
   result.revision = await settlement.observed("workspace", committed, "The panel controls change");
-  await waitForWorkspacePersistenceEnqueue(nextWorkspace);
+  await awaitWorkspacePersistence(
+    waitForWorkspacePersistenceEnqueue,
+    nextWorkspace,
+    "The panel controls change",
+    (currentWorkspace) => {
+      if (!matches(currentWorkspace)) return false;
+      enqueuedWorkspace = currentWorkspace;
+      return true;
+    }
+  );
+  result.state.panel = snapshotPanel(enqueuedWorkspace);
   try {
     await flush();
   } catch (error) {
@@ -192,7 +208,11 @@ async function pinOrUnpin(ctx) {
     committed,
     pinned ? "The panel pin" : "The panel unpin"
   );
-  await waitForWorkspacePersistenceEnqueue(settled);
+  await awaitWorkspacePersistence(
+    waitForWorkspacePersistenceEnqueue,
+    settled,
+    pinned ? "The panel pin" : "The panel unpin"
+  );
   try {
     await flush();
   } catch (error) {

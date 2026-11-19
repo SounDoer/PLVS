@@ -1453,7 +1453,7 @@ plvs-cli module describe <module-id> <--json|--format text>
 
 ## `workspace.applyLayout`
 
-Apply a workspace layout document.
+Apply a Workspace layout document. Use JSON null for an empty Workspace.
 
 - CLI path: `workspace apply`
 - Execution: `runningApp`; operation: `mutation`

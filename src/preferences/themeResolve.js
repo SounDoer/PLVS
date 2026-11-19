@@ -9,6 +9,12 @@ import { settingsStore } from "../persistence/index.js";
 
 export { DEFAULT_THEME_ID, isThemeId, THEME_IDS };
 
+/** Uses the app's default dark preference when the system preference is unavailable. */
+export function readSystemPrefersDark() {
+  if (typeof window === "undefined" || !window.matchMedia) return true;
+  return window.matchMedia("(prefers-color-scheme: dark)").matches;
+}
+
 /**
  * @param {unknown} raw
  * @returns {{ appearance: "system"|"fixed"; themeId: string|null }}

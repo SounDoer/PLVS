@@ -61,7 +61,8 @@ describe("panel pin commands", () => {
       pinned: true,
     });
     expect(state.waitForWorkspacePersistenceEnqueue).toHaveBeenCalledWith(
-      expect.objectContaining({ pinnedPanelsById: { spectrum: PINNED_SIZE } })
+      expect.objectContaining({ pinnedPanelsById: { spectrum: PINNED_SIZE } }),
+      expect.objectContaining({ signal: expect.any(AbortSignal) })
     );
     expect(ctx.flush).toHaveBeenCalledOnce();
   });

@@ -575,9 +575,14 @@ describe("usePresets", () => {
     expect(presetsStore.read().activeId).toBe("p1");
   });
 
-  it("leaves activeId null when window apply fails", async () => {
+  it("restores native decorations when the requested window bounds fail", async () => {
     mocks.isTauri.mockReturnValue(true);
-    mocks.applyWindowBounds.mockRejectedValue(new Error("nope"));
+    let decorated = true;
+    mocks.isDecorated.mockImplementation(async () => decorated);
+    mocks.setDecorations.mockImplementation(async (enabled) => {
+      decorated = enabled;
+    });
+    mocks.applyWindowBounds.mockRejectedValue("window placement unavailable");
     presetsStore.patch({
       list: [
         {
@@ -587,16 +592,64 @@ describe("usePresets", () => {
           panelsById: { spectrum: { id: "spectrum", moduleId: "spectrum" } },
           panelOrder: ["spectrum"],
           panelControlsById: DEFAULT_WORKSPACE_STATE.panelControlsById,
+          focusView: { borderless: true },
           windowBounds: { x: 1, y: 2, width: 300, height: 200, isMaximized: false },
         },
       ],
       activeId: null,
     });
-    const { result } = renderPresetHook();
+    const setFocusView = vi.fn();
+    const onApplyError = vi.fn();
+    const { result } = renderPresetHook({
+      focusView: { autoHideControls: false, compactPanels: false, borderless: false },
+      setFocusView,
+      onApplyError,
+    });
     await act(async () => {
       await result.current.presets.apply("p1");
     });
+    expect(mocks.setDecorations.mock.calls).toEqual([[false], [true]]);
+    expect(decorated).toBe(true);
+    expect(setFocusView).not.toHaveBeenCalled();
     expect(presetsStore.read().activeId).toBeNull();
+    expect(onApplyError).toHaveBeenCalledWith(
+      expect.objectContaining({ message: "window placement unavailable", stage: "window" })
+    );
+  });
+
+  it("publishes a failed scene and cleared selection before Agent Control reads them", async () => {
+    const windowError = new Error("window unavailable");
+    mocks.isTauri.mockReturnValue(true);
+    mocks.applyWindowBounds.mockRejectedValue(windowError);
+    presetsStore.patch({
+      list: [
+        {
+          id: "p1",
+          name: "Preset",
+          ...DEFAULT_WORKSPACE_STATE,
+          tree: leaf(["spectrum"]),
+          windowBounds: { x: 1, y: 2, width: 300, height: 200, isMaximized: false },
+        },
+      ],
+      activeId: "p1",
+    });
+    const { result } = renderPresetHook();
+    let outcome;
+    await act(async () => {
+      outcome = result.current.presets
+        .applySnapshot("p1", { awaitFailureCommit: true })
+        .catch((error) => ({
+          error,
+          activeId: result.current.presets.activeId,
+          tree: result.current.workspace.state.tree,
+        }));
+    });
+
+    expect(await outcome).toEqual({
+      error: windowError,
+      activeId: null,
+      tree: leaf(["spectrum"]),
+    });
   });
 
   it("updates an existing preset while preserving id and name", async () => {
@@ -1550,6 +1603,16 @@ describe("usePresets first-run PLVS Default preset", () => {
       values: { starterItemsSeeded: true },
       expectedRevisions: { starterItemsSeeded: 0 },
     });
+  });
+
+  it("treats an existing empty Workspace as already installed", async () => {
+    workspaceStore.patch({ tree: null, panelsById: {}, panelOrder: [] });
+    window.__PLVS_INITIAL_STATE__ = { multiInstancePersistence: {} };
+    const { result } = renderPresetHook();
+    await act(async () => {});
+
+    expect(result.current.workspace.state.tree).toBeNull();
+    expect(names()).toEqual([]);
   });
 });
 

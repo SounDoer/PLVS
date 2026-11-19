@@ -94,8 +94,16 @@ export function useViewSettings() {
           ...normalizeSettingsFocusView(settings.focusView),
           compactPanels: next.workspace.hidePanelHeaders,
         });
-        setSurfaceOpacityState(normalizeSurfaceOpacity(settings.surfaceOpacity));
-        setDockSurfaceOpacityState(normalizeSurfaceOpacity(settings.dockSurfaceOpacity));
+        setSurfaceOpacityState(
+          normalizeSurfaceOpacity(
+            settingsStore.readPendingField("surfaceOpacity") ?? settings.surfaceOpacity
+          )
+        );
+        setDockSurfaceOpacityState(
+          normalizeSurfaceOpacity(
+            settingsStore.readPendingField("dockSurfaceOpacity") ?? settings.dockSurfaceOpacity
+          )
+        );
         setGlassEnabledState(normalizeGlassEnabled(settings.glassEnabled));
       }),
     []

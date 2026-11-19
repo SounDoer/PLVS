@@ -80,6 +80,28 @@ describe("useViewSettings", () => {
       expect(result.current.glassEnabled).toBe(true);
     });
   });
+
+  it("keeps locally dragged opacities when another workbench changes a shared preference", () => {
+    settingsStore.patch({ surfaceOpacity: 65, dockSurfaceOpacity: 50, quickTour: "pending" });
+    const { result } = renderHook(() => useViewSettings());
+    act(() => {
+      result.current.setSurfaceOpacity(25);
+      result.current.setDockSurfaceOpacity(0);
+    });
+    localStorage.setItem(
+      "plvs:settings",
+      JSON.stringify({ ...settingsStore.read(), quickTour: "dismissed" })
+    );
+    act(() => window.dispatchEvent(new StorageEvent("storage", { key: "plvs:settings" })));
+    act(() => settingsStore.flush());
+
+    expect(result.current).toMatchObject({ surfaceOpacity: 25, dockSurfaceOpacity: 0 });
+    expect(settingsStore.read()).toMatchObject({
+      surfaceOpacity: 25,
+      dockSurfaceOpacity: 0,
+      quickTour: "dismissed",
+    });
+  });
 });
 
 describe("panel presentation persistence", () => {

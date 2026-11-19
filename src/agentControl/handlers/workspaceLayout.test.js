@@ -49,7 +49,10 @@ describe("workspace reset", () => {
     const response = await workspaceLayoutHandlers["workspace.reset"].run(ctx);
 
     expect(state.resetWorkspace).toHaveBeenCalledOnce();
-    expect(state.waitForWorkspacePersistenceEnqueue).toHaveBeenCalledWith(DEFAULT_WORKSPACE_STATE);
+    expect(state.waitForWorkspacePersistenceEnqueue).toHaveBeenCalledWith(
+      DEFAULT_WORKSPACE_STATE,
+      expect.objectContaining({ signal: expect.any(AbortSignal) })
+    );
     expect(ctx.flush).toHaveBeenCalledOnce();
     expect(response.result).toMatchObject({ dryRun: false, changed: true, revision: 1 });
   });

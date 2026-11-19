@@ -1436,8 +1436,8 @@ export function normalizeAgentControlRequest(input) {
     const field = unknownField(input.params, new Set(["layout", "expectedRevision", "dryRun"]));
     if (field) return invalidParams(`$.params.${field}`, `Unknown parameter: ${field}.`);
 
-    if (!isPlainJsonObject(input.params.layout)) {
-      return invalidParams("$.params.layout", "Layout must be a plain JSON object.");
+    if (input.params.layout !== null && !isPlainJsonObject(input.params.layout)) {
+      return invalidParams("$.params.layout", "Layout must be a plain JSON object or null.");
     }
     if (
       input.params.expectedRevision !== undefined &&

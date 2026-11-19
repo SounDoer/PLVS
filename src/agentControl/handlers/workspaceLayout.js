@@ -1,6 +1,7 @@
 import { compileWorkspaceLayout, serializeWorkspaceLayout } from "../workspaceLayout.js";
 import { semanticFailure } from "../bridge/failures.js";
 import { workspaceMatches } from "../bridge/signatures.js";
+import { awaitWorkspacePersistence } from "../bridge/settlement.js";
 import { DEFAULT_WORKSPACE_STATE, workspaceUsesDefaults } from "../../workspace/constants.js";
 
 /** @param {import("../bridge/types.js").BridgeContext} ctx */
@@ -43,7 +44,11 @@ async function applyLayout(ctx) {
     committed,
     "The Workspace layout"
   );
-  await waitForWorkspacePersistenceEnqueue(compiled.view);
+  await awaitWorkspacePersistence(
+    waitForWorkspacePersistenceEnqueue,
+    compiled.view,
+    "The Workspace layout"
+  );
   try {
     await flush();
   } catch (error) {
@@ -97,7 +102,11 @@ async function reset(ctx) {
     committed,
     "The Workspace reset"
   );
-  await waitForWorkspacePersistenceEnqueue(DEFAULT_WORKSPACE_STATE);
+  await awaitWorkspacePersistence(
+    waitForWorkspacePersistenceEnqueue,
+    DEFAULT_WORKSPACE_STATE,
+    "The Workspace reset"
+  );
   try {
     await flush();
   } catch (error) {

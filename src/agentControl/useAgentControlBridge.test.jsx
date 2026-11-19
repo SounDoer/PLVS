@@ -295,6 +295,8 @@ function request(method, params = {}, id = "req-1") {
  *   presets?: any,
  *   presetLibraryFromStore?: boolean,
  *   applyPresetToWorkspace?: boolean,
+ *   presetApplyFailure?: Error,
+ *   afterSetPanelControls?: (store: any) => void,
  *   presetApplyBarrier?: any,
  *   exportConfiguration?: (...args: any[]) => any,
  *   importConfiguration?: (...args: any[]) => any,
@@ -365,6 +367,8 @@ function Harness({
   presetLibraryFromStore = false,
   applyPresetToWorkspace = false,
   presetApplyBarrier = null,
+  presetApplyFailure = null,
+  afterSetPanelControls,
   exportConfiguration,
   importConfiguration,
   normalizeConfiguration,
@@ -467,6 +471,7 @@ function Harness({
         if (preset) store.replaceWorkspace(presetWorkspaceView(preset));
       }
       if (presetApplyBarrier) await presetApplyBarrier;
+      if (presetApplyFailure) throw presetApplyFailure;
       setPresetState((current) => ({ ...current, activeId: id, dirty: false }));
       return true;
     },
@@ -541,7 +546,10 @@ function Harness({
     runtime,
     workspace: store.state,
     replaceWorkspace: store.replaceWorkspace,
-    setPanelControlsForPanel: store.setPanelControlsForPanel,
+    setPanelControlsForPanel: (id, controls) => {
+      store.setPanelControlsForPanel(id, controls);
+      afterSetPanelControls?.(store);
+    },
     waitForWorkspacePersistenceEnqueue: store.waitForWorkspacePersistenceEnqueue,
     presets: controlledPresets,
     settings: effectiveSettings,
@@ -4408,6 +4416,52 @@ describe("useAgentControlBridge", () => {
     expect(view.store.state.panelControlsById.spectrum.spectrumSpeedPercent).toBe(40);
   });
 
+  it.each([false, true])(
+    "reports only actual scene changes after a window failure (workspace changed: %s)",
+    async (workspaceChanged) => {
+      const initial = { ...DEFAULT_WORKSPACE_STATE, windowPinned: false };
+      const target = {
+        ...initial,
+        ...(workspaceChanged ? { panelOrder: [...initial.panelOrder].reverse() } : {}),
+        id: "preset-1",
+        name: "New Look",
+        windowPinned: true,
+        loudnessProfileActive: "off",
+      };
+      const capturePresetSnapshot = vi.fn(async () => initial);
+      if (workspaceChanged) {
+        capturePresetSnapshot.mockResolvedValueOnce(initial).mockResolvedValue({
+          ...initial,
+          panelOrder: target.panelOrder,
+        });
+      }
+      mount({
+        capturePresetSnapshot,
+        presets: { list: [target], activeId: null, dirty: false },
+        presetApplyFailure: Object.assign(new Error("native refused"), { stage: "window" }),
+      });
+      await waitUntilReady();
+
+      const response = await send(
+        request(
+          "preset.apply",
+          { presetId: "preset-1", expectedRevision: 0 },
+          "preset-window-failed"
+        )
+      );
+
+      expect(response.error.data).toMatchObject({
+        reason: "applicationFailed",
+        details: {
+          stage: "window",
+          changed: workspaceChanged ? ["workspace"] : [],
+          partial: workspaceChanged,
+          presetState: { activeId: null, dirty: false },
+        },
+      });
+    }
+  );
+
   it("applies a matching Preset by associating it without replacing the Workspace", async () => {
     const flush = vi.fn(async () => {});
     const snapshot = { tree: { type: "leaf", tabs: [] }, windowPinned: true };
@@ -4969,6 +5023,30 @@ describe("useAgentControlBridge", () => {
     expect(flush).toHaveBeenCalledTimes(1);
   });
 
+  it("persists a panel update in the same commit as a rename", async () => {
+    const flush = vi.fn(async () => {});
+    const view = mount({
+      flush,
+      afterSetPanelControls: (store) => store.renamePanel("levelMeter", "Main Meter"),
+    });
+    await waitUntilReady();
+
+    const response = await send(
+      request(
+        "panel.update",
+        { panelId: "levelMeter", expectedRevision: 0, patch: { mode: "rms" } },
+        "renamed-panel-update"
+      )
+    );
+
+    expect(response.result.state.panel).toMatchObject({
+      title: "Main Meter",
+      controls: { mode: "rms" },
+    });
+    expect(view.store.state.panelsById.levelMeter.customTitle).toBe("Main Meter");
+    expect(flush).toHaveBeenCalledTimes(1);
+  });
+
   it("dry-runs a panel update without changing revision, state, or persistence", async () => {
     const flush = vi.fn(async () => {});
     const view = mount({ flush });
@@ -5186,6 +5264,39 @@ describe("useAgentControlBridge", () => {
       type: "leaf",
       tabs: ["spectrum"],
       activeTab: "spectrum",
+    });
+    expect(flush).toHaveBeenCalledTimes(1);
+  });
+
+  it("applies an empty Workspace and accepts its inspected layout again", async () => {
+    const flush = vi.fn(async () => {});
+    const view = mount({ flush });
+    await waitUntilReady();
+
+    const applied = await send(
+      request("workspace.applyLayout", { layout: null, expectedRevision: 0 }, "empty-layout-apply")
+    );
+    expect(applied.result).toMatchObject({ changed: true, state: { workspace: { layout: null } } });
+    expect(view.store.state).toMatchObject({
+      tree: null,
+      panelsById: {},
+      panelOrder: [],
+      panelControlsById: {},
+      pinnedPanelsById: {},
+    });
+
+    const inspected = await send(request("app.inspect", {}, "empty-layout-inspect"));
+    expect(inspected.result.workspace.layout).toBeNull();
+    const reapplied = await send(
+      request(
+        "workspace.applyLayout",
+        { layout: inspected.result.workspace.layout, expectedRevision: inspected.result.revision },
+        "empty-layout-reapply"
+      )
+    );
+    expect(reapplied.result).toMatchObject({
+      changed: false,
+      state: { workspace: { layout: null } },
     });
     expect(flush).toHaveBeenCalledTimes(1);
   });

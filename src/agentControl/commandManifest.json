@@ -2192,7 +2192,7 @@
       "family": "workspace",
       "path": ["workspace", "apply"],
       "usage": "plvs-cli workspace apply <file|-> --json --expected-revision <n> [--dry-run]",
-      "summary": "Apply a workspace layout document.",
+      "summary": "Apply a Workspace layout document. Use JSON null for an empty Workspace.",
       "execution": "runningApp",
       "operation": "mutation",
       "wireMethod": "workspace.applyLayout",
@@ -2243,7 +2243,8 @@
         "required": ["layout", "expectedRevision"],
         "properties": {
           "layout": {
-            "schemaRef": "workspace.layout"
+            "schemaRef": "workspace.layout",
+            "nullable": true
           },
           "expectedRevision": {
             "schemaRef": "agentControl.revision"

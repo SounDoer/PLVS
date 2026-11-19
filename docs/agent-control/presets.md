@@ -212,9 +212,11 @@ resolution, and every compatibility check that can be decided in advance.
 While a Preset application is in progress, another application is refused with
 `operationUnavailable` before changing the scene.
 
-An execution-time failure does not trigger an automatic rollback. The error reports
-`applicationFailed`, the failing `stage`, whether application was `partial`, the public paths already
-changed under `error.details.changed`, the resulting revision, and the final compact Preset state.
+An execution-time failure can leave part of the scene applied. If restoring normal-window
+placement fails after a frame change, PLVS attempts to restore the previously configured frame.
+The error reports `applicationFailed`, the failing `stage`, whether application was `partial`, the
+public paths that differ from the pre-apply scene under `error.details.changed`, the resulting
+revision, and the final compact Preset state.
 This string array is distinct from the boolean `result.changed` on success. A partially applied
 scene is not associated with either the old or target Preset: `activeId` is null and `dirty` is
 false. The caller must inspect again before continuing. Dry-run exercises the deterministic

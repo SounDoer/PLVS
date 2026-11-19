@@ -37,10 +37,9 @@ export function createDomainStore({
   notifySameContext = false,
 }) {
   const listeners = new Set();
-  // Values accepted by `patchCoalesced` that have not reached the backend yet. They take part in
-  // writes only. `read` deliberately does NOT merge them: doing so lets this context's in-flight
-  // values shadow a write that arrived from outside it -- another window, or a boot that seeds
-  // storage directly -- which is exactly the state a reader is trying to observe.
+  // Values accepted by `patchCoalesced` that have not reached the backend yet. Keep them out of
+  // `read` so subscribers can observe an external write. A field owner can separately inspect its
+  // queued local value to keep the UI consistent with what the next flush will write.
   let pending = null;
   /** @type {ReturnType<typeof setTimeout> | 0} */
   let flushTimer = 0;
@@ -91,6 +90,10 @@ export function createDomainStore({
   }
   return {
     read,
+    /** Reads a queued local edit for the React owner of that field. */
+    readPendingField(field) {
+      return pending?.[field];
+    },
     flush,
     /**
      * Announce a write to this context's subscribers, whatever `notifySameContext` says.

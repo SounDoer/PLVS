@@ -40,6 +40,21 @@ export function awaitSettlement(committed, clear, subject) {
 }
 
 /**
+ * @param {(...args: any[]) => Promise<unknown>} waitForEnqueue
+ * @param {any} view
+ * @param {string} subject
+ * @param {(workspace: any) => boolean} [matches]
+ */
+export function awaitWorkspacePersistence(waitForEnqueue, view, subject, matches) {
+  const controller = new AbortController();
+  return awaitSettlement(
+    waitForEnqueue(view, { matches, signal: controller.signal }),
+    () => controller.abort(),
+    subject
+  );
+}
+
+/**
  * Where a mutation parks what it is waiting for React to render.
  *
  * A settlement means "React rendered the committed state", not "the business function returned":
