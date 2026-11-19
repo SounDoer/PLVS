@@ -4,8 +4,8 @@ import { reportLibraryConflict, settingsStore } from "../persistence/index.js";
 import { BUILTIN_THEMES_V2 } from "../theme/builtinThemesV2.js";
 import { isCustomThemeId } from "../theme/customTheme.js";
 import {
-  listCustomThemeDocuments,
-  listCustomThemeDocumentsOrdered,
+  listCustomThemes,
+  listCustomThemesOrdered,
   replaceCustomThemesOrdered,
 } from "../theme/customThemesRepo.js";
 import {
@@ -39,7 +39,7 @@ export function useCustomThemeSettings({ themeSettings, setSettingsOpen, makeId 
   const readState = useCallback(
     () => ({
       appearance: themeSettings.readAppearanceForControl(),
-      themes: listCustomThemeDocumentsOrdered(),
+      themes: listCustomThemesOrdered(),
     }),
     [themeSettings]
   );
@@ -152,7 +152,7 @@ export function useCustomThemeSettings({ themeSettings, setSettingsOpen, makeId 
       if (
         forControl &&
         !isNew &&
-        JSON.stringify(listCustomThemeDocuments()[draft.id] ?? null) !== JSON.stringify(baseline)
+        JSON.stringify(listCustomThemes()[draft.id] ?? null) !== JSON.stringify(baseline)
       ) {
         throw Object.assign(new Error("The Theme source changed."), { code: "draftStale" });
       }
@@ -181,16 +181,14 @@ export function useCustomThemeSettings({ themeSettings, setSettingsOpen, makeId 
     onFinish: themeSettings.finishThemePreview,
     activeTheme:
       BUILTIN_THEMES_V2[themeSettings.resolvedThemeId] ??
-      listCustomThemeDocuments()[themeSettings.resolvedThemeId] ??
+      listCustomThemes()[themeSettings.resolvedThemeId] ??
       BUILTIN_THEMES_V2["plvs-dark"],
     onSave: saveEditorTheme,
     makeId,
   });
   editorRef.current = editor;
 
-  const latestEditedTheme = editor.draft?.id
-    ? (listCustomThemeDocuments()[editor.draft.id] ?? null)
-    : null;
+  const latestEditedTheme = editor.draft?.id ? (listCustomThemes()[editor.draft.id] ?? null) : null;
   const latestEditedThemeSignature = JSON.stringify(latestEditedTheme);
   const editorIsEditing = editor.isEditing;
   const syncEditorSource = editor.syncSource;
@@ -204,7 +202,7 @@ export function useCustomThemeSettings({ themeSettings, setSettingsOpen, makeId 
 
   useBlockingEditor("theme", editor.isEditing, true);
 
-  const customThemeOptions = listCustomThemeDocumentsOrdered().map((theme) => ({
+  const customThemeOptions = listCustomThemesOrdered().map((theme) => ({
     id: theme.id,
     label: theme.name,
     theme,
@@ -234,7 +232,7 @@ export function useCustomThemeSettings({ themeSettings, setSettingsOpen, makeId 
   function editCustomTheme(id) {
     if (!isCustomThemeId(id) || editor.isEditingNow()) return;
     setSettingsOpen(false);
-    const theme = listCustomThemeDocuments()[id];
+    const theme = listCustomThemes()[id];
     if (theme) editor.beginEdit(theme, { mode: "edit", sourceId: id });
   }
 
@@ -246,7 +244,7 @@ export function useCustomThemeSettings({ themeSettings, setSettingsOpen, makeId 
   }
 
   function duplicateCustomTheme(id) {
-    const theme = listCustomThemeDocuments()[id];
+    const theme = listCustomThemes()[id];
     if (!theme || editor.isEditingNow()) return;
     setSettingsOpen(false);
     editor.beginCreate(`${theme.name} Copy`, theme, { mode: "duplicate", sourceId: id });

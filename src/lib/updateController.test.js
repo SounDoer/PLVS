@@ -390,6 +390,43 @@ describe("shared update controller", () => {
     });
   });
 
+  it("retries a failed replacement with its details open and preserves the old package until success", async () => {
+    const { controller, invoke } = setup();
+    await controller.setPreferences(prefs);
+    invoke.mockResolvedValueOnce({
+      enabled: true,
+      installationSupported: true,
+      freshSession: true,
+      ready: a,
+    });
+    await controller.initialize({ eligible: true });
+    invoke.mockResolvedValueOnce(b).mockRejectedValueOnce(new Error("Temporary download error"));
+    await controller.check(true);
+    expect(controller.getSnapshot()).toMatchObject({
+      ready: a,
+      details: { target: b, staged: false },
+      downloadError: expect.stringContaining("Temporary download error"),
+    });
+
+    const other = { ...b, id: "c", version: "4.0.0" };
+    invoke.mockResolvedValueOnce(other);
+    await controller.check(true);
+    expect(controller.getSnapshot().details.target).toEqual(b);
+    expect(invoke).not.toHaveBeenCalledWith("update_download", {
+      candidateId: "c",
+      automatic: true,
+    });
+
+    const staged = { ...b, id: "staged-b" };
+    invoke.mockResolvedValueOnce(b).mockResolvedValueOnce(staged);
+    await controller.check(true);
+    expect(controller.getSnapshot()).toMatchObject({
+      ready: staged,
+      details: { target: staged, staged: true },
+      downloadError: null,
+    });
+  });
+
   it("stages a newer version from Check when automatic downloading is on", async () => {
     const { controller, invoke } = setup();
     await controller.setPreferences(prefs);

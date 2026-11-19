@@ -12,6 +12,7 @@ describe("Settings presentation transport", () => {
     const event = { currentTarget: {} };
     event.currentTarget.event = event;
     expect(settingsActionArguments("onSave", [event])).toEqual([]);
+    expect(settingsActionArguments("retryAutostart", [event])).toEqual([]);
     expect(settingsActionArguments("onExportConfiguration", [event])).toEqual([]);
     expect(settingsActionArguments("onPaletteColor", ["status", "safe", "#123456", event])).toEqual(
       ["status", "safe", "#123456"]
@@ -25,6 +26,9 @@ describe("Settings presentation transport", () => {
       internalShortcut: vi.fn(),
     });
     expect(snapshot).toEqual({ values: { draft: { name: "A" } }, actions: ["onName"] });
+    expect(settingsViewSnapshot("settings", { retryAutostart: vi.fn() }).actions).toContain(
+      "retryAutostart"
+    );
   });
   it("orders a draft change before Save even when both arrive before a render", async () => {
     const document = { name: "Before" };

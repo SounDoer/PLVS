@@ -33,23 +33,17 @@ export function usePanelHistoryData(moduleId, axisViewportData = null, controls 
   }, [timeViewport]);
   const [historyHudHold, setHistoryHudHold] = useState(false);
   const [isHudTimerActive, setIsHudTimerActive] = useState(false);
-  const hudUntilTsRef = useRef(0);
+  const hudTimerRef = useRef(null);
 
   const setHistoryHudUntilTs = useCallback((/** @type {number} */ ts) => {
-    hudUntilTsRef.current = ts;
-    setIsHudTimerActive(ts > Date.now());
+    clearTimeout(hudTimerRef.current);
+    const remaining = ts - Date.now();
+    setIsHudTimerActive(remaining > 0);
+    hudTimerRef.current =
+      remaining > 0 ? setTimeout(() => setIsHudTimerActive(false), remaining + 24) : null;
   }, []);
 
-  useEffect(() => {
-    if (!isTimelinePanel || historyHudHold || !isHudTimerActive) return;
-    const remain = hudUntilTsRef.current - Date.now();
-    if (remain <= 0) {
-      setIsHudTimerActive(false);
-      return;
-    }
-    const timer = setTimeout(() => setIsHudTimerActive(false), remain + 24);
-    return () => clearTimeout(timer);
-  }, [historyHudHold, isHudTimerActive, isTimelinePanel]);
+  useEffect(() => () => clearTimeout(hudTimerRef.current), []);
 
   const totalSamples = historyData?.histSourceList?.length ?? 0;
   const fileHistory = historyData?.sourceMode === "file" ? historyData.histSourceList : null;
@@ -132,19 +126,8 @@ export function usePanelHistoryData(moduleId, axisViewportData = null, controls 
   const selectTimelineSnapshot = useCallback(
     (/** @type {number} */ offsetSec) => {
       if (fileHistory?.length) {
-        const steps = Math.round(offsetSec / HIST_SAMPLE_SEC);
-        const index = fileHistory.length - 1 - steps;
-        const fraction = Math.max(
-          0,
-          Math.min(
-            1,
-            1 - (steps - viewport.effectiveOffsetSamples) / Math.max(1, viewport.visibleSamples - 1)
-          )
-        );
-        const time = fileTimeRange
-          ? 1000 *
-            (fileTimeRange.startSec + fraction * (fileTimeRange.endSec - fileTimeRange.startSec))
-          : historyTimestampAt(fileHistory, index);
+        const index = fileHistory.length - 1 - Math.round(offsetSec / HIST_SAMPLE_SEC);
+        const time = historyTimestampAt(fileHistory, index);
         const latest = latestHistoryTimestampMs(fileHistory);
         if (Number.isFinite(latest) && Number.isFinite(time)) {
           historyData.selectSnapshot((latest - time) / 1000);
@@ -153,13 +136,17 @@ export function usePanelHistoryData(moduleId, axisViewportData = null, controls 
       }
       historyData?.selectSnapshot?.(offsetSec);
     },
-    [
-      fileHistory,
-      historyData,
-      fileTimeRange,
-      viewport.effectiveOffsetSamples,
-      viewport.visibleSamples,
-    ]
+    [fileHistory, historyData]
+  );
+  const selectMediaSnapshot = useCallback(
+    (fraction) => {
+      const timeSec =
+        fileTimeRange.startSec + fraction * (fileTimeRange.endSec - fileTimeRange.startSec);
+      const latest =
+        latestHistoryTimestampMs(fileHistory) ?? (fileHistory.length - 1) * HIST_SAMPLE_SEC * 1000;
+      historyData.selectSnapshot(Math.max(0, latest / 1000 - timeSec));
+    },
+    [fileHistory, fileTimeRange, historyData]
   );
   const hasValidSelection =
     historyData?.selectedOffset >= 0 &&
@@ -215,6 +202,8 @@ export function usePanelHistoryData(moduleId, axisViewportData = null, controls 
     effectiveOffsetSec: viewport.effectiveOffsetSec,
     setSelectedOffset: historyData?.setSelectedOffset,
     selectSnapshot: historyData?.selectSnapshot ? selectTimelineSnapshot : undefined,
+    selectSnapshotAtFraction:
+      fileTimeRange && historyData?.selectSnapshot ? selectMediaSnapshot : null,
     setHistoryOffsetSec,
     setHistoryWindowSec,
     setHistoryHudUntilTs,

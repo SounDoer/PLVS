@@ -1,3 +1,9 @@
+/** Position on an oriented time axis, from its oldest edge to its newest. */
+export function historyPointerFraction(clientX, rect) {
+  const width = Math.max(1, rect.width);
+  return Math.max(0, Math.min(1, (clientX - rect.left) / width));
+}
+
 /**
  * Converts a pointer clientX + bounding rect into a history playback offset in seconds.
  * @param {number} clientX
@@ -16,9 +22,7 @@ export function computeSelectionOffset(
   sampleSec,
   totalSamples = Infinity
 ) {
-  const width = Math.max(1, rect.width);
-  const x = Math.max(0, Math.min(width, clientX - rect.left));
-  const normalized = 1 - x / width;
+  const normalized = 1 - historyPointerFraction(clientX, rect);
   const fromEndSamples = effectiveOffsetSamples + normalized * Math.max(0, visibleSamples - 1);
   const maxFromEndSamples = Number.isFinite(totalSamples)
     ? Math.max(0, totalSamples - 1)

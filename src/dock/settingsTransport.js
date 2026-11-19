@@ -13,6 +13,7 @@ export const SETTINGS_ACTIONS = Object.freeze({
     "setUpdatePreferences",
     "openExternalUrl",
     "setAutostartEnabled",
+    "retryAutostart",
     "setCloseAction",
     "setHistoryRetentionSec",
     "setDialogueVadEngine",
@@ -173,6 +174,7 @@ export function optimisticSettingsValue(view, model, name, args) {
 
 // DOM click events are local presentation objects, never part of the wire contract.
 const NO_ARGUMENT = new Set([
+  "retryAutostart",
   "resetChannelLabels",
   "onCheckForUpdate",
   "onInstallUpdate",

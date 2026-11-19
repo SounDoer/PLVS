@@ -58,8 +58,8 @@ when adjustment finishes.
 **Open at Login** launches PLVS when you sign in. It is one shared preference when several
 workbenches are open; the current coordinator owns the operating-system registration and restores
 the saved workbench set. If a change fails to save, Settings shows an error and PLVS restores the
-saved login setting. **Close
-Behavior** chooses whether closing the window keeps PLVS running in the system tray or quits it.
+saved login setting. If PLVS cannot read or apply **Open at Login** at startup, **Retry** checks
+the system setting and reapplies the saved preference when one exists. **Close Behavior** chooses whether closing the window keeps PLVS running in the system tray or quits it.
 Choosing **Don't ask again** in the close confirmation updates **Close Behavior** in Settings.
 Before either action, PLVS finishes saving pending settings. If saving fails, the window stays open
 and offers **Retry** or **Cancel**.
@@ -127,7 +127,8 @@ independently of the release notes.
 **Auto Check for Updates** controls startup and twelve-hour checks. **Auto Download Updates** requires checking to be enabled. Turning checking off also turns downloading
 off; turning checking back on leaves downloading off. **Check** remains an explicit action when
 automatic checking is off. With **Auto Download Updates** on, **Check** also downloads a newer
-version in the background. Preferences are shared across workbenches and are not imported from a
+version in the background. A failed download can be retried on the next check while the
+same version's details are open. Preferences are shared across workbenches and are not imported from a
 configuration profile.
 
 Turning automatic downloading off cancels background work and removes the staged update. If update
@@ -372,7 +373,8 @@ adaptations such as collision renaming or a missing legacy dependency. Confirmin
 only step that writes to the Library. A Preset and its bundled Loudness Profiles are saved together
 in one operation. **Import Complete** appears after the save and reports each Item as **Added**,
 **Already in your library**, or **Imported as a copy**. If the Library changed during review, open
-the import again to refresh the review.
+the import again to refresh the review. Using an existing Item also checks whether the reviewed
+content still matches. If it changed, the review refreshes before you choose what to apply.
 
 Import only adds saved Library content, so it remains available while a Theme or Loudness Profile
 draft is open and never discards that draft. After a single Item is imported, PLVS offers a separate

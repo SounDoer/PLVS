@@ -70,6 +70,33 @@ describe("useAutostart", () => {
     expect(result.current.autostartReady).toBe(false);
   });
 
+  it("reports a startup apply failure and retries the saved Open at Login value", async () => {
+    vi.mocked(isTauri).mockReturnValue(true);
+    window.__PLVS_INITIAL_STATE__ = {
+      globalPreferences: { openAtLogin: true },
+      multiInstancePersistence: { globalPreferenceRevisions: { openAtLogin: 1 } },
+    };
+    let attempts = 0;
+    vi.mocked(invoke).mockImplementation(async (command) => {
+      if (command === "plugin:autostart|is_enabled") return false;
+      if (command === "plugin:autostart|enable" && ++attempts === 1)
+        throw new Error("Temporary native failure");
+    });
+    const { result } = renderHook(() => useAutostart());
+
+    await waitFor(() => expect(result.current.autostartReady).toBe(false));
+    expect(result.current.autostartError).toMatch(/open at login/i);
+    await act(async () => result.current.retryAutostart());
+    expect(result.current.autostartReady).toBe(true);
+    expect(result.current.autostartEnabled).toBe(true);
+    expect(result.current.autostartError).toBe("");
+    expect(attempts).toBe(2);
+    expect(invoke).not.toHaveBeenCalledWith(
+      "persistence_save_global_preferences",
+      expect.anything()
+    );
+  });
+
   it("lets a participant update the shared preference without owning the OS registration", async () => {
     vi.mocked(isTauri).mockReturnValue(true);
     window.__PLVS_INITIAL_STATE__ = {

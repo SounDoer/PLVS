@@ -83,6 +83,84 @@ describe("usePanelHistoryData", () => {
     expect(second.result.current.isHistoryHudVisible).toBe(false);
   });
 
+  it("keeps the HUD visible until the most recent interaction deadline", () => {
+    vi.useFakeTimers();
+    const { result } = renderHook(() => usePanelHistoryData("loudness"), {
+      wrapper: wrapperFor(historyData()),
+    });
+
+    act(() => result.current.showHistoryHud(1600));
+    act(() => vi.advanceTimersByTime(1000));
+    act(() => result.current.showHistoryHud(1600));
+    act(() => vi.advanceTimersByTime(650));
+    expect(result.current.isHistoryHudVisible).toBe(true);
+    act(() => vi.advanceTimersByTime(1000));
+    expect(result.current.isHistoryHudVisible).toBe(false);
+  });
+
+  it("honors a shorter HUD deadline after a later interaction", () => {
+    vi.useFakeTimers();
+    const { result } = renderHook(() => usePanelHistoryData("loudness"), {
+      wrapper: wrapperFor(historyData()),
+    });
+
+    act(() => result.current.showHistoryHud(2200));
+    act(() => vi.advanceTimersByTime(200));
+    act(() => result.current.showHistoryHud(900));
+    act(() => vi.advanceTimersByTime(950));
+    expect(result.current.isHistoryHudVisible).toBe(false);
+  });
+
+  it.each([
+    ["right-to-left", 250, 125, 0, 125],
+    ["left-to-right", 750, 125, 1000, 125],
+    ["bottom-to-top", 500, 62.5, 500, 0],
+    ["top-to-bottom", 500, 187.5, 500, 250],
+  ])(
+    "selects the plotted time of a short File Spectrogram in %s",
+    (orientation, x, y, oldestX, oldestY) => {
+      const selectSnapshot = vi.fn();
+      const { result } = renderHook(
+        () =>
+          usePanelHistoryData("spectrogram", null, {
+            spectrogramMode: "heatmap",
+            spectrogramOrientation: orientation,
+          }),
+        {
+          wrapper: wrapperFor(
+            historyData({
+              sourceMode: "file",
+              historyWindowSec: 30,
+              historyOffsetSec: 0,
+              running: false,
+              selectSnapshot,
+              histSourceList: Array.from({ length: 30 }, (_, i) => ({
+                timestampMs: (i + 1) * 100,
+              })),
+            })
+          ),
+        }
+      );
+
+      expect(result.current.fileTimeRange).toEqual({ startSec: 0, endSec: 3 });
+      const event = {
+        button: 0,
+        clientX: x,
+        clientY: y,
+        currentTarget: {
+          getBoundingClientRect: () => ({ left: 0, top: 0, width: 1000, height: 250 }),
+          setPointerCapture: vi.fn(),
+        },
+      };
+      act(() => result.current.onHistoryPointerDown(event));
+      expect(selectSnapshot).toHaveBeenLastCalledWith(2.25);
+      act(() =>
+        result.current.onHistoryPointerMove({ ...event, clientX: oldestX, clientY: oldestY })
+      );
+      expect(selectSnapshot).toHaveBeenLastCalledWith(3);
+    }
+  );
+
   it("places a File selection at its checkpoint when media time and chart steps differ", () => {
     const { result } = renderHook(() => usePanelHistoryData("waveform"), {
       wrapper: wrapperFor(

@@ -111,26 +111,30 @@ export function preparePackImport(type, pack) {
     ...(planned.itemAdditions.length ? { [kind]: planned.itemAdditions } : {}),
     ...(planned.profileAdditions.length ? { loudnessProfile: planned.profileAdditions } : {}),
   };
+  function validate() {
+    if (
+      !deepEqual(existingItems, adapter.list()) ||
+      !deepEqual(existingProfiles, profiles?.list() ?? [])
+    ) {
+      throw Object.assign(
+        new Error(
+          "The Library changed while reviewing the import. Open the import again to refresh the review."
+        ),
+        { reason: "conflict" }
+      );
+    }
+  }
   async function commit() {
     if (!Object.keys(additions).length) return;
-    await appendLibraryCollections(
-      additions,
-      kinds,
-      () => {
-        if (
-          !deepEqual(existingItems, adapter.list()) ||
-          !deepEqual(existingProfiles, profiles?.list() ?? [])
-        ) {
-          throw new Error(
-            "The Library changed while reviewing the import. Open the import again to refresh the review."
-          );
-        }
-      },
-      () => {
-        profiles?.append(planned.profileAdditions);
-        adapter.append(planned.itemAdditions);
-      }
-    );
+    await appendLibraryCollections(additions, kinds, validate, () => {
+      profiles?.append(planned.profileAdditions);
+      adapter.append(planned.itemAdditions);
+    });
   }
-  return { ...planned, commit };
+  async function verifyExisting() {
+    // Check the shared Library's revisions even when there are no items to append.
+    await appendLibraryCollections({}, kinds, validate, () => {});
+    validate();
+  }
+  return { ...planned, commit, verifyExisting };
 }

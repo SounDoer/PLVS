@@ -91,6 +91,32 @@ describe("useHistoryInteraction", () => {
     expect(props.setHistoryOffsetSec).toHaveBeenLastCalledWith(10);
   });
 
+  it.each(["chart", "axis"])("releases the %s HUD if history is cleared during a drag", (area) => {
+    const { result, props, rerender } = renderHistoryInteraction();
+    const event = {
+      button: 0,
+      clientX: 250,
+      preventDefault: vi.fn(),
+      currentTarget: {
+        getBoundingClientRect: () => ({ left: 0, width: 1000 }),
+        setPointerCapture: vi.fn(),
+        releasePointerCapture: vi.fn(),
+      },
+    };
+    act(() => {
+      if (area === "chart") result.current.onHistoryPointerDown(event);
+      else result.current.historyTimeAxisHandlers.onPointerDown(event);
+    });
+    expect(props.setHistoryHudHold).toHaveBeenLastCalledWith(true);
+    props.enabled = false;
+    act(() => rerender());
+    act(() => {
+      if (area === "chart") result.current.onHistoryPointerUp(event);
+      else result.current.historyTimeAxisHandlers.onPointerCancel(event);
+    });
+    expect(props.setHistoryHudHold).toHaveBeenLastCalledWith(false);
+  });
+
   it("ends a drag on direction change without selecting or moving the viewport", () => {
     const { result, props, rerender } = renderHistoryInteraction({ orientation: "right-to-left" });
     const event = {

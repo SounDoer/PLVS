@@ -4,7 +4,7 @@ import { renderHook, act } from "@testing-library/react";
 import { themesStore } from "../persistence/index.js";
 import { BUILTIN_THEMES_V2 } from "../theme/builtinThemesV2.js";
 import { makeCustomThemeV2FromBase } from "../theme/customTheme.js";
-import { listCustomThemeDocuments } from "../theme/customThemesRepo.js";
+import { listCustomThemes } from "../theme/customThemesRepo.js";
 import { useThemeEditor } from "./useThemeEditor.js";
 
 beforeEach(() => themesStore.reset());
@@ -29,7 +29,7 @@ describe("useThemeEditor", () => {
     act(() => result.current.beginCreate("Sunset"));
     expect(result.current.isEditing).toBe(true);
     expect(result.current.draft.name).toBe("Sunset");
-    expect(listCustomThemeDocuments()["custom-1"]).toBeUndefined();
+    expect(listCustomThemes()["custom-1"]).toBeUndefined();
     expect(onSave).not.toHaveBeenCalled();
     expect(publish.mock.calls.at(-1)[0]).toMatchObject({ id: "custom-1", name: "Sunset" });
   });
@@ -42,7 +42,7 @@ describe("useThemeEditor", () => {
     expect(result.current.draft.core.interfaceAccent).toBe("#22d3ee");
     await act(() => new Promise((resolve) => requestAnimationFrame(resolve)));
     expect(publish.mock.calls.at(-1)[0].core.interfaceAccent).toBe("#22d3ee");
-    expect(listCustomThemeDocuments()).toEqual({});
+    expect(listCustomThemes()).toEqual({});
   });
 
   it("versions each changed semantic draft transaction without treating it as persistence", () => {
@@ -56,7 +56,7 @@ describe("useThemeEditor", () => {
 
     act(() => result.current.updateCore("workspace", "#111111"));
     expect(result.current.draftGeneration).toBe(1);
-    expect(listCustomThemeDocuments()).toEqual({});
+    expect(listCustomThemes()).toEqual({});
   });
 
   it("commits one planned document as one inspectable owner transaction and Undo entry", () => {
@@ -102,7 +102,7 @@ describe("useThemeEditor", () => {
       mid: "#fb923c",
       high: "#356dff",
     });
-    expect(listCustomThemeDocuments()).toEqual({});
+    expect(listCustomThemes()).toEqual({});
   });
 
   it("restores the same canonical Inferno stops after selecting another intensity preset", () => {
@@ -168,7 +168,7 @@ describe("useThemeEditor", () => {
     act(() => result.current.redo());
     expect(result.current.draftGeneration).toBe(4);
     expect(result.current.draft.core.workspace).toBe("#222222");
-    expect(listCustomThemeDocuments()).toEqual({});
+    expect(listCustomThemes()).toEqual({});
   });
 
   it("save delegates the final draft to the controller and ends editing", () => {
@@ -178,7 +178,7 @@ describe("useThemeEditor", () => {
     act(() => result.current.updateCore("interfaceAccent", "#22d3ee"));
     act(() => result.current.save());
     expect(result.current.isEditing).toBe(false);
-    expect(listCustomThemeDocuments()["custom-1"]).toBeUndefined();
+    expect(listCustomThemes()["custom-1"]).toBeUndefined();
     expect(onSave).toHaveBeenCalledWith(
       expect.objectContaining({
         id: "custom-1",
@@ -236,7 +236,7 @@ describe("useThemeEditor", () => {
     act(() => result.current.beginCreate("S"));
     act(() => result.current.cancel());
     expect(result.current.isEditing).toBe(false);
-    expect(listCustomThemeDocuments()["custom-1"]).toBeUndefined();
+    expect(listCustomThemes()["custom-1"]).toBeUndefined();
     expect(publish.mock.calls.at(-1)[0].id).toBe("plvs-dark");
   });
 

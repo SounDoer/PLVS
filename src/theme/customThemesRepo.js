@@ -9,8 +9,7 @@ function readState() {
 }
 
 /** @returns {Record<string, object>} normalized current Theme documents keyed by id */
-export function listCustomThemes() {
-  const { themes } = readState();
+function normalizeThemes(themes) {
   /** @type {Record<string, object>} */
   const out = {};
   for (const [id, t] of Object.entries(themes)) {
@@ -23,19 +22,14 @@ export function listCustomThemes() {
 }
 
 /** @returns {Record<string, object>} normalized current Theme documents keyed by id */
-export function listCustomThemeDocuments() {
-  return listCustomThemes();
-}
-
-/** @returns {object[]} normalized current Theme documents in display order */
-export function listCustomThemeDocumentsOrdered() {
-  return listCustomThemesOrdered();
+export function listCustomThemes() {
+  return normalizeThemes(readState().themes);
 }
 
 /** @returns {object[]} valid custom themes in display order */
 export function listCustomThemesOrdered() {
-  const { order } = readState();
-  const valid = listCustomThemes();
+  const { themes, order } = readState();
+  const valid = normalizeThemes(themes);
   const seen = new Set();
   const ordered = [];
   for (const id of order) {

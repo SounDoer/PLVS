@@ -129,7 +129,9 @@ does not use the Live **History Length** setting. Long files use fewer display c
 remaining navigable from beginning to end.
 
 The time axis, **Time Range** fields, and chart hover readouts use positions measured from the
-start of the file. Hover readouts show the file time in `HH:MM:SS.mmm`.
+start of the file. Hover readouts show the file time in `HH:MM:SS.mmm`. Clicking or dragging in
+Spectrogram selects the time shown at that position, including when the file is shorter than the
+minimum timeline window.
 
 Changing Live History Length does not reset the File timeline's zoom, scroll, or selected time.
 Changing the Dialogue Detection engine in Settings also preserves File entries and results; a

@@ -42,14 +42,9 @@ async function savePreference(enabled, expectedRevision = preferenceRevision()) 
  */
 async function applyNativePreference(enabled) {
   const current = await invoke("plugin:autostart|is_enabled");
-  if (current !== enabled) {
+  if (current !== enabled && ownsCoordinatorResources()) {
     await invoke(enabled ? "plugin:autostart|enable" : "plugin:autostart|disable");
   }
-}
-
-function applySharedPreference() {
-  const saved = bootPreference();
-  if (saved !== null && ownsCoordinatorResources()) return applyNativePreference(saved);
 }
 
 export function useAutostart() {
@@ -66,58 +61,56 @@ export function useAutostart() {
     return work;
   }, []);
 
-  useEffect(() => {
-    if (!isTauri()) return;
-    let cancelled = false;
-    const shared = bootPreference();
-    if (shared !== null) {
-      if (isCoordinator) {
-        enqueue(() => {
-          if (!cancelled) return applySharedPreference();
-        }).catch(() => {
-          if (!cancelled) setAutostartReady(false);
-        });
-      }
-      return () => {
-        cancelled = true;
-      };
-    }
-    if (!isCoordinator) {
-      return () => {
-        cancelled = true;
-      };
-    }
-    enqueue(async () => {
-      if (cancelled || !ownsCoordinatorResources()) return;
-      const enabled = await invoke("plugin:autostart|is_enabled");
-      if (cancelled || !ownsCoordinatorResources()) return;
-      await savePreference(enabled);
-      if (cancelled) return;
-      setAutostartEnabledState(enabled);
-      setAutostartReady(true);
-    }).catch(() => {
-      if (!cancelled) setAutostartReady(false);
-    });
-    return () => {
-      cancelled = true;
-    };
-  }, [enqueue, isCoordinator]);
+  const syncAutostart = useCallback(
+    (active) =>
+      enqueue(async () => {
+        if (!active()) return;
+        try {
+          let saved = bootPreference();
+          if (ownsCoordinatorResources()) {
+            if (saved === null) {
+              const revision = preferenceRevision();
+              saved = (await invoke("plugin:autostart|is_enabled")) === true;
+              if (!active() || !ownsCoordinatorResources()) return;
+              await savePreference(saved, revision);
+              saved = bootPreference() ?? saved;
+            } else {
+              await applyNativePreference(saved);
+            }
+          }
+          if (!active()) return;
+          setAutostartEnabledState(saved ?? false);
+          setAutostartReady(true);
+          setAutostartError("");
+        } catch {
+          if (!active()) return;
+          setAutostartReady(false);
+          setAutostartError("Could not refresh Open at Login.");
+        }
+      }),
+    [enqueue]
+  );
 
   useEffect(() => {
+    if (!isTauri()) return;
+    let mounted = true;
+    const active = () => mounted;
     const sync = () => {
-      const shared = bootPreference();
-      if (shared === null) return;
-      setAutostartEnabledState(shared);
-      setAutostartReady(true);
-      if (isCoordinator) {
-        void enqueue(applySharedPreference).catch(() =>
-          setAutostartError("Could not apply Open at Login. Try again.")
-        );
-      }
+      if (bootPreference() !== null) void syncAutostart(active);
     };
+    if (isCoordinator || bootPreference() !== null) void syncAutostart(active);
     window.addEventListener("plvs-global-preferences-changed", sync);
-    return () => window.removeEventListener("plvs-global-preferences-changed", sync);
-  }, [enqueue, isCoordinator]);
+    return () => {
+      mounted = false;
+      window.removeEventListener("plvs-global-preferences-changed", sync);
+    };
+  }, [isCoordinator, syncAutostart]);
+
+  const retryAutostart = useCallback(async () => {
+    if (!isTauri()) return;
+    setAutostartError("");
+    await syncAutostart(() => true);
+  }, [syncAutostart]);
 
   const setAutostartEnabledForControl = useCallback(
     (enabled) =>
@@ -174,5 +167,6 @@ export function useAutostart() {
     setAutostartEnabledForControl,
     autostartReady,
     autostartError,
+    retryAutostart,
   };
 }

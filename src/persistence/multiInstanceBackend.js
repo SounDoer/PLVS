@@ -554,8 +554,15 @@ export function createMultiInstanceBackend() {
     activeAppend = appending;
     try {
       await appending;
+    } catch (error) {
+      if (error?.reason === "conflict" && !Object.keys(additions).length) {
+        activeAppend = null;
+        await activeRefresh;
+        await refresh();
+      }
+      throw error;
     } finally {
-      activeAppend = null;
+      if (activeAppend === appending) activeAppend = null;
       ensureDrain();
     }
   }

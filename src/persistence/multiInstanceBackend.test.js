@@ -713,6 +713,41 @@ describe("multiInstanceBackend", () => {
     }
   });
 
+  it("checks shared revisions without appending and refreshes a stale existing-item review", async () => {
+    const conflict = { reason: "conflict", message: "Changed in another workbench" };
+    const remote = { id: "broadcast", name: "Peer Edit" };
+    invoke
+      .mockRejectedValueOnce(conflict)
+      .mockResolvedValueOnce({
+        settings: { loudnessProfiles: { profiles: [remote] } },
+        libraryItemRevisions: { loudnessProfile: { broadcast: 3 } },
+        libraryCollectionRevisions: { loudnessProfile: 3 },
+        globalPreferences: { askToSendCrashReports: true },
+        globalPreferenceRevisions: { askToSendCrashReports: 5 },
+      })
+      .mockResolvedValueOnce({});
+    const { createMultiInstanceBackend } = await import("./multiInstanceBackend.js");
+    const backend = createMultiInstanceBackend();
+    const validate = vi.fn();
+
+    await expect(backend.appendLibrary({}, ["loudnessProfile"], validate)).rejects.toBe(conflict);
+    expect(invoke).toHaveBeenNthCalledWith(1, "persistence_library_append", {
+      additions: {},
+      expectedRevisions: { loudnessProfile: 2 },
+      expectedItemRevisions: { loudnessProfile: { broadcast: 2 } },
+    });
+    expect(invoke).toHaveBeenNthCalledWith(2, "persistence_hydrate");
+    expect(backend.get("plvs:settings").loudnessProfiles.profiles).toEqual([remote]);
+
+    await backend.appendLibrary({}, ["loudnessProfile"], validate);
+    expect(invoke).toHaveBeenNthCalledWith(3, "persistence_library_append", {
+      additions: {},
+      expectedRevisions: { loudnessProfile: 3 },
+      expectedItemRevisions: { loudnessProfile: { broadcast: 3 } },
+    });
+    expect(backend.get("plvs:settings").loudnessProfiles.profiles).toEqual([remote]);
+  });
+
   it("refreshes a peer Library change without replacing the active Preset selection", async () => {
     invoke.mockResolvedValueOnce({
       presets: { activeId: "two", list: [{ id: "one", name: "Changed Elsewhere" }] },

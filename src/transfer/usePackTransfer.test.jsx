@@ -556,6 +556,26 @@ describe("usePackTransfer paste", () => {
     expect(result.current.status).toBe("");
   });
 
+  it("refreshes the review instead of applying an existing profile that changed after preview", async () => {
+    const profile = { id: "mix", name: "Mix", referenceLufs: -23, rules: [] };
+    settingsStore.patch({ loudnessProfiles: { active: "off", profiles: [profile] } });
+    const { result } = renderHook(() => usePackTransfer());
+    await act(async () => {
+      await result.current.beginPaste(JSON.stringify(buildPack("loudness", [profile])));
+    });
+    expect(result.current.review.itemPlan[0]).toMatchObject({ disposition: "skipped" });
+    const remote = { ...profile, referenceLufs: -16 };
+    settingsStore.patch({ loudnessProfiles: { active: "off", profiles: [remote] } });
+
+    const useExisting = vi.fn(() => true);
+    await act(async () => result.current.runReviewAction(useExisting));
+
+    expect(useExisting).not.toHaveBeenCalled();
+    expect(result.current.review.itemPlan[0]).toMatchObject({ disposition: "duplicated" });
+    expect(result.current.status).toContain("Review the updated import");
+    expect(settingsStore.read().loudnessProfiles.profiles).toEqual([remote]);
+  });
+
   it("reports unrelated clipboard text without opening review", async () => {
     const { result } = renderHook(() => usePackTransfer());
 

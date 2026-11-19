@@ -62,6 +62,29 @@ function hexToRgb(hex) {
 }
 
 describe("SettingsPanel", () => {
+  it("offers a retry next to an unavailable Open at Login setting", () => {
+    const retryAutostart = vi.fn();
+    const { rerender } = render(
+      <SettingsPanel
+        {...BASE_PROPS}
+        autostartReady={false}
+        autostartError="Could not refresh Open at Login."
+        retryAutostart={retryAutostart}
+      />
+    );
+
+    expect(screen.getByRole("switch", { name: /open at login/i }).hasAttribute("disabled")).toBe(
+      true
+    );
+    expect(screen.getByText("Could not refresh Open at Login.").getAttribute("role")).toBe(
+      "status"
+    );
+    fireEvent.click(screen.getByRole("button", { name: "retry open at login" }));
+    expect(retryAutostart).toHaveBeenCalledOnce();
+    rerender(<SettingsPanel {...BASE_PROPS} autostartReady retryAutostart={retryAutostart} />);
+    expect(screen.queryByRole("button", { name: "retry open at login" })).toBeNull();
+  });
+
   it("focuses the version/update feedback for a tray section request, including repeated requests", async () => {
     const scroll = vi.spyOn(HTMLElement.prototype, "scrollIntoView");
     const { rerender } = render(

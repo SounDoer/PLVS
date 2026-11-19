@@ -387,6 +387,7 @@ export function AppSettingsOverlays({
       setAutostartEnabled: settings.setAutostartEnabled,
       autostartReady: settings.autostartReady,
       autostartError: settings.autostartError,
+      retryAutostart: settings.retryAutostart,
       closeAction: settings.closeAction,
       setCloseAction: settings.setCloseAction,
       historyRetentionSec: settings.historyRetentionSec,

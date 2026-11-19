@@ -33,6 +33,7 @@ export function useSettings({ shortcutActionRef, onHistoryRetentionChangeRef } =
     setAutostartEnabledForControl,
     autostartReady,
     autostartError,
+    retryAutostart,
   } = useAutostart();
   const shortcutState = useKeyboardShortcuts(shortcutActionRef);
   const themeSettings = useThemeSettings();
@@ -91,6 +92,7 @@ export function useSettings({ shortcutActionRef, onHistoryRetentionChangeRef } =
     setAutostartEnabledForControl,
     autostartReady,
     autostartError,
+    retryAutostart,
     ...customThemeSettings,
     ...shortcutState,
   };

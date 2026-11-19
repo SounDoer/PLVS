@@ -68,7 +68,7 @@ describe("useSettings", () => {
   // Agent Control's `theme.import` settles by watching `settings.customThemes` change, so the field
   // has to survive the trip out of `useThemeSettings`. Asserting on the hook that owns the state
   // would pass while `useSettings` drops it on the floor, and so would a store read: the picker
-  // re-renders off an unrelated `listCustomThemeDocumentsOrdered()` call, which is why nothing on
+  // re-renders off an unrelated `listCustomThemesOrdered()` call, which is why nothing on
   // screen shows the gap.
   it("re-exports the custom theme library, tracking an import written outside React", async () => {
     const { result } = renderHook(() => useSettings());

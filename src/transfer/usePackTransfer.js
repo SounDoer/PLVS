@@ -248,6 +248,14 @@ export function usePackTransfer() {
       setStatus("");
       const entry = review.itemPlan[0];
       try {
+        try {
+          await review.verifyExisting();
+        } catch (error) {
+          if (error?.reason !== "conflict") throw error;
+          setReview({ ...review, ...preparePackImport(review.type, review.pack) });
+          setStatus("The Library changed. Review the updated import before continuing.");
+          return false;
+        }
         if ((await action(review.type, entry.finalId)) === false) {
           setStatus(`${entry.name} could not be used.`);
           return false;

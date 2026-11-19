@@ -189,17 +189,17 @@ export function createUpdateController({
       const candidate = await invoke("update_check", { automatic });
       if (automatic && (requestGeneration !== generation || !preferences.autoCheck)) return;
       emit({ candidate, checkStatus: "ok" });
-      // An open offer follows a replacement of its staged package, or retries the same version
-      // after the package is lost. Otherwise the selected version stays fixed.
+      // An open offer follows a replacement of its staged package. A failed download or lost
+      // package can be retried for that same version without changing what the user selected.
       const details = state.details;
       const supersedable =
         !details ||
         (details.origin !== "fixture" &&
           !transfer &&
           ((details.staged && details.target.id === state.ready?.id) ||
-            (!state.ready &&
-              state.installStatus === "install-error" &&
-              details.target.version === candidate?.version)));
+            (!details.staged &&
+              details.target.version === candidate?.version &&
+              (state.downloadError || (!state.ready && state.installStatus === "install-error")))));
       // One attempt per check. Failed transfers wait for Check or the next interval.
       if (
         preferences.autoDownload &&

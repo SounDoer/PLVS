@@ -4,6 +4,7 @@ import {
   computeSelectionOffset,
   computePanOffset,
   computeWheelZoom,
+  historyPointerFraction,
 } from "../math/historyInteractionMath";
 import { ACTIVE_PULSE_MS, ZOOM_IN_FACTOR, ZOOM_OUT_FACTOR } from "../math/axisInteractionMath";
 
@@ -22,6 +23,7 @@ export function useHistoryInteraction({
   effectiveOffsetSec,
   setSelectedOffset,
   selectSnapshot = setSelectedOffset,
+  selectSnapshotAtFraction = null,
   setHistoryOffsetSec,
   setHistoryWindowSec,
   setHistoryHudUntilTs,
@@ -88,7 +90,7 @@ export function useHistoryInteraction({
 
   const holdHistoryHud = useCallback(
     (on) => {
-      if (!enabled) return;
+      if (!enabled && on) return;
       setHistoryHudHold(Boolean(on));
       if (on) showHistoryHud(2200);
     },
@@ -113,6 +115,10 @@ export function useHistoryInteraction({
 
   const updateSelectionFromClientX = useCallback(
     (/** @type {number} */ clientX, rect) => {
+      if (selectSnapshotAtFraction) {
+        selectSnapshotAtFraction(historyPointerFraction(clientX, rect));
+        return;
+      }
       selectSnapshot(
         computeSelectionOffset(
           clientX,
@@ -124,7 +130,14 @@ export function useHistoryInteraction({
         )
       );
     },
-    [effectiveOffsetSamples, visibleSamples, selectSnapshot, sampleSec, totalSamples]
+    [
+      effectiveOffsetSamples,
+      visibleSamples,
+      selectSnapshot,
+      selectSnapshotAtFraction,
+      sampleSec,
+      totalSamples,
+    ]
   );
 
   const onHistoryPointerDown = useCallback(
@@ -233,12 +246,12 @@ export function useHistoryInteraction({
       try {
         ev.currentTarget.releasePointerCapture(ev.pointerId);
       } catch (_) {}
-      if (!enabled || !mode) return;
+      if (!mode) return;
       if (mode === "pan") setIsTimeAxisActive(false);
       holdHistoryHud(false);
       showHistoryHud(900);
     },
-    [enabled, holdHistoryHud, showHistoryHud]
+    [holdHistoryHud, showHistoryHud]
   );
 
   const onHistoryWheel = useCallback(
@@ -249,9 +262,7 @@ export function useHistoryInteraction({
       showHistoryHud(1600);
       const factor = ev.deltaY < 0 ? ZOOM_IN_FACTOR : ZOOM_OUT_FACTOR;
       const rect = timeRect(ev.currentTarget.getBoundingClientRect());
-      const width = Math.max(1, rect.width);
-      const x = Math.max(0, Math.min(width, timeCoordinate(ev) - rect.left));
-      const norm = 1 - x / width;
+      const norm = 1 - historyPointerFraction(timeCoordinate(ev), rect);
       const pending = pendingWheelZoomRef.current;
       pendingWheelZoomRef.current = {
         factor: (pending?.factor ?? 1) * factor,
@@ -300,9 +311,7 @@ export function useHistoryInteraction({
       showHistoryHud(1600);
       const factor = ev.deltaY < 0 ? ZOOM_IN_FACTOR : ZOOM_OUT_FACTOR;
       const rect = timeRect(ev.currentTarget.getBoundingClientRect());
-      const width = Math.max(1, rect.width);
-      const x = Math.max(0, Math.min(width, timeCoordinate(ev) - rect.left));
-      const norm = 1 - x / width;
+      const norm = 1 - historyPointerFraction(timeCoordinate(ev), rect);
       const { nextWindowSec, nextOffsetSec } = computeWheelZoom({
         factor,
         norm,
@@ -401,12 +410,12 @@ export function useHistoryInteraction({
       try {
         ev.currentTarget.releasePointerCapture(ev.pointerId);
       } catch (_) {}
-      if (!enabled || !wasDragging) return;
+      if (!wasDragging) return;
       setIsTimeAxisActive(false);
       holdHistoryHud(false);
       showHistoryHud(900);
     },
-    [enabled, holdHistoryHud, showHistoryHud]
+    [holdHistoryHud, showHistoryHud]
   );
 
   const onHistoryTimeAxisDoubleClick = useCallback(

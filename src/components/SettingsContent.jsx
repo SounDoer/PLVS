@@ -176,6 +176,7 @@ function IconButton({ children, className, ...props }) {
  *   setAutostartEnabled?: (...args: any[]) => any,
  *   autostartReady?: boolean,
  *   autostartError?: string,
+ *   retryAutostart?: () => void,
  *   closeAction?: string,
  *   setCloseAction?: (...args: any[]) => any,
  *   historyRetentionSec?: number,
@@ -252,6 +253,7 @@ export function SettingsContent({
   setAutostartEnabled = () => {},
   autostartReady = false,
   autostartError = "",
+  retryAutostart = null,
   closeAction = "ask",
   setCloseAction = () => {},
   historyRetentionSec = 3600,
@@ -533,12 +535,16 @@ export function SettingsContent({
             />
           </SettingsRow>
           {autostartError ? (
-            <span
-              role="status"
-              className="px-2 text-right text-[length:var(--ui-fs-axis)] text-destructive"
-            >
-              {autostartError}
-            </span>
+            <div className="flex items-center justify-end gap-2 px-2 text-right text-[length:var(--ui-fs-axis)]">
+              <span role="status" className="text-destructive">
+                {autostartError}
+              </span>
+              {!autostartReady && retryAutostart ? (
+                <LinkButton aria-label="retry open at login" onClick={() => retryAutostart()}>
+                  Retry
+                </LinkButton>
+              ) : null}
+            </div>
           ) : null}
           <SettingsRow label="Close Behavior">
             <Select
