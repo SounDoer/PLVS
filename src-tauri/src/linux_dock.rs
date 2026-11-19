@@ -474,7 +474,7 @@ fn queue_refresh<R: tauri::Runtime>(
             state.monitor.as_deref(),
           )?;
         }
-        crate::dock::write_dock_state(owner.app_handle(), &state);
+        crate::dock::remember_dock_state(owner.app_handle(), &state);
         owner
           .emit("dock-native-geometry-changed", ())
           .map_err(|e| e.to_string())

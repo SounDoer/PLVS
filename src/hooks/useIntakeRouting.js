@@ -50,15 +50,6 @@ export function useIntakeRouting({
     [liveIntake, fileAnalysisIntake]
   );
 
-  const frequencyMarkerRef = useMemo(
-    () => ({
-      get current() {
-        return intakeRef.current.getFrequencyChannelMarkers();
-      },
-    }),
-    []
-  );
-
   // Live per-request-key spectrogram source: each Spectrogram panel reads the rolling history for
   // its own request key so two spectrograms with different channel/view never share one history.
   const getSpectrogramSnapsForKey = useCallback(
@@ -71,7 +62,6 @@ export function useIntakeRouting({
     fileDisplayIntake,
     fileAnalysisIntake,
     fileDisplayActiveRef,
-    frequencyMarkerRef,
     getSpectrogramSnapsForKey,
     ingestingIntakes,
   };

@@ -56,7 +56,7 @@ async function stopAndFlush(current) {
 }
 
 async function recoverExpiredPreparations(current, prepared) {
-  const now = Date.now();
+  const now = performance.now();
   for (const [operationId, state] of prepared) {
     if (state.expiresAt > now) continue;
     if (state.wasRunning) await current.start();
@@ -116,7 +116,7 @@ async function handleRuntimeCommand(command, prepared) {
     }
     if (command.action === "prepareGlobal") {
       if (prepared.has(command.operationId)) {
-        prepared.get(command.operationId).expiresAt = Date.now() + PREPARED_LEASE_MS;
+        prepared.get(command.operationId).expiresAt = performance.now() + PREPARED_LEASE_MS;
         await acknowledge(command, "ready");
         return;
       }
@@ -135,7 +135,7 @@ async function handleRuntimeCommand(command, prepared) {
       const wasRunning = await stopAndFlush(current);
       prepared.set(command.operationId, {
         wasRunning,
-        expiresAt: Date.now() + PREPARED_LEASE_MS,
+        expiresAt: performance.now() + PREPARED_LEASE_MS,
       });
       await acknowledge(command, "ready");
       return;
@@ -147,7 +147,20 @@ async function handleRuntimeCommand(command, prepared) {
       return;
     }
     if (command.action === "commitGlobal") {
+      const preparation = prepared.get(command.operationId);
+      if (!preparation || preparation.expiresAt <= performance.now()) {
+        await acknowledge(command, "failed", "This workbench's preparation expired.");
+        return;
+      }
+      if (current.blockingEditors.length) {
+        await acknowledge(command, "blocked", current.blockingEditors.join(", "));
+        return;
+      }
       await flushPersistence();
+      if (preparation.expiresAt <= performance.now() || current.blockingEditors.length) {
+        await acknowledge(command, "blocked", "This workbench is no longer ready to close.");
+        return;
+      }
       prepared.delete(command.operationId);
       await acknowledge(command, "completed");
       await exit(0);

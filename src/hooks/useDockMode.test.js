@@ -156,6 +156,75 @@ describe("useDockMode", () => {
     expect(result.current.aboveFullScreen).toBe(false);
   });
 
+  it("reads the current value for each queued Above Full Screen toggle", async () => {
+    window.__PLVS_INITIAL_STATE__ = { dockState: { enabled: true, edge: "top" } };
+    const { result } = renderHook(() => useDockMode());
+    await act(async () => {
+      await Promise.all([
+        result.current.toggleAboveFullScreen(),
+        result.current.toggleAboveFullScreen(),
+      ]);
+    });
+    expect(mocks.setDockAboveFullScreen.mock.calls).toEqual([
+      [{ enabled: false }],
+      [{ enabled: true }],
+    ]);
+    expect(result.current.aboveFullScreen).toBe(true);
+  });
+
+  it("ignores a native response requested before entering Dock", async () => {
+    let finishRead;
+    mocks.getDockState.mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          finishRead = resolve;
+        })
+    );
+    const { result } = renderHook(() => useDockMode());
+    await act(() => result.current.enterDockMode("bottom"));
+    await act(async () => finishRead({ ready: true, state: { enabled: false, edge: "top" } }));
+    expect(result.current.dockEnabled).toBe(true);
+    expect(result.current.dockEdge).toBe("bottom");
+  });
+
+  it("continues syncing macOS Dock after a rejected native read", async () => {
+    vi.useFakeTimers();
+    const state = (monitor) => ({ ready: true, state: { enabled: true, edge: "top", monitor } });
+    Object.defineProperty(navigator, "platform", { configurable: true, value: "MacIntel" });
+    mocks.getDockState
+      .mockResolvedValueOnce(state("original"))
+      .mockRejectedValueOnce(new Error("temporary read failure"))
+      .mockResolvedValue(state("new"));
+    const { result, unmount } = renderHook(() => useDockMode());
+    try {
+      await act(async () => {});
+      expect(result.current.dockMonitor).toBe("original");
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(2_500);
+      });
+      expect(result.current.dockMonitor).toBe("new");
+    } finally {
+      unmount();
+      vi.useRealTimers();
+    }
+  });
+
+  it("keeps the native height visible when saving that height fails", async () => {
+    window.__PLVS_INITIAL_STATE__ = { dockState: { enabled: true, edge: "top", height: 56 } };
+    mocks.getDockState.mockResolvedValueOnce(undefined).mockResolvedValueOnce({
+      ready: true,
+      state: { enabled: true, edge: "top", height: 78 },
+    });
+    const failure = "Could not save applied Dock settings: disk full";
+    mocks.setDockHeight.mockRejectedValueOnce(failure);
+    const { result } = renderHook(() => useDockMode());
+    await act(async () => {
+      await expect(result.current.resizeDockHeight(78)).rejects.toBe(failure);
+    });
+    expect(result.current.dockHeight).toBe(78);
+    expect(result.current.dockPreviewHeight).toBeNull();
+  });
+
   it("passes an aboveFullScreen override to enterDock", async () => {
     window.__PLVS_INITIAL_STATE__ = { dockState: { enabled: false, edge: "top" } };
     const { result } = renderHook(() => useDockMode());

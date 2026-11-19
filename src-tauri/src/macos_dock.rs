@@ -142,7 +142,7 @@ pub fn watch<R: tauri::Runtime>(app: tauri::AppHandle<R>) {
       continue;
     }
     state.reserve_space = false;
-    crate::dock::write_dock_state(&app, &state);
+    crate::dock::remember_dock_state(&app, &state);
     // A revoked permission can leave adjusted windows and an in-memory journal behind.
     // Keep ownership until guarded recovery succeeds (or process exit releases the lock),
     // otherwise the old instance could later restore frames owned by a new instance.

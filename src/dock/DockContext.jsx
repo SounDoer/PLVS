@@ -1,6 +1,6 @@
 import { createContext, useCallback, useContext, useEffect } from "react";
 import { listen } from "@tauri-apps/api/event";
-import { useDockMode } from "../hooks/useDockMode.js";
+import { isDockSaveFailure, useDockMode } from "../hooks/useDockMode.js";
 import { DOCK_DEFAULT_HEIGHT } from "./dockSizing.js";
 import { useSceneGuard } from "../hooks/SceneGuardContext.jsx";
 import { useAppSettings } from "../settings/SettingsContext.jsx";
@@ -121,7 +121,9 @@ export function DockProvider({ children }) {
         if (reportError) {
           raiseNotice(
             "error",
-            "Could not restore the main window. Try again.",
+            isDockSaveFailure(error)
+              ? "Could Not Save the Restored Window Mode"
+              : "Could not restore the main window. Try again.",
             errorDetails("Restore window failed", error),
             { helpTopic: "dock" }
           );
@@ -150,7 +152,9 @@ export function DockProvider({ children }) {
         reportSceneOperationError(
           raiseNotice,
           error,
-          "Could not move Dock. The previous position was kept.",
+          isDockSaveFailure(error)
+            ? "Could Not Save Dock Position"
+            : "Could not move Dock. The previous position was kept.",
           "Dock failed",
           "dock"
         );
@@ -200,7 +204,9 @@ export function DockProvider({ children }) {
       } catch (error) {
         raiseNotice(
           "error",
-          "Dock height could not be changed. The previous height was kept.",
+          isDockSaveFailure(error)
+            ? "Could Not Save Dock Height"
+            : "Dock height could not be changed. The previous height was kept.",
           errorDetails("Dock resize failed", error),
           { helpTopic: "dock" }
         );
@@ -218,7 +224,9 @@ export function DockProvider({ children }) {
     } catch (error) {
       raiseNotice(
         "error",
-        "Dock layout could not be reset. The previous layout was kept.",
+        isDockSaveFailure(error)
+          ? "Could Not Save Dock Height"
+          : "Dock layout could not be reset. The previous layout was kept.",
         errorDetails("Dock reset failed", error),
         { helpTopic: "dock" }
       );

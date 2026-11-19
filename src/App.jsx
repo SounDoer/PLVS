@@ -325,7 +325,7 @@ function AppContent() {
   const spectrumChannelUi = normalizedPanelControls.spectrumChannel;
   const spectrumViewUi = normalizedPanelControls.spectrumView;
 
-  const { intakeRef, frequencyMarkerRef, getSpectrogramSnapsForKey } = routing;
+  const { intakeRef, getSpectrogramSnapsForKey } = routing;
 
   const {
     histSourceList,
@@ -521,7 +521,6 @@ function AppContent() {
     hasHistoryData,
     historyChartInteractive,
     captureCurrentSnapshot,
-    frequencyMarkerRef,
     frequencyMarkerIndex,
     totalSamples,
     histSourceList,

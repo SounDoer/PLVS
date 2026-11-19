@@ -21,6 +21,10 @@ import {
 import { updateDiagnosticDock } from "../lib/feedbackDiagnostics.js";
 import { onDockNativeGeometryChanged } from "../ipc/events.js";
 
+export function isDockSaveFailure(error) {
+  return String(error?.message ?? error).startsWith("Could not save applied Dock settings:");
+}
+
 function normalizeDockState(raw) {
   // No stored form (first run): the tuned first-run Dock sits on the top edge. Rust always writes an
   // edge, so this only decides the no-record case.
@@ -64,8 +68,9 @@ export function useDockMode({ assertSceneOperationAllowed = () => {} } = {}) {
   const dockRef = useRef(dock);
   const transitionTailRef = useRef(Promise.resolve());
   const transitionCountRef = useRef(0);
-  const heightTransitionTailRef = useRef(Promise.resolve());
   const heightRequestRef = useRef(0);
+  const nativeRevisionRef = useRef(0);
+  const nativeMutationRef = useRef(false);
 
   useEffect(() => {
     updateDiagnosticDock({
@@ -83,36 +88,67 @@ export function useDockMode({ assertSceneOperationAllowed = () => {} } = {}) {
     return next;
   }, []);
 
-  const enqueueTransition = useCallback((operation) => {
-    transitionCountRef.current += 1;
-    setDockTransitioning(true);
-    const result = transitionTailRef.current.then(operation, operation);
-    transitionTailRef.current = result.catch(() => {});
-    return result.finally(() => {
-      transitionCountRef.current -= 1;
-      if (transitionCountRef.current === 0) setDockTransitioning(false);
-    });
-  }, []);
+  const applySnapshot = useCallback(
+    (snapshot) => {
+      if (snapshot?.ready !== true || !snapshot.state || typeof snapshot.state !== "object") return;
+      const normalized = normalizeDockState(snapshot.state);
+      commitDock(normalized);
+      if (!normalized.enabled) setDockSuspendedState(false);
+    },
+    [commitDock]
+  );
+
+  const enqueueTransition = useCallback(
+    (operation, showTransition = true) => {
+      if (showTransition) {
+        transitionCountRef.current += 1;
+        setDockTransitioning(true);
+      }
+      const result = transitionTailRef.current.then(async () => {
+        nativeRevisionRef.current += 1;
+        nativeMutationRef.current = true;
+        try {
+          return await operation();
+        } catch (error) {
+          if (isDockSaveFailure(error)) {
+            await getDockState()
+              .then(applySnapshot)
+              .catch(() => {});
+          }
+          throw error;
+        } finally {
+          nativeMutationRef.current = false;
+          nativeRevisionRef.current += 1;
+        }
+      });
+      transitionTailRef.current = result.catch(() => {});
+      return result.finally(() => {
+        if (!showTransition) return;
+        transitionCountRef.current -= 1;
+        if (transitionCountRef.current === 0) setDockTransitioning(false);
+      });
+    },
+    [applySnapshot]
+  );
 
   useEffect(() => {
     if (!isTauri()) return;
     let cancelled = false;
     let retryTimer = null;
-    const reconcile = () => {
-      getDockState()
-        .then((snapshot) => {
-          if (cancelled || !snapshot || typeof snapshot !== "object") return;
-          if (snapshot.ready !== true) {
-            retryTimer = window.setTimeout(reconcile, 16);
-            return;
-          }
-          if (!snapshot.state || typeof snapshot.state !== "object") return;
-          const normalized = normalizeDockState(snapshot.state);
-          commitDock(normalized);
-          if (!normalized.enabled) setDockSuspendedState(false);
-          if (isMacOS()) retryTimer = window.setTimeout(reconcile, 1000);
-        })
-        .catch(() => {});
+    let lastRequest = 0;
+    const reconcile = async () => {
+      window.clearTimeout(retryTimer);
+      const request = ++lastRequest;
+      const revision = nativeRevisionRef.current;
+      const snapshot = await getDockState().catch(() => null);
+      if (cancelled || request !== lastRequest) return;
+      if (nativeMutationRef.current || revision !== nativeRevisionRef.current) {
+        retryTimer = window.setTimeout(reconcile, 100);
+        return;
+      }
+      applySnapshot(snapshot);
+      if (snapshot?.ready === false) retryTimer = window.setTimeout(reconcile, 16);
+      else if (isMacOS() || snapshot === null) retryTimer = window.setTimeout(reconcile, 1000);
     };
     reconcile();
     let stopGeometry;
@@ -129,7 +165,7 @@ export function useDockMode({ assertSceneOperationAllowed = () => {} } = {}) {
       stopGeometry?.();
       if (retryTimer !== null) window.clearTimeout(retryTimer);
     };
-  }, [commitDock]);
+  }, [applySnapshot]);
 
   const enterDockMode = useCallback(
     (
@@ -236,30 +272,33 @@ export function useDockMode({ assertSceneOperationAllowed = () => {} } = {}) {
     return enqueueTransition(() => applyReserveSpace(!dockRef.current.reserveSpace));
   }, [applyReserveSpace, enqueueTransition]);
 
+  const applyAboveFullScreen = useCallback(
+    async (/** @type {boolean} */ enabled, origin = undefined) => {
+      await setDockAboveFullScreen({ enabled, ...(origin ? { origin } : {}) });
+      commitDock((latest) => ({ ...latest, aboveFullScreen: enabled }));
+    },
+    [commitDock]
+  );
   const setAboveFullScreen = useCallback(
     (/** @type {boolean} */ enabled, origin = undefined) => {
       if (!isTauri()) return Promise.resolve();
-      return enqueueTransition(async () => {
-        await setDockAboveFullScreen({ enabled, ...(origin ? { origin } : {}) });
-        commitDock((latest) => ({ ...latest, aboveFullScreen: enabled }));
-      });
+      return enqueueTransition(() => applyAboveFullScreen(enabled, origin));
     },
-    [commitDock, enqueueTransition]
+    [applyAboveFullScreen, enqueueTransition]
   );
 
-  const toggleAboveFullScreen = useCallback(
-    () => setAboveFullScreen(!dockRef.current.aboveFullScreen),
-    [setAboveFullScreen]
-  );
+  const toggleAboveFullScreen = useCallback(() => {
+    if (!isTauri()) return Promise.resolve();
+    return enqueueTransition(() => applyAboveFullScreen(!dockRef.current.aboveFullScreen));
+  }, [applyAboveFullScreen, enqueueTransition]);
 
   const resizeDockHeight = useCallback(
     (height, { persist = true, cancelled = false, origin = undefined } = {}) => {
       if (!isTauri() || !dockRef.current.enabled) return;
-      const previousHeight = dockRef.current.height;
       const nextHeight = clampDockHeight(height);
       const request = ++heightRequestRef.current;
       setDockPreviewHeight(nextHeight);
-      const operation = heightTransitionTailRef.current.then(async () => {
+      return enqueueTransition(async () => {
         try {
           const resolved = await setDockHeight({
             height: nextHeight,
@@ -270,44 +309,49 @@ export function useDockMode({ assertSceneOperationAllowed = () => {} } = {}) {
           if (!persist && request === heightRequestRef.current) {
             setDockPreviewHeight(clampDockHeight(resolved));
           }
-          if (persist && request === heightRequestRef.current) {
+          if (persist) {
             commitDock((latest) => ({ ...latest, height: clampDockHeight(resolved) }));
-            setDockPreviewHeight(null);
+            if (request === heightRequestRef.current) setDockPreviewHeight(null);
           }
         } catch (error) {
           if (request === heightRequestRef.current) {
-            commitDock((latest) => ({ ...latest, height: previousHeight }));
             setDockPreviewHeight(null);
           }
           throw error;
         }
-      });
-      heightTransitionTailRef.current = operation.catch(() => {});
-      return operation;
+      }, false);
     },
-    [commitDock]
+    [commitDock, enqueueTransition]
   );
 
   const suspendDockMode = useCallback(async () => {
     if (!isTauri() || !dockRef.current.enabled) return;
-    await setDockSuspended(true);
-    setDockSuspendedState(true);
-  }, []);
+    await enqueueTransition(async () => {
+      if (!dockRef.current.enabled) return;
+      await setDockSuspended(true);
+      setDockSuspendedState(true);
+    }, false);
+  }, [enqueueTransition]);
 
   const resumeDockMode = useCallback(async () => {
     if (!isTauri() || !dockRef.current.enabled) return;
-    const resolved = await setDockSuspended(false);
-    if (resolved && typeof resolved === "object") {
-      commitDock((latest) => ({
-        ...latest,
-        monitor: typeof resolved.monitor === "string" ? resolved.monitor : latest.monitor,
-        reserveSpace:
-          typeof resolved.reserveSpace === "boolean" ? resolved.reserveSpace : latest.reserveSpace,
-        height: clampDockHeight(resolved.height ?? latest.height),
-      }));
-    }
-    setDockSuspendedState(false);
-  }, [commitDock]);
+    await enqueueTransition(async () => {
+      if (!dockRef.current.enabled) return;
+      const resolved = await setDockSuspended(false);
+      if (resolved && typeof resolved === "object") {
+        commitDock((latest) => ({
+          ...latest,
+          monitor: typeof resolved.monitor === "string" ? resolved.monitor : latest.monitor,
+          reserveSpace:
+            typeof resolved.reserveSpace === "boolean"
+              ? resolved.reserveSpace
+              : latest.reserveSpace,
+          height: clampDockHeight(resolved.height ?? latest.height),
+        }));
+      }
+      setDockSuspendedState(false);
+    }, false);
+  }, [commitDock, enqueueTransition]);
 
   return {
     dockEnabled: dock.enabled,

@@ -394,7 +394,7 @@ pub fn runtime_issue_commands(
   }
   let _ = registry.remove_stale()?;
   let live = registry.list()?;
-  let targets: Vec<String> = match instance_ids {
+  let mut targets: Vec<String> = match instance_ids {
     Some(ids) => ids,
     None => live
       .iter()
@@ -402,6 +402,9 @@ pub fn runtime_issue_commands(
       .map(|instance| instance.instance_id.clone())
       .collect(),
   };
+  if action == "abortGlobal" {
+    targets.retain(|target| live.iter().any(|instance| &instance.instance_id == target));
+  }
   if targets.iter().any(|target| {
     target == identity.instance_id() || !live.iter().any(|instance| &instance.instance_id == target)
   }) {

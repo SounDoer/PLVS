@@ -21,7 +21,7 @@ it("stores unknown-duration File history without preallocating the logical capac
     intake.pushVisualHistRow(row, capacity, SR);
   }
   expect(intake.getLoudnessHistory().length).toBe(3);
-  expect(intake.getFrequencyChannelMarkers().length).toBe(3);
+  expect(intake.getSparseFrequencyChannelMarkers().length).toBe(3);
 });
 
 function makeRow(overrides = {}) {
@@ -109,8 +109,12 @@ describe("FrameIntake", () => {
 
     intake.pushHistRow(makeRow(), HIST_MAX);
 
-    expect(intake.getFrequencyChannelMarkers().toArray()).toEqual([
-      { type: "frequencyChannelChange", from: "L/R", to: "C" },
+    expect(intake.getSparseFrequencyChannelMarkers().query(0, HIST_MAX)).toEqual([
+      {
+        sequence: 0,
+        logicalIndex: 0,
+        marker: { type: "frequencyChannelChange", from: "L/R", to: "C" },
+      },
     ]);
     expect(intake.getChannelMetadataSnap().toArray()).toEqual([
       { frequencyLabel: "C", vectorscopePairLabel: "L/R" },
@@ -128,7 +132,7 @@ describe("FrameIntake", () => {
     intake.pushHistRow(makeRow(), HIST_MAX);
 
     expect(intake.getLoudnessHistory()).toHaveLength(2);
-    expect(intake.getFrequencyChannelMarkers().toArray()).toEqual([null, null]);
+    expect(intake.getSparseFrequencyChannelMarkers().query(0, HIST_MAX)).toEqual([]);
     expect(intake.getChannelMetadataSnap().toArray()).toEqual([
       { frequencyLabel: "L/R", vectorscopePairLabel: "L/R" },
       { frequencyLabel: "L/R", vectorscopePairLabel: "L/R" },
@@ -165,9 +169,12 @@ describe("FrameIntake", () => {
     intake.pushHistRow(makeRow(), HIST_MAX);
     intake.pushHistRow(makeRow(), HIST_MAX);
 
-    expect(intake.getFrequencyChannelMarkers().toArray()).toEqual([
-      { type: "frequencyChannelChange", from: "L/R", to: "C" },
-      null,
+    expect(intake.getSparseFrequencyChannelMarkers().query(0, HIST_MAX)).toEqual([
+      {
+        sequence: 0,
+        logicalIndex: 0,
+        marker: { type: "frequencyChannelChange", from: "L/R", to: "C" },
+      },
     ]);
   });
 
@@ -186,11 +193,6 @@ describe("FrameIntake", () => {
         logicalIndex: 1,
         marker: { type: "frequencyChannelChange", from: "4", to: "5" },
       },
-    ]);
-    expect(intake.getFrequencyChannelMarkers().toArray()).toEqual([
-      null,
-      { type: "frequencyChannelChange", from: "4", to: "5" },
-      null,
     ]);
   });
 
@@ -219,7 +221,7 @@ describe("FrameIntake", () => {
 
     intake.reset();
 
-    expect(intake.getFrequencyChannelMarkers().toArray()).toEqual([]);
+    expect(intake.getSparseFrequencyChannelMarkers().query(0, HIST_MAX)).toEqual([]);
     expect(intake.getChannelMetadataSnap().toArray()).toEqual([]);
   });
 
@@ -396,7 +398,7 @@ describe("FrameIntake", () => {
     ).toEqual([300, 400, 500]);
     expect(intake.getAudioSnap().length).toBe(3);
     expect(intake.getCorrSnap().toArray()).toEqual([3, 4, 5]);
-    expect(intake.getFrequencyChannelMarkers().toArray()).toEqual([null, null, null]);
+    expect(intake.getSparseFrequencyChannelMarkers().query(0, HIST_MAX)).toEqual([]);
     expect(
       intake
         .getChannelMetadataSnap()
@@ -417,7 +419,7 @@ describe("FrameIntake", () => {
       intake.getLoudnessHistory(),
       intake.getAudioSnap(),
       intake.getCorrSnap(),
-      intake.getFrequencyChannelMarkers(),
+      intake.getSparseFrequencyChannelMarkers(),
       intake.getChannelMetadataSnap(),
     ];
 
@@ -427,7 +429,7 @@ describe("FrameIntake", () => {
       intake.getLoudnessHistory(),
       intake.getAudioSnap(),
       intake.getCorrSnap(),
-      intake.getFrequencyChannelMarkers(),
+      intake.getSparseFrequencyChannelMarkers(),
       intake.getChannelMetadataSnap(),
     ];
     expect(rebuilt.every((ring) => ring.length === 1 && ring.capacity === HIST_MAX + 2)).toBe(true);
@@ -464,10 +466,10 @@ describe("FrameIntake", () => {
       intake.getLoudnessHistory(),
       intake.getAudioSnap(),
       intake.getCorrSnap(),
-      intake.getFrequencyChannelMarkers(),
       intake.getChannelMetadataSnap(),
     ];
     intake.reset();
+    expect(intake.getSparseFrequencyChannelMarkers().length).toBe(0);
     expect(rings.every((ring) => ring.length === 0)).toBe(true);
     expect(
       rings.every(

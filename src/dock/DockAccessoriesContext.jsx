@@ -1,5 +1,6 @@
 import { KEYBOARD_SHORTCUT_ACTIONS } from "../data/keyboardShortcutActions.js";
 import { useWindowChrome } from "../hooks/WindowChromeContext.jsx";
+import { isDockSaveFailure } from "../hooks/useDockMode.js";
 import { useAppLifecycle } from "../hooks/AppLifecycleContext.jsx";
 import { dockUpdateStatus } from "./dockUpdateStatus.js";
 import { useSource } from "../runtime/SourceContext.jsx";
@@ -675,9 +676,11 @@ export function DockAccessoriesProvider({ children }) {
         void toggleReserveSpace().catch((error) =>
           raiseNotice(
             "error",
-            reserveSpace
-              ? "Could not release reserved screen space. Dock remains reserved."
-              : "Could not reserve screen space. Dock remains an overlay.",
+            isDockSaveFailure(error)
+              ? "Could Not Save Reserve Space"
+              : reserveSpace
+                ? "Could not release reserved screen space. Dock remains reserved."
+                : "Could not reserve screen space. Dock remains an overlay.",
             errorDetails("Reserve screen space failed", error),
             { helpTopic: "dock" }
           )
@@ -687,7 +690,9 @@ export function DockAccessoriesProvider({ children }) {
         void toggleAboveFullScreen().catch((error) =>
           raiseNotice(
             "error",
-            "Could not change Above Full Screen.",
+            isDockSaveFailure(error)
+              ? "Could Not Save Above Full Screen"
+              : "Could not change Above Full Screen.",
             errorDetails("Above Full Screen failed", error),
             { helpTopic: "dock" }
           )

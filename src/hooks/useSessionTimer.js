@@ -19,7 +19,7 @@ export function formatClock(ms) {
  * Read `canClearRef.current` to gate the Clear button.
  */
 export function useSessionTimer() {
-  const runStartedAtRef = useRef(null); // Date.now() when last started, null when stopped
+  const runStartedAtRef = useRef(null);
   const accumulatedMsRef = useRef(0); // ms from previous start/stop cycles
   const rafIdRef = useRef(0);
   const lastTickMsRef = useRef(0);
@@ -41,7 +41,8 @@ export function useSessionTimer() {
       if (now - lastTickMsRef.current < 100) return; // ~10 Hz throttle
       lastTickMsRef.current = now;
       if (runStartedAtRef.current !== null) {
-        elapsedMsRef.current = accumulatedMsRef.current + (Date.now() - runStartedAtRef.current);
+        elapsedMsRef.current =
+          accumulatedMsRef.current + (performance.now() - runStartedAtRef.current);
         canClearRef.current = true;
         updateClockDom();
       }
@@ -50,14 +51,14 @@ export function useSessionTimer() {
 
   const startTimer = useCallback(() => {
     if (runStartedAtRef.current !== null) return; // already running
-    runStartedAtRef.current = Date.now();
+    runStartedAtRef.current = performance.now();
     lastTickMsRef.current = 0;
     rafIdRef.current = requestAnimationFrame(loopRef.current);
   }, []);
 
   const stopTimer = useCallback(() => {
     if (runStartedAtRef.current === null) return;
-    accumulatedMsRef.current += Date.now() - runStartedAtRef.current;
+    accumulatedMsRef.current += performance.now() - runStartedAtRef.current;
     runStartedAtRef.current = null;
     elapsedMsRef.current = accumulatedMsRef.current;
     canClearRef.current = accumulatedMsRef.current > 0;
@@ -70,7 +71,7 @@ export function useSessionTimer() {
     accumulatedMsRef.current = 0;
     elapsedMsRef.current = 0;
     canClearRef.current = false;
-    runStartedAtRef.current = restart ? Date.now() : null;
+    runStartedAtRef.current = restart ? performance.now() : null;
     lastTickMsRef.current = 0;
     if (clockRef.current) clockRef.current.textContent = restart ? formatClock(0) : "";
     if (restart) rafIdRef.current = requestAnimationFrame(loopRef.current);

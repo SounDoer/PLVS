@@ -247,6 +247,51 @@ describe("runtime coordination", () => {
     unmount();
   });
 
+  it.each([false, true])(
+    "refuses a commit with an open editor (preparation expired: %s)",
+    async (expired) => {
+      const commands = [
+        { commandId: "prepare", operationId: "operation", action: "prepareGlobal" },
+      ];
+      mocks.invoke.mockImplementation(async (name) =>
+        name === "runtime_poll_command" ? (commands.shift() ?? null) : undefined
+      );
+      const start = vi.fn().mockResolvedValue(undefined);
+      const { rerender, unmount } = renderHook(
+        ({ blockingEditors }) =>
+          useRuntimeCoordination({
+            running: true,
+            blockingEditors,
+            stop: vi.fn().mockResolvedValue(undefined),
+            start,
+            show: vi.fn(),
+          }),
+        { initialProps: { blockingEditors: [] } }
+      );
+      await act(async () => {});
+      if (expired) {
+        await act(async () => {
+          await vi.advanceTimersByTimeAsync(30_250);
+        });
+        expect(start).toHaveBeenCalledOnce();
+      }
+      rerender({ blockingEditors: ["theme"] });
+      commands.push({ commandId: "commit", operationId: "operation", action: "commitGlobal" });
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(250);
+      });
+      expect(mocks.exit).not.toHaveBeenCalled();
+      expect(mocks.invoke).toHaveBeenCalledWith(
+        "runtime_ack_command",
+        expect.objectContaining({
+          commandId: "commit",
+          outcome: expired ? "failed" : "blocked",
+        })
+      );
+      unmount();
+    }
+  );
+
   it("refuses a new prepare while recovery from an abandoned operation is pending", async () => {
     const stop = vi.fn().mockResolvedValue();
     const commands = [

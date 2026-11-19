@@ -349,7 +349,32 @@ pub struct DockStateSnapshot {
   pub state: Option<DockStateRecord>,
 }
 
+#[derive(Default)]
+pub(crate) struct EffectiveDockState(std::sync::Mutex<Option<DockStateRecord>>);
+
+impl EffectiveDockState {
+  fn record(
+    &self,
+    record: DockStateRecord,
+    save: impl FnOnce(&DockStateRecord) -> Result<(), String>,
+  ) -> Result<(), String> {
+    let mut current = self.0.lock().expect("effective Dock state lock poisoned");
+    let result = save(&record);
+    *current = Some(record);
+    result.map_err(|error| format!("Could not save applied Dock settings: {error}"))
+  }
+}
+
 pub fn read_dock_state<R: tauri::Runtime>(app: &tauri::AppHandle<R>) -> Option<DockStateRecord> {
+  if let Some(record) = app
+    .state::<EffectiveDockState>()
+    .0
+    .lock()
+    .expect("effective Dock state lock poisoned")
+    .clone()
+  {
+    return Some(record);
+  }
   let runtime = app.state::<crate::persistence::commands::PersistenceRuntime>();
   let value = if runtime.is_installed() {
     runtime
@@ -370,15 +395,30 @@ pub fn read_dock_state<R: tauri::Runtime>(app: &tauri::AppHandle<R>) -> Option<D
 pub(crate) fn write_dock_state<R: tauri::Runtime>(
   app: &tauri::AppHandle<R>,
   record: &DockStateRecord,
+) -> Result<(), String> {
+  app
+    .state::<EffectiveDockState>()
+    .record(record.clone().normalize_for_platform(), |record| {
+      let value = serde_json::to_value(record).map_err(|error| error.to_string())?;
+      let runtime = app.state::<crate::persistence::commands::PersistenceRuntime>();
+      if runtime.is_installed() {
+        runtime.save_workspace_value(crate::persistence::WorkspaceValue::DockState, &value)
+      } else {
+        let store = app
+          .store("plvs-settings.json")
+          .map_err(|error| error.to_string())?;
+        store.set(DOCK_STATE_KEY, value);
+        store.save().map_err(|error| error.to_string())
+      }
+    })
+}
+
+pub(crate) fn remember_dock_state<R: tauri::Runtime>(
+  app: &tauri::AppHandle<R>,
+  record: &DockStateRecord,
 ) {
-  let record = record.clone().normalize_for_platform();
-  let value = serde_json::to_value(record).unwrap_or_default();
-  let runtime = app.state::<crate::persistence::commands::PersistenceRuntime>();
-  if runtime.is_installed() {
-    let _ = runtime.save_workspace_value(crate::persistence::WorkspaceValue::DockState, &value);
-  } else if let Ok(store) = app.store("plvs-settings.json") {
-    store.set(DOCK_STATE_KEY, value);
-    let _ = store.save();
+  if let Err(error) = write_dock_state(app, record) {
+    log::warn!("{error}");
   }
 }
 
@@ -747,7 +787,7 @@ fn enter_dock_inner<R: tauri::Runtime>(
         height,
         above_full_screen,
       };
-      write_dock_state(window.app_handle(), &next);
+      write_dock_state(window.app_handle(), &next)?;
       Ok(next)
     },
   )
@@ -824,24 +864,21 @@ fn exit_dock_inner<R: tauri::Runtime>(
       });
       let app = window.app_handle();
       let prev = read_dock_state(app);
-      write_dock_state(
-        app,
-        &DockStateRecord {
-          macos_normal_chrome: prev.as_ref().and_then(|state| state.macos_normal_chrome),
-          enabled: false,
-          edge: prev.as_ref().map(|s| s.edge).unwrap_or(DockEdge::Bottom),
-          monitor: prev.as_ref().and_then(|s| s.monitor.clone()),
-          reserve_space: prev.as_ref().map(|s| s.reserve_space).unwrap_or(true),
-          height: prev
-            .as_ref()
-            .map(|s| clamp_dock_height(s.height))
-            .unwrap_or(DOCK_DEFAULT_LOGICAL_HEIGHT),
-          above_full_screen: prev
-            .as_ref()
-            .map(|s| s.above_full_screen)
-            .unwrap_or_else(default_above_full_screen),
-        },
-      );
+      let next = DockStateRecord {
+        macos_normal_chrome: prev.as_ref().and_then(|state| state.macos_normal_chrome),
+        enabled: false,
+        edge: prev.as_ref().map(|s| s.edge).unwrap_or(DockEdge::Bottom),
+        monitor: prev.as_ref().and_then(|s| s.monitor.clone()),
+        reserve_space: prev.as_ref().map(|s| s.reserve_space).unwrap_or(true),
+        height: prev
+          .as_ref()
+          .map(|s| clamp_dock_height(s.height))
+          .unwrap_or(DOCK_DEFAULT_LOGICAL_HEIGHT),
+        above_full_screen: prev
+          .as_ref()
+          .map(|s| s.above_full_screen)
+          .unwrap_or_else(default_above_full_screen),
+      };
       flag.0.store(false, Ordering::Relaxed);
       #[cfg(target_os = "macos")]
       crate::macos_dock_window::normal(&window)?;
@@ -850,7 +887,7 @@ fn exit_dock_inner<R: tauri::Runtime>(
           log::warn!("normal window bounds could not be saved after Dock exit: {error}");
         }
       }
-      Ok(())
+      write_dock_state(app, &next)
     },
   )
 }
@@ -1006,8 +1043,7 @@ pub fn set_dock_reserve_space<R: tauri::Runtime>(
             .map(|state| clamp_dock_height(state.height))
             .unwrap_or(DOCK_DEFAULT_LOGICAL_HEIGHT),
         },
-      );
-      Ok(())
+      )
     },
   )
 }
@@ -1048,8 +1084,7 @@ pub fn set_dock_above_full_screen<R: tauri::Runtime>(
           above_full_screen: enabled,
           ..previous
         },
-      );
-      Ok(())
+      )
     },
   )
 }
@@ -1130,7 +1165,6 @@ pub fn set_dock_suspended<R: tauri::Runtime>(
         // Resume as a usable overlay Dock. The UI receives this resolved record,
         // so Reserve never claims to be active when Shell rejected registration.
         state.reserve_space = false;
-        write_dock_state(window.app_handle(), &state);
       }
       #[cfg(target_os = "windows")]
       crate::appbar::watch_fullscreen(&window, true)?;
@@ -1146,7 +1180,7 @@ pub fn set_dock_suspended<R: tauri::Runtime>(
         )
         .unwrap_or(false);
       }
-      write_dock_state(window.app_handle(), &state);
+      remember_dock_state(window.app_handle(), &state);
       window
         .set_skip_taskbar(false)
         .map_err(|e| format!("resume dock taskbar: {e}"))?;
@@ -1281,7 +1315,7 @@ pub fn set_dock_height<R: tauri::Runtime>(
             height,
             above_full_screen: previous.above_full_screen,
           },
-        );
+        )?;
       }
       Ok(height)
     },
@@ -1291,6 +1325,19 @@ pub fn set_dock_height<R: tauri::Runtime>(
 #[cfg(test)]
 mod tests {
   use super::*;
+
+  #[test]
+  fn failed_dock_save_reports_the_error_and_keeps_the_native_form() {
+    let state = EffectiveDockState::default();
+    let record: DockStateRecord =
+      serde_json::from_value(serde_json::json!({"enabled":true,"edge":"bottom","height":78}))
+        .unwrap();
+    let error = state
+      .record(record, |_| Err("disk full".into()))
+      .unwrap_err();
+    assert_eq!(error, "Could not save applied Dock settings: disk full");
+    assert_eq!(state.0.lock().unwrap().as_ref().unwrap().height, 78);
+  }
 
   #[test]
   fn dock_support_matches_the_native_platform_contract() {

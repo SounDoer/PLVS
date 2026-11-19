@@ -1,5 +1,7 @@
-import { describe, expect, it } from "vitest";
-import { formatClock } from "./useSessionTimer.js";
+/** @vitest-environment jsdom */
+import { act, renderHook } from "@testing-library/react";
+import { describe, expect, it, vi } from "vitest";
+import { formatClock, useSessionTimer } from "./useSessionTimer.js";
 
 describe("formatClock", () => {
   it("formats sub-hour durations as HH:MM:SS", () => {
@@ -12,4 +14,22 @@ describe("formatClock", () => {
   it("formats hour-long durations without changing shape", () => {
     expect(formatClock(3_661_000)).toBe("01:01:01");
   });
+});
+
+it("keeps elapsed Live time when the system clock is set backwards", () => {
+  vi.useFakeTimers();
+  const { result, unmount } = renderHook(() => useSessionTimer());
+  try {
+    act(() => {
+      result.current.startTimer();
+      vi.advanceTimersByTime(2_000);
+      vi.setSystemTime(new Date(Date.now() - 3_600_000));
+      vi.advanceTimersByTime(1_000);
+      result.current.stopTimer();
+    });
+    expect(formatClock(result.current.elapsedMsRef.current)).toBe("00:00:03");
+  } finally {
+    unmount();
+    vi.useRealTimers();
+  }
 });

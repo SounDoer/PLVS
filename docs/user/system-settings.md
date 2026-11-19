@@ -75,6 +75,9 @@ installer fails after peer workbenches have already closed, PLVS relaunches the 
 the saved set is restored instead of leaving those workbenches closed. If the coordinator itself
 disappears while workbenches are waiting at the save barrier, they resume any capture that the
 barrier stopped.
+If preparation expires or a draft opens before a workbench closes, it refuses the old close
+request. When an operation is canceled, workbenches that are still open can resume even if
+another workbench has already closed.
 
 PLVS also keeps one system Tray. On Windows and macOS, left-clicking its icon shows or hides the
 main window, while right-clicking opens the menu. On Linux, icon interactions depend on the desktop's

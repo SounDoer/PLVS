@@ -274,6 +274,7 @@ pub fn run() {
       std::sync::atomic::AtomicBool::new(false),
     )))
     .manage(dock::DockReservationLease::default())
+    .manage(dock::EffectiveDockState::default())
     .manage(window_chrome::NormalWindowShadow::default())
     .manage(coordinator::RuntimeOperationCoordinator::default())
     .manage(AppLaunchContext {
@@ -551,7 +552,7 @@ pub fn run() {
       }
       #[cfg(not(target_os = "windows"))]
       if let Some(state) = dock_state.as_ref() {
-        dock::write_dock_state(app.handle(), state);
+        dock::remember_dock_state(app.handle(), state);
       }
       let global_preferences = serde_json::to_value(&hydrated.global_preferences)
         .map_err(|error| format!("global preference boot snapshot: {error}"))?;
@@ -634,7 +635,7 @@ pub fn run() {
         let d = boot_dock.as_mut().expect("boot_docked requires dock state");
         if let Ok(height) = dock::fitted_height(&window, d.monitor.as_deref(), d.height) {
           d.height = height;
-          dock::write_dock_state(app.handle(), d);
+          dock::remember_dock_state(app.handle(), d);
         }
         app
           .state::<dock::DockedFlag>()
@@ -660,7 +661,7 @@ pub fn run() {
             .store(false, std::sync::atomic::Ordering::Relaxed);
           let mut failed = d.clone();
           failed.enabled = false;
-          dock::write_dock_state(window.app_handle(), &failed);
+          dock::remember_dock_state(window.app_handle(), &failed);
         }
       }
       let restore_normal = !app
@@ -706,7 +707,7 @@ pub fn run() {
             false,
           )
           .unwrap_or(false);
-          dock::write_dock_state(app.handle(), &state);
+          dock::remember_dock_state(app.handle(), &state);
         }
         macos_dock::watch(app.handle().clone());
       }
@@ -776,7 +777,7 @@ pub fn run() {
               )?;
             }
           }
-          dock::write_dock_state(window.app_handle(), state);
+          dock::remember_dock_state(window.app_handle(), state);
         }
       }
 
@@ -804,7 +805,7 @@ pub fn run() {
             log::warn!("dock reservation is occupied or unavailable; continuing as overlay Dock");
             let mut overlay = d.clone();
             overlay.reserve_space = false;
-            dock::write_dock_state(window.app_handle(), &overlay);
+            dock::remember_dock_state(window.app_handle(), &overlay);
           }
         }
       }

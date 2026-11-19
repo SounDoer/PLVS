@@ -48,7 +48,6 @@ import { createContext, useContext } from "react";
  *   hasHistoryData: boolean,
  *   historyChartInteractive: any,
  *   captureCurrentSnapshot: (...args: any[]) => any,
- *   frequencyMarkerRef: any,
  *   frequencyMarkerIndex: any,
  *   totalSamples: any,
  *   histSourceList: any,

@@ -54,7 +54,7 @@ function viewOf(rows) {
 const baseAudioData = {
   getSpectrogramSnapsForKey: () => EMPTY_SPECTRUM_VIEW,
   snapshotSpectrumByKey: {},
-  frequencyMarkerRef: { current: [] },
+  frequencyMarkerIndex: null,
   effectiveOffsetSamples: 0,
   visibleSamples: 0,
   selectedOffset: -1,
@@ -308,13 +308,19 @@ describe("SpectrogramPanel", () => {
     });
   });
 
+  function singleFrequencyMarker() {
+    const index = new SparseHistoryMarkers(3);
+    index.push(null);
+    index.push({ type: "frequencyChannelChange", from: "L/R", to: "C" });
+    index.push(null);
+    return index;
+  }
+
   it("hides frequency change markers when no selectable channel chip is shown", () => {
     const { container } = renderPanel({
       channelCount: 2,
       spectrumChannelOptions: [{ key: "p-0-1", label: "L+R", sel: { type: "pair", x: 0, y: 1 } }],
-      frequencyMarkerRef: {
-        current: [null, { type: "frequencyChannelChange", from: "L/R", to: "C" }],
-      },
+      frequencyMarkerIndex: singleFrequencyMarker(),
       histSourceList: [{ timestampMs: 1000 }, { timestampMs: 1100 }, { timestampMs: 1200 }],
       totalSamples: 3,
       effectiveOffsetSamples: 0,
@@ -331,9 +337,7 @@ describe("SpectrogramPanel", () => {
         { key: "p-0-1", label: "L+R", sel: { type: "pair", x: 0, y: 1 } },
         { key: "s-2", label: "C", sel: { type: "single", ch: 2 } },
       ],
-      frequencyMarkerRef: {
-        current: [null, { type: "frequencyChannelChange", from: "L/R", to: "C" }],
-      },
+      frequencyMarkerIndex: singleFrequencyMarker(),
       histSourceList: [{ timestampMs: 1000 }, { timestampMs: 1100 }, { timestampMs: 1200 }],
       totalSamples: 3,
       effectiveOffsetSamples: 0,
@@ -358,15 +362,6 @@ describe("SpectrogramPanel", () => {
         { key: "s-2", label: "C", sel: { type: "single", ch: 2 } },
       ],
       frequencyMarkerIndex,
-      frequencyMarkerRef: {
-        current: [
-          { type: "frequencyChannelChange", from: "wrong", to: "fallback" },
-          null,
-          null,
-          null,
-          null,
-        ],
-      },
       histSourceList: Array.from({ length: 5 }, (_, index) => ({ timestampMs: index * 100 })),
       totalSamples: 5,
       effectiveOffsetSamples: 0,

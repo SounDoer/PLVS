@@ -144,6 +144,8 @@ windows leaves capture and history running. **Views** starts with where the stri
 Space** and **Above Full Screen** where supported, and ends with how it looks, **Hide Axes & Labels**
 and **Surface Opacity**. Select **Off** to restore the normal window. Sources and Views open beside the strip;
 opening either does not restart capture. Panel settings remain accessible through the panel editor.
+If PLVS cannot save a Dock change, Status Notices reports the failure. The window shows the applied
+change for the current session, and PLVS restores the last saved settings when it restarts.
 
 The toolbar is prepared when Dock starts; its shared panel window is created when first needed.
 Returning to the normal window keeps these windows ready for one minute, then releases them. A quick
@@ -159,6 +161,7 @@ Loudness Profile, edit which modules the strip shows, and manage Presets. The ex
 shows the normal window's transport pill on the left, with the same elapsed time, Ready/Live/Snapshot
 states and Start/Stop/Return to Live actions. Dock supports Live only, so the pill has no source-mode
 dropdown. The strip's right-side transport shortcut remains available when the toolbar is closed.
+Adjusting the system clock does not change the elapsed Live session time.
 Beside the pill, read-only Source, Loudness and Preset names follow the normal footer, including the
 unsaved Preset marker. Long names shorten to fit; hover to read the full name. Closing the toolbar
 hides this context and the time display. Returning to the normal window preserves capture and history. The

@@ -227,6 +227,9 @@ impl RuntimeCommandMailbox {
     for instance_id in instance_ids {
       match self.issue_with_payload(instance_id, operation_id, action, payload) {
         Ok(command) => issued.push(command),
+        Err(error) if action == "abortGlobal" => {
+          log::warn!("Unable to send runtime abort to {instance_id}: {error}");
+        }
         Err(error) => {
           if action == "prepareGlobal" {
             for command in &issued {
@@ -464,6 +467,22 @@ mod tests {
         std::thread::sleep(duration);
       }
     }
+  }
+
+  #[test]
+  fn a_failed_abort_does_not_prevent_delivery_to_other_workbenches() {
+    let root = test_root("abort-partial-delivery");
+    let mailbox = RuntimeCommandMailbox::open(&root).unwrap();
+    let issued = mailbox
+      .issue_many(
+        &["bad/path".into(), "peer".into()],
+        "operation",
+        "abortGlobal",
+      )
+      .unwrap();
+    assert_eq!(issued.len(), 1);
+    assert_eq!(mailbox.poll("peer").unwrap().unwrap().action, "abortGlobal");
+    std::fs::remove_dir_all(root).unwrap();
   }
 
   fn test_root(name: &str) -> PathBuf {

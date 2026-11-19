@@ -1,5 +1,3 @@
-import { RingBuffer } from "./RingBuffer.js";
-import { ChunkedSequence } from "./ChunkedSequence.js";
 import { SparseHistoryMarkers } from "./SparseHistoryMarkers.js";
 import { SpectrumHistorySlab, EMPTY_SPECTRUM_VIEW } from "./SpectrumHistorySlab.js";
 import { VectorscopeHistorySlab } from "./VectorscopeHistorySlab.js";
@@ -153,8 +151,6 @@ export class FrameIntake {
     this._waveformHistoryIndex = new WaveformHistoryIndex(1);
     this._audioSnap = this._scalarHistory.audio;
     this._corrSnap = this._scalarHistory.correlation;
-    /** @type {{ length: number, capacity: number, push: (value: any) => void, at: (index: number) => any, toArray: () => any[], clear: () => void }} */
-    this._frequencyChannelMarkers = new RingBuffer(1);
     this._sparseFrequencyChannelMarkers = new SparseHistoryMarkers(1);
     this._channelMetadataSnap = new ChannelMetadataHistory(1);
     this._pendingFrequencyMarker = null;
@@ -182,10 +178,6 @@ export class FrameIntake {
     const scalarHistory = new ScalarHistoryStore(capacity);
     const loudnessDisplayIndex = new LoudnessHistoryIndex(capacity);
     const waveformHistoryIndex = new WaveformHistoryIndex(capacity);
-    // Unknown-duration files use an unbounded logical capacity. Avoid preallocating an
-    // impossible JS array while retaining Live's existing small-ring behavior.
-    const frequencyChannelMarkers =
-      capacity > 0xffffffff ? new ChunkedSequence(capacity) : new RingBuffer(capacity);
     const sparseFrequencyChannelMarkers = new SparseHistoryMarkers(capacity);
     const channelMetadataSnap = new ChannelMetadataHistory(capacity);
     this._histCapacity = capacity;
@@ -195,7 +187,6 @@ export class FrameIntake {
     this._waveformHistoryIndex = waveformHistoryIndex;
     this._audioSnap = scalarHistory.audio;
     this._corrSnap = scalarHistory.correlation;
-    this._frequencyChannelMarkers = frequencyChannelMarkers;
     this._sparseFrequencyChannelMarkers = sparseFrequencyChannelMarkers;
     this._channelMetadataSnap = channelMetadataSnap;
   }
@@ -285,7 +276,6 @@ export class FrameIntake {
       audio: buildAudioSnap(row),
       correlation: Number.isFinite(row.correlation) ? row.correlation : -Infinity,
     });
-    this._frequencyChannelMarkers.push(this._pendingFrequencyMarker);
     this._sparseFrequencyChannelMarkers.push(this._pendingFrequencyMarker);
     this._channelMetadataSnap.push({ ...this._currentChannelMetadata });
     this._pendingFrequencyMarker = null;
@@ -488,9 +478,6 @@ export class FrameIntake {
   getCorrSnap() {
     return this._corrSnap;
   }
-  getFrequencyChannelMarkers() {
-    return this._frequencyChannelMarkers;
-  }
   getSparseFrequencyChannelMarkers() {
     return this._sparseFrequencyChannelMarkers;
   }
@@ -573,7 +560,6 @@ export class FrameIntake {
     this._scalarHistory.clear();
     this._loudnessDisplayIndex.clear();
     this._waveformHistoryIndex.clear();
-    this._frequencyChannelMarkers.clear();
     this._sparseFrequencyChannelMarkers.clear();
     this._channelMetadataSnap.clear();
     this._pendingFrequencyMarker = null;
