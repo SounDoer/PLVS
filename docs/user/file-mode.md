@@ -28,6 +28,9 @@ The pill shows progress and **Cancel** while the current file is working, **Retr
 failure, and the duration after success. **Result** returns from a selected
 time without resetting zoom or scroll.
 
+If cancellation fails while analysis is still running, PLVS continues to show its progress.
+A result that finishes before cancellation takes effect is kept.
+
 ## Batch import
 
 Select several files with **Open**, or drop them together into File Mode. PLVS analyzes one file at

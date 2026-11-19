@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import {
   advanceDeviceGeneration,
   normalizeDeviceInventory,
@@ -81,7 +81,14 @@ export function useAudioDevices({
   const applicationRefreshSequenceRef = useRef(0);
   const migrationSequenceRef = useRef(0);
   const selectionSequenceRef = useRef(0);
+  const userPreviewRef = useRef(null);
+  const pendingSaveRef = useRef(Promise.resolve());
+  const liveLifecycleRef = useRef(liveLifecycle);
   const mountedRef = useRef(true);
+
+  useLayoutEffect(() => {
+    liveLifecycleRef.current = liveLifecycle;
+  }, [liveLifecycle]);
 
   const publish = useCallback((next) => {
     snapshotRef.current = next;
@@ -97,21 +104,26 @@ export function useAudioDevices({
 
   const commitCaptureDevice = useCallback(
     async (/** @type {string} */ nextId, options = {}) => {
+      const sequence = options.selectionSequence ?? ++selectionSequenceRef.current;
       const current = snapshotRef.current;
+      if (!mountedRef.current || sequence !== selectionSequenceRef.current) {
+        return { changed: false, requestedId: current.requestedId };
+      }
       if (current.requestedId === nextId) {
         if (options.migrationState && current.migrationState !== null) {
           updateSnapshot((latest) => ({ ...latest, migrationState: null }));
         }
         return { changed: false, requestedId: nextId };
       }
-      selectionSequenceRef.current += 1;
       publish({
         ...current,
         requestedId: nextId,
         migrationState: options.migrationState ?? null,
       });
+      const saved = pendingSaveRef.current.then(() => saveCaptureDeviceId(nextId));
+      pendingSaveRef.current = saved.catch(() => {});
       try {
-        await saveCaptureDeviceId(nextId);
+        await saved;
         if (snapshotRef.current.requestedId === nextId) {
           updateSnapshot((latest) => ({ ...latest, migrationState: null }));
         }
@@ -153,35 +165,57 @@ export function useAudioDevices({
 
   const selectCaptureDevice = useCallback(
     async (/** @type {string} */ nextId, options = {}) => {
-      if (snapshotRef.current.requestedId === nextId) {
-        return commitCaptureDevice(nextId, options);
-      }
-      if (["starting", "stopping"].includes(liveLifecycle)) {
+      const selectionSequence = options.selectionSequence ?? ++selectionSequenceRef.current;
+      const migrating = Boolean(options.migrationState);
+      const current = () =>
+        mountedRef.current && selectionSequence === selectionSequenceRef.current;
+      const unchanged = () => ({ changed: false, requestedId: snapshotRef.current.requestedId });
+      const assertStableLifecycle = () => {
+        const lifecycle = liveLifecycleRef.current;
+        if (!["starting", "stopping"].includes(lifecycle)) return;
         const error = /** @type {Error & { code?: string }} */ (
-          new Error(`LIVE transport is ${liveLifecycle}.`)
+          new Error(`LIVE transport is ${lifecycle}.`)
         );
         error.code = "transitionInProgress";
         throw error;
+      };
+      if (!current() || (migrating && userPreviewRef.current === selectionSequence)) {
+        return unchanged();
       }
+      if (snapshotRef.current.requestedId === nextId) {
+        return commitCaptureDevice(nextId, { ...options, selectionSequence });
+      }
+      assertStableLifecycle();
 
+      if (!migrating) userPreviewRef.current = selectionSequence;
       try {
         await previewSelection(nextId);
       } catch (error) {
-        if (nextId !== "default" || liveLifecycle === "running") {
+        if (!current()) return unchanged();
+        if (nextId !== "default" || liveLifecycleRef.current === "running") {
           const failure = /** @type {Error & { code?: string }} */ (
             error instanceof Error ? error : new Error(String(error))
           );
           failure.code = "deviceUnavailable";
           throw failure;
         }
+      } finally {
+        if (!migrating && userPreviewRef.current === selectionSequence) {
+          userPreviewRef.current = null;
+        }
       }
 
-      if (options.migrationState && snapshotRef.current.migrationState !== options.migrationState) {
-        return { changed: false, requestedId: snapshotRef.current.requestedId };
+      if (
+        !current() ||
+        (options.migrationState && snapshotRef.current.migrationState !== options.migrationState)
+      ) {
+        return unchanged();
       }
+      assertStableLifecycle();
+      if (snapshotRef.current.requestedId === nextId) return unchanged();
 
       const restart =
-        liveLifecycle === "running" && beginDeviceRestartForControl
+        liveLifecycleRef.current === "running" && beginDeviceRestartForControl
           ? beginDeviceRestartForControl()
           : null;
       const restartSettlement = restart
@@ -193,7 +227,7 @@ export function useAudioDevices({
       let committed;
       let persistenceError = null;
       try {
-        committed = await commitCaptureDevice(nextId, options);
+        committed = await commitCaptureDevice(nextId, { ...options, selectionSequence });
       } catch (error) {
         persistenceError = error;
       }
@@ -203,7 +237,7 @@ export function useAudioDevices({
       if (restartError) throw restartError;
       return committed;
     },
-    [beginDeviceRestartForControl, commitCaptureDevice, liveLifecycle, previewSelection]
+    [beginDeviceRestartForControl, commitCaptureDevice, previewSelection]
   );
 
   const refreshInventory = useCallback(
@@ -287,6 +321,7 @@ export function useAudioDevices({
       refreshSequenceRef.current += 1;
       applicationRefreshSequenceRef.current += 1;
       migrationSequenceRef.current += 1;
+      selectionSequenceRef.current += 1;
       unlisten();
     };
   }, [refreshInventory]);
@@ -338,6 +373,7 @@ export function useAudioDevices({
       return;
     const { requestedId, generation } = snapshot;
     const sequence = ++migrationSequenceRef.current;
+    const selectionSequence = selectionSequenceRef.current;
     const migrationState = { state: "migrating", requestedId, generation };
     const stillSelected = () =>
       mountedRef.current &&
@@ -363,7 +399,8 @@ export function useAudioDevices({
         return;
       }
       try {
-        await selectCaptureDevice(migratedId, { migrationState });
+        const result = await selectCaptureDevice(migratedId, { migrationState, selectionSequence });
+        if (!result.changed) finishUnresolved();
       } catch (_) {
         finishUnresolved();
       }

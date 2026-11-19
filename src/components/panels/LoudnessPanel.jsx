@@ -19,6 +19,7 @@ import { computeHistoryHoverPoint } from "../../math/hoverMath";
 import { HIST_SAMPLE_SEC } from "../../hooks/useLoudnessHistory.js";
 import { loudnessHistY } from "../../config/scales";
 import { normalizePanelControls } from "../../lib/panelControls.js";
+import { historyTimestampAt } from "../../lib/historyTimestamps.js";
 
 /** @param {{compact?: boolean, showAxes?: boolean, className?: string}} props */
 export function LoudnessPanel({ showAxes: axesOverride, className } = {}) {
@@ -103,12 +104,7 @@ export function LoudnessPanel({ showAxes: axesOverride, className } = {}) {
   // advancing every tick regardless of fill state, so keying on it captures new data without freezing,
   // and still avoids rebuilding the (decimated) path on unrelated re-renders (hover, sibling state).
   // The combined indexed builder shares each display-column query across M and ST.
-  const latestSampleTimestampMs =
-    totalSamples > 0
-      ? typeof histSourceList.rowAt === "function"
-        ? histSourceList.rowAt(totalSamples - 1)?.timestampMs
-        : histSourceList[totalSamples - 1]?.timestampMs
-      : undefined;
+  const latestSampleTimestampMs = historyTimestampAt(histSourceList, totalSamples - 1);
   const displayHistoryPathsForRange = useMemo(() => {
     const toY = (value) => loudnessHistY(value, 220, loudnessYRange);
     return loudnessDisplayIndex

@@ -41,6 +41,7 @@ export function MeterRuntimeProvider({ children }) {
   const display = useMeterDisplay();
   const [sourceMode, setSourceMode] = useState("live");
   const [preparingFileId, setPreparingFileId] = useState(null);
+  const [stoppingFile, setStoppingFile] = useState(false);
   const [replacementTrackSelection, setReplacementTrackSelection] = useState(null);
   const preparationRef = useRef(null);
   const ledger = useFileSessionLedger({ protectedFileId: preparingFileId });
@@ -67,7 +68,11 @@ export function MeterRuntimeProvider({ children }) {
 
   const audioRef = useRef(null);
   const defaultSampleRateRef = useRef(48000);
-  const stopFileAnalysisRef = useRef(async () => {});
+  const stopFileAnalysisRef = useRef(
+    /** @type {(sessionId: string) => Promise<boolean | void>} */ (async () => {})
+  );
+  // Native File stop clears the shared source, so it keeps the transport reserved until it settles.
+  const pendingFileStopRef = useRef(null);
   const fileAnalysisAcceptanceRef = useRef(new Map());
   const fileConditionsRef = useRef(null);
   const taskSessionRef = useRef(null);
@@ -80,6 +85,11 @@ export function MeterRuntimeProvider({ children }) {
     taskSessionRef.current = fileHistory.analyzingFileId;
   }, [fileHistory.analyzingFileId]);
   const stopFileAnalysis = async (expectedSessionId) => {
+    const pending = pendingFileStopRef.current;
+    if (pending) {
+      if (!expectedSessionId || expectedSessionId === pending.sessionId) await pending.promise;
+      return;
+    }
     const preparation = preparationRef.current;
     if (preparation && (!expectedSessionId || preparation.sessionId === expectedSessionId)) {
       preparation.cancelled = true;
@@ -94,20 +104,46 @@ export function MeterRuntimeProvider({ children }) {
     if (!sessionId) return;
     if (expectedSessionId && expectedSessionId !== sessionId) return;
 
+    setStoppingFile(true);
+    const promise = (async () => {
+      try {
+        const stopped = await stopFileAnalysisRef.current(sessionId);
+        if (taskSessionRef.current === sessionId) taskSessionRef.current = null;
+        if (stopped === false) return;
+        ledger.markStopped(sessionId);
+        display.clearNotice();
+      } catch (error) {
+        display.raiseNotice(
+          "error",
+          `Error: ${error?.message || "Could not stop File analysis"}`,
+          undefined,
+          { requiresAttention: true, helpTopic: "file-analysis-stop" }
+        );
+        throw error;
+      }
+    })();
+    pendingFileStopRef.current = { sessionId, promise };
     try {
-      await stopFileAnalysisRef.current();
-    } catch (error) {
-      display.raiseNotice(
-        "error",
-        `Error: ${error?.message || "Could not stop File analysis"}`,
-        undefined,
-        { requiresAttention: true, helpTopic: "file-analysis-stop" }
-      );
-      throw error;
+      await promise;
+    } finally {
+      pendingFileStopRef.current = null;
+      setStoppingFile(false);
     }
-    ledger.markStopped(sessionId);
-    taskSessionRef.current = null;
-    display.clearNotice();
+  };
+  const startLiveForControl = async () => {
+    const pending = pendingFileStopRef.current;
+    if (pending) await pending.promise;
+    if (taskSessionRef.current) throw new Error("File analysis already in progress");
+    return transport.startLiveForControl();
+  };
+  const startLive = () => {
+    if (pendingFileStopRef.current || taskSessionRef.current) {
+      void stopFileAnalysis()
+        .then(startLiveForControl)
+        .catch(() => {});
+    } else {
+      transport.startLive();
+    }
   };
   const switchSource = (/** @type {string} */ nextMode) => {
     if (nextMode === sourceMode) return;
@@ -191,7 +227,7 @@ export function MeterRuntimeProvider({ children }) {
   ) => {
     if (!path) return null;
     display.clearNotice();
-    if (fileHistory.analyzingFileId || taskSessionRef.current) {
+    if (fileHistory.analyzingFileId || taskSessionRef.current || pendingFileStopRef.current) {
       display.raiseNotice("guard", "File analysis already in progress");
       return null;
     }
@@ -229,7 +265,7 @@ export function MeterRuntimeProvider({ children }) {
       display.raiseNotice("guard", "Choose a file to analyze");
       return false;
     }
-    if (fileHistory.analyzingFileId || taskSessionRef.current) {
+    if (fileHistory.analyzingFileId || taskSessionRef.current || pendingFileStopRef.current) {
       display.raiseNotice("guard", "File analysis already in progress");
       return false;
     }
@@ -408,9 +444,9 @@ export function MeterRuntimeProvider({ children }) {
   // consumer would re-render ~30x/s even when its slice never changed. The ref
   // is written post-render (same pattern as useAppKeyboardShortcuts).
   const verbImpls = {
-    startLive: transport.startLive,
+    startLive,
     stopLive: transport.stopLive,
-    startLiveForControl: transport.startLiveForControl,
+    startLiveForControl,
     stopLiveForControl: transport.stopLiveForControl,
     beginDeviceRestartForControl: transport.beginDeviceRestartForControl,
     stopFileAnalysis,
@@ -479,7 +515,7 @@ export function MeterRuntimeProvider({ children }) {
       analyzingFileId: fileHistory.analyzingFileId,
       preparingFileId,
       replacementTrackSelection,
-      fileTaskBusy: Boolean(preparingFileId || fileHistory.analyzingFileId),
+      fileTaskBusy: Boolean(preparingFileId || fileHistory.analyzingFileId || stoppingFile),
       ...verbs,
     }),
     [
@@ -497,6 +533,7 @@ export function MeterRuntimeProvider({ children }) {
       fileHistory.activeFileId,
       fileHistory.analyzingFileId,
       preparingFileId,
+      stoppingFile,
       replacementTrackSelection,
       verbs,
     ]

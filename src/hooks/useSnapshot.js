@@ -5,6 +5,7 @@ import { buildPolarLevelMaxHoldTable, polarLevelMaxHoldAt } from "../math/vector
 import { buildSpectrumMaxHoldTable, spectrumMaxHoldAt } from "../math/spectrumMaxHold.js";
 import { deriveStereoMapRow } from "../math/stereoMapMath.js";
 import { resolveSnapshot, resolveKeyedVisualIndex } from "../lib/snapshotResolve.js";
+import { rowAt } from "../lib/historyRow.js";
 
 const VECTORSCOPE_SIGNAL_FLOOR = 10 ** (-90 / 20);
 
@@ -219,7 +220,7 @@ export function useSnapshot({ selectedOffset, sampleSec, intake, audio }) {
           maxHold: null,
         };
       } else {
-        const snap = typeof entries?.rowAt === "function" ? entries.rowAt(index) : entries[index];
+        const snap = rowAt(entries, index);
         const pairs = snap?.pairs ?? [];
         result = {
           missing: false,

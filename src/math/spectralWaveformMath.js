@@ -1,3 +1,5 @@
+import { rowAt } from "../lib/historyRow.js";
+
 const MIN_FREQUENCY_HZ = 20;
 const MAX_FREQUENCY_HZ = 20000;
 const MAX_SPECTRAL_ROW_AGE_MS = 100;
@@ -116,13 +118,6 @@ export function centroidYFraction(frequencyHz) {
     (Math.log(frequency) - Math.log(MIN_FREQUENCY_HZ)) /
     (Math.log(MAX_FREQUENCY_HZ) - Math.log(MIN_FREQUENCY_HZ));
   return 1 - frequencyFraction;
-}
-
-/**
- * @param {number} index
- */
-function rowAt(rows, index) {
-  return typeof rows?.rowAt === "function" ? rows.rowAt(index) : rows?.[index];
 }
 
 /**

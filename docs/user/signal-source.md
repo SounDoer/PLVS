@@ -3,6 +3,7 @@
 Open **Sources** in the toolbar to choose any kind of input — you pick a signal, not an
 underlying API. The footer and system tray show the selected source as
 `Output · name`, `Input · name`, or `Application · name`.
+If you make another selection while PLVS is checking a source, the latest selection takes priority.
 
 ## Automatic
 

@@ -21,6 +21,7 @@ import {
 import { useChartHover } from "../../hooks/useChartHover";
 import { useCanvasBackingStore } from "../../hooks/useCanvasBackingStore.js";
 import { canvasCssScale, strokeCssWidth } from "../../lib/canvasCssScale.js";
+import { rowAt } from "../../lib/historyRow.js";
 import { useCtrlHoverState } from "../../hooks/useCtrlHoverState";
 import { computeWaveformHoverPoint } from "../../math/hoverMath";
 import { HIST_SAMPLE_SEC } from "../../hooks/useLoudnessHistory.js";
@@ -63,14 +64,10 @@ function getWaveformHistoryWindowBounds(histSourceList, visibleSamples, effectiv
   if (endIndex < startIndex) {
     return { startIndex: -1, endIndex: -1, startRow: null, endRow: null };
   }
-  const rowAt = (/** @type {number} */ index) =>
-    typeof histSourceList.rowAt === "function"
-      ? histSourceList.rowAt(index)
-      : histSourceList[index];
   const lowerIndex = Math.max(0, Math.min(total - 1, Math.floor(newestVisible)));
   const upperIndex = Math.max(0, Math.min(total - 1, Math.ceil(newestVisible)));
-  const lowerTimestampMs = Number(rowAt(lowerIndex)?.timestampMs);
-  const upperTimestampMs = Number(rowAt(upperIndex)?.timestampMs);
+  const lowerTimestampMs = Number(rowAt(histSourceList, lowerIndex)?.timestampMs);
+  const upperTimestampMs = Number(rowAt(histSourceList, upperIndex)?.timestampMs);
   const newestVisibleTimestampMs =
     Number.isFinite(lowerTimestampMs) && Number.isFinite(upperTimestampMs)
       ? lowerTimestampMs +
@@ -81,8 +78,8 @@ function getWaveformHistoryWindowBounds(histSourceList, visibleSamples, effectiv
   return {
     startIndex,
     endIndex,
-    startRow: rowAt(startIndex) ?? null,
-    endRow: rowAt(endIndex) ?? null,
+    startRow: rowAt(histSourceList, startIndex) ?? null,
+    endRow: rowAt(histSourceList, endIndex) ?? null,
     newestVisibleTimestampMs,
   };
 }

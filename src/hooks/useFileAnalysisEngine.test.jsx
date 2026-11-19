@@ -382,6 +382,66 @@ describe("useFileAnalysisEngine", () => {
     expect(setFileSession).not.toHaveBeenCalled();
   });
 
+  it("accepts progress and completion after native stop fails", async () => {
+    const { updateFileSession, setAnalyzingFileId } = renderHarness();
+    await waitFor(() => expect(startFileAnalysis).toHaveBeenCalled());
+    vi.mocked(stopFileAnalysis).mockRejectedValueOnce(new Error("native stop unavailable"));
+
+    await act(async () => {
+      await expect(/** @type {HarnessWindow} */ (window).__fileApi.stop()).rejects.toThrow(
+        "native stop unavailable"
+      );
+    });
+    act(() => {
+      eventCallbacks.progress({ path: "C:/mix/final.wav", progress: 0.9 });
+    });
+    expect(applySessionUpdater(updateFileSession)).toMatchObject({
+      state: "analyzing",
+      progress: 0.9,
+    });
+
+    act(() => {
+      vi.mocked(startFileAnalysis).mock.calls[0][0].onFrame({ seq: 2 });
+      eventCallbacks.completed({
+        path: "C:/mix/final.wav",
+        finalSequence: 2,
+        decodedFrames: 48000,
+        summary: { integratedLufs: -23 },
+      });
+    });
+    expect(applySessionUpdater(updateFileSession)).toMatchObject({
+      state: "complete",
+      progress: 1,
+    });
+    expect(setAnalyzingFileId.mock.calls.at(-1)[0]("session-a")).toBeNull();
+  });
+
+  it("keeps a completed result received before native stop settles", async () => {
+    const { updateFileSession } = renderHarness();
+    await waitFor(() => expect(startFileAnalysis).toHaveBeenCalled());
+    let finishStop;
+    vi.mocked(stopFileAnalysis).mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          finishStop = () => resolve(undefined);
+        })
+    );
+    const stop = /** @type {HarnessWindow} */ (window).__fileApi.stop();
+    await waitFor(() => expect(stopFileAnalysis).toHaveBeenCalled());
+    act(() => {
+      eventCallbacks.completed({ path: "C:/mix/final.wav", finalSequence: 1, summary: {} });
+    });
+
+    await act(async () => {
+      finishStop();
+      await expect(stop).resolves.toBe(false);
+    });
+    expect(applySessionUpdater(updateFileSession)).toMatchObject({
+      state: "complete",
+      progress: 1,
+    });
+  });
+
   it("does not start when the session id is missing", async () => {
     renderHarness({ sessionId: null });
 

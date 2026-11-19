@@ -51,18 +51,30 @@ export function useFileAnalysisEngine({
   const { frameRef, selectedOffsetRef, latestAudioRef, setAudio, raiseNotice } = display;
   const activeRunRef = useRef(null);
 
-  const stop = useCallback(async () => {
-    const run = activeRunRef.current;
-    if (!run) return;
-    run.cancelled = true;
-    if (run.startPromise) {
-      await run.startPromise.catch(() => {});
-      await stopFileAnalysis();
-    }
-    const acceptance = fileAnalysisAcceptanceRef?.current.get(run.sessionId);
-    fileAnalysisAcceptanceRef?.current.delete(run.sessionId);
-    acceptance?.reject(new Error("File analysis was cancelled before acceptance"));
-  }, [fileAnalysisAcceptanceRef]);
+  const stop = useCallback(
+    async (expectedSessionId) => {
+      const run = activeRunRef.current;
+      if (!run || (expectedSessionId && run.sessionId !== expectedSessionId)) return;
+      const canStop = () => activeRunRef.current === run && !run.cancelled && !run.terminal;
+      if (!canStop()) return false;
+      if (run.startPromise) {
+        try {
+          await run.startPromise;
+        } catch {
+          return false;
+        }
+        if (!canStop()) return false;
+        await stopFileAnalysis();
+        if (!canStop()) return false;
+      }
+      run.cancelled = true;
+      const acceptance = fileAnalysisAcceptanceRef?.current.get(run.sessionId);
+      fileAnalysisAcceptanceRef?.current.delete(run.sessionId);
+      acceptance?.reject(new Error("File analysis was cancelled before acceptance"));
+      return true;
+    },
+    [fileAnalysisAcceptanceRef]
+  );
 
   useEffect(() => {
     if (!enabled || !sessionId || !filePath || runId <= 0) return;
@@ -84,19 +96,18 @@ export function useFileAnalysisEngine({
 
     let mounted = true;
     const token = `${sessionId}:${runId}`;
-    const task = { cancelled: false, startPromise: null, sessionId };
+    const task = { cancelled: false, terminal: false, startPromise: null, sessionId };
     activeRunRef.current = task;
     const active = () => mounted && !task.cancelled && activeRunRef.current === task;
     const unsubs = [];
     const attemptAudioRef = { current: { ...INITIAL_METER_AUDIO } };
     let completed = null;
     let receivedSequence = 0;
-    let terminal = false;
     const publishCompletion = () => {
-      if (!active() || terminal || !completed) return;
+      if (!active() || task.terminal || !completed) return;
       if (Number.isFinite(completed.finalSequence) && receivedSequence < completed.finalSequence)
         return;
-      terminal = true;
+      task.terminal = true;
       const payload = completed;
       updateFileSession(sessionId, (current) => ({
         ...current,
@@ -114,7 +125,7 @@ export function useFileAnalysisEngine({
       acceptance?.resolve(runId);
     };
     const accepts = (payload) =>
-      active() && !terminal && payload?.runId === token && payload.path === filePath;
+      active() && !task.terminal && payload?.runId === token && payload.path === filePath;
     const listen = async (registration) => {
       const unsubscribe = await registration;
       if (active()) unsubs.push(unsubscribe);
@@ -163,7 +174,7 @@ export function useFileAnalysisEngine({
         await listen(
           onFileAnalysisError((payload) => {
             if (!accepts(payload)) return;
-            terminal = true;
+            task.terminal = true;
             const acceptance = fileAnalysisAcceptanceRef?.current.get(sessionId);
             fileAnalysisAcceptanceRef?.current.delete(sessionId);
             acceptance?.reject(new Error(payload.message));
@@ -215,7 +226,7 @@ export function useFileAnalysisEngine({
           runId: token,
           settings,
           onFrame: (frame) => {
-            if (!active() || terminal) return;
+            if (!active() || task.terminal) return;
             applyFrame(frame);
             if (Number.isFinite(frame.seq))
               receivedSequence = Math.max(receivedSequence, frame.seq);
@@ -229,8 +240,8 @@ export function useFileAnalysisEngine({
         fileAnalysisAcceptanceRef?.current.delete(sessionId);
         acceptance?.resolve(runId);
       } catch (err) {
-        if (!active() || terminal) return;
-        terminal = true;
+        if (!active() || task.terminal) return;
+        task.terminal = true;
         const message = err?.message || "File analysis unavailable";
         updateFileSession(sessionId, (current) => ({
           ...current,
@@ -261,6 +272,7 @@ export function useFileAnalysisEngine({
     return () => {
       mounted = false;
       task.cancelled = true;
+      if (activeRunRef.current === task) activeRunRef.current = null;
       for (const unsub of unsubs) {
         try {
           unsub?.();

@@ -240,4 +240,49 @@ describe("MeterRuntimeProvider", () => {
     expect(result.current.runtime.analyzingFileId).toBe(id);
     expect(result.current.runtime.fileSessions).toHaveLength(1);
   });
+
+  it("keeps the transport reserved until a pending stop settles after completion", async () => {
+    const { result } = renderHook(
+      () => ({ runtime: useMeterRuntime(), assembly: useMeterRuntimeAssembly() }),
+      { wrapper }
+    );
+    act(() => result.current.runtime.beginFileAnalysis("C:/a.wav", {}));
+    const id = result.current.runtime.activeFileId;
+    let finishStop;
+    const nativeStop = vi.fn(
+      () =>
+        new Promise((resolve) => {
+          finishStop = () => resolve(false);
+        })
+    );
+    result.current.assembly.stopFileAnalysisRef.current = nativeStop;
+
+    let firstStop;
+    let repeatedStop;
+    act(() => {
+      firstStop = result.current.runtime.stopFileAnalysis(id);
+      repeatedStop = result.current.runtime.stopFileAnalysis(id);
+      result.current.assembly.ledger.updateSession(id, (entry) => ({
+        ...entry,
+        state: "complete",
+        progress: 1,
+      }));
+      result.current.assembly.ledger.setAnalyzingFileId(null);
+    });
+    expect(nativeStop).toHaveBeenCalledExactlyOnceWith(id);
+    expect(result.current.runtime.fileTaskBusy).toBe(true);
+    act(() => {
+      expect(result.current.runtime.beginFileAnalysis("C:/b.wav", {})).toBeNull();
+    });
+
+    await act(async () => {
+      finishStop();
+      await Promise.all([firstStop, repeatedStop]);
+    });
+    expect(result.current.runtime.fileTaskBusy).toBe(false);
+    expect(result.current.runtime.activeFileSession.state).toBe("complete");
+    act(() => {
+      expect(result.current.runtime.beginFileAnalysis("C:/b.wav", {})).toBeTruthy();
+    });
+  });
 });

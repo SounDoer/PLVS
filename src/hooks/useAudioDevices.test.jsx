@@ -138,6 +138,53 @@ describe("useAudioDevices", () => {
     expect(result.current.captureDeviceId).toBe(CAP);
   });
 
+  it.each(["resolves", "rejects"])(
+    "ignores an old preview that %s after a newer selection",
+    async (outcome) => {
+      const preview = deferred();
+      const { result } = renderHook(() => useAudioDevices());
+      await waitFor(() => expect(result.current.snapshot.inventoryReady).toBe(true));
+      mocks.previewAudioDevice.mockReturnValueOnce(preview.promise);
+      let first;
+      act(() => {
+        first = result.current.selectCaptureDevice(LB);
+      });
+      await act(async () => result.current.selectCaptureDevice(CAP));
+
+      await act(async () => {
+        if (outcome === "rejects") preview.reject(new Error("old preview failed"));
+        else preview.resolve({ label: "Speakers", sampleRateHz: 48000, channels: 2 });
+        await expect(first).resolves.toEqual({ changed: false, requestedId: CAP });
+      });
+      expect(result.current.captureDeviceId).toBe(CAP);
+      expect(mocks.saveCaptureDeviceId).toHaveBeenCalledExactlyOnceWith(CAP);
+    }
+  );
+
+  it("waits for an earlier native preference write before saving the newer source", async () => {
+    const save = deferred();
+    mocks.saveCaptureDeviceId.mockReturnValueOnce(save.promise);
+    const { result } = renderHook(() => useAudioDevices());
+    await waitFor(() => expect(result.current.snapshot.inventoryReady).toBe(true));
+    let first;
+    let second;
+    await act(async () => {
+      first = result.current.selectCaptureDevice(LB);
+    });
+    await act(async () => {
+      second = result.current.selectCaptureDevice(CAP);
+    });
+    expect(result.current.captureDeviceId).toBe(CAP);
+    expect(mocks.saveCaptureDeviceId).toHaveBeenCalledExactlyOnceWith(LB);
+
+    await act(async () => {
+      save.reject(new Error("first write failed"));
+      await expect(first).rejects.toThrow("first write failed");
+      await second;
+    });
+    expect(mocks.saveCaptureDeviceId.mock.calls).toEqual([[LB], [CAP]]);
+  });
+
   it("preflights and awaits the normal Live restart around a running selection", async () => {
     const restart = deferred();
     const beginDeviceRestartForControl = vi.fn(() => restart.promise);
@@ -351,6 +398,33 @@ describe("useAudioDevices", () => {
       mocks.deviceListHandler([device(LB, "Speakers", true), device(CAP, "Mic")])
     );
     await waitFor(() => expect(result.current.captureDeviceId).toBe(CAP));
+    expect(mocks.saveCaptureDeviceId).toHaveBeenCalledExactlyOnceWith(CAP);
+  });
+
+  it("gives a pending explicit choice priority over legacy migration", async () => {
+    const preview = deferred();
+    mocks.readCaptureDeviceIdFromLocalStorage.mockReturnValue("in:0");
+    mocks.loadCaptureDeviceId.mockResolvedValue("in:0");
+    const { result } = renderHook(() => useAudioDevices());
+    await waitFor(() => expect(result.current.snapshot.migrationState?.state).toBe("failed"));
+
+    mocks.previewAudioDevice.mockReturnValueOnce(preview.promise);
+    let selection;
+    act(() => {
+      selection = result.current.selectCaptureDevice(CAP);
+    });
+    mocks.migrateCaptureDeviceId.mockResolvedValue(LB);
+    await act(async () =>
+      mocks.deviceListHandler([device(LB, "New Speakers", true), device(CAP, "Mic")])
+    );
+    expect(mocks.migrateCaptureDeviceId).toHaveBeenCalledTimes(2);
+    expect(mocks.saveCaptureDeviceId).not.toHaveBeenCalled();
+
+    await act(async () => {
+      preview.resolve({ label: "Mic", sampleRateHz: 48000, channels: 2 });
+      await selection;
+    });
+    expect(result.current.captureDeviceId).toBe(CAP);
     expect(mocks.saveCaptureDeviceId).toHaveBeenCalledExactlyOnceWith(CAP);
   });
 

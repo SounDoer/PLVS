@@ -50,8 +50,9 @@ can export that retained result without waiting for the replacement. A partial f
 reported merely because it has emitted measurement frames.
 
 File attempts use immutable requested analysis conditions and per-attempt identities internally.
-Cancelling during metadata discovery prevents later worker startup; a stop failure leaves the task
-busy instead of acknowledging cancellation. Completion is published after its final frame sequence
+Cancelling during metadata discovery prevents later worker startup. If a stop fails while analysis
+continues, the task keeps publishing progress and can still complete. A result that completes
+before the stop takes effect is retained. Completion is published after its final frame sequence
 has reached the frontend, so the successful summary and browsable history refer to the same run.
 
 There is no context-sensitive generic start, stop, or clear command. The GUI's changing primary
