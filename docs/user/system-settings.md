@@ -201,7 +201,9 @@ already assigned to another configurable action.
 Each row has its own **Global** switch. An enabled action works even when PLVS is not focused; its
 ordinary shortcut continues to work whenever PLVS is focused. When several PLVS workbenches are
 open, the coordinator registers each global combination once and sends the action to the workbench
-that was focused most recently. A registration error affects only that row.
+that was focused most recently. Saved changes also update what the coordinator runs for
+combinations it already registered. A registration error affects only that row. If a combination
+becomes unavailable, you can choose another one or toggle **Global** to try registering it again.
 Shortcut changes appear after they save. If another workbench changes the shortcuts while you are
 editing, the affected row reports the conflict so you can try again.
 

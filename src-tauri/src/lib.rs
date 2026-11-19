@@ -76,9 +76,9 @@ pub use audio::{
 };
 
 use crate::window_state::{
-  applied_placement, apply_resolved_placement, clean_active_preset_window_bounds,
-  persist_window_bounds, resolve_placement, startup_surface_opacity, startup_window_is_frameless,
-  WindowPlacement, DEFAULT_WINDOW_LOGICAL_HEIGHT, DEFAULT_WINDOW_LOGICAL_WIDTH,
+  applied_placement, apply_resolved_placement, persist_window_bounds, resolve_placement,
+  startup_surface_opacity, startup_window_bounds, startup_window_is_frameless,
+  DEFAULT_WINDOW_LOGICAL_HEIGHT, DEFAULT_WINDOW_LOGICAL_WIDTH,
 };
 use state::AppState;
 
@@ -351,6 +351,7 @@ pub fn run() {
       window_state::resolve_window_bounds,
       window_state::apply_window_bounds,
       window_state::move_main_window,
+      window_state::remember_main_window_position,
       window_state::set_main_window_state,
       pointer::move_pointer,
       dock::enter_dock,
@@ -599,8 +600,7 @@ pub fn run() {
 
       // windowBounds is a Rust-owned sibling key (not inside plvs:settings) so JS settings
       // writes cannot clobber geometry Rust saves. See window_state::save_window_bounds.
-      let saved_bounds: Option<WindowPlacement> = clean_active_preset_window_bounds(&presets)
-        .or_else(|| serde_json::from_value(hydrated.window_bounds).ok());
+      let saved_bounds = startup_window_bounds(&presets, hydrated.window_bounds);
       let mut boot_dock = dock_state;
       let boot_docked = boot_dock.as_ref().map(|d| d.enabled).unwrap_or(false);
       let initial_decorations = !boot_docked && !startup_window_is_frameless(&settings, &presets);
@@ -864,7 +864,16 @@ pub fn run() {
           .spawn(move || loop {
             std::thread::sleep(Duration::from_millis(400));
             if dirty.swap(false, Ordering::Relaxed) && !docked.load(Ordering::Relaxed) {
-              crate::window_state::save_window_bounds(&win);
+              let window = win.clone();
+              let docked = docked.clone();
+              // Capture and write on the same thread as explicit Window Control saves.
+              if let Err(error) = win.run_on_main_thread(move || {
+                if !docked.load(Ordering::Relaxed) {
+                  crate::window_state::save_window_bounds(&window);
+                }
+              }) {
+                log::warn!("Could not schedule window bounds save: {error}");
+              }
             }
           })
           .map_err(|e| format!("window-state thread: {e}"))?;

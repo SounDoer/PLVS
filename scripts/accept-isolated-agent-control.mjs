@@ -374,9 +374,19 @@ export async function runIsolatedAgentControl({
       runDesktop({ instanceId: instance, env });
       evidence.steps.push("verify the desktop acceptance suite");
     } else if (scenario === "configuration-relaunch") await configurationRelaunch();
-    else if (scenario === "window-platform-contract")
-      await runWindowContract({ invoke, until, steps: evidence.steps });
-    else if (scenario === "workbench-platform-contract")
+    else if (scenario === "window-platform-contract") {
+      await runWindowContract({
+        invoke,
+        until,
+        steps: evidence.steps,
+        restart: async () => {
+          const previous = instance;
+          await stop(app);
+          app = null;
+          await start(previous);
+        },
+      });
+    } else if (scenario === "workbench-platform-contract")
       await runWorkbenchContract({
         invoke,
         instances,

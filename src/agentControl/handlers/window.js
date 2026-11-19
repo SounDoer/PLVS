@@ -76,65 +76,9 @@ async function inspect(ctx) {
   };
 }
 
-/** @param {import("../bridge/types.js").BridgeContext} ctx */
-async function resize(ctx) {
-  const { request, requestId, clock, live } = ctx;
+function requireNormalWindow({ request, clock, live }, subject) {
   requireRevision(request, clock);
   const windowControl = requireWindow(live().windowControl);
-  const size = { width: request.params.width, height: request.params.height };
-  const geometry = await windowControl.readGeometry();
-  let changed = false;
-  if (geometry.maximized || !windowSizeSettled(geometry.viewport, size)) {
-    const planned = planWindowResize(windowControl, geometry, size);
-    if (planned.refusal === "dockActive") {
-      throw semanticFailure(
-        "dockActive",
-        "$.method",
-        "Window size applies to the normal window, not Dock.",
-        -32012
-      );
-    }
-    if (planned.refusal) {
-      throw semanticFailure(
-        planned.refusal,
-        "$.params",
-        "The requested window does not fit the current monitor's work area.",
-        -32012,
-        { width: size.width, height: size.height }
-      );
-    }
-    await windowControl.applyBounds(planned.bounds);
-    let latest = geometry;
-    await settle(
-      async () => {
-        latest = await windowControl.readGeometry();
-        return windowSizeSettled(latest.viewport, size);
-      },
-      "uiNotSettled",
-      () => ({
-        requestedSize: size,
-        viewport: latest.viewport,
-        nativeInner: latest.inner,
-        nativeOuter: latest.outer,
-        originalViewport: geometry.viewport,
-        originalNativeInner: geometry.inner,
-        scale: latest.scale,
-      })
-    );
-    changed = true;
-  }
-  const after = await live().windowControl.readGeometry();
-  return {
-    requestId,
-    result: {
-      revision: clock.current(),
-      changed,
-      ...buildWindowInspection(live().windowControl, after),
-    },
-  };
-}
-
-function refuseDock(windowControl, subject) {
   if (windowControl.form !== "normal") {
     throw semanticFailure(
       "dockActive",
@@ -143,6 +87,48 @@ function refuseDock(windowControl, subject) {
       -32012
     );
   }
+  return windowControl;
+}
+
+/** @param {import("../bridge/types.js").BridgeContext} ctx */
+async function resize(ctx) {
+  const { request } = ctx;
+  const initial = requireNormalWindow(ctx, "Window size");
+  const size = { width: request.params.width, height: request.params.height };
+  const geometry = await initial.readGeometry();
+  const windowControl = requireNormalWindow(ctx, "Window size");
+  if (!geometry.maximized && windowSizeSettled(geometry.viewport, size)) {
+    return inspected(ctx, false);
+  }
+  const planned = planWindowResize(windowControl, geometry, size);
+  if (planned.refusal) {
+    throw semanticFailure(
+      planned.refusal,
+      "$.params",
+      "The requested window does not fit the current monitor's work area.",
+      -32012,
+      { width: size.width, height: size.height }
+    );
+  }
+  await windowControl.applyBounds(planned.bounds);
+  let latest = geometry;
+  await settle(
+    async () => {
+      latest = await windowControl.readGeometry();
+      return windowSizeSettled(latest.viewport, size);
+    },
+    "uiNotSettled",
+    () => ({
+      requestedSize: size,
+      viewport: latest.viewport,
+      nativeInner: latest.inner,
+      nativeOuter: latest.outer,
+      originalViewport: geometry.viewport,
+      originalNativeInner: geometry.inner,
+      scale: latest.scale,
+    })
+  );
+  return inspected(ctx, true);
 }
 
 async function inspected(ctx, changed) {
@@ -160,10 +146,9 @@ async function inspected(ctx, changed) {
 
 /** @param {import("../bridge/types.js").BridgeContext} ctx */
 async function move(ctx) {
-  const { request, clock, live } = ctx;
-  requireRevision(request, clock);
-  const windowControl = requireWindow(live().windowControl);
-  if (windowControl.moveAvailable === false) {
+  const { request, live } = ctx;
+  const initial = requireNormalWindow(ctx, "Window position");
+  if (initial.moveAvailable === false) {
     throw semanticFailure(
       "controlUnavailable",
       "$.method",
@@ -172,7 +157,8 @@ async function move(ctx) {
     );
   }
   const target = { monitor: request.params.monitor, x: request.params.x, y: request.params.y };
-  const geometry = await windowControl.readGeometry();
+  const geometry = await initial.readGeometry();
+  const current = requireNormalWindow(ctx, "Window position");
   if (geometry.minimized) {
     throw semanticFailure(
       "windowMinimized",
@@ -182,15 +168,12 @@ async function move(ctx) {
     );
   }
   if (!geometry.maximized && windowPositionSettled(geometry, target)) {
+    await rememberPosition(current);
     return inspected(ctx, false);
   }
-  const planned = planWindowMove(
-    windowControl,
-    geometry,
-    await windowControl.readMonitors(),
-    target
-  );
-  if (planned.refusal === "dockActive") refuseDock(windowControl, "Window position");
+  const monitors = await current.readMonitors();
+  const windowControl = requireNormalWindow(ctx, "Window position");
+  const planned = planWindowMove(windowControl, geometry, monitors, target);
   if (planned.refusal === "monitorNotFound") {
     throw semanticFailure(
       "monitorNotFound",
@@ -229,7 +212,32 @@ async function move(ctx) {
       originalViewport: geometry.viewport,
     })
   );
+  await rememberPosition(live().windowControl);
   return inspected(ctx, true);
+}
+
+async function rememberPosition(windowControl) {
+  try {
+    await windowControl.rememberPosition();
+  } catch (error) {
+    throw semanticFailure(
+      "persistenceFailed",
+      "$",
+      `Could not save the window position: ${error?.message || error}`,
+      -32030
+    );
+  }
+}
+
+function requireVisibleWindow(windowControl) {
+  if (!windowControl.visible) {
+    throw semanticFailure(
+      "windowHidden",
+      "$.method",
+      "Show the window before changing its state.",
+      -32012
+    );
+  }
 }
 
 /**
@@ -239,12 +247,10 @@ async function move(ctx) {
  * @param {import("../bridge/types.js").BridgeContext} ctx
  */
 async function setWindowState(ctx) {
-  const { request, clock, live } = ctx;
-  requireRevision(request, clock);
-  const windowControl = requireWindow(live().windowControl);
-  refuseDock(windowControl, "Window state");
+  const { request } = ctx;
+  const initial = requireNormalWindow(ctx, "Window state");
   const action = request.method.slice("window.".length);
-  if (action === "minimize" && windowControl.minimizeAvailable === false) {
+  if (action === "minimize" && initial.minimizeAvailable === false) {
     throw semanticFailure(
       "controlUnavailable",
       "$.method",
@@ -252,15 +258,10 @@ async function setWindowState(ctx) {
       -32012
     );
   }
-  if (!windowControl.visible) {
-    throw semanticFailure(
-      "windowHidden",
-      "$.method",
-      "Show the window before changing its state.",
-      -32012
-    );
-  }
-  const geometry = await windowControl.readGeometry();
+  requireVisibleWindow(initial);
+  const geometry = await initial.readGeometry();
+  const windowControl = requireNormalWindow(ctx, "Window state");
+  requireVisibleWindow(windowControl);
   if (action !== "minimize" && geometry.minimized) {
     throw semanticFailure(
       "windowMinimized",

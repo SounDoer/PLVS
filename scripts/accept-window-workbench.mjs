@@ -13,7 +13,7 @@ function assertNear(actual, expected) {
   }
 }
 
-export async function runWindowContract({ invoke, until, steps }) {
+export async function runWindowContract({ invoke, until, restart, steps }) {
   const inspect = () => invoke(["window", "inspect"]);
   const initial = inspect();
   const capabilities = invoke(["capabilities"]);
@@ -94,11 +94,12 @@ export async function runWindowContract({ invoke, until, steps }) {
     });
     assertNear(observe({ monitor }).position, position);
     assert.equal(action("move", move).changed, true);
+    await restart();
     const moved = observe({ monitor });
     assertNear(moved.position, offset);
     assertNear(moved.size, size);
     assert.equal(action("move", move).changed, false);
-    steps.push("verify monitor selection, movement, preserved size, and idempotent move");
+    steps.push("verify monitor selection, preserved size, and position after immediate restart");
   }
 
   for (const [name, expected] of [

@@ -256,6 +256,71 @@ describe("Window Control", () => {
     workArea: { x: 3840, y: 0, width: 1920, height: 1040 },
   };
 
+  it.each([
+    ["window.resize", { width: 1280, height: 720 }],
+    ["window.move", { monitor: "Main", x: 50, y: 15 }],
+  ])("refuses %s in Dock even when its geometry already matches", async (method, params) => {
+    const readGeometry = vi.fn(async () => geometry());
+    const state = { available: true, form: "dock", visible: true, readGeometry };
+    await expect(
+      windowHandlers[method].run(context(method, { ...params, expectedRevision: 0 }, state))
+    ).rejects.toMatchObject({ reason: "dockActive" });
+    expect(readGeometry).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    ["window.resize", { width: 1200, height: 640 }],
+    ["window.move", { monitor: "Main", x: 80, y: 32 }],
+    ["window.maximize", {}],
+    ["window.unmaximize", {}],
+    ["window.minimize", {}],
+  ])("rechecks the revision for %s after reading geometry", async (method, params) => {
+    const mutate = vi.fn();
+    const state = {
+      available: true,
+      form: "normal",
+      visible: true,
+      applyBounds: mutate,
+      moveTo: mutate,
+      maximize: mutate,
+      unmaximize: mutate,
+      minimize: mutate,
+      readGeometry: async () => {
+        state.form = "dock";
+        ctx.clock.bumpWorkspace();
+        return geometry({ maximized: method === "window.unmaximize" });
+      },
+    };
+    const ctx = context(method, { ...params, expectedRevision: 0 }, state);
+    const batch = ctx.clock.beginBatch();
+    await expect(windowHandlers[method].run(ctx)).rejects.toMatchObject({
+      reason: "revisionConflict",
+    });
+    expect(mutate).not.toHaveBeenCalled();
+    ctx.clock.endBatch(batch);
+  });
+
+  it("rechecks Dock after reading monitors even before the revision observer runs", async () => {
+    const moveTo = vi.fn();
+    const state = {
+      available: true,
+      form: "normal",
+      visible: true,
+      moveTo,
+      readGeometry: async () => geometry(),
+      readMonitors: async () => {
+        state.form = "dock";
+        return [MAIN];
+      },
+    };
+    await expect(
+      windowHandlers["window.move"].run(
+        context("window.move", { monitor: "Main", x: 80, y: 32, expectedRevision: 0 }, state)
+      )
+    ).rejects.toMatchObject({ reason: "dockActive" });
+    expect(moveTo).not.toHaveBeenCalled();
+  });
+
   it("moves the window to an offset on another monitor, keeping its CSS size", async () => {
     let current = geometry();
     const moveTo = vi.fn(async (target) => {
@@ -270,6 +335,9 @@ describe("Window Control", () => {
         monitor: SIDE,
       });
     });
+    const rememberPosition = vi.fn(async () => {
+      expect(current.position).toEqual({ x: 3940, y: 40 });
+    });
     const response = await windowHandlers["window.move"].run(
       context(
         "window.move",
@@ -281,9 +349,11 @@ describe("Window Control", () => {
           readGeometry: async () => current,
           readMonitors: async () => [MAIN, SIDE],
           moveTo,
+          rememberPosition,
         }
       )
     );
+    expect(rememberPosition).toHaveBeenCalledOnce();
     expect(moveTo).toHaveBeenCalledWith({
       monitor: "Side",
       x: 100,
@@ -297,6 +367,34 @@ describe("Window Control", () => {
       position: { x: 100, y: 40 },
       size: { width: 1280, height: 720 },
     });
+  });
+
+  it("reports a save failure after moving and retries the save without moving again", async () => {
+    let current = geometry();
+    const state = {
+      available: true,
+      form: "normal",
+      visible: true,
+      readGeometry: async () => current,
+      readMonitors: async () => [MAIN],
+      moveTo: vi.fn(async () => {
+        current = geometry({ position: { x: 160, y: 114 } });
+      }),
+      rememberPosition: vi
+        .fn(async () => {})
+        .mockRejectedValueOnce(new Error("Storage unavailable")),
+    };
+    const run = () =>
+      windowHandlers["window.move"].run(
+        context("window.move", { monitor: "Main", x: 80, y: 32, expectedRevision: 0 }, state)
+      );
+
+    await expect(run()).rejects.toMatchObject({ reason: "persistenceFailed" });
+    await expect(run()).resolves.toMatchObject({
+      result: { changed: false, position: { x: 80, y: 32 } },
+    });
+    expect(state.moveTo).toHaveBeenCalledOnce();
+    expect(state.rememberPosition).toHaveBeenCalledTimes(2);
   });
 
   it("reports macOS positions in points, where each display scales its own coordinates", () => {

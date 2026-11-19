@@ -234,7 +234,7 @@ fn clean_active_preset(presets: &Value) -> Option<&Value> {
     .find(|preset| preset.get("id").and_then(Value::as_str) == Some(active_id))
 }
 
-pub fn clean_active_preset_window_bounds(presets: &Value) -> Option<WindowPlacement> {
+fn clean_active_preset_window_bounds(presets: &Value) -> Option<WindowPlacement> {
   let preset = clean_active_preset(presets)?;
   if preset
     .get("dock")
@@ -245,6 +245,22 @@ pub fn clean_active_preset_window_bounds(presets: &Value) -> Option<WindowPlacem
     return None;
   }
   serde_json::from_value(preset.get("windowBounds")?.clone()).ok()
+}
+
+pub(crate) fn startup_window_bounds(
+  presets: &Value,
+  workspace_bounds: Value,
+) -> Option<WindowPlacement> {
+  // Applying a normal Preset already saves its applied bounds to the Workspace. A later move
+  // updates that placement while leaving the Preset selected and its snapshot intact.
+  serde_json::from_value::<WindowPlacement>(workspace_bounds)
+    .ok()
+    .filter(|placement| {
+      placement.bounds.width > 0
+        && placement.bounds.height > 0
+        && !has_minimized_position(&placement.bounds)
+    })
+    .or_else(|| clean_active_preset_window_bounds(presets))
 }
 
 fn focus_view_is_frameless(owner: &Value) -> bool {
@@ -508,15 +524,27 @@ pub fn desktop_position_available() -> bool {
   }
 }
 
+fn main_window_is_docked<R: tauri::Runtime>(window: &tauri::WebviewWindow<R>) -> bool {
+  window
+    .state::<crate::dock::DockedFlag>()
+    .0
+    .load(std::sync::atomic::Ordering::Relaxed)
+}
+
+fn require_normal_window<R: tauri::Runtime>(
+  window: &tauri::WebviewWindow<R>,
+) -> Result<(), String> {
+  if main_window_is_docked(window) {
+    return Err("The main window is docked".into());
+  }
+  Ok(())
+}
+
 #[tauri::command]
 pub fn current_window_bounds<R: tauri::Runtime>(
   window: tauri::WebviewWindow<R>,
 ) -> Result<Option<WindowPlacement>, String> {
-  if window
-    .state::<crate::dock::DockedFlag>()
-    .0
-    .load(std::sync::atomic::Ordering::Relaxed)
-  {
+  if main_window_is_docked(&window) {
     return Ok(None);
   }
   capture_window_placement(&window)
@@ -611,6 +639,7 @@ pub fn apply_window_bounds<R: tauri::Runtime>(
   window: tauri::WebviewWindow<R>,
   bounds: WindowPlacement,
 ) -> Result<(), String> {
+  require_normal_window(&window)?;
   let Some(resolved) = resolve_placement(&window, Some(&bounds)) else {
     return Ok(());
   };
@@ -731,6 +760,7 @@ pub fn move_main_window<R: tauri::Runtime>(
   width: f64,
   height: f64,
 ) -> Result<(), String> {
+  require_normal_window(&window)?;
   let target = window
     .available_monitors()
     .map_err(|e| format!("monitors: {e}"))?
@@ -770,6 +800,18 @@ pub fn move_main_window<R: tauri::Runtime>(
   Ok(())
 }
 
+/// Persist the actual normal-window geometry after Agent Control observes the move settling.
+#[tauri::command]
+pub fn remember_main_window_position<R: tauri::Runtime>(
+  window: tauri::WebviewWindow<R>,
+) -> Result<(), String> {
+  require_normal_window(&window)?;
+  let bounds = capture_window_placement(&window)?
+    .filter(|placement| !placement.bounds.is_maximized)
+    .ok_or_else(|| "No normal window position to save".to_string())?;
+  persist_window_bounds(&window, bounds)
+}
+
 /// The title bar's Maximize / Restore and the system Minimize, for Agent Control. They stay native
 /// so the frontend capability does not grow general window-state permissions.
 #[tauri::command]
@@ -777,6 +819,7 @@ pub fn set_main_window_state<R: tauri::Runtime>(
   window: tauri::WebviewWindow<R>,
   state: String,
 ) -> Result<(), String> {
+  require_normal_window(&window)?;
   match state.as_str() {
     "maximize" => {
       if !window.is_maximized().unwrap_or(false) {
@@ -1227,7 +1270,7 @@ mod tests {
   }
 
   #[test]
-  fn clean_active_preset_supplies_startup_window_bounds() {
+  fn clean_active_preset_supplies_bounds_when_the_workspace_has_no_placement() {
     let presets = json!({
       "list": [{
         "id": "mix",
@@ -1244,7 +1287,7 @@ mod tests {
     });
 
     assert_eq!(
-      clean_active_preset_window_bounds(&presets).map(|placement| placement.bounds),
+      startup_window_bounds(&presets, Value::Null).map(|placement| placement.bounds),
       Some(WindowBounds {
         x: 10,
         y: 20,
@@ -1252,6 +1295,23 @@ mod tests {
         height: 600,
         is_maximized: false,
       })
+    );
+  }
+
+  #[test]
+  fn later_workspace_move_takes_precedence_over_selected_preset_at_startup() {
+    let presets = json!({
+      "list": [{
+        "id": "mix",
+        "windowBounds": {"x": 10, "y": 20, "width": 800, "height": 600}
+      }],
+      "activeId": "mix"
+    });
+    let moved = json!({"x": 200, "y": 100, "width": 800, "height": 600});
+
+    assert_eq!(
+      startup_window_bounds(&presets, moved).map(|placement| placement.bounds.x),
+      Some(200)
     );
   }
 

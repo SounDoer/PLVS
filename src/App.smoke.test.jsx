@@ -52,6 +52,7 @@ vi.mock("./ipc/commands.js", () => ({
   applyWindowBounds: vi.fn().mockResolvedValue(undefined),
   resolveWindowBounds: vi.fn(async (bounds) => bounds),
   moveMainWindow: vi.fn().mockResolvedValue(undefined),
+  rememberMainWindowPosition: vi.fn().mockResolvedValue(undefined),
   setMainWindowState: vi.fn().mockResolvedValue(undefined),
   openAdditionalWorkbench: vi.fn().mockResolvedValue(undefined),
   listRuntimeInstances: vi.fn().mockResolvedValue([]),

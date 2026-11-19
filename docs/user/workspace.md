@@ -348,8 +348,10 @@ linking again adopts the shared range. Level and correlation ranges remain indep
 ## Persistence
 
 Your layout, presets, and view choices are remembered and restored the next time you open PLVS.
-Each workbench remembers its last normal window placement. Reopening a workbench or leaving Dock
-uses that placement when a Preset does not supply one. The same display adaptations apply after
-a display is removed or its work area changes. The system may limit window positioning, for
-example under native Wayland.
+Each workbench restores its last saved normal window placement when reopened. If the workbench
+has no saved placement, the active normal Preset can supply it. Applying a Preset restores its
+own placement when it has one. Leaving Dock without applying a Preset uses the workbench's last
+normal placement. Agent Control's `window move` saves the settled placement before returning
+success. The same display adaptations apply after a display is removed or its work area changes.
+The system may limit window positioning, for example under native Wayland.
 Measurement history is not: each launch starts a new session.

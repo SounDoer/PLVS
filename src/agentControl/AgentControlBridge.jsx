@@ -41,11 +41,13 @@ import {
   unmaximizeWindow,
 } from "../lib/windowGeometry.js";
 import { isTauri } from "../ipc/env.js";
-import { listRuntimeInstances, openAdditionalWorkbench } from "../ipc/commands.js";
 import { prepareGlobalOperation, quitPreparedInstances } from "../runtime/coordination.js";
 import { planFileImport } from "../lib/fileImportPlan.js";
 import {
   applyWindowBounds,
+  listRuntimeInstances,
+  openAdditionalWorkbench,
+  rememberMainWindowPosition,
   probeFileAnalysis,
   captureVisualScreenshot,
   movePointer,
@@ -185,6 +187,7 @@ export function AgentControlBridge() {
       readMonitors: readWindowMonitors,
       applyBounds: applyWindowBounds,
       moveTo: moveWindowTo,
+      rememberPosition: rememberMainWindowPosition,
       maximize: maximizeWindow,
       unmaximize: unmaximizeWindow,
       minimize: minimizeWindow,
@@ -565,15 +568,16 @@ export function AgentControlBridge() {
           }
         }
       } catch (error) {
-        let rollbackFailed = false;
+        let rollbackFailed = error?.rollback === "failed";
         for (const compensate of compensation.reverse()) {
           await compensate().catch(() => {
             rollbackFailed = true;
           });
         }
-        error.partial = rollbackFailed;
-        error.rollback = rollbackFailed ? "failed" : "completed";
-        throw error;
+        const failure = error && typeof error === "object" ? error : new Error(String(error));
+        failure.partial = rollbackFailed;
+        failure.rollback = rollbackFailed ? "failed" : "completed";
+        throw failure;
       }
 
       if (changed.includes("settings.closeBehavior")) {

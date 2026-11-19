@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import {
   configuredShortcutConflict,
@@ -21,67 +21,52 @@ async function routeGlobalShortcut(actionId, dispatchRef) {
   }
 }
 
-function globalShortcutHandler(actionId, dispatchRef) {
-  return (event) => {
-    if (event && event.state && event.state !== "Pressed") return;
-    void routeGlobalShortcut(actionId, dispatchRef);
-  };
-}
-
-function requestedGlobalRegistrations(shortcuts, enabled = true) {
+function requestedGlobalRegistrations(shortcuts) {
   return new Map(
-    enabled
-      ? Object.entries(shortcuts)
-          .filter(([, binding]) => binding.global && binding.accelerator)
-          .map(([actionId, binding]) => [actionId, binding.accelerator])
-      : []
+    Object.entries(shortcuts)
+      .filter(([, binding]) => binding.global && binding.accelerator)
+      .map(([actionId, binding]) => [binding.accelerator, actionId])
   );
 }
 
-async function replaceRegistrationsAtomically(registered, desired, dispatchRef) {
+async function reconcileRegistrations(registered, desired, dispatch, { stopOnError = false } = {}) {
+  const errors = new Map();
+  const missing = [...desired].filter((accelerator) => !registered.has(accelerator));
+  const obsolete = [...registered].filter((accelerator) => !desired.has(accelerator));
+  if (!missing.length && !obsolete.length) return errors;
   const { register, unregister } = await import("@tauri-apps/plugin-global-shortcut");
-  const previous = new Map(registered);
-  const changed = new Set(
-    [...new Set([...previous.keys(), ...desired.keys()])].filter(
-      (actionId) => previous.get(actionId) !== desired.get(actionId)
-    )
-  );
-  const occupiedByChanged = new Set(
-    [...changed].map((actionId) => previous.get(actionId)).filter(Boolean)
-  );
-  const registeredNew = [];
-  const releasedOld = [];
-  try {
-    for (const actionId of changed) {
-      const accelerator = desired.get(actionId);
-      if (!accelerator || occupiedByChanged.has(accelerator)) continue;
-      await register(accelerator, globalShortcutHandler(actionId, dispatchRef));
-      registeredNew.push([actionId, accelerator]);
+
+  for (const accelerator of missing) {
+    try {
+      await register(accelerator, (event) => {
+        if (event?.state && event.state !== "Pressed") return;
+        if (registered.has(accelerator)) dispatch(accelerator);
+      });
+      registered.add(accelerator);
+    } catch (error) {
+      errors.set(accelerator, String(error?.message || error));
+      if (stopOnError) return errors;
     }
-    for (const actionId of changed) {
-      const accelerator = previous.get(actionId);
-      if (!accelerator) continue;
-      await unregister(accelerator);
-      releasedOld.push([actionId, accelerator]);
-    }
-    for (const actionId of changed) {
-      const accelerator = desired.get(actionId);
-      if (!accelerator || !occupiedByChanged.has(accelerator)) continue;
-      await register(accelerator, globalShortcutHandler(actionId, dispatchRef));
-      registeredNew.push([actionId, accelerator]);
-    }
-  } catch (error) {
-    for (const [, accelerator] of registeredNew.reverse())
-      await unregister(accelerator).catch(() => {});
-    for (const [actionId, accelerator] of releasedOld) {
-      await register(accelerator, globalShortcutHandler(actionId, dispatchRef)).catch(() => {});
-    }
-    registered.clear();
-    for (const entry of previous) registered.set(...entry);
-    throw error;
   }
-  registered.clear();
-  for (const entry of desired) registered.set(...entry);
+  for (const accelerator of obsolete) {
+    try {
+      await unregister(accelerator);
+      registered.delete(accelerator);
+    } catch (error) {
+      errors.set(accelerator, String(error?.message || error));
+      if (stopOnError) return errors;
+    }
+  }
+  return errors;
+}
+
+function registrationErrorsByAction(errors, bindings, previous = new Map()) {
+  return Object.fromEntries(
+    [...errors].flatMap(([accelerator, message]) => {
+      const actionId = bindings.get(accelerator) ?? previous.get(accelerator);
+      return actionId ? [[actionId, message]] : [];
+    })
+  );
 }
 
 /**
@@ -96,7 +81,8 @@ export function useKeyboardShortcuts(dispatchRef) {
   const [capturing, setCapturing] = useState(false);
   const [registrationErrors, setRegistrationErrors] = useState({});
   const [saveErrors, setSaveErrors] = useState(/** @type {Record<string, string>} */ ({}));
-  const registeredRef = useRef(new Map());
+  const registeredRef = useRef(new Set());
+  const registrationEnabled = useRef(false);
   const pendingUpdate = useRef(Promise.resolve());
   const enqueueUpdate = useCallback((update) => {
     const pending = pendingUpdate.current.then(update);
@@ -128,82 +114,46 @@ export function useKeyboardShortcuts(dispatchRef) {
     };
   }, [enqueueUpdate, publishShortcuts]);
 
+  useLayoutEffect(() => {
+    registrationEnabled.current = ready && isTauri() && isCoordinator && !capturing;
+    return () => {
+      registrationEnabled.current = false;
+    };
+  }, [capturing, isCoordinator, ready]);
+
+  const dispatchGlobal = useCallback(
+    (accelerator) => {
+      if (!registrationEnabled.current) return;
+      // Native registration owns the key. The latest saved binding decides which action it runs.
+      const actionId = requestedGlobalRegistrations(saved.current.shortcuts).get(accelerator);
+      if (actionId) void routeGlobalShortcut(actionId, dispatchRef);
+    },
+    [dispatchRef]
+  );
+
   useEffect(() => {
     if (!ready || !isTauri()) return;
     let cancelled = false;
-    (async () => {
-      const { register, unregister } = await import("@tauri-apps/plugin-global-shortcut");
-      const desired = requestedGlobalRegistrations(shortcuts, isCoordinator && !capturing);
-
-      for (const [actionId, accelerator] of [...registeredRef.current]) {
-        if (desired.has(actionId)) continue;
-        try {
-          await unregister(accelerator);
-        } catch (_) {}
-        registeredRef.current.delete(actionId);
-      }
-
-      for (const [actionId, accelerator] of desired) {
-        const previous = registeredRef.current.get(actionId);
-        if (previous === accelerator) continue;
-        try {
-          await register(accelerator, globalShortcutHandler(actionId, dispatchRef));
-          if (previous) {
-            try {
-              await unregister(previous);
-            } catch (error) {
-              await unregister(accelerator).catch(() => {});
-              throw error;
-            }
-          }
-          if (cancelled) {
-            await unregister(accelerator).catch(() => {});
-            if (previous)
-              await register(previous, globalShortcutHandler(actionId, dispatchRef)).catch(
-                () => {}
-              );
-          } else {
-            registeredRef.current.set(actionId, accelerator);
-            setRegistrationErrors((current) => {
-              if (!(actionId in current)) return current;
-              const next = { ...current };
-              delete next[actionId];
-              return next;
-            });
-          }
-        } catch (error) {
-          if (!cancelled) {
-            setRegistrationErrors((current) => ({
-              ...current,
-              [actionId]: String(error?.message || error),
-            }));
-          }
-        }
-      }
-      if (!cancelled) {
-        setRegistrationErrors((current) =>
-          Object.fromEntries(Object.entries(current).filter(([actionId]) => desired.has(actionId)))
-        );
-      }
-    })();
+    void enqueueUpdate(async () => {
+      if (cancelled) return;
+      const bindings = requestedGlobalRegistrations(saved.current.shortcuts);
+      const desired = new Set(registrationEnabled.current ? bindings.keys() : []);
+      const errors = await reconcileRegistrations(registeredRef.current, desired, dispatchGlobal);
+      if (!cancelled) setRegistrationErrors(registrationErrorsByAction(errors, bindings));
+    });
     return () => {
       cancelled = true;
     };
-  }, [capturing, dispatchRef, isCoordinator, ready, shortcuts]);
+  }, [capturing, dispatchGlobal, enqueueUpdate, isCoordinator, ready, shortcuts]);
 
   useEffect(
     () => () => {
       if (!isTauri()) return;
-      const registered = [...registeredRef.current.values()];
-      registeredRef.current.clear();
-      import("@tauri-apps/plugin-global-shortcut").then(({ unregister }) => {
-        for (const accelerator of registered) {
-          const result = unregister(accelerator);
-          if (result && typeof result.catch === "function") result.catch(() => {});
-        }
-      });
+      void enqueueUpdate(() =>
+        reconcileRegistrations(registeredRef.current, new Set(), dispatchGlobal)
+      );
     },
-    []
+    [dispatchGlobal, enqueueUpdate]
   );
 
   const commitGuiUpdate = useCallback(
@@ -270,32 +220,54 @@ export function useKeyboardShortcuts(dispatchRef) {
           throw new Error("Keyboard shortcuts changed before this operation could be applied.");
         }
         const normalized = normalizeKeyboardShortcuts(next);
-        const shouldRegister = isTauri() && isCoordinator && ready && !capturing;
-        const previousRegistrations = new Map(registeredRef.current);
-        if (shouldRegister) {
-          await replaceRegistrationsAtomically(
-            registeredRef.current,
-            requestedGlobalRegistrations(normalized),
-            dispatchRef
-          );
-        }
+        const shouldRegister = registrationEnabled.current;
+        const registered = registeredRef.current;
+        const previous = new Set(registered);
+        const desired = requestedGlobalRegistrations(normalized);
         try {
+          if (shouldRegister) {
+            const errors = await reconcileRegistrations(
+              registered,
+              new Set(desired.keys()),
+              dispatchGlobal,
+              { stopOnError: true }
+            );
+            if (errors.size) {
+              throw new Error([...errors.values()].join(" "));
+            }
+          }
           const savedRevision = await saveKeyboardShortcutPrefs(normalized, revision);
           publishShortcuts(normalized, savedRevision ?? revision);
         } catch (error) {
           if (shouldRegister) {
-            await replaceRegistrationsAtomically(
-              registeredRef.current,
-              previousRegistrations,
-              dispatchRef
-            ).catch(() => {});
+            const previousBindings = requestedGlobalRegistrations(current);
+            const errors = await reconcileRegistrations(
+              registered,
+              registrationEnabled.current ? previous : new Set(),
+              dispatchGlobal
+            );
+            if (errors.size) {
+              setRegistrationErrors((existing) => ({
+                ...existing,
+                ...registrationErrorsByAction(errors, previousBindings, desired),
+              }));
+              throw Object.assign(
+                new Error(
+                  `${error?.message || error} Could not restore global shortcuts: ${[
+                    ...errors.values(),
+                  ].join(" ")}`,
+                  { cause: error }
+                ),
+                { partial: true, rollback: "failed" }
+              );
+            }
           }
           throw error;
         }
         setRegistrationErrors({});
         setSaveErrors({});
       }),
-    [capturing, dispatchRef, enqueueUpdate, isCoordinator, publishShortcuts, ready]
+    [dispatchGlobal, enqueueUpdate, publishShortcuts]
   );
 
   return {

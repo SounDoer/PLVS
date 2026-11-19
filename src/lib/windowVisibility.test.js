@@ -64,4 +64,29 @@ describe("window visibility", () => {
     expect(window.setSkipTaskbar).toHaveBeenCalledWith(false);
     expect(window.setFocus).toHaveBeenCalledOnce();
   });
+
+  it("restores taskbar presence when retrying an already visible window", async () => {
+    const window = fakeWindow(true);
+    window.setSkipTaskbar.mockRejectedValueOnce(new Error("Taskbar unavailable"));
+    const options = { docked: false, window, resumeDock: vi.fn() };
+
+    await expect(showAppWindow(options)).rejects.toThrow("Taskbar unavailable");
+    await showAppWindow(options);
+
+    expect(window.setSkipTaskbar.mock.calls).toEqual([[false], [false]]);
+    expect(window.setFocus).toHaveBeenCalledOnce();
+  });
+
+  it("keeps a hidden window hidden if the tray cannot restore taskbar presence", async () => {
+    const window = fakeWindow(false);
+    window.setSkipTaskbar.mockRejectedValueOnce(new Error("Taskbar unavailable"));
+    const options = { docked: false, window, suspendDock: vi.fn(), resumeDock: vi.fn() };
+
+    await expect(toggleAppWindow(options)).rejects.toThrow("Taskbar unavailable");
+    expect(window.show).not.toHaveBeenCalled();
+    await toggleAppWindow(options);
+
+    expect(window.show).toHaveBeenCalledOnce();
+    expect(window.hide).not.toHaveBeenCalled();
+  });
 });

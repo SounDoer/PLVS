@@ -39,15 +39,17 @@ scale factors, and fails with `uiNotSettled` otherwise.
 `window move --monitor --x --y` places the window's top-left corner at a CSS-pixel offset from the
 named monitor's work-area origin, the same coordinate `window inspect` reports. The window keeps its
 CSS WebView size, so on a monitor with another scale factor its physical size follows that factor. It
-uses the bounds path `window resize` uses: a maximized window is restored first and the result is
-saved as the window's remembered bounds.
+restores a maximized window first. Once the move settles, it saves the actual normal-window
+placement before returning success.
 
 A monitor that is not connected fails with `monitorNotFound`. A position at which the window,
 including its frame, would leave that monitor's work area fails with `windowPositionUnavailable`
 before anything changes; it is never clamped elsewhere. A minimized window fails with
-`windowMinimized`; show it first. Dock fails with `dockActive`. The current position returns
-`changed: false`. The command settles when the window reports that monitor and offset, within one
-pixel, and fails with `uiNotSettled` otherwise.
+`windowMinimized`; show it first. Dock fails with `dockActive`, including when the requested
+position or size matches the strip. The command settles when the window reports that monitor
+and offset, within one pixel, and fails with `uiNotSettled` otherwise. If saving fails with
+`persistenceFailed`, inspect and retry. A matching position is saved and returns `changed: false`
+without moving the window again.
 
 Native Wayland does not expose global positions for top-level windows. On that backend,
 `window inspect` returns `position: null`, `capabilities` omits `window.move`, and a direct call
@@ -79,3 +81,5 @@ minimized state on backends that support it. `changed` reports whether visibilit
 Window geometry and visibility live in `window inspect`. A window change can advance the global
 revision by changing the active Preset's dirty state in `app.inspect`. Read the current revision
 before issuing the next action. Window actions require `--expected-revision` and have no dry run.
+Resize, move, maximize, restore and minimize also check the revision and window form after reading
+native geometry, before changing the window.

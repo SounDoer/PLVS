@@ -111,6 +111,10 @@ export function moveMainWindow({ monitor, x, y, width, height }) {
   return invoke("move_main_window", { monitor, x, y, width, height });
 }
 
+export function rememberMainWindowPosition() {
+  return invoke("remember_main_window_position");
+}
+
 /** Opens one additional workbench as a second launch does. */
 export function openAdditionalWorkbench() {
   return invoke("runtime_open_workbench");
