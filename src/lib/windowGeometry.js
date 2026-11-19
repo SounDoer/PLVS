@@ -56,6 +56,7 @@ export async function readWindowGeometry() {
   return {
     viewport: { width: globalThis.innerWidth, height: globalThis.innerHeight },
     scale,
+    nativeScale: monitor?.scaleFactor || scale,
     inner: { width: inner.width, height: inner.height },
     outer: { width: outer.width, height: outer.height },
     // GTK adds client-side decorations to resize requests. Reported native sizes include them.
@@ -82,7 +83,7 @@ export async function readWindowMonitors() {
 
 /**
  * @param {{ monitor: string, x: number, y: number, width: number, height: number }} target
- *   the offset from the monitor's work-area origin and the inner size, all in CSS px
+ *   the offset from the monitor's work-area origin and the inner size, in native logical units
  */
 export function moveWindowTo(target) {
   return moveMainWindow(target);

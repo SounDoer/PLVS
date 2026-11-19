@@ -57,6 +57,17 @@ export function LibraryConflictDialog() {
 
   const label = LABELS[conflict?.kind] || "Library item";
   const deleting = conflict?.operation === "delete";
+  const collection = conflict?.operation === "collection";
+  const reloadOnly = deleting || collection;
+  let description =
+    "Another PLVS workbench saved this item first. Reload its saved version, or keep your version as a new copy.";
+  if (deleting) {
+    description =
+      "The saved item changed while you were deleting it. Reload the Library before trying again.";
+  } else if (collection) {
+    description =
+      "Another PLVS workbench changed this list first. Reload the Library to see the saved list before trying again.";
+  }
   useUiSurface({
     active: conflict !== null,
     kind: "libraryConflict",
@@ -68,19 +79,18 @@ export function LibraryConflictDialog() {
     supportedActions: [],
     choices: [
       { id: "reload", label: "Reload", run: () => resolve("reload") },
-      { id: "copy", label: "Save as Copy", run: () => resolve("copy"), disabled: deleting },
+      { id: "copy", label: "Save as Copy", run: () => resolve("copy"), disabled: reloadOnly },
     ],
     target: { phase: error ? "error" : busy ? "busy" : "decision" },
   });
   return (
     <Dialog open={conflict !== null}>
       <DialogContent layer={LAYER_CONFLICT}>
-        <DialogTitle>{label} Changed Elsewhere</DialogTitle>
-        <DialogDescription>
-          {deleting
-            ? "The saved item changed while you were deleting it. Reload the Library before trying again."
-            : "Another PLVS workbench saved this item first. Reload its saved version, or keep your version as a new copy."}
-        </DialogDescription>
+        <DialogTitle>
+          {label}
+          {collection ? " List" : ""} Changed Elsewhere
+        </DialogTitle>
+        <DialogDescription>{description}</DialogDescription>
         {error ? (
           <p className="mt-2 text-[length:var(--ui-fs-control)] text-destructive">{error}</p>
         ) : null}
@@ -88,7 +98,7 @@ export function LibraryConflictDialog() {
           <Button variant="ghost" disabled={busy} onClick={() => void resolve("reload")}>
             Reload
           </Button>
-          {deleting ? null : (
+          {reloadOnly ? null : (
             <Button disabled={busy} onClick={() => void resolve("copy")}>
               Save as Copy
             </Button>

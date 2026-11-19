@@ -397,6 +397,8 @@ picture is available; it preserves elapsed time rather than advancing later pict
 The recording indicator defaults to visible. For guide videos, pass `--indicator hidden` to hide
 the PLVS recording dot for that recording only, including normal, Fullscreen, and Dock views.
 This does not change recording status or stop/wait control; the next recording defaults to visible.
+Inspecting a past recording leaves the current recording's indicator alone. A Dock recording
+follows the toolbar side of the strip when it moves between the top and bottom edges.
 
 Live recordings default to the measured source; File recordings default to `none`, and an explicit
 File `measured-source` request fails. Linux advertises only `--cursor none`; its measured-source

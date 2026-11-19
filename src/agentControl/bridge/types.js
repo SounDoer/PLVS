@@ -14,11 +14,7 @@
  *   clock: ReturnType<typeof import("./revisionClock.js").createRevisionClock>,
  *   settlement: ReturnType<typeof import("./settlement.js").createSettlementRegistry>,
  *   waiters: ReturnType<typeof import("./waiters.js").createWaiters>,
- *   visual: {
- *     captures: Map<string, any>,
- *     recordings: Map<string, any>,
- *     captureActive: { current: boolean },
- *   },
+ *   visual: ReturnType<typeof import("./visualBookkeeping.js").createVisualBookkeeping>,
  *   dockRequestContext: Record<string, any>,
  *   flush: (...args: any[]) => any,
  * }} BridgeContext

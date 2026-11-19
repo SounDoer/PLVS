@@ -741,16 +741,16 @@ pub(crate) fn applied_placement(
   WindowPlacement { bounds, relative }
 }
 
-/// Places the main window's top-left corner at a CSS-pixel offset from one monitor's work-area
-/// origin and gives it a CSS-pixel inner size, for Agent Control's `window move`.
+/// Places the main window at an offset from a monitor's work-area origin and sets its inner size.
+/// Agent Control passes native logical units after accounting for the WebView scale.
 ///
 /// Monitor and window positions do not share one coordinate space on every platform. Windows and
 /// X11 report one virtual desktop in physical pixels, so the target is the work area's physical
 /// origin plus the offset scaled by that monitor's factor. macOS reports each monitor's position
 /// scaled by its own factor, so physical positions from two displays with different factors cannot
 /// be compared; there the target is computed and applied in points. Sizes are logical everywhere:
-/// the second size call corrects a size a cross-DPI move rescaled. The debounced window-state
-/// flush saves the result as it saves a drag.
+/// the second size call corrects a size a cross-DPI move rescaled. Agent Control explicitly saves
+/// the resulting placement after it has settled.
 #[tauri::command]
 pub fn move_main_window<R: tauri::Runtime>(
   window: tauri::WebviewWindow<R>,

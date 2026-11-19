@@ -5,6 +5,14 @@ import {
 } from "../visualControl.js";
 import { visualSemanticFailure } from "../bridge/failures.js";
 import { measuredAudioState } from "../bridge/signatures.js";
+import { releaseActiveRecording } from "../bridge/visualBookkeeping.js";
+
+const RECORDING_POLL_INTERVAL_MS = 250;
+const RECORDING_POLL_RETRY_MAX_MS = 2000;
+
+function isTerminal(recording) {
+  return recording.state === "completed" || recording.state === "failed";
+}
 
 function publicRecording(recording) {
   const { audioSource, ...publicValue } = recording ?? {};
@@ -12,6 +20,41 @@ function publicRecording(recording) {
     ...publicValue,
     audio: recording?.audio ?? { source: audioSource === "measuredSource" ? audioSource : "none" },
   };
+}
+
+function observeRecording(visual, visualControl, recording, revision) {
+  const { recordingId } = recording;
+  let metadata = visual.recordings.get(recordingId);
+  if (isTerminal(recording)) {
+    if (!metadata) {
+      metadata = {};
+      visual.recordings.set(recordingId, metadata);
+    }
+    metadata.endedRevision ??= revision;
+    releaseActiveRecording(visual, visualControl, recordingId);
+  } else if (visual.activeRecording.current?.recordingId === recordingId) {
+    visualControl.setRecordingState?.(metadata?.indicator === "hidden" ? null : recording.state);
+  }
+  return metadata;
+}
+
+async function pollRecording(visual, visualControl, active, clock) {
+  let delay = RECORDING_POLL_INTERVAL_MS;
+  while (visual.activeRecording.current === active) {
+    await new Promise((resolve) => setTimeout(resolve, delay));
+    if (visual.activeRecording.current !== active) return;
+    try {
+      const latest = await visualControl.inspectRecording(active.recordingId);
+      observeRecording(visual, visualControl, latest, clock.current());
+      delay = RECORDING_POLL_INTERVAL_MS;
+    } catch (error) {
+      if (error?.reason === "recordingNotFound") {
+        releaseActiveRecording(visual, visualControl, active.recordingId);
+        return;
+      }
+      delay = Math.min(delay * 2, RECORDING_POLL_RETRY_MAX_MS);
+    }
+  }
 }
 
 /** @param {import("../bridge/types.js").BridgeContext} ctx */
@@ -100,9 +143,8 @@ async function startRecording(ctx) {
   // `dock` records the strip's screen region, toolbar and editor included; it is not a WebView.
   const dockTarget = request.params.target.kind === "dock";
   const surfaceTarget = dockTarget ? { kind: "main" } : request.params.target;
-  const dockEdge = ctx.live().dock?.edge;
-  const region = (geometry) =>
-    dockTarget ? { ...geometry, ...dockRecordingRegion(geometry, dockEdge) } : geometry;
+  const region = (geometry, edge) =>
+    dockTarget ? { ...geometry, ...dockRecordingRegion(geometry, edge) } : geometry;
   if (
     dockTarget
       ? runtime.windowForm !== "dock" ||
@@ -134,7 +176,8 @@ async function startRecording(ctx) {
         expectedRevision: request.params.expectedRevision,
         getRevision: () => clock.current(),
         signal: controller.signal,
-      })
+      }),
+      ctx.live().dock?.edge
     );
     const recording = await visualControl.startRecording({
       windowLabel: settled.windowLabel,
@@ -153,15 +196,27 @@ async function startRecording(ctx) {
       target: request.params.target,
       startedRevision: settled.revision,
       startedAt: new Date().toISOString(),
-      unsubscribe: null,
-      audio,
       indicator: request.params.indicator ?? "visible",
     };
     visual.recordings.set(recording.recordingId, metadata);
-    metadata.unsubscribe = visualControl.subscribe?.(
+    if (controller.signal.aborted) {
+      await visualControl.stopRecording(recording.recordingId);
+      throw { reason: "captureFailed" };
+    }
+    const previous = visual.activeRecording.current;
+    previous?.unsubscribe?.();
+    const active = { recordingId: recording.recordingId, audio, unsubscribe: undefined };
+    visual.activeRecording.current = active;
+    active.unsubscribe = visualControl.subscribe?.(
       surfaceTarget,
-      (geometry) => {
-        const next = region(geometry);
+      (geometry, edge = ctx.live().dock?.edge) => {
+        if (
+          visual.activeRecording.current !== active ||
+          (dockTarget && (!edge || visualControl.getRuntime()?.windowForm !== "dock"))
+        ) {
+          return;
+        }
+        const next = region(geometry, edge);
         void visualControl
           .updateRecordingGeometry({
             recordingId: recording.recordingId,
@@ -170,26 +225,10 @@ async function startRecording(ctx) {
           })
           .catch(() => undefined);
       },
-      { signal: controller.signal }
+      { signal: controller.signal, followDockEdge: dockTarget }
     );
-    visualControl.setRecordingState?.(metadata?.indicator === "hidden" ? null : recording.state);
-    void (async () => {
-      while (visual.recordings.has(recording.recordingId)) {
-        await new Promise((resolve) => setTimeout(resolve, 250));
-        try {
-          const latest = await visualControl.inspectRecording(recording.recordingId);
-          if (latest.state === "completed" || latest.state === "failed") {
-            metadata.unsubscribe?.();
-            metadata.unsubscribe = null;
-            visualControl.setRecordingState?.(null);
-            return;
-          }
-          visualControl.setRecordingState?.(metadata.indicator === "hidden" ? null : latest.state);
-        } catch {
-          return;
-        }
-      }
-    })();
+    observeRecording(visual, visualControl, recording, clock.current());
+    void pollRecording(visual, visualControl, active, clock);
     return {
       requestId,
       result: {
@@ -218,16 +257,9 @@ async function inspectWaitOrStopRecording(ctx) {
     throw visualSemanticFailure({ reason: "visualUnavailable" });
   }
   const recordingId = request.params.recordingId;
-  const metadata = visual.recordings.get(recordingId);
   const decorate = (recording) => {
-    const terminal = recording.state === "completed" || recording.state === "failed";
-    if (terminal) {
-      metadata?.unsubscribe?.();
-      if (metadata) metadata.unsubscribe = null;
-      visualControl.setRecordingState?.(null);
-    } else {
-      visualControl.setRecordingState?.(metadata?.indicator === "hidden" ? null : recording.state);
-    }
+    const revision = clock.current();
+    const metadata = observeRecording(visual, visualControl, recording, revision);
     return {
       ...publicRecording(recording),
       ...(metadata?.indicator ? { indicator: metadata.indicator } : {}),
@@ -236,8 +268,8 @@ async function inspectWaitOrStopRecording(ctx) {
       ...(Number.isSafeInteger(metadata?.startedRevision)
         ? { startedRevision: metadata.startedRevision }
         : {}),
-      currentRevision: clock.current(),
-      ...(terminal ? { endedRevision: clock.current() } : {}),
+      currentRevision: revision,
+      ...(isTerminal(recording) ? { endedRevision: metadata.endedRevision } : {}),
     };
   };
   try {
@@ -257,7 +289,7 @@ async function inspectWaitOrStopRecording(ctx) {
     const deadline = Date.now() + timeoutMs;
     while (true) {
       const recording = await visualControl.inspectRecording(recordingId);
-      if (recording.state === "completed" || recording.state === "failed") {
+      if (isTerminal(recording)) {
         return {
           requestId,
           result: {

@@ -34,14 +34,14 @@ function baseInputs(overrides = {}) {
   };
 }
 
-function setup() {
+function setup(activeRecording = { current: null }) {
   const clock = createRevisionClock({ onWake: () => {} });
   const settlement = createSettlementRegistry(clock);
   const inputs = baseInputs();
   const observeCommit = createDomainRunner({
     clock,
     settlement,
-    recordings: new Map(),
+    activeRecording,
     initialInputs: inputs,
   });
   observeCommit(inputs);
@@ -49,6 +49,23 @@ function setup() {
 }
 
 describe("createDomainRunner", () => {
+  it("forwards source changes only while a measured-source recording is active", () => {
+    const activeRecording = { current: { recordingId: "active", audio: "measuredSource" } };
+    const { inputs, observeCommit } = setup(activeRecording);
+    const visual = {
+      getRuntime: () => ({ sourceMode: "live" }),
+      updateRecordingAudioState: vi.fn(async () => {}),
+    };
+    observeCommit({ ...inputs, visual, transport: { ...inputs.transport } });
+    expect(visual.updateRecordingAudioState).toHaveBeenCalledExactlyOnceWith({
+      recordingId: "active",
+      state: "liveStopped",
+    });
+
+    activeRecording.current = null;
+    observeCommit({ ...inputs, visual, transport: { ...inputs.transport } });
+    expect(visual.updateRecordingAudioState).toHaveBeenCalledTimes(1);
+  });
   it("keeps the order of the effects it replaces", () => {
     expect(DOMAIN_NAMES).toEqual([
       "view",

@@ -26,6 +26,7 @@ export const WINDOW_OFFSET_MAX = 7680;
  *   viewport: { width: number, height: number },
  *   scale: number,
  *   inner: { width: number, height: number },
+ *   nativeScale?: number,
  *   outer: { width: number, height: number },
  *   sizeSetterUsesViewport?: boolean,
  *   position: { x: number, y: number },
@@ -160,9 +161,11 @@ export function planWindowMove({ form }, geometry, monitors, { monitor: monitorI
   if (form !== "normal") return { refusal: "dockActive" };
   const monitor = monitors.find((candidate) => candidate.id === monitorId);
   if (!monitor) return { refusal: "monitorNotFound" };
+  const nativeScale = geometry.nativeScale ?? geometry.monitor?.scale ?? geometry.scale;
+  const cssToLogical = geometry.scale / nativeScale;
   const frame = {
-    width: Math.max(0, geometry.outer.width - geometry.inner.width) / geometry.scale,
-    height: Math.max(0, geometry.outer.height - geometry.inner.height) / geometry.scale,
+    width: Math.max(0, geometry.outer.width - geometry.inner.width) / nativeScale,
+    height: Math.max(0, geometry.outer.height - geometry.inner.height) / nativeScale,
   };
   const workArea = {
     width: monitor.workArea.width / monitor.scale,
@@ -170,18 +173,20 @@ export function planWindowMove({ form }, geometry, monitors, { monitor: monitorI
   };
   const inner = nativeInnerSize(geometry, geometry.viewport);
   if (
-    x + inner.width + frame.width > workArea.width ||
-    y + inner.height + frame.height > workArea.height
+    x + inner.width * cssToLogical + frame.width > workArea.width ||
+    y + inner.height * cssToLogical + frame.height > workArea.height
   ) {
     return { refusal: "windowPositionUnavailable", monitor };
   }
+  const setterSize = geometry.sizeSetterUsesViewport ? geometry.viewport : inner;
   return {
     monitor,
     target: {
       monitor: monitor.id,
       x,
       y,
-      ...(geometry.sizeSetterUsesViewport ? geometry.viewport : inner),
+      width: setterSize.width * cssToLogical,
+      height: setterSize.height * cssToLogical,
     },
   };
 }

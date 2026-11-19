@@ -19,6 +19,9 @@ identical Source names are running.
 Saved Presets, Themes and Loudness Profiles remain one shared Library, so importing or saving an
 item makes it available to every workbench without automatically applying it to their active
 measurement.
+If another workbench changes a shared list before your reorder or bulk edit is saved, choose
+**Reload** to see the saved list, then make the change again. Other Workspace changes continue to
+save while the list conflict is open.
 
 ## Split layout
 

@@ -16,7 +16,7 @@ import { normalizeImportedProfile } from "../persistence/profileShape.js";
 import { agentControlRpcError } from "./protocol.js";
 import { createRevisionClock } from "./bridge/revisionClock.js";
 import { createWaiters } from "./bridge/waiters.js";
-import { createVisualBookkeeping } from "./bridge/visualBookkeeping.js";
+import { createVisualBookkeeping, releaseActiveRecording } from "./bridge/visualBookkeeping.js";
 import { METHOD_TABLE } from "./handlers/index.js";
 import { createDomainRunner } from "./bridge/domains.js";
 import { createSettlementRegistry } from "./bridge/settlement.js";
@@ -312,7 +312,7 @@ export function useAgentControlBridge({
         observeCommit: createDomainRunner({
           clock: revisionClock,
           settlement: settlementRegistry,
-          recordings: visualBookkeeping.recordings,
+          activeRecording: visualBookkeeping.activeRecording,
           initialInputs: inputs,
         }),
       };
@@ -331,7 +331,6 @@ export function useAgentControlBridge({
     if (!enabled) return undefined;
     const waiterEntries = waiters.entries;
     const ownedVisualCaptures = visualBook.captures;
-    const visualRecordings = visualBook.recordings;
     aliveRef.current = true;
     // Per-run, unlike `aliveRef`: a remount sets that shared ref back to true, so an install left
     // over from the previous run cannot use it to tell that its own run was torn down. Believing
@@ -430,13 +429,10 @@ export function useAgentControlBridge({
       for (const controller of ownedVisualCaptures.values()) controller.abort();
       ownedVisualCaptures.clear();
       const visualControl = latestInputs.get().visual;
-      for (const [recordingId, metadata] of visualRecordings) {
-        metadata.unsubscribe?.();
-        metadata.unsubscribe = null;
+      const recordingId = visualBook.activeRecording.current?.recordingId;
+      if (recordingId) {
+        releaseActiveRecording(visualBook, visualControl, recordingId);
         void visualControl?.stopRecording?.(recordingId).catch(() => undefined);
-      }
-      if (visualRecordings.size > 0) {
-        visualControl?.setRecordingState?.("stopping");
       }
       unlisten?.();
       unlisten = null;

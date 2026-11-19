@@ -1607,7 +1607,7 @@ describe("useAgentControlBridge", () => {
           },
         },
       });
-      mount({ agentVisual: visual });
+      const mounted = mount({ agentVisual: visual });
       await waitUntilReady();
       const started = await send(
         request(
@@ -1637,6 +1637,9 @@ describe("useAgentControlBridge", () => {
       const stopped = await send(request("visual.recording.stop", { recordingId }, "hidden-stop"));
       expect(stopped.result.recording).toMatchObject({ state: "completed", indicator: "hidden" });
       expect(visual.setRecordingState.mock.calls.every(([state]) => state === null)).toBe(true);
+      const nextId = `rec-${"d".repeat(32)}`;
+      const nativeStart = await visual.startRecording.mock.results[0].value;
+      visual.startRecording.mockResolvedValueOnce({ ...nativeStart, recordingId: nextId });
       const next = await send(
         request(
           "visual.recording.start",
@@ -1648,6 +1651,9 @@ describe("useAgentControlBridge", () => {
       );
       expect(next.result.recording.indicator).toBe("visible");
       expect(visual.setRecordingState).toHaveBeenLastCalledWith("recording");
+      visual.stopRecording.mockClear();
+      mounted.unmount();
+      expect(visual.stopRecording).toHaveBeenCalledExactlyOnceWith(nextId);
     });
 
     it("defaults File recording to none and rejects explicit measured-source audio", async () => {
@@ -1768,7 +1774,7 @@ describe("useAgentControlBridge", () => {
         revision: 0,
         recording: { recordingId, state: "completed", endedRevision: 0 },
       });
-      expect(visual.setRecordingState).toHaveBeenCalledWith(null);
+      expect(visual.setRecordingState).not.toHaveBeenCalled();
     });
 
     it("requests idempotent stop and returns the finalized recording", async () => {

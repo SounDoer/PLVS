@@ -317,7 +317,12 @@ describe("AgentControlBridge", () => {
         live: () => state,
         settlement: createSettlementRegistry(clock),
         waiters: createWaiters(),
-        visual: { captures: new Map(), recordings: new Map(), captureActive: { current: false } },
+        visual: {
+          captures: new Map(),
+          recordings: new Map(),
+          activeRecording: { current: null },
+          captureActive: { current: false },
+        },
         dockRequestContext: {},
         flush: async () => {},
       });

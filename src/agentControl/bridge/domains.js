@@ -21,7 +21,7 @@ import {
  *   memory: Record<string, any>,
  *   clock: ReturnType<typeof import("./revisionClock.js").createRevisionClock>,
  *   settlement: ReturnType<typeof import("./settlement.js").createSettlementRegistry>,
- *   recordings: Map<string, any>,
+ *   activeRecording: ReturnType<typeof import("./visualBookkeeping.js").createVisualBookkeeping>["activeRecording"],
  * }} DomainObservation
  *
  * @typedef {{
@@ -61,13 +61,11 @@ function observeLoudnessProfileStore(settlement, store, signature) {
   }
 }
 
-function pushRecordingAudioState(recordings, visualControl, audioState) {
-  for (const [recordingId, metadata] of recordings) {
-    if (metadata.audio !== "measuredSource") continue;
-    void visualControl
-      ?.updateRecordingAudioState?.({ recordingId, state: audioState })
-      .catch(() => undefined);
-  }
+function pushRecordingAudioState(recording, visualControl, audioState) {
+  if (recording?.audio !== "measuredSource") return;
+  void visualControl
+    ?.updateRecordingAudioState?.({ recordingId: recording.recordingId, state: audioState })
+    .catch(() => undefined);
 }
 
 /** @type {Domain} */
@@ -221,11 +219,11 @@ const transport = {
   name: "transport",
   init: (inputs) => ({ signature: transportLifecycleSignature(inputs.transport) }),
   deps: (inputs) => [inputs.transport],
-  observe({ inputs, memory, clock, settlement, recordings }) {
+  observe({ inputs, memory, clock, settlement, activeRecording }) {
     const visualControl = inputs.visual;
     const runtime = visualControl?.getRuntime?.() ?? {};
     pushRecordingAudioState(
-      recordings,
+      activeRecording.current,
       visualControl,
       measuredAudioState(runtime, inputs.transport)
     );
@@ -245,14 +243,14 @@ const device = {
   name: "device",
   init: (inputs) => ({ requestedId: requestedDeviceSignature(inputs.device) }),
   deps: (inputs) => [inputs.device],
-  observe({ inputs, memory, clock, settlement, recordings }) {
+  observe({ inputs, memory, clock, settlement, activeRecording }) {
     const visualControl = inputs.visual;
     const runtime = visualControl?.getRuntime?.() ?? {};
     const audioState =
       inputs.device?.live?.transition != null
         ? "liveRestart"
         : measuredAudioState(runtime, inputs.transport);
-    pushRecordingAudioState(recordings, visualControl, audioState);
+    pushRecordingAudioState(activeRecording.current, visualControl, audioState);
     const requestedId = requestedDeviceSignature(inputs.device);
     if (requestedId !== memory.requestedId) {
       memory.requestedId = requestedId;
@@ -302,11 +300,11 @@ export const DOMAIN_NAMES = Object.freeze(DOMAINS.map(({ name }) => name));
  * @param {{
  *   clock: DomainObservation["clock"],
  *   settlement: DomainObservation["settlement"],
- *   recordings: Map<string, any>,
+ *   activeRecording: DomainObservation["activeRecording"],
  *   initialInputs: Record<string, any>,
  * }} options
  */
-export function createDomainRunner({ clock, settlement, recordings, initialInputs }) {
+export function createDomainRunner({ clock, settlement, activeRecording, initialInputs }) {
   const states = DOMAINS.map((domain) => ({
     domain,
     /** @type {any[] | null} */
@@ -326,7 +324,7 @@ export function createDomainRunner({ clock, settlement, recordings, initialInput
       const previous = state.deps;
       if (previous && deps.every((value, index) => Object.is(value, previous[index]))) continue;
       state.deps = deps;
-      state.domain.observe({ inputs, memory: state.memory, clock, settlement, recordings });
+      state.domain.observe({ inputs, memory: state.memory, clock, settlement, activeRecording });
     }
   };
 }

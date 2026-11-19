@@ -718,7 +718,10 @@ export function AgentControlBridge() {
     ]
   );
 
-  const visualCaptureSurfaces = useVisualCaptureSurfaces({ workspace: workspaceState });
+  const visualCaptureSurfaces = useVisualCaptureSurfaces({
+    workspace: workspaceState,
+    dockEdge: docked ? dockEdge : null,
+  });
   const agentControlVisual = useMemo(
     () => ({
       platformCapabilities,

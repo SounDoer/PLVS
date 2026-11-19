@@ -69,4 +69,33 @@ describe("useVisualCaptureSurfaces", () => {
     unmount();
     await expect(pending).rejects.toMatchObject({ name: "AbortError" });
   });
+
+  it("publishes geometry for a Dock edge change without waiting for a resize", () => {
+    mountedWorkspaceSurface().setAttribute("data-visual-capture-surface", "main");
+    vi.stubGlobal(
+      "ResizeObserver",
+      vi.fn(function ResizeObserverStub() {
+        this.observe = vi.fn();
+        this.disconnect = vi.fn();
+      })
+    );
+    const workspace = { panelsById: {} };
+    const { result, rerender } = renderHook(
+      ({ edge }) => useVisualCaptureSurfaces({ workspace, dockEdge: edge }),
+      { initialProps: { edge: "top" } }
+    );
+    const onGeometry = vi.fn();
+    const unsubscribe = result.current.subscribe({ kind: "main" }, onGeometry, {
+      followDockEdge: true,
+    });
+
+    rerender({ edge: "bottom" });
+    expect(onGeometry).toHaveBeenCalledExactlyOnceWith(
+      expect.objectContaining({ viewport: { width: 500, height: 300 } }),
+      "bottom"
+    );
+    unsubscribe();
+    rerender({ edge: "top" });
+    expect(onGeometry).toHaveBeenCalledTimes(1);
+  });
 });

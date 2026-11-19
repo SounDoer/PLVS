@@ -176,6 +176,7 @@ describe("Window Control", () => {
     const gtk = geometry({
       sizeSetterUsesViewport: true,
       scale: 1,
+      nativeScale: 1,
       viewport: { width: 1280, height: 800 },
       inner: { width: 1332, height: 889 },
       outer: { width: 1332, height: 889 },
@@ -199,6 +200,52 @@ describe("Window Control", () => {
         refusal: "windowPositionUnavailable",
       }
     );
+  });
+
+  it("preserves the WebView size across monitors when Windows text zoom differs from DPI", async () => {
+    const side = { ...MAIN, id: "Side", scale: 1.25, unitsPerCss: 1.25 };
+    const initial = geometry({
+      scale: 2.5,
+      viewport: { width: 800, height: 480 },
+      inner: { width: 2000, height: 1200 },
+      outer: { width: 2002, height: 1234 },
+    });
+    let current = initial;
+    const moveTo = vi.fn(async ({ x, y, width, height }) => {
+      const targetWebViewScale = 1.25 * side.scale;
+      current = geometry({
+        monitor: side,
+        scale: targetWebViewScale,
+        viewport: {
+          width: (width * side.scale) / targetWebViewScale,
+          height: (height * side.scale) / targetWebViewScale,
+        },
+        position: { x: side.origin.x + x * side.scale, y: side.origin.y + y * side.scale },
+      });
+    });
+    const target = { monitor: side.id, x: 12, y: 4, expectedRevision: 0 };
+    const result = await windowHandlers["window.move"].run(
+      context("window.move", target, {
+        available: true,
+        form: "normal",
+        visible: true,
+        readGeometry: async () => current,
+        readMonitors: async () => [MAIN, side],
+        moveTo,
+        rememberPosition: vi.fn(),
+      })
+    );
+    expect(moveTo).toHaveBeenCalledWith({
+      monitor: side.id,
+      x: 12,
+      y: 4,
+      width: 1000,
+      height: 600,
+    });
+    expect(result.result).toMatchObject({ changed: true, size: initial.viewport });
+    expect(
+      planWindowMove({ form: "normal" }, initial, [side], { ...target, x: 2200 })
+    ).toMatchObject({ refusal: "windowPositionUnavailable" });
   });
 
   it("refuses a size that would not fit instead of letting it be clamped", async () => {

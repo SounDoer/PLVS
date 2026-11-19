@@ -47,4 +47,14 @@ describe("LibraryConflictDialog", () => {
 
     await waitFor(() => expect(controls.resolveLibraryConflict).toHaveBeenCalledWith("reload"));
   });
+
+  it("offers only Reload when a shared list change conflicts", async () => {
+    render(<LibraryConflictDialog />);
+    controls.publish({ kind: "preset", operation: "collection" });
+
+    expect(await screen.findByText("Preset List Changed Elsewhere")).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "Save as Copy" })).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "Reload" }));
+    await waitFor(() => expect(controls.resolveLibraryConflict).toHaveBeenCalledWith("reload"));
+  });
 });

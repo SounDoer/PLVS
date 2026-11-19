@@ -147,6 +147,7 @@ export function createMultiInstanceBackend() {
   let writesPaused = false;
   let unreportedFailure = null;
   let pendingConflict = null;
+  const collectionConflicts = new Map();
   let activeConflictResolution = null;
   const committedConflictCopies = new WeakMap();
   let pendingDeleteFailure = null;
@@ -158,6 +159,16 @@ export function createMultiInstanceBackend() {
     if (conflict.operation !== "delete") pendingDeleteFailure = null;
     pendingConflictDevelopmentFixtureId = developmentFixtureId;
     for (const listener of conflictSubscribers) listener(clone(conflict));
+  }
+
+  function clearConflict(conflict = pendingConflict) {
+    if (pendingConflict !== conflict) return;
+    pendingConflict = null;
+    pendingDeleteFailure = null;
+    pendingConflictDevelopmentFixtureId = null;
+    const next = collectionConflicts.values().next().value;
+    if (next) publishConflict(next.conflict);
+    else for (const listener of conflictSubscribers) listener(null);
   }
 
   async function persistCollection(kind, nextDocuments) {
@@ -232,22 +243,34 @@ export function createMultiInstanceBackend() {
       }
       revisions.delete(id);
       collectionRevisions.set(kind, collectionRevision);
-    } else if (!added.length && !removed.length && !changed.length && orderChanged) {
-      const collectionRevision = await invoke("persistence_library_reorder", {
-        kind,
-        orderedIds: nextOrder,
-        expectedCollectionRevision: collectionRevisions.get(kind) ?? 0,
-      });
-      collectionRevisions.set(kind, collectionRevision);
     } else {
-      const result = await invoke("persistence_library_replace", {
-        kind,
-        documents: nextDocuments,
-        expectedCollectionRevision: collectionRevisions.get(kind) ?? 0,
-        expectedItemRevisions: Object.fromEntries(revisions),
-      });
-      itemRevisions.set(kind, new Map(result.items.map((item) => [item.id, item.revision])));
-      collectionRevisions.set(kind, result.collectionRevision);
+      const expectedCollectionRevision = collectionRevisions.get(kind) ?? 0;
+      try {
+        if (!added.length && !removed.length && !changed.length && orderChanged) {
+          const revision = await invoke("persistence_library_reorder", {
+            kind,
+            orderedIds: nextOrder,
+            expectedCollectionRevision,
+          });
+          collectionRevisions.set(kind, revision);
+        } else {
+          const result = await invoke("persistence_library_replace", {
+            kind,
+            documents: nextDocuments,
+            expectedCollectionRevision,
+            expectedItemRevisions: Object.fromEntries(revisions),
+          });
+          itemRevisions.set(kind, new Map(result.items.map((item) => [item.id, item.revision])));
+          collectionRevisions.set(kind, result.collectionRevision);
+        }
+      } catch (error) {
+        if (error?.reason !== "conflict") throw error;
+        const conflict = { kind, operation: "collection" };
+        collectionConflicts.set(kind, { conflict, error });
+        unreportedFailure ??= error;
+        if (!pendingConflict) publishConflict(conflict);
+        return;
+      }
     }
     persistedDocuments.set(kind, clone(nextDocuments));
   }
@@ -317,7 +340,10 @@ export function createMultiInstanceBackend() {
       await persistGlobalPreference("quickTour", value.quickTour);
     }
     const kind = kindFor(key);
-    if (kind) await persistCollection(kind, documentsFor(key, value));
+    if (kind && !collectionConflicts.has(kind)) {
+      await persistCollection(kind, documentsFor(key, value));
+    }
+    // Rust saves Workspace fields separately from the shared documents in the same snapshot.
     const domain = domainFor(key);
     if (domain) await invoke("persistence_save_domain", { domain, value });
   }
@@ -422,7 +448,9 @@ export function createMultiInstanceBackend() {
     const refreshing = invoke("persistence_hydrate")
       .then((hydrated) => {
         for (const kind of ["preset", "theme", "loudnessProfile"]) {
-          if (canApply(collectionKey(kind))) applyRemoteCollection(kind, hydrated);
+          if (!collectionConflicts.has(kind) && canApply(collectionKey(kind))) {
+            applyRemoteCollection(kind, hydrated);
+          }
         }
         if (!canApply("plvs:settings")) return;
         const nextGlobals = { ...hydrated.globalPreferences };
@@ -516,7 +544,7 @@ export function createMultiInstanceBackend() {
       activeAppend ||
       activeDrain ||
       writableKeys().length ||
-      kinds.some((kind) => hasPendingDelete(collectionKey(kind)))
+      kinds.some((kind) => hasPendingDelete(collectionKey(kind)) || collectionConflicts.has(kind))
     ) {
       throw new Error("The Library is still saving. Try importing again.");
     }
@@ -583,7 +611,7 @@ export function createMultiInstanceBackend() {
   async function resolvePendingConflict(action, makeId) {
     if (!pendingConflict) return null;
     const conflict = pendingConflict;
-    if (action !== "reload" && (action !== "copy" || conflict.operation === "delete")) {
+    if (action !== "reload" && (action !== "copy" || !conflict.document)) {
       throw new Error("Unknown Library conflict action.");
     }
     const key = collectionKey(conflict.kind);
@@ -591,7 +619,7 @@ export function createMultiInstanceBackend() {
     const hydrated = await invoke("persistence_hydrate");
     editGenerations.set(key, (editGenerations.get(key) ?? 0) + 1);
     const hadPendingChanges = dirty.delete(key);
-    unreportedFailure = null;
+    if (conflict.operation !== "collection") unreportedFailure = null;
     const deleting = conflict.operation === "delete";
     if (deleting) {
       const current = cache.get(key);
@@ -620,10 +648,13 @@ export function createMultiInstanceBackend() {
     }
     applyRemoteCollection(conflict.kind, hydrated, deleting || action === "reload");
     if (action === "reload") {
-      pendingConflict = null;
-      pendingDeleteFailure = null;
-      pendingConflictDevelopmentFixtureId = null;
-      for (const listener of conflictSubscribers) listener(null);
+      if (conflict.operation === "collection") {
+        if (unreportedFailure === collectionConflicts.get(conflict.kind)?.error) {
+          unreportedFailure = null;
+        }
+        collectionConflicts.delete(conflict.kind);
+      }
+      clearConflict(conflict);
       if (hadPendingChanges && domainFor(key)) markDirty(key);
       return null;
     }
@@ -653,9 +684,7 @@ export function createMultiInstanceBackend() {
     const domain = domainFor(key);
     if (domain) await invoke("persistence_save_domain", { domain, value: cache.get(key) });
     notify(key, { origin: "conflict-resolution" });
-    pendingConflict = null;
-    pendingConflictDevelopmentFixtureId = null;
-    for (const listener of conflictSubscribers) listener(null);
+    clearConflict(conflict);
     return clone(document);
   }
 
@@ -736,9 +765,7 @@ export function createMultiInstanceBackend() {
     },
     resetDevelopmentLibraryConflict(fixtureId) {
       if (pendingConflictDevelopmentFixtureId !== fixtureId) return;
-      pendingConflict = null;
-      pendingConflictDevelopmentFixtureId = null;
-      for (const listener of conflictSubscribers) listener(null);
+      clearConflict();
     },
     resolveLibraryConflict: resolveConflict,
     refresh,

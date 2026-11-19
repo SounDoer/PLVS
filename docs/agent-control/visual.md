@@ -62,7 +62,8 @@ artifact. Screenshots also accept optional `--expected-ui-generation`; it protec
 surface observed through [UI Navigation](ui.md) at the same settlement boundary. A stale UI token
 also creates no artifact. Screenshot results include the captured revision, UI generation, and
 coherent measurement generation and sequence. Recordings retain `startedRevision`,
-`currentRevision`, and `endedRevision` as correlation metadata; they do not lock the app against
+`currentRevision`, and `endedRevision` as correlation metadata. `endedRevision` records the first
+revision at which the app observed the terminal result. These fields do not lock the app against
 later mutations.
 
 Render settlement waits for opening and closing popover animations that overlap the capture area.

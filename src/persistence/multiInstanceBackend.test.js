@@ -332,6 +332,72 @@ describe("multiInstanceBackend", () => {
     expect(backend.get("plvs:presets")).toEqual(changed);
   });
 
+  it.each(["reorder", "replace"])(
+    "isolates a Library %s conflict while continuing Workspace saves",
+    async (operation) => {
+      const failure = { reason: "conflict", message: "Library changed elsewhere" };
+      const { createMultiInstanceBackend } = await import("./multiInstanceBackend.js");
+      const backend = createMultiInstanceBackend();
+      const observe = vi.fn();
+      backend.subscribeLibraryConflicts(observe);
+      const presets = backend.get("plvs:presets");
+      const [one, two] = presets.list;
+      const peer = { id: "peer", name: "Added by another workbench" };
+      const command = `persistence_library_${operation}`;
+      const send = invoke.mockImplementation(async (method, params) => {
+        if (method === command && params.expectedCollectionRevision === 7) throw failure;
+        if (method === "persistence_hydrate") {
+          return {
+            presets: { list: [one, two, peer] },
+            libraryCollectionRevisions: { preset: 8 },
+            libraryItemRevisions: { preset: { one: 3, two: 4, peer: 1 } },
+          };
+        }
+        if (method === "persistence_library_reorder") return 9;
+      });
+
+      backend.set("plvs:presets", {
+        ...presets,
+        list: [operation === "replace" ? { ...two, name: "Local edit" } : two, one],
+      });
+      const workspace = { panelOrder: ["waveform"] };
+      backend.set("plvs:workspace", workspace);
+      await expect(backend.flush()).rejects.toBe(failure);
+      expect(observe).toHaveBeenLastCalledWith({ kind: "preset", operation: "collection" });
+      expect(send).toHaveBeenCalledWith("persistence_save_domain", {
+        domain: "workspace",
+        value: workspace,
+      });
+
+      const nextWorkspace = { panelOrder: ["spectrum"] };
+      backend.set("plvs:workspace", nextWorkspace);
+      backend.set("plvs:presets", { ...backend.get("plvs:presets"), activeId: "two" });
+      await expect(backend.flush()).resolves.toBeUndefined();
+      expect(send).toHaveBeenCalledWith("persistence_save_domain", {
+        domain: "workspace",
+        value: nextWorkspace,
+      });
+      expect(send.mock.calls.filter(([method]) => method === command)).toHaveLength(1);
+      await expect(backend.resolveLibraryConflict("copy")).rejects.toThrow(
+        "Unknown Library conflict action"
+      );
+      await backend.resolveLibraryConflict("reload");
+      expect(backend.get("plvs:presets")).toMatchObject({
+        list: [one, two, peer],
+        activeId: "two",
+      });
+      expect(observe).toHaveBeenLastCalledWith(null);
+
+      backend.set("plvs:presets", { ...backend.get("plvs:presets"), list: [two, one, peer] });
+      await backend.flush();
+      expect(send).toHaveBeenCalledWith("persistence_library_reorder", {
+        kind: "preset",
+        orderedIds: ["two", "one", "peer"],
+        expectedCollectionRevision: 8,
+      });
+    }
+  );
+
   it("publishes a known-stale editor draft without first overwriting the remote item", async () => {
     const { createMultiInstanceBackend } = await import("./multiInstanceBackend.js");
     const backend = createMultiInstanceBackend();

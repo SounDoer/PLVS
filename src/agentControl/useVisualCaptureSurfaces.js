@@ -1,11 +1,16 @@
 import { useEffect, useMemo, useRef } from "react";
 import { settleVisualSurface, subscribeVisualSurfaceResize } from "./visualSurfaces.js";
 
-export function useVisualCaptureSurfaces({ workspace, windowLabel = "main" }) {
+export function useVisualCaptureSurfaces({ workspace, dockEdge = null, windowLabel = "main" }) {
   const currentRef = useRef({ workspace, windowLabel });
   const pendingRef = useRef(new Set());
   const subscriptionsRef = useRef(new Set());
+  const dockEdgeListeners = useRef(new Set());
   currentRef.current = { workspace, windowLabel };
+
+  useEffect(() => {
+    if (dockEdge) for (const onEdge of dockEdgeListeners.current) onEdge(dockEdge);
+  }, [dockEdge]);
 
   useEffect(
     () => () => {
@@ -42,6 +47,7 @@ export function useVisualCaptureSurfaces({ workspace, windowLabel = "main" }) {
           ...options,
           target,
           onGeometry,
+          dockEdgeListeners: options.followDockEdge ? dockEdgeListeners.current : undefined,
         });
         const unsubscribe = () => {
           unsubscribeSurface();
