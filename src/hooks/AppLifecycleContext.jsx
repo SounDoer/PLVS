@@ -67,9 +67,9 @@ export function AppLifecycleProvider({ children }) {
   const meterRuntime = useMeterRuntime();
   const {
     running,
-    analyzingFileId,
+    fileTaskBusy,
     stopFileAnalysis,
-    stopLiveForControl,
+    stopLiveForCoordination,
     startLiveForControl,
     switchSource,
   } = meterRuntime;
@@ -137,7 +137,11 @@ export function AppLifecycleProvider({ children }) {
 
   const updateControls = useUpdateController({
     preferences: updatePreferences,
-    startupEligible: !running && !analyzingFileId && activeBlockingEditors.length === 0,
+    startupEligible:
+      !running &&
+      meterRuntime.liveLifecycle !== "stopping" &&
+      !fileTaskBusy &&
+      activeBlockingEditors.length === 0,
   });
   const { installStatus } = updateControls;
   const updateBusy = installStatus === "installing" || installStatus === "restarting";
@@ -201,9 +205,9 @@ export function AppLifecycleProvider({ children }) {
     },
   });
   const stopRuntimeForCoordination = useCallback(async () => {
-    if (meterRuntime.liveLifecycle === "running") await stopLiveForControl();
-    if (analyzingFileId) await stopFileAnalysis(analyzingFileId);
-  }, [analyzingFileId, meterRuntime.liveLifecycle, stopFileAnalysis, stopLiveForControl]);
+    await stopLiveForCoordination();
+    await stopFileAnalysis();
+  }, [stopFileAnalysis, stopLiveForCoordination]);
   const startRuntimeAfterCoordination = useCallback(async () => {
     switchSource("live");
     await startLiveForControl();

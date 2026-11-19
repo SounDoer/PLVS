@@ -15,9 +15,7 @@ export function useHistoryRetentionSetting({ onChangeRef } = {}) {
     const next = normalizeHistoryRetentionSec(Number(value));
     if (next === historyRetentionSec) return false;
     if (next === DEFAULT_HISTORY_RETENTION_SEC) {
-      const { historyRetentionSec: _drop, ...rest } = settingsStore.read();
-      settingsStore.reset();
-      settingsStore.patch(rest);
+      settingsStore.unset("historyRetentionSec");
     } else {
       settingsStore.patch({ historyRetentionSec: next });
     }

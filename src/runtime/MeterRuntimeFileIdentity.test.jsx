@@ -28,7 +28,10 @@ function mount() {
       wrapper: ({ children }) => <MeterRuntimeProvider>{children}</MeterRuntimeProvider>,
     }
   );
-  act(() => hook.result.current.runtime.beginFileAnalysis(probe.path, {}, probe));
+  act(() => {
+    hook.result.current.runtime.switchSource("file");
+    hook.result.current.runtime.beginFileAnalysis(probe.path, {}, probe);
+  });
   const id = hook.result.current.runtime.activeFileId;
   act(() => {
     hook.result.current.assembly.ledger.updateSession(id, (entry) => ({

@@ -60,6 +60,7 @@ workbenches are open; the current coordinator owns the operating-system registra
 the saved workbench set. If a change fails to save, Settings shows an error and PLVS restores the
 saved login setting. **Close
 Behavior** chooses whether closing the window keeps PLVS running in the system tray or quits it.
+Choosing **Don't ask again** in the close confirmation updates **Close Behavior** in Settings.
 Before either action, PLVS finishes saving pending settings. If saving fails, the window stays open
 and offers **Retry** or **Cancel**.
 
@@ -91,6 +92,8 @@ to the front, restoring it if minimized. A workbench with an open editor or dial
 and comes to the front instead,
 so you can finish or close what is open first. **Quit PLVS** flushes and closes the complete
 workbench set; quitting one workbench does not close its peers.
+If Live capture is still starting or changing devices, coordinated quit can be retried after
+the transition finishes. The same applies when preparing to install an update.
 On macOS, the application menu's **Quit PLVS** command (⌘Q) also quits the complete workbench set.
 After **Quit Workbench** succeeds, its Tray entry is removed immediately. If only one workbench
 remains, its controls return to the top level. A refused quit keeps the workbench in the menu.
@@ -317,6 +320,7 @@ one configuration file instead: importing it replaces your whole setup and resta
 rather than merging. These operations move configuration only, never measurement data. With several
 workbenches open, PLVS first checks every workbench for an open draft, stops capture and saves before
 replacing shared data; the workbench where you chose Import receives the instance-owned fields.
+When overwriting an export, PLVS replaces the existing file after the new contents are fully written.
 **Reset PLVS to Default** uses the same coordinated restart and restores a fresh installation.
 The local Agent Control switch keeps its current setting.
 Complete Setup includes the workbench's last normal window placement and the placement stored in

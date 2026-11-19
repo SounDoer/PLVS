@@ -1,13 +1,11 @@
 /**
- * Persist last capture device id: Tauri uses `tauri-plugin-store` (app data dir);
- * browser / dev uses localStorage only.
+ * The selected Source belongs to the desktop Workspace and is hydrated by Rust at startup.
+ * Older desktop boots fall back to the legacy plugin store. Browser builds use localStorage.
  */
 import { invoke } from "@tauri-apps/api/core";
 import { isTauri } from "./env.js";
 
-// The one store file, same as `pluginStoreBackend.js` -- it holds all four domains, not just
-// settings, despite the name. Declared again here rather than imported to keep this module off
-// the persistence layer.
+// Legacy store shared with pluginStoreBackend.js.
 const STORE_FILE = "plvs-settings.json";
 const STORE_KEY = "captureDeviceId";
 
@@ -40,7 +38,7 @@ export function readCaptureDeviceIdFromLocalStorage() {
 }
 
 /**
- * Preferred device id after optional async load from Store (Tauri).
+ * Read the Workspace boot value or load the preference through the fallback backend.
  * @returns {Promise<string>}
  */
 export async function loadCaptureDeviceId() {

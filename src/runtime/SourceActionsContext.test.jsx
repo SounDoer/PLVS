@@ -1,5 +1,5 @@
 /** @vitest-environment jsdom */
-import { beforeEach, describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { act, renderHook } from "@testing-library/react";
 import { WorkspaceProvider } from "../workspace/WorkspaceContext.jsx";
 import { BlockingEditorsProvider } from "../hooks/BlockingEditorsContext.jsx";
@@ -14,6 +14,12 @@ import {
   useMeterRuntimeAssembly,
 } from "./MeterRuntimeContext.jsx";
 import { SourceActionsProvider, useSourceActions } from "./SourceActionsContext.jsx";
+import { pickMediaFile } from "../ipc/fileDialog.js";
+
+vi.mock("../ipc/fileDialog.js", async (original) => ({
+  ...(await original()),
+  pickMediaFile: vi.fn(),
+}));
 
 function wrapper({ children }) {
   return (
@@ -150,6 +156,72 @@ describe("SourceActionsProvider", () => {
     act(() => result.current.assembly.display.setAudio((audio) => ({ ...audio, integrated: -23 })));
     await act(async () => result.current.settings.setDialogueVadEngine("silero"));
     expect(result.current.assembly.display.audio.integrated).toBe(-Infinity);
+  });
+
+  it.each([false, true])(
+    "ignores a picker opened before leaving File (returned to File: %s)",
+    async (returnsToFile) => {
+      let finishPicker;
+      vi.mocked(pickMediaFile).mockImplementationOnce(
+        () =>
+          new Promise((resolve) => {
+            finishPicker = resolve;
+          })
+      );
+      const { result } = renderHook(
+        () => ({ actions: useSourceActions(), runtime: useMeterRuntime() }),
+        { wrapper }
+      );
+      act(() => result.current.runtime.switchSource("file"));
+      let picking;
+      act(() => {
+        picking = result.current.actions.openFile();
+      });
+      act(() => result.current.runtime.switchSource("live"));
+      if (returnsToFile) act(() => result.current.runtime.switchSource("file"));
+
+      await act(async () => {
+        finishPicker("/tmp/late.wav");
+        await picking;
+      });
+
+      expect(result.current.runtime.fileSessions).toEqual([]);
+      expect(result.current.runtime.fileTaskBusy).toBe(false);
+    }
+  );
+
+  it("keeps the queue and entries when Clear All cannot stop analysis, then clears both on retry", async () => {
+    const { result } = renderHook(
+      () => ({
+        actions: useSourceActions(),
+        runtime: useMeterRuntime(),
+        assembly: useMeterRuntimeAssembly(),
+      }),
+      { wrapper }
+    );
+    act(() => {
+      result.current.runtime.switchSource("file");
+      result.current.runtime.beginFileAnalysis("/tmp/current.wav", {});
+    });
+    act(() => result.current.actions.fileQueue.enqueue(["/tmp/next.wav"]));
+    const queueBefore = result.current.actions.fileQueue.snapshot.items;
+    expect(queueBefore).toHaveLength(1);
+    result.current.assembly.stopFileAnalysisRef.current = vi
+      .fn()
+      .mockRejectedValueOnce(new Error("stop refused"))
+      .mockResolvedValueOnce(true);
+
+    await act(async () => {
+      await expect(result.current.actions.onClearAllFiles()).resolves.toBe(false);
+    });
+    expect(result.current.runtime.fileSessions).toHaveLength(1);
+    expect(result.current.actions.fileQueue.snapshot.items).toEqual(queueBefore);
+
+    await act(async () => {
+      await expect(result.current.actions.clearFileCollection()).resolves.toBeUndefined();
+    });
+    expect(result.current.runtime.fileSessions).toEqual([]);
+    expect(result.current.actions.fileQueue.snapshot.items).toEqual([]);
   });
 
   it("refuses the hook outside the provider", () => {

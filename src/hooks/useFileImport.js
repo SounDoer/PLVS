@@ -5,7 +5,15 @@ import { withSelectedAudioTrack } from "../lib/fileAnalysisSource.js";
 import { fileImportTracks, planFileImport } from "../lib/fileImportPlan.js";
 
 /** Import selection is transient; it never changes an existing result before confirmation. */
-export function useFileImport({ files, busy, getSettings, begin, select, raiseNotice }) {
+export function useFileImport({
+  files,
+  busy,
+  getSettings,
+  begin,
+  select,
+  raiseNotice,
+  getFileSourceToken = () => undefined,
+}) {
   const [selection, setSelection] = useState(null);
   const [importBusy, setImportBusy] = useState(false);
   const pendingRef = useRef(null);
@@ -39,13 +47,15 @@ export function useFileImport({ files, busy, getSettings, begin, select, raiseNo
         return;
       }
       const generation = ++generationRef.current;
+      const sourceToken = getFileSourceToken();
       pendingRef.current = { generation };
       setImportBusy(true);
       try {
         const probe = await probeFileAnalysis(path);
         if (generation !== generationRef.current) return;
+        if (sourceToken !== getFileSourceToken()) return cancel();
         if (fileImportTracks(probe).length > 1) {
-          const next = { probe, settings };
+          const next = { probe, settings, sourceToken };
           pendingRef.current = next;
           setSelection(next);
           setImportBusy(false);
@@ -53,20 +63,22 @@ export function useFileImport({ files, busy, getSettings, begin, select, raiseNo
       } catch (error) {
         if (generation !== generationRef.current) return;
         cancel();
+        if (sourceToken !== getFileSourceToken()) return;
         raiseNotice("error", `Error: ${error?.message || "File could not be opened"}`, undefined, {
           requiresAttention: true,
           helpTopic: "file-open-analysis",
         });
       }
     },
-    [busy, getSettings, begin, launch, cancel, raiseNotice]
+    [busy, getSettings, begin, launch, cancel, raiseNotice, getFileSourceToken]
   );
   const confirm = useCallback(
     (index) => {
       if (!selection || busy) return;
+      if (selection.sourceToken !== getFileSourceToken()) return cancel();
       launch(withSelectedAudioTrack(selection.probe, index), selection.settings);
     },
-    [selection, busy, launch]
+    [selection, busy, launch, cancel, getFileSourceToken]
   );
   return { importFile, importBusy, selection, cancel, confirm };
 }

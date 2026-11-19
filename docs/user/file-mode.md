@@ -7,6 +7,7 @@ Inspect a local audio file offline, using the same meter panels as live monitori
 In File Mode, drag an audio file or a video with an audio track over the window. Release it when
 **Drop File to Analyze** appears. You can also choose **Open** in the transport pill.
 PLVS analyzes files locally using bundled ffprobe and FFmpeg.
+If you leave File Mode while choosing a file, the pending selection is discarded.
 
 When a file contains multiple audio tracks, choose one in **Select Audio Track**, then choose
 **Analyze**. The default-marked track is selected initially. Cancelling leaves the current file
@@ -73,7 +74,8 @@ ending visible. Hover over a shortened name to see the full filename. The summar
 selected metrics priority and uses spare space to show more of the filename.
 
 Use **Clear All Files…** at the bottom of the **Files** menu to remove all entries and results after
-confirmation. Audio files on disk are kept.
+confirmation. If the current analysis cannot be stopped, the queue and results are kept so you
+can retry. Audio files on disk are kept.
 
 Hover the file metadata text, warning icon, or metric controls for details. Click to keep the same details
 open, and click again, press Escape, or click outside to close them. Peak details include each

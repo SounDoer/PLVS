@@ -64,16 +64,18 @@ export function createDomainStore({
   }
   /**
    * Writes stored state with any pending values, then `partial`, applied on top in that order.
+   * @param {string} [fieldToRemove]
    */
-  function writeMerged(partial) {
+  function writeMerged(partial, fieldToRemove) {
     const next = {
       ...read(),
       ...pending,
       ...partial,
       ...(Number.isFinite(writeVersion) ? { version: writeVersion } : null),
     };
-    cancelPending();
+    if (fieldToRemove !== undefined) delete next[fieldToRemove];
     backend.set(name, next);
+    cancelPending();
   }
   function flush() {
     if (!pending) return;
@@ -82,8 +84,8 @@ export function createDomainStore({
     // listener that calls `read` always sees what it was notified about.
     notify();
   }
-  // A pending write must not die with the window. Tauri tears the webview down on close, and
-  // `pagehide` is the last point where a synchronous localStorage write still lands.
+  // Desktop shutdown flushes explicitly before closing. On pagehide, move any remaining
+  // coalesced changes to the backend, including synchronous localStorage writes in the browser.
   if (typeof window !== "undefined" && typeof window.addEventListener === "function") {
     window.addEventListener("pagehide", flush);
   }
@@ -93,10 +95,9 @@ export function createDomainStore({
     /**
      * Announce a write to this context's subscribers, whatever `notifySameContext` says.
      *
-     * For a writer that sits outside the React state owning the data it just changed -- profile
-     * import is the one today -- where nothing else will make that state re-read. The backend is
-     * no help: the plugin store has no cross-context events at all (single window, single writer),
-     * and localStorage's `storage` event fires only in *other* documents.
+     * Call this when a local writer changes data owned by another React surface. The transactional
+     * backend notifies subscribers when it reconciles remote changes. Local writes to a domain
+     * with same-context notifications disabled rely on the owning writer to update React state.
      *
      * Deliberately not `notifySameContext: true` on the store instead: `plvs:settings` is written
      * through `patchCoalesced` during an opacity drag, and every subscriber re-reading four times
@@ -107,6 +108,11 @@ export function createDomainStore({
     },
     patch(partial) {
       writeMerged(partial);
+      notify();
+    },
+    /** Remove one field while committing any other pending edits to this domain. */
+    unset(field) {
+      writeMerged({}, field);
       notify();
     },
     /**

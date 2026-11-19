@@ -17,7 +17,7 @@ beforeEach(() => {
   vi.resetAllMocks();
   vi.mocked(probeFileAnalysis).mockResolvedValue(probe);
 });
-function mount(files = []) {
+function mount(files = [], getFileSourceToken = undefined) {
   const begin = vi.fn(),
     select = vi.fn();
   const settings = { dialogue: { enabled: true, engine: "firered" } };
@@ -29,6 +29,7 @@ function mount(files = []) {
       begin,
       select,
       raiseNotice: vi.fn(),
+      getFileSourceToken,
     })
   );
   return { ...hook, begin, select, settings };
@@ -95,6 +96,32 @@ it("ignores a late probe after cancellation and preserves the selected result", 
     finish(probe);
     await pending;
   });
+  expect(result.current.selection).toBeNull();
+  expect(begin).not.toHaveBeenCalled();
+  expect(select).not.toHaveBeenCalled();
+});
+
+it("ignores an earlier File visit's native probe after returning to File", async () => {
+  let finishProbe;
+  vi.mocked(probeFileAnalysis).mockImplementationOnce(
+    () =>
+      new Promise((resolve) => {
+        finishProbe = resolve;
+      })
+  );
+  let sourceToken = Symbol();
+  const { result, begin, select } = mount([], () => sourceToken);
+  let pending;
+  act(() => {
+    pending = result.current.importFile(probe.path);
+  });
+  sourceToken = Symbol();
+  await act(async () => {
+    finishProbe(probe);
+    await pending;
+  });
+
+  expect(result.current.importBusy).toBe(false);
   expect(result.current.selection).toBeNull();
   expect(begin).not.toHaveBeenCalled();
   expect(select).not.toHaveBeenCalled();

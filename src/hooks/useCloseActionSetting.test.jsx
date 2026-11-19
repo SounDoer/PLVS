@@ -2,6 +2,8 @@
 import { act, renderHook } from "@testing-library/react";
 import { beforeEach, describe, expect, it } from "vitest";
 import { useCloseActionSetting } from "./useCloseActionSetting.js";
+import { useCloseConfirm } from "./useCloseConfirm.js";
+import { settingsStore } from "../persistence/index.js";
 
 describe("useCloseActionSetting", () => {
   beforeEach(() => {
@@ -41,10 +43,26 @@ describe("useCloseActionSetting", () => {
     const { result } = renderHook(() => useCloseActionSetting());
 
     act(() => {
+      settingsStore.patchCoalesced({ surfaceOpacity: 61 });
       result.current.setCloseAction("ask");
     });
 
     expect(result.current.closeAction).toBe("ask");
-    expect(JSON.parse(localStorage.getItem("plvs:settings"))).toEqual({ referenceLufs: -18 });
+    expect(JSON.parse(localStorage.getItem("plvs:settings"))).toEqual({
+      referenceLufs: -18,
+      surfaceOpacity: 61,
+    });
+  });
+
+  it("updates the open Settings owner when the close dialog saves a choice", async () => {
+    const { result } = renderHook(() => ({
+      setting: useCloseActionSetting(),
+      close: useCloseConfirm({ onHideWindow: async () => {} }),
+    }));
+
+    await act(() => result.current.close.handleConfirm("tray", true));
+
+    expect(result.current.setting.closeAction).toBe("tray");
+    expect(settingsStore.read().closeAction).toBe("tray");
   });
 });

@@ -84,6 +84,9 @@ export function useCaptureTransport({ display, getLiveIntake }) {
     });
   };
 
+  const stopLiveForCoordination = () =>
+    lifecycleRef.current === "error" ? Promise.resolve() : stopLiveForControl();
+
   const beginDeviceRestartForControl = () => {
     if (lifecycleRef.current !== "running" || deviceTransitionRef.current) {
       throw transitionError(deviceTransitionRef.current ?? lifecycleRef.current);
@@ -203,6 +206,7 @@ export function useCaptureTransport({ display, getLiveIntake }) {
     stopLive,
     startLiveForControl,
     stopLiveForControl,
+    stopLiveForCoordination,
     beginDeviceRestartForControl,
     markStarted,
     markStartFailed,

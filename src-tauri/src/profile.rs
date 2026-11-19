@@ -8,9 +8,7 @@ use serde_json::{json, Map, Value};
 use tauri::{AppHandle, Manager};
 use tauri_plugin_store::StoreExt;
 
-/// The one store file. Its name predates the other three domains: it holds `plvs:settings`,
-/// `plvs:workspace`, `plvs:presets` and `plvs:themes` together with the Rust-owned siblings, so
-/// "settings" names a key inside it, not the file. Deliberately not renamed -- see AGENTS.md.
+/// Store used by the legacy fallback when transactional Workspace persistence is unavailable.
 const STORE_FILE: &str = "plvs-settings.json";
 const PROFILE_APP: &str = "PLVS";
 const PROFILE_KIND: &str = "configuration-profile";
@@ -697,17 +695,69 @@ pub fn read_profile_file(path: String) -> Result<String, String> {
 
 #[tauri::command]
 pub fn write_profile_file(path: String, contents: String) -> Result<(), String> {
-  fs::write(path, contents).map_err(|e| format!("write profile file: {e}"))
+  write_export(Path::new(&path), contents.as_bytes())
+    .map_err(|e| format!("write profile file: {e}"))
 }
 
 #[tauri::command]
 pub fn write_text_file(path: String, contents: String) -> Result<(), String> {
-  fs::write(path, contents).map_err(|e| format!("write text file: {e}"))
+  write_export(Path::new(&path), contents.as_bytes()).map_err(|e| format!("write text file: {e}"))
+}
+
+fn write_export(path: &Path, contents: &[u8]) -> std::io::Result<()> {
+  // An existing symlink should keep redirecting exports to the same file.
+  let destination = if fs::symlink_metadata(path).is_ok_and(|metadata| metadata.is_symlink()) {
+    path.canonicalize()?
+  } else {
+    path.to_path_buf()
+  };
+  match fs::metadata(&destination) {
+    Ok(metadata) if metadata.is_file() => {
+      // Check the existing file's write permission without truncating it.
+      fs::OpenOptions::new().write(true).open(&destination)?;
+    }
+    Ok(_) => {
+      return Err(std::io::Error::new(
+        std::io::ErrorKind::InvalidInput,
+        "The export destination is not a regular file",
+      ));
+    }
+    Err(error) if error.kind() == std::io::ErrorKind::NotFound => {}
+    Err(error) => return Err(error),
+  }
+  let mut file = AtomicWriteFile::open(destination)?;
+  file.write_all(contents)?;
+  file.commit()
 }
 
 #[cfg(test)]
 mod tests {
   use super::*;
+
+  #[test]
+  fn exports_replace_previous_contents_completely() {
+    let directory = tempfile::tempdir().unwrap();
+    let path = directory.path().join("export.json");
+    let destination = path.to_str().unwrap().to_owned();
+    write_profile_file(destination.clone(), "old configuration".into()).unwrap();
+    write_text_file(destination, "new text".into()).unwrap();
+    assert_eq!(fs::read_to_string(path).unwrap(), "new text");
+  }
+
+  #[cfg(unix)]
+  #[test]
+  fn exporting_to_a_symlink_preserves_the_link() {
+    let directory = tempfile::tempdir().unwrap();
+    let target = directory.path().join("target");
+    fs::write(&target, "old").unwrap();
+    let path = directory.path().join("export");
+    std::os::unix::fs::symlink(&target, &path).unwrap();
+
+    write_export(&path, b"new").unwrap();
+
+    assert!(fs::symlink_metadata(path).unwrap().is_symlink());
+    assert_eq!(fs::read_to_string(target).unwrap(), "new");
+  }
 
   #[test]
   fn preserves_relative_window_placement_for_complete_setup() {

@@ -35,6 +35,7 @@ export function useCloseConfirm({ onHideWindow, onShowWindow = NOOP_ASYNC, close
         try {
           if (dontAskAgain) {
             await settingsStore.persist({ closeAction: action });
+            settingsStore.notifyLocal();
           }
           await flushPersistence();
           if (action === "quit" && isTauri()) {

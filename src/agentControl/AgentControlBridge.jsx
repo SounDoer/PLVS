@@ -155,7 +155,6 @@ export function AgentControlBridge() {
     restoreFileHistoryForControl,
     selectFile,
     removeFile,
-    clearFiles,
   } = meterRuntime;
   const { selectedOffset, selectSnapshot, clearSnapshot } = useMeterDisplayState();
   const { histSourceList } = useDisplaySnapshot();
@@ -235,7 +234,8 @@ export function AgentControlBridge() {
       updateBusy,
     ]
   );
-  const { currentFileAnalysisSettings, dialogueGating, fileQueue } = useSourceActions();
+  const { currentFileAnalysisSettings, dialogueGating, fileQueue, clearFileCollection } =
+    useSourceActions();
   const agentControlTransport = useMemo(
     () =>
       buildTransportSnapshot(meterRuntime, {
@@ -372,8 +372,7 @@ export function AgentControlBridge() {
         return { sessionId: params.sessionId };
       }
       if (method === "transport.file.clear") {
-        fileQueue?.clear();
-        await clearFiles();
+        await clearFileCollection();
         return {};
       }
       throw new Error(`Unsupported Transport method: ${method}`);
@@ -382,7 +381,7 @@ export function AgentControlBridge() {
       analyzingFileId,
       preparingFileId,
       beginFileAnalysisForControl,
-      clearFiles,
+      clearFileCollection,
       clearLiveForControl,
       clearSnapshot,
       currentFileAnalysisSettings,

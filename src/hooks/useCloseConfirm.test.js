@@ -46,6 +46,7 @@ vi.mock("../persistence/index.js", () => {
       return Promise.resolve();
     },
     subscribe: () => () => {},
+    notifyLocal: vi.fn(),
   };
   return { settingsStore, flushPersistence: mockFlushPersistence };
 });

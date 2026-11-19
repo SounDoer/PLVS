@@ -39,6 +39,7 @@ const EMPTY_FILE_SESSION = Object.freeze({ state: "empty" });
  *   stereoMapResetEpoch: number,
  *   fileImport: ReturnType<typeof useFileImport>,
  *   fileQueue: ReturnType<typeof useFileImportQueue>,
+ *   clearFileCollection: () => Promise<void>,
  *   onExportFileStatistics: () => void,
  * }} SourceActions
  */
@@ -55,6 +56,7 @@ export function SourceActionsProvider({ children }) {
   const { setHistoryWindowSec, setHistoryOffsetSec } = useSharedTimeViewport();
   const {
     sourceMode,
+    getFileSourceToken,
     running,
     liveLifecycle,
     activeFileSession,
@@ -117,6 +119,7 @@ export function SourceActionsProvider({ children }) {
     begin: beginRuntimeFileAnalysis,
     select: selectFile,
     raiseNotice,
+    getFileSourceToken,
   });
   const fileQueue = useFileImportQueue({
     enabled: sourceMode === "file",
@@ -136,17 +139,23 @@ export function SourceActionsProvider({ children }) {
   });
   const { active: queueActive, enqueue } = fileQueue;
   const { importFile } = fileImport;
+  const clearFileCollection = () =>
+    clearFiles(() => {
+      fileImport.cancel();
+      fileQueue.clear();
+    });
   const importMedia = useCallback(
     (input) => {
       const paths = Array.isArray(input) ? input : [input];
-      if (!paths.length || sourceMode !== "file") return;
+      if (!paths.length || !getFileSourceToken()) return;
       if (isTauri() && (paths.length > 1 || queueActive || fileTaskBusy)) enqueue(paths);
       else return importFile(paths[0]);
     },
-    [sourceMode, queueActive, fileTaskBusy, enqueue, importFile]
+    [getFileSourceToken, queueActive, fileTaskBusy, enqueue, importFile]
   );
   const actions = useSourceTransportActions({
     sourceMode,
+    getFileSourceToken,
     running,
     liveLifecycle,
     hasLiveHistory: () => liveIntakeRef.current.getLoudnessHistory().length > 0,
@@ -175,10 +184,7 @@ export function SourceActionsProvider({ children }) {
       if (id !== activeFileSession?.id) selectFile(id);
     },
     removeFile,
-    clearFiles: async () => {
-      fileQueue.clear();
-      await clearFiles();
-    },
+    clearFiles: clearFileCollection,
     stopFileAnalysis,
     activeFileSession,
     getFileAnalysisSettings: currentFileAnalysisSettings,
@@ -208,6 +214,7 @@ export function SourceActionsProvider({ children }) {
         ...actions,
         fileImport,
         fileQueue,
+        clearFileCollection,
         onExportFileStatistics: statistics.onOpen,
         fileSession,
         dialogueGating,

@@ -40,6 +40,7 @@ const MeterDisplayStateContext = createContext(/** @type {MeterDisplayState | nu
 export function MeterRuntimeProvider({ children }) {
   const display = useMeterDisplay();
   const [sourceMode, setSourceMode] = useState("live");
+  const sourceSelectionRef = useRef({ mode: "live", fileToken: null });
   const [preparingFileId, setPreparingFileId] = useState(null);
   const [stoppingFile, setStoppingFile] = useState(false);
   const [replacementTrackSelection, setReplacementTrackSelection] = useState(null);
@@ -73,6 +74,7 @@ export function MeterRuntimeProvider({ children }) {
   );
   // Native File stop clears the shared source, so it keeps the transport reserved until it settles.
   const pendingFileStopRef = useRef(null);
+  const clearingFilesRef = useRef(null);
   const fileAnalysisAcceptanceRef = useRef(new Map());
   const fileConditionsRef = useRef(null);
   const taskSessionRef = useRef(null);
@@ -100,7 +102,7 @@ export function MeterRuntimeProvider({ children }) {
       taskSessionRef.current = null;
       return;
     }
-    const sessionId = fileHistory.analyzingFileId;
+    const sessionId = taskSessionRef.current;
     if (!sessionId) return;
     if (expectedSessionId && expectedSessionId !== sessionId) return;
 
@@ -146,7 +148,11 @@ export function MeterRuntimeProvider({ children }) {
     }
   };
   const switchSource = (/** @type {string} */ nextMode) => {
-    if (nextMode === sourceMode) return;
+    if (nextMode === sourceSelectionRef.current.mode) return;
+    sourceSelectionRef.current = {
+      mode: nextMode,
+      fileToken: nextMode === "file" ? Symbol() : null,
+    };
 
     display.clearNotice();
     display.clearAudio();
@@ -161,7 +167,7 @@ export function MeterRuntimeProvider({ children }) {
       return;
     }
 
-    if (fileHistory.analyzingFileId || preparationRef.current) {
+    if (taskSessionRef.current) {
       void stopFileAnalysis().catch(() => {});
     }
     setSourceMode("live");
@@ -225,9 +231,14 @@ export function MeterRuntimeProvider({ children }) {
     existingId = null,
     activate = true
   ) => {
-    if (!path) return null;
+    if (!path || !sourceSelectionRef.current.fileToken) return null;
     display.clearNotice();
-    if (fileHistory.analyzingFileId || taskSessionRef.current || pendingFileStopRef.current) {
+    if (
+      fileHistory.analyzingFileId ||
+      taskSessionRef.current ||
+      pendingFileStopRef.current ||
+      clearingFilesRef.current
+    ) {
       display.raiseNotice("guard", "File analysis already in progress");
       return null;
     }
@@ -265,7 +276,12 @@ export function MeterRuntimeProvider({ children }) {
       display.raiseNotice("guard", "Choose a file to analyze");
       return false;
     }
-    if (fileHistory.analyzingFileId || taskSessionRef.current || pendingFileStopRef.current) {
+    if (
+      fileHistory.analyzingFileId ||
+      taskSessionRef.current ||
+      pendingFileStopRef.current ||
+      clearingFilesRef.current
+    ) {
       display.raiseNotice("guard", "File analysis already in progress");
       return false;
     }
@@ -338,6 +354,10 @@ export function MeterRuntimeProvider({ children }) {
         }
       }
       if (preparation.cancelled) return null;
+      if (!sourceSelectionRef.current.fileToken) {
+        taskSessionRef.current = null;
+        return null;
+      }
       const activate = activeFileIdRef.current === entry.id;
       if (activate && (replaced || !getSuccessfulFileSession(entry))) {
         display.clearSnapshot();
@@ -422,19 +442,27 @@ export function MeterRuntimeProvider({ children }) {
     display.setShowClock(false);
     return clearedDisplay;
   };
-  const clearFiles = async () => {
-    display.clearNotice();
-    if (fileHistory.analyzingFileId || preparationRef.current) {
+  const clearFiles = async (afterStop) => {
+    if (clearingFilesRef.current) return clearingFilesRef.current;
+    const clearing = (async () => {
+      display.clearNotice();
       await stopFileAnalysis();
+      afterStop?.();
+      for (const entry of Object.values(fileHistory.sessionsById)) {
+        entry.intake?.reset?.();
+      }
+      display.clearAudio();
+      display.setSelectedOffset(-1);
+      ledger.clearAll();
+      display.clock.resetTimer({ restart: false });
+      display.setShowClock(false);
+    })();
+    clearingFilesRef.current = clearing;
+    try {
+      await clearing;
+    } finally {
+      clearingFilesRef.current = null;
     }
-    for (const entry of Object.values(fileHistory.sessionsById)) {
-      entry.intake?.reset?.();
-    }
-    display.clearAudio();
-    display.setSelectedOffset(-1);
-    ledger.clearAll();
-    display.clock.resetTimer({ restart: false });
-    display.setShowClock(false);
   };
 
   // The verb closures above are recreated every render (they read current state
@@ -448,6 +476,7 @@ export function MeterRuntimeProvider({ children }) {
     stopLive: transport.stopLive,
     startLiveForControl,
     stopLiveForControl: transport.stopLiveForControl,
+    stopLiveForCoordination: transport.stopLiveForCoordination,
     beginDeviceRestartForControl: transport.beginDeviceRestartForControl,
     stopFileAnalysis,
     switchSource,
@@ -478,6 +507,7 @@ export function MeterRuntimeProvider({ children }) {
       stopLive: forward("stopLive"),
       startLiveForControl: forward("startLiveForControl"),
       stopLiveForControl: forward("stopLiveForControl"),
+      stopLiveForCoordination: forward("stopLiveForCoordination"),
       beginDeviceRestartForControl: forward("beginDeviceRestartForControl"),
       stopFileAnalysis: forward("stopFileAnalysis"),
       switchSource: forward("switchSource"),
@@ -493,6 +523,7 @@ export function MeterRuntimeProvider({ children }) {
       selectFile: forward("selectFile"),
       removeFile: forward("removeFile"),
       clearFiles: forward("clearFiles"),
+      getFileSourceToken: () => sourceSelectionRef.current.fileToken,
     };
   }, []);
 

@@ -32,4 +32,16 @@ describe("useHistoryRetentionSetting", () => {
 
     expect(onChange).not.toHaveBeenCalled();
   });
+
+  it("keeps pending opacity changes when restoring the default History Length", async () => {
+    settingsStore.patch({ historyRetentionSec: 7200, surfaceOpacity: 100 });
+    const { result } = renderHook(() => useHistoryRetentionSetting());
+
+    await act(async () => {
+      settingsStore.patchCoalesced({ surfaceOpacity: 61 });
+      await result.current.setHistoryRetentionSec("3600");
+    });
+
+    expect(settingsStore.read()).toEqual({ surfaceOpacity: 61 });
+  });
 });

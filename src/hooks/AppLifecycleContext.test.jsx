@@ -1,8 +1,13 @@
 /** @vitest-environment jsdom */
-import { beforeEach, describe, expect, it } from "vitest";
-import { renderHook } from "@testing-library/react";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+import { act, renderHook } from "@testing-library/react";
 import { WorkspaceProvider } from "../workspace/WorkspaceContext.jsx";
-import { MeterRuntimeProvider } from "../runtime/MeterRuntimeContext.jsx";
+import {
+  MeterRuntimeProvider,
+  useMeterRuntime,
+  useMeterRuntimeAssembly,
+} from "../runtime/MeterRuntimeContext.jsx";
+import { useRuntimeCoordination } from "../runtime/coordination.js";
 import { BlockingEditorsProvider } from "./BlockingEditorsContext.jsx";
 import { UiNavigationProvider } from "../uiNavigation/UiNavigationContext.jsx";
 import { LoudnessProfileProvider } from "./LoudnessProfileContext.jsx";
@@ -16,6 +21,11 @@ import { SourceActionsProvider } from "../runtime/SourceActionsContext.jsx";
 import { presetsStore, settingsStore, workspaceStore } from "../persistence/index.js";
 import { stubMatchMedia } from "../testing/matchMedia.js";
 import { AppLifecycleProvider, useAppLifecycle } from "./AppLifecycleContext.jsx";
+
+vi.mock("../runtime/coordination.js", async (original) => ({
+  ...(await original()),
+  useRuntimeCoordination: vi.fn(),
+}));
 
 function wrapper({ children }) {
   return (
@@ -70,5 +80,30 @@ describe("AppLifecycleProvider", () => {
     expect(() => renderHook(() => useAppLifecycle())).toThrow(
       "useAppLifecycle must be used inside AppLifecycleProvider"
     );
+  });
+
+  it("refuses coordination while Live is starting and waits for native stop once running", async () => {
+    const { result } = renderHook(
+      () => ({ runtime: useMeterRuntime(), assembly: useMeterRuntimeAssembly() }),
+      { wrapper }
+    );
+    await act(async () => result.current.runtime.startLive());
+    const coordination = () => vi.mocked(useRuntimeCoordination).mock.lastCall[0];
+
+    await expect(coordination().stop()).rejects.toMatchObject({ code: "transitionInProgress" });
+
+    await act(async () => result.current.assembly.transport.markStarted());
+    const settled = vi.fn();
+    let stopping;
+    await act(async () => {
+      stopping = coordination().stop().then(settled);
+    });
+    expect(result.current.runtime.liveLifecycle).toBe("stopping");
+    expect(settled).not.toHaveBeenCalled();
+    await act(async () => {
+      result.current.assembly.transport.markStopped();
+      await stopping;
+    });
+    expect(settled).toHaveBeenCalledOnce();
   });
 });

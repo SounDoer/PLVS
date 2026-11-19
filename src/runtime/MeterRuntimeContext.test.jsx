@@ -36,6 +36,14 @@ describe("MeterRuntimeProvider", () => {
     expect(result.current.running).toBe(false);
   });
 
+  it("refuses File analysis while Live is selected", () => {
+    const { result } = renderHook(() => useMeterRuntime(), { wrapper });
+
+    act(() => expect(result.current.beginFileAnalysis("/tmp/late.wav", {})).toBeNull());
+
+    expect(result.current.fileTaskBusy).toBe(false);
+  });
+
   it("clears the active Live source without stopping capture", async () => {
     const { result } = renderHook(() => useMeterRuntime(), { wrapper });
 
@@ -83,6 +91,7 @@ describe("MeterRuntimeProvider", () => {
     const { result } = renderHook(() => useMeterRuntime(), { wrapper });
     const settings = { analysisRequests: { spectrum: [], vectorscope: [] } };
 
+    act(() => result.current.switchSource("file"));
     act(() => result.current.beginFileAnalysis("C:\\first.wav", settings));
     act(() => result.current.beginFileAnalysis("C:\\second.wav", settings));
 
@@ -96,6 +105,7 @@ describe("MeterRuntimeProvider", () => {
     const firstSettings = { analysisRequests: { spectrum: [], vectorscope: [] } };
     const nextSettings = { analysisRequests: { spectrum: [{ key: "main" }], vectorscope: [] } };
 
+    act(() => result.current.switchSource("file"));
     act(() => result.current.beginFileAnalysis("C:\\first.wav", firstSettings));
     const sessionId = result.current.activeFileSession.id;
     await act(() => result.current.stopFileAnalysis());
@@ -143,6 +153,7 @@ describe("MeterRuntimeProvider", () => {
   it("selects a previous file result", async () => {
     const { result } = renderHook(() => useMeterRuntime(), { wrapper });
 
+    act(() => result.current.switchSource("file"));
     act(() => result.current.beginFileAnalysis("C:\\first.wav", {}));
     const firstId = result.current.activeFileSession.id;
     await act(() => result.current.stopFileAnalysis());
@@ -156,6 +167,7 @@ describe("MeterRuntimeProvider", () => {
   it("stops and removes an analyzing file", async () => {
     const { result } = renderHook(() => useMeterRuntime(), { wrapper });
 
+    act(() => result.current.switchSource("file"));
     act(() => result.current.beginFileAnalysis("C:\\first.wav", {}));
     const sessionId = result.current.activeFileSession.id;
     await act(() => result.current.removeFile(sessionId));
@@ -215,6 +227,7 @@ describe("MeterRuntimeProvider", () => {
 
   it("reserves the File task before another action can use a stale render", () => {
     const { result } = renderHook(() => useMeterRuntime(), { wrapper });
+    act(() => result.current.switchSource("file"));
     act(() => {
       result.current.beginFileAnalysis("C:/a.wav", {});
       result.current.beginFileAnalysis("C:/b.wav", {});
@@ -228,6 +241,7 @@ describe("MeterRuntimeProvider", () => {
       () => ({ runtime: useMeterRuntime(), assembly: useMeterRuntimeAssembly() }),
       { wrapper }
     );
+    act(() => result.current.runtime.switchSource("file"));
     act(() => result.current.runtime.beginFileAnalysis("C:/a.wav", {}));
     const id = result.current.runtime.activeFileId;
     result.current.assembly.stopFileAnalysisRef.current = async () => {
@@ -246,6 +260,7 @@ describe("MeterRuntimeProvider", () => {
       () => ({ runtime: useMeterRuntime(), assembly: useMeterRuntimeAssembly() }),
       { wrapper }
     );
+    act(() => result.current.runtime.switchSource("file"));
     act(() => result.current.runtime.beginFileAnalysis("C:/a.wav", {}));
     const id = result.current.runtime.activeFileId;
     let finishStop;

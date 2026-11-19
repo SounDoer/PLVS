@@ -1,10 +1,11 @@
-import { useCallback, useRef } from "react";
+import { useCallback, useLayoutEffect, useRef } from "react";
 import { UI_PREFERENCES } from "../uiPreferences.js";
 import { pickMediaFile } from "../ipc/fileDialog.js";
 
 /**
  * @param {{
  *   sourceMode: string,
+ *   getFileSourceToken?: () => symbol | null,
  *   running: boolean,
  *   liveLifecycle?: string,
  *   hasLiveHistory?: boolean | (() => boolean),
@@ -35,6 +36,7 @@ import { pickMediaFile } from "../ipc/fileDialog.js";
  */
 export function useSourceTransportActions({
   sourceMode,
+  getFileSourceToken,
   running,
   liveLifecycle = running ? "running" : "stopped",
   hasLiveHistory = false,
@@ -83,6 +85,10 @@ export function useSourceTransportActions({
     },
     [beginRuntimeFileAnalysis, getFileAnalysisSettings, importFile]
   );
+  const beginFileAnalysisRef = useRef(beginFileAnalysis);
+  useLayoutEffect(() => {
+    beginFileAnalysisRef.current = beginFileAnalysis;
+  }, [beginFileAnalysis]);
 
   const reanalyzeActiveFile = useCallback(
     (entry) => {
@@ -93,14 +99,16 @@ export function useSourceTransportActions({
 
   const openFile = useCallback(async () => {
     if (fileTaskBusy || pickingRef.current) return;
+    const token = getFileSourceToken?.();
+    if (getFileSourceToken && token == null) return;
     pickingRef.current = true;
     try {
       const path = await pickMediaFile();
-      if (path) await beginFileAnalysis(path);
+      if (path && token === getFileSourceToken?.()) await beginFileAnalysisRef.current(path);
     } finally {
       pickingRef.current = false;
     }
-  }, [beginFileAnalysis, fileTaskBusy]);
+  }, [getFileSourceToken, fileTaskBusy]);
 
   const onSelectFile = useCallback(
     (id) => {
@@ -133,8 +141,14 @@ export function useSourceTransportActions({
   );
 
   const onClearAllFiles = useCallback(async () => {
-    resetHistoryViewport();
-    await clearFiles();
+    try {
+      await clearFiles();
+      resetHistoryViewport();
+      return true;
+    } catch {
+      // The runtime shows the stop failure in Status.
+      return false;
+    }
   }, [clearFiles, resetHistoryViewport]);
 
   const handleDropFile = useCallback((path) => beginFileAnalysis(path), [beginFileAnalysis]);
