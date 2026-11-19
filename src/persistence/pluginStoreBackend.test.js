@@ -191,16 +191,43 @@ describe("pluginStoreBackend", () => {
     expect(settled).toBe(true);
   });
 
-  it("reports the original persistence failure once and allows a later flush to succeed", async () => {
+  it("retries the failed batch even when there are no more edits", async () => {
     const failure = new Error("disk full");
     storeSave.mockRejectedValueOnce(failure);
     const { createPluginStoreBackend } = await import("./pluginStoreBackend.js");
     const backend = createPluginStoreBackend();
     backend.set("plvs:settings", { referenceLufs: -16 });
+    backend.remove("plvs:presets");
 
     await expect(backend.flush()).rejects.toBe(failure);
+    expect(storeSave).toHaveBeenCalledTimes(1);
 
-    backend.set("plvs:settings", { referenceLufs: -15 });
     await expect(backend.flush()).resolves.toBeUndefined();
+    expect(storeSave).toHaveBeenCalledTimes(2);
+    expect(storeSet).toHaveBeenLastCalledWith("plvs:settings", { referenceLufs: -16 });
+    expect(storeDelete).toHaveBeenCalledTimes(2);
+  });
+
+  it("keeps the newer operation when a key is changed during a failed flush", async () => {
+    const failure = new Error("disk full");
+    /** @type {() => void} */
+    let failSave;
+    storeSave.mockImplementationOnce(
+      () => new Promise((_, reject) => (failSave = () => reject(failure)))
+    );
+    const { createPluginStoreBackend } = await import("./pluginStoreBackend.js");
+    const backend = createPluginStoreBackend();
+    backend.remove("plvs:settings");
+
+    const firstFlush = backend.flush();
+    await vi.waitFor(() => expect(failSave).toBeTypeOf("function"));
+    backend.set("plvs:settings", { referenceLufs: -15 });
+    failSave();
+    await expect(firstFlush).rejects.toBe(failure);
+    await backend.flush();
+
+    expect(storeDelete).toHaveBeenCalledTimes(1);
+    expect(storeSave).toHaveBeenCalledTimes(2);
+    expect(storeSet).toHaveBeenLastCalledWith("plvs:settings", { referenceLufs: -15 });
   });
 });

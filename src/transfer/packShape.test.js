@@ -11,17 +11,16 @@ import {
   parsePack,
   parsePackText,
   parseSharedPackText,
+  serializePackText,
 } from "./packShape.js";
-import { MAX_PACK_BYTES } from "./packV2.js";
+import { MAX_PACK_BYTES, MAX_PACK_ITEMS } from "./packV2.js";
 import { BUILTIN_THEMES_V2 } from "../theme/builtinThemesV2.js";
 import { themeToPortable } from "../theme/portableTheme.js";
 import { DEFAULT_WORKSPACE_STATE } from "../workspace/constants.js";
 
 describe("buildPack", () => {
   it("stamps the envelope for a loudness pack", () => {
-    const pack = buildPack("loudness", [{ id: "a", name: "A", referenceLufs: -23, rules: [] }], {
-      exportedAt: "2026-09-05T00:00:00.000Z",
-    });
+    const pack = buildPack("loudness", [{ id: "a", name: "A", referenceLufs: -23, rules: [] }]);
     expect(pack).toEqual({
       app: "PLVS",
       kind: "loudness-pack",
@@ -60,7 +59,6 @@ describe("buildPack", () => {
       { id: "b", name: "B", referenceLufs: -16, rules: [] },
     ];
     const pack = buildPack("presets", [preset], {
-      exportedAt: "x",
       loudnessProfiles: profiles,
     });
     expect(pack.version).toBe(PRESET_PACK_VERSION);
@@ -81,6 +79,23 @@ describe("buildPack", () => {
     );
   });
 
+  it("exports at the import item limit and rejects larger selections", () => {
+    const profiles = Array.from({ length: MAX_PACK_ITEMS + 1 }, (_, index) => ({
+      id: `profile-${index}`,
+      name: `Profile ${index}`,
+      referenceLufs: -23,
+      rules: [],
+    }));
+    const pack = buildPack("loudness", profiles.slice(0, MAX_PACK_ITEMS));
+    expect(parsePackText(serializePackText(pack), "loudness").items).toHaveLength(MAX_PACK_ITEMS);
+    expect(() => buildPack("loudness", profiles)).toThrow(
+      expect.objectContaining({
+        message: expect.stringContaining("Select fewer items"),
+        issues: [expect.objectContaining({ code: "tooManyItems" })],
+      })
+    );
+  });
+
   it("exposes one descriptor per kind", () => {
     expect(Object.keys(PACK_KINDS).sort()).toEqual(["loudness", "presets", "themes"]);
     expect(PACK_KINDS.themes.extension).toBe("plvstheme");
@@ -88,7 +103,7 @@ describe("buildPack", () => {
 
   it("stamps the envelope for a theme pack", () => {
     const theme = { ...structuredClone(BUILTIN_THEMES_V2["plvs-dark"]), id: "t1", name: "T1" };
-    const pack = buildPack("themes", [theme], { exportedAt: "x" });
+    const pack = buildPack("themes", [theme]);
     expect(Object.keys(pack)).toEqual(["app", "kind", "version", "items", "dependencies"]);
     expect(pack.kind).toBe("theme-pack");
     expect(pack.version).toBe(THEME_PACK_VERSION);
@@ -106,10 +121,28 @@ describe("buildPack", () => {
   });
 
   it("rejects a malformed theme document instead of silently dropping it", () => {
-    expect(() => buildPack("themes", [{ version: 2, id: "bad" }], { exportedAt: "x" })).toThrow(
-      PackValidationError
-    );
+    expect(() => buildPack("themes", [{ version: 2, id: "bad" }])).toThrow(PackValidationError);
   });
+});
+
+it("counts the final UTF-8 bytes of an export including indentation and the trailing newline", () => {
+  const overhead = JSON.stringify({ name: "x" }, null, 2).length + 1;
+  const pack = { name: "é".repeat((MAX_PACK_BYTES - overhead) / 2) + "x" };
+  expect(new TextEncoder().encode(serializePackText(pack)).byteLength).toBe(MAX_PACK_BYTES);
+  const oversized = { name: pack.name + "x" };
+  expect(new TextEncoder().encode(JSON.stringify(oversized)).byteLength).toBeLessThan(
+    MAX_PACK_BYTES
+  );
+  expect(() => serializePackText(oversized)).toThrow(
+    expect.objectContaining({
+      issues: [
+        expect.objectContaining({
+          code: "packTooLarge",
+          details: { byteLength: MAX_PACK_BYTES + 1, limit: MAX_PACK_BYTES },
+        }),
+      ],
+    })
+  );
 });
 
 describe("parsePack", () => {
@@ -169,7 +202,7 @@ describe("parsePack", () => {
 
   it("imports the portable Theme envelope into the current stored shape", () => {
     const theme = { ...structuredClone(BUILTIN_THEMES_V2["plvs-dark"]), id: "t1", name: "T1" };
-    const portablePack = buildPack("themes", [theme], { exportedAt: "x" });
+    const portablePack = buildPack("themes", [theme]);
     const parsed = parsePack(portablePack, "themes");
     expect(parsed.version).toBe(THEME_PACK_VERSION);
     expect(parsed.items).toEqual([
@@ -180,7 +213,7 @@ describe("parsePack", () => {
 
   it("aggregates invalid portable entries and duplicate IDs", () => {
     const theme = { ...structuredClone(BUILTIN_THEMES_V2["plvs-dark"]), id: "t1", name: "T1" };
-    const pack = buildPack("themes", [theme], { exportedAt: "x" });
+    const pack = buildPack("themes", [theme]);
     pack.items.push(structuredClone(pack.items[0]));
     pack.items[0].core.workspace = "transparent";
     expect(() => parsePack(pack, "themes")).toThrowError(

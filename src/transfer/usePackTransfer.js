@@ -20,6 +20,7 @@ import {
   parseClipboardItem,
   parsePackText,
   parseSharedPackText,
+  serializePackText,
 } from "./packShape.js";
 
 function defaultFileName(descriptor, items) {
@@ -65,9 +66,14 @@ export function usePackTransfer() {
       setStatus("");
       try {
         const descriptor = packDescriptor(type);
-        const { items, options } = collectPackItems(type, [...selectedIds]);
+        const { items, options, missingIds } = collectPackItems(type, [...selectedIds]);
+        if (missingIds.length > 0) {
+          throw new PackValidationError(
+            "Some selected items are no longer available. Review your selection before exporting."
+          );
+        }
 
-        const contents = `${JSON.stringify(buildPack(type, items, options), null, 2)}\n`;
+        const contents = serializePackText(buildPack(type, items, options));
         const fileName = defaultFileName(descriptor, items);
 
         if (!isTauri()) {

@@ -17,6 +17,8 @@ use crate::agent_control::protocol::JsonRpcRequest;
 use crate::cli_contract::CLI_SCHEMA_VERSION;
 
 const MAX_SAFE_REVISION: u64 = 9_007_199_254_740_991;
+// Keep in sync with MAX_PACK_BYTES in src/transfer/packV2.js.
+const MAX_LIBRARY_PACK_BYTES: usize = 2 * 1024 * 1024;
 static REQUEST_SEQUENCE: AtomicU64 = AtomicU64::new(1);
 
 pub fn is_command(command: &str) -> bool {
@@ -5688,6 +5690,11 @@ fn write_export_file(
         .map_err(|error| format!("Unable to serialize {subject}: {error}"))?
     )
   };
+  if field == "pack" && contents.len() > MAX_LIBRARY_PACK_BYTES {
+    return Err(format!(
+      "The Pack exceeds the {MAX_LIBRARY_PACK_BYTES}-byte limit. Select fewer items and try again."
+    ));
+  }
   // The swap happens only once the bytes are on disk. Taking the document out first loses the
   // export entirely on a write failure: no file, and an exit-1 envelope with no recoverable copy.
   let write_error = |error| format!("Unable to write the {subject} to {path}: {error}");
@@ -9879,6 +9886,30 @@ mod tests {
     let mut failed = failure_report(ControlFailure::invalid_arguments("nope"));
     write_pack_file(&mut failed, "unreachable.json").unwrap();
     assert!(failed.result.is_none());
+  }
+
+  #[test]
+  fn oversized_pack_preserves_the_existing_file_and_the_report() {
+    let path = std::env::temp_dir().join(format!("plvs-large-pack-{}.json", std::process::id()));
+    fs::write(&path, "previous file").unwrap();
+    let mut report = ControlReport {
+      schema_version: CLI_SCHEMA_VERSION,
+      ok: true,
+      result: Some(serde_json::json!({
+        "pack": { "name": "é".repeat(MAX_LIBRARY_PACK_BYTES / 2 - 7) },
+      })),
+      error: None,
+    };
+    let pack = &report.result.as_ref().unwrap()["pack"];
+    assert!(serde_json::to_vec(pack).unwrap().len() <= MAX_LIBRARY_PACK_BYTES);
+
+    let error = write_pack_file(&mut report, path.to_str().unwrap()).unwrap_err();
+
+    assert!(error.contains("Select fewer items"));
+    assert_eq!(fs::read_to_string(&path).unwrap(), "previous file");
+    assert!(report.result.as_ref().unwrap().get("pack").is_some());
+    assert!(report.result.as_ref().unwrap().get("out").is_none());
+    fs::remove_file(path).unwrap();
   }
 
   #[test]

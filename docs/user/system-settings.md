@@ -12,6 +12,7 @@ leaving Dock or restarting capture. Its width follows the same Interface Size se
 drawer. After closing, its window stays ready for one minute after pending operations finish, then
 releases its resources. Reopening within that minute reuses it. Saved Items export uses that window. Theme and Loudness Profile editors and Feedback open in
 a separate, draggable authoring window with their ordinary rounded surfaces and content sizes.
+If a Dock Settings action times out, reopen Settings to check its current state before retrying.
 Closing an authoring flow destroys its native window after the existing save/cancel decision settles.
 In both modes, Theme and Loudness Profile editors keep short pages compact and limit long pages to
 600 CSS pixels or 80% of the available height, whichever is smaller. Available height means the
@@ -348,6 +349,9 @@ local Presets.
 
 For a one-item file, use **Export** on the saved Loudness Profile, Preset, or custom Theme itself.
 In the Settings **Saved Items** exporter, choose a type, then select the Items to export together.
+If an Item disappears from the Library, PLVS asks you to review the selection. If writing the file
+fails, the exporter keeps your selection so you can retry. Each file can contain up to 256 Items and
+be at most 2 MiB. Select fewer Items if an export exceeds either limit.
 
 If storage fails or PLVS exits before the shared configuration commits, other workbenches keep
 their saved Library. The next time the importing workbench opens, its recovery journal restores

@@ -31,14 +31,18 @@ export function createPluginStoreBackend() {
   let storePromise = null;
   function store() {
     if (!storePromise) {
-      storePromise = import("@tauri-apps/plugin-store").then(({ Store }) => Store.load(STORE_FILE));
+      storePromise = import("@tauri-apps/plugin-store")
+        .then(({ Store }) => Store.load(STORE_FILE))
+        .catch((error) => {
+          storePromise = null;
+          throw error;
+        });
     }
     return storePromise;
   }
   const dirty = new Map(); // key -> "set" | "delete"
   let flushTimer = null;
   let activeDrain = null;
-  let unreportedFailure = null;
 
   async function drainBatches() {
     while (!persistenceSuspended && dirty.size > 0) {
@@ -54,9 +58,12 @@ export function createPluginStoreBackend() {
         }
         await s.save();
       } catch (error) {
-        // Background persistence stays fire-and-forget. Keep the original failure so the next
-        // explicit flush can report that durable completion was not achieved.
-        unreportedFailure ??= error;
+        if (epoch === writeEpoch && !persistenceSuspended) {
+          for (const [key, op] of ops) {
+            if (!dirty.has(key)) dirty.set(key, op);
+          }
+        }
+        throw error;
       }
     }
   }
@@ -65,21 +72,17 @@ export function createPluginStoreBackend() {
     if (persistenceSuspended || dirty.size === 0) return activeDrain;
     if (activeDrain) return activeDrain;
 
-    const drain = drainBatches().catch((error) => {
-      unreportedFailure ??= error;
+    const drain = drainBatches().finally(() => {
+      activeDrain = null;
     });
     activeDrain = drain;
-    drain.then(() => {
-      if (activeDrain !== drain) return;
-      activeDrain = null;
-      if (!persistenceSuspended && dirty.size > 0) ensureDrain();
-    });
     return drain;
   }
 
   function runBatch() {
     flushTimer = null;
-    ensureDrain();
+    // A failed batch stays queued for an explicit flush or the next write.
+    void ensureDrain()?.catch(() => {});
   }
 
   function scheduleBatch() {
@@ -91,13 +94,10 @@ export function createPluginStoreBackend() {
       clearTimeout(flushTimer);
       flushTimer = null;
     }
-    ensureDrain();
-    while (activeDrain) await activeDrain;
-
-    if (unreportedFailure) {
-      const failure = unreportedFailure;
-      unreportedFailure = null;
-      throw failure;
+    let drain = ensureDrain();
+    while (drain) {
+      await drain;
+      drain = ensureDrain();
     }
   }
 

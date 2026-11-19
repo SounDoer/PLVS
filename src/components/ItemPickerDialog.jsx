@@ -138,6 +138,7 @@ export function ItemPickerDialog({
   const [selected, setSelected] = useState(
     () => new Set(statistics ? items.filter((item) => !item.disabled).map((item) => item.id) : [])
   );
+  const [selectionChanged, setSelectionChanged] = useState(false);
   // `null` means "still centred". A drag switches to explicit coordinates; reopening resets to
   // `null` so the dialog is centred again next time (see the comment on the component above).
   const [pos, setPos] = useState(null);
@@ -165,9 +166,20 @@ export function ItemPickerDialog({
   useEffect(() => {
     if (!open) {
       setSelected(new Set());
+      setSelectionChanged(false);
       setPos(null);
     }
   }, [open]);
+
+  useEffect(() => {
+    if (!open || mode !== "pick" || statistics || selected.size === 0) return;
+    const available = new Set(items.map(({ id }) => id));
+    const next = new Set([...selected].filter((id) => available.has(id)));
+    if (next.size !== selected.size) {
+      setSelected(next);
+      setSelectionChanged(true);
+    }
+  }, [items, mode, open, selected, statistics]);
 
   const toggle = (id) => {
     setSelected((prev) => {
@@ -197,6 +209,11 @@ export function ItemPickerDialog({
 
   function handleDismiss() {
     if (!dismissBlocked) onClose();
+  }
+
+  function handleExport() {
+    setSelectionChanged(false);
+    return onExport(selectedIds);
   }
 
   const surfaceKind = statistics
@@ -237,7 +254,7 @@ export function ItemPickerDialog({
               id: "export",
               label: statistics ? "Export CSV…" : "Export",
               disabled: selectedIds.length === 0,
-              run: () => onExport(selectedIds),
+              run: handleExport,
             },
           ]
         : singleCompletion || existingReview
@@ -351,9 +368,10 @@ export function ItemPickerDialog({
           ) : null}
         </div>
 
-        {status && mode !== "pick" ? (
+        {(status && !statistics) || selectionChanged ? (
           <p role="status" className="text-muted-foreground">
-            {status}
+            {status ||
+              "Some selected items are no longer available. Review your selection before exporting."}
           </p>
         ) : null}
         <DialogFooter divided>
@@ -363,7 +381,10 @@ export function ItemPickerDialog({
           {mode === "pick" ? (
             <Button
               disabled={selectedIds.length === 0 || (statistics && busy)}
-              onClick={() => onExport(selectedIds)}
+              onClick={() => {
+                // The export flow or remote Settings host reports the failure.
+                void Promise.resolve(handleExport()).catch(() => {});
+              }}
             >
               {statistics ? "Export CSV…" : "Export"}
             </Button>

@@ -29,6 +29,18 @@ import { settingsActionArguments, optimisticSettingsValue } from "../settingsTra
 import { useAccessoryKeyboardShortcuts } from "./useAccessoryKeyboardShortcuts.js";
 import { useAccessoryTargetReport } from "./useAccessoryTargetReport.js";
 
+const SETTINGS_ACK_TIMEOUT_MS = 10_000;
+const SETTINGS_ACTION_TIMEOUT_MS = 30_000;
+const SETTINGS_FILE_DIALOG_TIMEOUT_MS = 10 * 60_000;
+const SETTINGS_SESSION_GRACE_MS = 3_500;
+const FILE_DIALOG_ACTIONS = new Set([
+  "onExport",
+  "onExportConfiguration",
+  "onExportTheme",
+  "onImportConfiguration",
+  "onSharedPackImport",
+]);
+
 /** Presentation only: no settings stores, capture engines, shortcuts, or native file operations. */
 export function DockSettingsApp({ surface = "dock-settings" }) {
   useSuppressNativeContextMenu();
@@ -39,6 +51,20 @@ export function DockSettingsApp({ surface = "dock-settings" }) {
   const outstanding = useRef(new Map());
   const latest = useRef(null);
   latest.current = payload;
+  const rejectOperation = useCallback((id, message) => {
+    const operation = outstanding.current.get(id);
+    if (!operation) return;
+    clearTimeout(operation.timeout);
+    outstanding.current.delete(id);
+    operation.reject(new Error(message));
+    if (latest.current?.session === operation.session) setError(message);
+    // Drop optimistic values and let an idle host retire even without another owner snapshot.
+    setPayload((current) => current && { ...current });
+  }, []);
+  const expireOperation = useCallback(
+    (id) => rejectOperation(id, "Settings action timed out. Reopen Settings to refresh its state."),
+    [rejectOperation]
+  );
   useEffect(() => {
     let disposed = false;
     const operations = outstanding.current;
@@ -58,32 +84,41 @@ export function DockSettingsApp({ surface = "dock-settings" }) {
         )
       );
       if (value.reply) {
-        const operation = outstanding.current.get(value.reply.sequence);
+        const id = value.reply.sequence;
+        const operation = operations.get(id);
         if (operation && operation.session === value.reply.session) {
-          clearTimeout(operation.timeout);
-          if (value.reply.pending) operation.pending = true;
-          else {
-            outstanding.current.delete(value.reply.sequence);
+          if (value.reply.pending) {
+            if (!operation.acknowledged && !operation.settling) {
+              operation.acknowledged = true;
+              clearTimeout(operation.timeout);
+              operation.timeout = setTimeout(
+                () => expireOperation(id),
+                FILE_DIALOG_ACTIONS.has(operation.name)
+                  ? SETTINGS_FILE_DIALOG_TIMEOUT_MS
+                  : SETTINGS_ACTION_TIMEOUT_MS
+              );
+            }
+          } else {
+            clearTimeout(operation.timeout);
+            operations.delete(id);
             if (value.reply.error) {
               operation.reject(new Error(value.reply.error));
-              setError(value.reply.error);
+              if (operation.session === value.session) setError(value.reply.error);
             } else operation.resolve(value.reply.value);
           }
         }
       }
 
-      for (const [id, operation] of outstanding.current) {
-        if (operation.session === value.session) continue;
+      for (const [id, operation] of operations) {
+        if (operation.session === value.session || operation.settling) continue;
         clearTimeout(operation.timeout);
         // A successful Save/Cancel can replace the view before its reply is published.
         // Keep its promise until the explicit reply rather than claiming success on a view change.
-        if (!operation.pending && !operation.settling) {
-          operation.settling = true;
-          operation.timeout = setTimeout(() => {
-            outstanding.current.delete(id);
-            operation.reject(new Error("Settings session changed."));
-          }, 3500);
-        }
+        operation.settling = true;
+        operation.timeout = setTimeout(
+          () => rejectOperation(id, "Settings session changed."),
+          SETTINGS_SESSION_GRACE_MS
+        );
       }
       setPayload(value);
     })
@@ -104,7 +139,7 @@ export function DockSettingsApp({ surface = "dock-settings" }) {
       }
       operations.clear();
     };
-  }, [surface]);
+  }, [surface, expireOperation, rejectOperation]);
   const send = useCallback(
     (type, values = {}) =>
       emitDockAccessoryAction({
@@ -119,11 +154,7 @@ export function DockSettingsApp({ surface = "dock-settings" }) {
       const id = ++sequence.current;
       setError("");
       const promise = new Promise((resolve, reject) => {
-        const timeout = setTimeout(() => {
-          outstanding.current.delete(id);
-          reject(new Error("Settings action timed out."));
-          setError("Settings action timed out. Reopen Settings to refresh its state.");
-        }, 10000);
+        const timeout = setTimeout(() => expireOperation(id), SETTINGS_ACK_TIMEOUT_MS);
         outstanding.current.set(id, {
           session,
           sequence: id,
@@ -137,13 +168,13 @@ export function DockSettingsApp({ surface = "dock-settings" }) {
       // React input controls must retain their latest typed value until the owner acknowledges it.
       setPayload((value) => ({ ...value }));
       void send("settings-action", { session, sequence: id, name, args }).catch((error) =>
-        setError(String(error))
+        rejectOperation(id, error instanceof Error ? error.message : String(error))
       );
       // Event handlers often intentionally ignore return values. Report the error in the host as well.
       void promise.catch(() => {});
       return promise;
     },
-    [send]
+    [send, expireOperation, rejectOperation]
   );
   useEffect(() => {
     if (payload && !payload.session && outstanding.current.size === 0) void send("settings-idle");

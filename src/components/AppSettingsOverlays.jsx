@@ -440,6 +440,7 @@ export function AppSettingsOverlays({
         themes: getAdapter("themes").list(),
       },
       dependenciesByType: { presets: getAdapter("loudness").list() },
+      status: pack.status,
       onExport: pack.exportSelection,
       onClose: () => {
         setLibraryExportOpen(false);

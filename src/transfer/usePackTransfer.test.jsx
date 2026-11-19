@@ -272,6 +272,19 @@ describe("usePackTransfer export outcome", () => {
     expect(outcome).toBe("failed");
     expect(result.current.status).toBe("Export failed");
   });
+
+  it("refuses to export a subset when a selected item has disappeared", async () => {
+    const { result } = renderHook(() => usePackTransfer());
+    let outcome;
+    await act(async () => {
+      outcome = await result.current.exportSelection("loudness", ["a", "deleted"]);
+    });
+
+    expect(outcome).toBe("failed");
+    expect(result.current.status).toMatch(/selected items are no longer available/);
+    expect(savePackFile).not.toHaveBeenCalled();
+    expect(writeProfileFile).not.toHaveBeenCalled();
+  });
 });
 
 describe("usePackTransfer import", () => {

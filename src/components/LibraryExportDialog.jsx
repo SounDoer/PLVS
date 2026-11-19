@@ -25,6 +25,7 @@ function itemCountLabel(count) {
  *   open: boolean,
  *   itemsByType?: Record<string, any[]>,
  *   dependenciesByType?: Record<string, any[]>,
+ *   status?: string,
  *   onExport?: (...args: any[]) => any,
  *   onClose?: (...args: any[]) => any,
  * }} props
@@ -33,14 +34,17 @@ export function LibraryExportDialog({
   open,
   itemsByType = {},
   dependenciesByType = {},
+  status = "",
   onExport = () => {},
   onClose = () => {},
 }) {
   const [selectedType, setSelectedType] = useState(null);
+  const [exportFailed, setExportFailed] = useState(false);
 
   useEffect(() => {
     if (!open) setSelectedType(null);
-  }, [open]);
+    if (!open || !selectedType) setExportFailed(false);
+  }, [open, selectedType]);
 
   function close() {
     setSelectedType(null);
@@ -76,9 +80,12 @@ export function LibraryExportDialog({
         type={selectedType}
         items={itemsByType[selectedType] ?? []}
         dependencies={dependenciesByType[selectedType] ?? []}
+        status={exportFailed ? status : ""}
         onExport={async (ids) => {
+          setExportFailed(false);
           const outcome = await onExport(selectedType, ids);
-          if (outcome !== "cancelled") close();
+          if (outcome === "written") close();
+          else if (outcome === "failed") setExportFailed(true);
         }}
         onBack={() => setSelectedType(null)}
         onClose={close}

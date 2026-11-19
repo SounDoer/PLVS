@@ -91,9 +91,8 @@ export const PACK_KINDS = {
  * @param {string} type
  */
 export function packDescriptor(type) {
-  const descriptor = PACK_KINDS[type];
-  if (!descriptor) throw new Error(`Unknown pack type: ${type}`);
-  return descriptor;
+  if (!Object.hasOwn(PACK_KINDS, type)) throw new Error(`Unknown pack type: ${type}`);
+  return PACK_KINDS[type];
 }
 
 /// The profile ids a set of presets refers to. `off` and malformed selections yield nothing.
@@ -106,15 +105,33 @@ export function referencedProfileIds(presets) {
   return ids;
 }
 
+/** @typedef {{ id: string } & Record<string, any>} PortablePackItem */
 /**
  * @param {string} type
+ * @returns {{
+ *   app: string,
+ *   kind: string,
+ *   version: number,
+ *   items: PortablePackItem[],
+ *   dependencies: { kind: string, items: PortablePackItem[] }[],
+ * }}
  */
-export function buildPack(
-  type,
-  items,
-  { exportedAt = new Date().toISOString(), loudnessProfiles = [] } = {}
-) {
+export function buildPack(type, items, { loudnessProfiles = [] } = {}) {
   const descriptor = packDescriptor(type);
+  const pack = buildPortablePack(type, descriptor, items, loudnessProfiles);
+  const issues = collectPackV2EnvelopeIssues(pack, {
+    allowedDependencyKind: type === "presets" ? "loudness-profile" : null,
+  });
+  if (issues.length > 0) {
+    throw new PackValidationError(
+      packLimitMessage(issues) || "The selected items could not be exported together.",
+      issues
+    );
+  }
+  return pack;
+}
+
+function buildPortablePack(type, descriptor, items, loudnessProfiles) {
   if (type === "loudness") {
     const sourceItems = Array.isArray(items) ? items : [];
     if (sourceItems.length === 0) {
@@ -234,26 +251,15 @@ export function buildPack(
       dependencies: [],
     };
   }
-  const normalizedItems = (Array.isArray(items) ? items : [])
-    .map((item) => descriptor.normalizeItem(item))
-    .filter(Boolean);
+}
 
-  const pack = {
-    app: PACK_APP,
-    kind: descriptor.kind,
-    version: PACK_VERSION,
-    exportedAt,
-    items: normalizedItems,
-  };
-
-  if (type === "presets") {
-    const wanted = referencedProfileIds(normalizedItems);
-    pack.loudnessProfiles = (Array.isArray(loudnessProfiles) ? loudnessProfiles : [])
-      .map((profile) => normalizeRuleDocument(profile))
-      .filter((profile) => profile && wanted.has(profile.id));
-  }
-
-  return pack;
+function packLimitMessage(issues) {
+  const limit = issues.find(({ code }) =>
+    ["packTooLarge", "packTooDeep", "tooManyItems", "tooManyDependencyItems"].includes(code)
+  );
+  if (!limit) return "";
+  if (limit.code === "packTooDeep") return limit.message;
+  return `${limit.message} Select fewer items and try again.`;
 }
 
 /// Kind of the whole-configuration file, so a user who picks one gets told what it is instead of
@@ -496,8 +502,6 @@ export function parsePack(raw, expectedType) {
     app: PACK_APP,
     kind: expected.kind,
     version: raw.version,
-    // Unlike `buildPack`, an invalid/missing value here defaults to "" rather than "now" -- a read
-    // path must not fabricate provenance for a file it did not write.
     exportedAt: typeof raw.exportedAt === "string" ? raw.exportedAt : "",
     items,
   };
@@ -516,21 +520,34 @@ export function parsePack(raw, expectedType) {
 /**
  * @param {string} text
  */
+function packTextSizeIssues(text) {
+  const byteLength = new TextEncoder().encode(text).byteLength;
+  return byteLength > MAX_PACK_BYTES
+    ? [
+        {
+          ...issue("packTooLarge", "$", `The Pack exceeds the ${MAX_PACK_BYTES}-byte limit.`),
+          details: { byteLength, limit: MAX_PACK_BYTES },
+        },
+      ]
+    : [];
+}
+
+export function serializePackText(pack) {
+  const text = `${JSON.stringify(pack, null, 2)}\n`;
+  const issues = packTextSizeIssues(text);
+  if (issues.length > 0) throw new PackValidationError(packLimitMessage(issues), issues);
+  return text;
+}
+
+/** @param {string} text */
 function parseJsonText(text) {
   if (typeof text !== "string") {
     throw new PackValidationError("This file could not be read.", [
       issue("invalidJson", "$", "The Pack must be encoded as JSON text."),
     ]);
   }
-  const byteLength = new TextEncoder().encode(text).byteLength;
-  if (byteLength > MAX_PACK_BYTES) {
-    throw new PackValidationError("This file is too large to import.", [
-      {
-        ...issue("packTooLarge", "$", `The Pack exceeds the ${MAX_PACK_BYTES}-byte limit.`),
-        details: { byteLength, limit: MAX_PACK_BYTES },
-      },
-    ]);
-  }
+  const issues = packTextSizeIssues(text);
+  if (issues.length > 0) throw new PackValidationError("This file is too large to import.", issues);
   let raw;
   try {
     raw = JSON.parse(text);
@@ -542,7 +559,6 @@ function parseJsonText(text) {
   return raw;
 }
 
-/** Enforces the encoded byte limit before JSON parsing, then applies the normal family parser. */
 /**
  * Enforces the encoded byte limit before JSON parsing, then applies the normal family parser.
  * @param {string} text
@@ -552,10 +568,6 @@ export function parsePackText(text, expectedType) {
   return parsePack(parseJsonText(text), expectedType);
 }
 
-/**
- * Dispatches one shared Item file by its document kind, then runs the same strict family parser.
- * @returns {{ type: "loudness" | "presets" | "themes", pack: any }}
- */
 /**
  * Dispatches one shared Item file by its document kind, then runs the same strict family parser.
  * @returns {{type: "loudness" | "presets" | "themes";pack: any;}}
