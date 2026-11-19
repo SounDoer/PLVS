@@ -1,4 +1,5 @@
-import { useEffect, useLayoutEffect, useRef } from "react";
+import { useEffect, useLayoutEffect, useReducer, useRef } from "react";
+import { flushSync } from "react-dom";
 import { invoke } from "@tauri-apps/api/core";
 import { exit } from "@tauri-apps/plugin-process";
 import { flushPersistence } from "../persistence/index.js";
@@ -45,13 +46,16 @@ async function waitFor(issued) {
 }
 
 async function stopAndFlush(current, onSaveFailure = () => {}) {
+  current = current.readCurrent();
   const wasRunning = current.running === true;
   await current.stop();
+  // Native acknowledgements resolve before React necessarily publishes stop/cancel state.
+  current = current.readCurrent();
   try {
     await flushPersistence();
   } catch (error) {
     onSaveFailure();
-    if (wasRunning) await current.start();
+    if (wasRunning && !isMeasurementBusy(current)) await current.start();
     throw error;
   }
   return wasRunning;
@@ -62,7 +66,7 @@ async function recoverExpiredPreparations(current, prepared) {
   for (const [operationId, state] of prepared) {
     if (state.expiresAt > now) continue;
     prepared.delete(operationId);
-    if (state.wasRunning && !current.measurementBusy) {
+    if (state.wasRunning && !isMeasurementBusy(current)) {
       try {
         await current.start();
       } catch (error) {
@@ -89,6 +93,7 @@ async function handleRuntimeCommand(command, prepared) {
   const current = lifecycle;
   if (!current) return;
   try {
+    current.readCurrent();
     if (command.action === "show") {
       await current.show();
       await acknowledge(command, "completed");
@@ -154,7 +159,7 @@ async function handleRuntimeCommand(command, prepared) {
     if (command.action === "abortGlobal") {
       const preparation = prepared.get(command.operationId);
       prepared.delete(command.operationId);
-      if (preparation?.wasRunning && !current.measurementBusy) await current.start();
+      if (preparation?.wasRunning && !isMeasurementBusy(current)) await current.start();
       await acknowledge(command, "completed");
       return;
     }
@@ -169,7 +174,7 @@ async function handleRuntimeCommand(command, prepared) {
         return;
       }
       await flushPersistence();
-      if (current.measurementBusy) {
+      if (isMeasurementBusy(current)) {
         await acknowledge(command, "blocked", MEASUREMENT_RESUMED);
         return;
       }
@@ -182,6 +187,8 @@ async function handleRuntimeCommand(command, prepared) {
         return;
       }
       await acknowledge(command, "completed");
+      assertLocalQuitAllowed();
+      assertMeasurementIdle(current);
       await exit(0);
       prepared.delete(command.operationId);
     }
@@ -200,7 +207,16 @@ export function useRuntimeCoordination({
   busy = false,
   measurementBusy = false,
 }) {
+  const [, publishReadiness] = useReducer((revision) => revision + 1, 0);
+  const readCurrent = () => {
+    // Lifecycle decisions run from async business operations, outside render/effects. Commit the
+    // pending provider updates before reading readiness, including starts queued during an await.
+    // A real update makes this an explicit commit barrier rather than a timer or an empty flush.
+    flushSync(() => publishReadiness());
+    return currentRef.current;
+  };
   const currentRef = useRef({
+    readCurrent,
     blockingEditors,
     running,
     stop,
@@ -212,6 +228,7 @@ export function useRuntimeCoordination({
   });
   useLayoutEffect(() => {
     currentRef.current = {
+      readCurrent,
       blockingEditors,
       running,
       stop,
@@ -221,7 +238,7 @@ export function useRuntimeCoordination({
       busy,
       measurementBusy,
     };
-  }, [blockingEditors, running, start, stop, show, actions, busy, measurementBusy]);
+  });
 
   useEffect(() => {
     lifecycle = new Proxy(
@@ -261,6 +278,7 @@ export function useRuntimeCoordination({
 
 function assertNoBlockingEditors(current) {
   if (!current) throw new Error("Runtime coordination is not ready.");
+  current = current.readCurrent();
   if (current.blockingEditors.length) {
     throw Object.assign(
       new Error(`Close the open editor before continuing: ${current.blockingEditors.join(", ")}`),
@@ -280,7 +298,11 @@ function assertLocalCommitReady() {
 }
 
 function assertMeasurementIdle(current) {
-  if (current.measurementBusy) throw new Error(MEASUREMENT_RESUMED);
+  if (isMeasurementBusy(current)) throw new Error(MEASUREMENT_RESUMED);
+}
+
+function isMeasurementBusy(current) {
+  return current.readCurrent().measurementBusy;
 }
 
 export async function quitCurrentWorkbench({
@@ -301,12 +323,14 @@ export async function quitCurrentWorkbench({
     assertLocalQuitAllowed();
     assertMeasurementIdle(current);
     await beforeExit();
+    assertLocalQuitAllowed();
+    assertMeasurementIdle(current);
     await exit(0);
   } catch (error) {
     const recoveries = [];
     if (Number.isInteger(retiredPosition))
       recoveries.push(invoke("runtime_restore_retired_workspace", { position: retiredPosition }));
-    if (wasRunning && !current.measurementBusy)
+    if (wasRunning && !isMeasurementBusy(current))
       recoveries.push(Promise.resolve().then(() => current.start()));
     const failures = (await Promise.allSettled(recoveries)).filter(
       (result) => result.status === "rejected"
@@ -325,7 +349,8 @@ export async function quitCurrentWorkbench({
 }
 
 export function canRestartAfterPeerClose() {
-  return Boolean(lifecycle && !lifecycle.measurementBusy && lifecycle.blockingEditors.length === 0);
+  const current = lifecycle?.readCurrent();
+  return Boolean(current && !current.measurementBusy && current.blockingEditors.length === 0);
 }
 
 export async function prepareGlobalOperation() {
@@ -367,7 +392,8 @@ export async function abortGlobalOperation(operation) {
       operation.issued.map((command) => command.instanceId)
     ).catch(() => []);
     await waitFor(aborts).catch(() => {});
-    if (operation.localWasRunning && !lifecycle?.measurementBusy) await lifecycle?.start();
+    if (operation.localWasRunning && lifecycle && !isMeasurementBusy(lifecycle))
+      await lifecycle.start();
   } finally {
     await invoke("runtime_finish_operation", { operationId: operation.id }).catch(() => {});
   }

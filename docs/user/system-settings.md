@@ -65,6 +65,8 @@ Choosing **Don't ask again** in the close confirmation updates **Close Behavior*
 Before either action, PLVS finishes saving pending settings. If saving fails, the window stays open
 and offers **Retry** or **Cancel**.
 If PLVS cannot hide or quit the window after saving, the close dialog offers the same retry.
+Quitting waits for capture and File cancellation to settle before checking whether measurement is
+still active. A completed stop does not require a second Quit; a newly started measurement blocks exit.
 
 Quitting one additional workbench removes it from the next restore set. If a workbench crashes, its
 saved workspace remains recoverable instead of being treated as an intentional removal.

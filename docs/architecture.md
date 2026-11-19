@@ -119,6 +119,16 @@ commit phase to close peers; timeout or refusal aborts. A debug-only absolute ap
 allows real multi-process desktop tests to keep persistence, restore metadata, artifacts and logs
 inside a disposable root; packaged builds reject it.
 
+Lifecycle readiness reads explicitly commit pending React updates with `flushSync` and a local
+coordination revision before checking editors or measurement activity. A native stop acknowledgement
+can resolve before React publishes the stopped state; conversely, a new start can be queued while
+retirement or an acknowledgement is awaiting IPC. Checking only the last committed snapshot either
+refuses a completed stop or misses that restart. A commit barrier covers Live, File cancellation and
+editor state together without maintaining a second readiness model or relying on a timed delay.
+These reads belong to business operations outside render and effects. Local and peer quit recheck
+readiness after the final acknowledgement before exiting; recovery and update relaunch use the same
+current-state boundary.
+
 Update preferences belong to the identity-wide settings domain, independently of imported
 workspaces/configuration profiles. Fresh initialization leaves consent unresolved; migration of
 existing data enables checking only. The React update controller owns the scheduled/manual reason,
