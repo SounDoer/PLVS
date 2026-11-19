@@ -696,15 +696,12 @@ pub fn file_analysis_cancel_probe(
 pub async fn file_analysis_probe(
   app: AppHandle,
   path: String,
-  probe_id: Option<u32>,
+  probe_id: u32,
 ) -> Result<FileAnalysisProbeResult, String> {
   tauri::async_runtime::spawn_blocking(move || {
-    if let Some(id) = probe_id {
-      return app
-        .state::<crate::file_analysis::probe::FileProbes>()
-        .run(id, std::path::Path::new(&path));
-    }
-    crate::file_analysis::probe::probe_file(path)
+    app
+      .state::<crate::file_analysis::probe::FileProbes>()
+      .run(probe_id, std::path::Path::new(&path))
   })
   .await
   .map_err(|error| error.to_string())?

@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef } from "react";
-import { probeFileAnalysis, startFileAnalysis, stopFileAnalysis } from "../ipc/commands.js";
+import { startFileProbe, startFileAnalysis, stopFileAnalysis } from "../ipc/commands.js";
+import { errorMessage } from "../lib/errorDetails.js";
 import {
   onFileAnalysisCompleted,
   onFileAnalysisError,
@@ -57,6 +58,22 @@ export function useFileAnalysisEngine({
       if (!run || (expectedSessionId && run.sessionId !== expectedSessionId)) return;
       const canStop = () => activeRunRef.current === run && !run.cancelled && !run.terminal;
       if (!canStop()) return false;
+      const markCancelled = () => {
+        run.cancelled = true;
+        const acceptance = fileAnalysisAcceptanceRef?.current.get(run.sessionId);
+        fileAnalysisAcceptanceRef?.current.delete(run.sessionId);
+        acceptance?.reject(new Error("File analysis was cancelled before acceptance"));
+        return true;
+      };
+      if (run.probeRequest) {
+        run.probeCancellation ??= run.probeRequest
+          .cancel()
+          .then(markCancelled)
+          .finally(() => {
+            run.probeCancellation = null;
+          });
+        return run.probeCancellation;
+      }
       if (run.startPromise) {
         try {
           await run.startPromise;
@@ -67,11 +84,7 @@ export function useFileAnalysisEngine({
         await stopFileAnalysis();
         if (!canStop()) return false;
       }
-      run.cancelled = true;
-      const acceptance = fileAnalysisAcceptanceRef?.current.get(run.sessionId);
-      fileAnalysisAcceptanceRef?.current.delete(run.sessionId);
-      acceptance?.reject(new Error("File analysis was cancelled before acceptance"));
-      return true;
+      return markCancelled();
     },
     [fileAnalysisAcceptanceRef]
   );
@@ -96,7 +109,14 @@ export function useFileAnalysisEngine({
 
     let mounted = true;
     const token = `${sessionId}:${runId}`;
-    const task = { cancelled: false, terminal: false, startPromise: null, sessionId };
+    const task = {
+      cancelled: false,
+      terminal: false,
+      startPromise: null,
+      probeRequest: null,
+      probeCancellation: null,
+      sessionId,
+    };
     activeRunRef.current = task;
     const active = () => mounted && !task.cancelled && activeRunRef.current === task;
     const unsubs = [];
@@ -138,7 +158,11 @@ export function useFileAnalysisEngine({
         intake.reset();
         frameRef.current = 0;
         setAnalyzingFileId(sessionId);
-        const metadata = probe ?? (await probeFileAnalysis(filePath));
+        task.probeRequest = probe ? null : startFileProbe(filePath);
+        const metadata =
+          probe ??
+          (await task.probeRequest.result.finally(() => task.probeCancellation?.catch(() => {})));
+        task.probeRequest = null;
         if (!active()) return;
         defaultSampleRateRef.current = metadata.selectedTrack?.sampleRateHz || 48000;
         updateFileSession(sessionId, (current) => ({
@@ -242,7 +266,7 @@ export function useFileAnalysisEngine({
       } catch (err) {
         if (!active() || task.terminal) return;
         task.terminal = true;
-        const message = err?.message || "File analysis unavailable";
+        const message = errorMessage(err, "File analysis unavailable");
         updateFileSession(sessionId, (current) => ({
           ...current,
           state: "error",
@@ -272,6 +296,7 @@ export function useFileAnalysisEngine({
     return () => {
       mounted = false;
       task.cancelled = true;
+      void task.probeRequest?.cancel().catch(() => {});
       if (activeRunRef.current === task) activeRunRef.current = null;
       for (const unsub of unsubs) {
         try {

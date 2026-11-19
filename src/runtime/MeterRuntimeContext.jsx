@@ -3,7 +3,8 @@ import { useCaptureTransport } from "../hooks/useCaptureTransport.js";
 import { useFileSessionLedger } from "../hooks/useFileSessionLedger.js";
 import { useIntakeRouting } from "../hooks/useIntakeRouting.js";
 import { useMeterDisplay } from "../hooks/useMeterDisplay.js";
-import { clearAudioHistory, probeFileAnalysis } from "../ipc/commands.js";
+import { clearAudioHistory, startFileProbe } from "../ipc/commands.js";
+import { errorMessage } from "../lib/errorDetails.js";
 import { sameFileSourceVersion, withSelectedAudioTrack } from "../lib/fileAnalysisSource.js";
 import { fileImportTracks } from "../lib/fileImportPlan.js";
 import { isTauri } from "../ipc/env.js";
@@ -86,29 +87,40 @@ export function MeterRuntimeProvider({ children }) {
   useEffect(() => {
     taskSessionRef.current = fileHistory.analyzingFileId;
   }, [fileHistory.analyzingFileId]);
+  useEffect(
+    () => () => {
+      const preparation = preparationRef.current;
+      if (!preparation) return;
+      preparation.cancelled = true;
+      preparation.cancelTrackSelection();
+      void preparation.probeRequest?.cancel().catch(() => {});
+    },
+    []
+  );
   const stopFileAnalysis = async (expectedSessionId) => {
     const pending = pendingFileStopRef.current;
     if (pending) {
       if (!expectedSessionId || expectedSessionId === pending.sessionId) await pending.promise;
       return;
     }
-    const preparation = preparationRef.current;
-    if (preparation && (!expectedSessionId || preparation.sessionId === expectedSessionId)) {
-      preparation.cancelled = true;
-      preparation.cancelTrackSelection();
-      preparationRef.current = null;
-      setPreparingFileId(null);
-      setReplacementTrackSelection(null);
-      taskSessionRef.current = null;
-      return;
-    }
     const sessionId = taskSessionRef.current;
     if (!sessionId) return;
     if (expectedSessionId && expectedSessionId !== sessionId) return;
+    const preparation = preparationRef.current;
 
     setStoppingFile(true);
     const promise = (async () => {
       try {
+        if (preparation?.sessionId === sessionId) {
+          if (preparation.probeRequest) await preparation.probeRequest.cancel();
+          preparation.cancelled = true;
+          preparation.cancelTrackSelection();
+          preparationRef.current = null;
+          setPreparingFileId(null);
+          setReplacementTrackSelection(null);
+          taskSessionRef.current = null;
+          return;
+        }
         const stopped = await stopFileAnalysisRef.current(sessionId);
         if (taskSessionRef.current === sessionId) taskSessionRef.current = null;
         if (stopped === false) return;
@@ -117,7 +129,7 @@ export function MeterRuntimeProvider({ children }) {
       } catch (error) {
         display.raiseNotice(
           "error",
-          `Error: ${error?.message || "Could not stop File analysis"}`,
+          `Error: ${errorMessage(error, "Could not stop File analysis")}`,
           undefined,
           { requiresAttention: true, helpTopic: "file-analysis-stop" }
         );
@@ -296,14 +308,24 @@ export function MeterRuntimeProvider({ children }) {
     }
 
     taskSessionRef.current = entry.id;
-    const preparation = { sessionId: entry.id, cancelled: false, cancelTrackSelection: () => {} };
+    const preparation = {
+      sessionId: entry.id,
+      cancelled: false,
+      probeRequest: null,
+      cancelTrackSelection: () => {},
+    };
     preparationRef.current = preparation;
     setPreparingFileId(entry.id);
     let probe = entry.metadata;
     let replaced = false;
     try {
       if (isTauri()) {
-        const discovered = await probeFileAnalysis(entry.path);
+        preparation.probeRequest = startFileProbe(entry.path);
+        const discovered = await preparation.probeRequest.result.finally(() => {
+          const stop = pendingFileStopRef.current;
+          if (stop?.sessionId === entry.id) return stop.promise.catch(() => {});
+        });
+        preparation.probeRequest = null;
         if (preparation.cancelled) return null;
         replaced = Boolean(
           entry.metadata?.sourceVersion &&
@@ -375,13 +397,14 @@ export function MeterRuntimeProvider({ children }) {
       if (preparation.cancelled) return null;
       taskSessionRef.current = null;
       if (error?.reason === "fileTrackSelectionRequired") throw error;
+      const message = errorMessage(error, "File is unavailable");
       if (kind === "analyze")
         ledger.updateSession(entry.id, (current) => ({
           ...current,
           state: "error",
-          error: error?.message || "File is unavailable",
+          error: message,
         }));
-      display.raiseNotice("error", `Error: ${error?.message || "File is unavailable"}`, undefined, {
+      display.raiseNotice("error", `Error: ${message}`, undefined, {
         requiresAttention: true,
         helpTopic: "file-open-analysis",
       });
@@ -447,7 +470,7 @@ export function MeterRuntimeProvider({ children }) {
     const clearing = (async () => {
       if (sourceSelectionRef.current.mode === "file") display.clearNotice();
       await stopFileAnalysis();
-      afterStop?.();
+      await afterStop?.();
       for (const entry of Object.values(fileHistory.sessionsById)) {
         entry.intake?.reset?.();
       }

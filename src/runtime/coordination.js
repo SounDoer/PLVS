@@ -7,6 +7,7 @@ import { isTauri } from "../ipc/env.js";
 const COMMAND_POLL_MS = 250;
 const COMMAND_TIMEOUT_MS = 10_000;
 const PREPARED_LEASE_MS = 30_000;
+const MEASUREMENT_RESUMED = "Measurement resumed while this workbench was preparing to close.";
 
 let lifecycle = null;
 
@@ -60,7 +61,7 @@ async function recoverExpiredPreparations(current, prepared) {
   for (const [operationId, state] of prepared) {
     if (state.expiresAt > now) continue;
     prepared.delete(operationId);
-    if (state.wasRunning) {
+    if (state.wasRunning && !current.measurementBusy) {
       try {
         await current.start();
       } catch (error) {
@@ -172,7 +173,7 @@ async function handleRuntimeCommand(command, prepared) {
     if (command.action === "abortGlobal") {
       const preparation = prepared.get(command.operationId);
       prepared.delete(command.operationId);
-      if (preparation?.wasRunning) await current.start();
+      if (preparation?.wasRunning && !current.measurementBusy) await current.start();
       await acknowledge(command, "completed");
       return;
     }
@@ -187,6 +188,10 @@ async function handleRuntimeCommand(command, prepared) {
         return;
       }
       await flushPersistence();
+      if (current.measurementBusy) {
+        await acknowledge(command, "blocked", MEASUREMENT_RESUMED);
+        return;
+      }
       if (
         preparation.expiresAt <= performance.now() ||
         current.blockingEditors.length ||
@@ -212,11 +217,30 @@ export function useRuntimeCoordination({
   show,
   actions = null,
   busy = false,
+  measurementBusy = false,
 }) {
-  const currentRef = useRef({ blockingEditors, running, stop, start, show, actions, busy });
+  const currentRef = useRef({
+    blockingEditors,
+    running,
+    stop,
+    start,
+    show,
+    actions,
+    busy,
+    measurementBusy,
+  });
   useLayoutEffect(() => {
-    currentRef.current = { blockingEditors, running, stop, start, show, actions, busy };
-  }, [blockingEditors, running, start, stop, show, actions, busy]);
+    currentRef.current = {
+      blockingEditors,
+      running,
+      stop,
+      start,
+      show,
+      actions,
+      busy,
+      measurementBusy,
+    };
+  }, [blockingEditors, running, start, stop, show, actions, busy, measurementBusy]);
 
   useEffect(() => {
     lifecycle = new Proxy(
@@ -268,6 +292,15 @@ function assertLocalQuitAllowed() {
   if (lifecycle.busy) throw new Error("PLVS is installing an update.");
 }
 
+function assertLocalCommitReady() {
+  assertNoBlockingEditors(lifecycle);
+  if (lifecycle.measurementBusy) throw new Error(MEASUREMENT_RESUMED);
+}
+
+export function canRestartAfterPeerClose() {
+  return Boolean(lifecycle && !lifecycle.measurementBusy && lifecycle.blockingEditors.length === 0);
+}
+
 export async function prepareGlobalOperation() {
   assertNoBlockingEditors(lifecycle);
   const id = operationId();
@@ -307,24 +340,36 @@ export async function abortGlobalOperation(operation) {
       operation.issued.map((command) => command.instanceId)
     ).catch(() => []);
     await waitFor(aborts).catch(() => {});
-    if (operation.localWasRunning) await lifecycle?.start();
+    if (operation.localWasRunning && !lifecycle?.measurementBusy) await lifecycle?.start();
   } finally {
     await invoke("runtime_finish_operation", { operationId: operation.id }).catch(() => {});
   }
 }
 
-export async function commitGlobalOperation(operation, beforeCommit = () => {}) {
+export async function commitGlobalOperation(
+  operation,
+  { beforeCommit = () => {}, onPeersClosing = () => {} } = {}
+) {
   await flushPersistence();
+  assertLocalCommitReady();
   beforeCommit();
-  const commits = await issue(
-    "commitGlobal",
-    operation.id,
-    operation.issued.map((command) => command.instanceId)
-  );
-  const acknowledgements = await waitFor(commits);
-  const failed = acknowledgements.find((ack) => ack.outcome !== "completed");
-  if (failed) throw new Error(failed.detail ?? "Another PLVS workbench could not close.");
-  await invoke("runtime_finish_operation", { operationId: operation.id });
+  const commits = [];
+  let peersMayClose = false;
+  try {
+    // Issue one close at a time so a later delivery error cannot hide earlier commands.
+    for (const { instanceId } of operation.issued) {
+      commits.push(...(await issue("commitGlobal", operation.id, [instanceId])));
+      peersMayClose = commits.length > 0;
+    }
+    const acknowledgements = await waitFor(commits);
+    peersMayClose = acknowledgements.some((ack) => ack.outcome === "completed");
+    const failed = acknowledgements.find((ack) => ack.outcome !== "completed");
+    if (failed) throw new Error(failed.detail ?? "Another PLVS workbench could not close.");
+    assertLocalCommitReady();
+    await invoke("runtime_finish_operation", { operationId: operation.id });
+  } finally {
+    if (peersMayClose) onPeersClosing();
+  }
 }
 
 /**
@@ -350,8 +395,9 @@ export async function quitAllInstances() {
 export async function quitPreparedInstances(operation) {
   try {
     assertLocalQuitAllowed();
-    await commitGlobalOperation(operation, assertLocalQuitAllowed);
+    await commitGlobalOperation(operation, { beforeCommit: assertLocalQuitAllowed });
     assertLocalQuitAllowed();
+    assertLocalCommitReady();
     await exit(0);
   } catch (error) {
     await abortGlobalOperation(operation);

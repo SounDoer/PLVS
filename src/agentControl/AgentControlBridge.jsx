@@ -48,7 +48,7 @@ import {
   listRuntimeInstances,
   openAdditionalWorkbench,
   rememberMainWindowPosition,
-  probeFileAnalysis,
+  startFileProbe,
   captureVisualScreenshot,
   movePointer,
   inspectVisualRecording,
@@ -330,7 +330,7 @@ export function AgentControlBridge() {
         // file/track entry instead of creating another. A refusal here has no side effects.
         const settings = currentFileAnalysisSettings();
         const probe = isTauri()
-          ? selectImportTrack(await probeFileAnalysis(params.path), params.trackIndex)
+          ? selectImportTrack(await startFileProbe(params.path).result, params.trackIndex)
           : null;
         const plan = probe
           ? planFileImport(meterRuntime.fileSessions, probe, settings)

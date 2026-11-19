@@ -588,7 +588,9 @@ describe("runtime coordination", () => {
       localWasRunning: false,
     };
 
-    await expect(commitGlobalOperation(operation)).rejects.toThrow("disk full");
+    const onPeersClosing = vi.fn();
+    await expect(commitGlobalOperation(operation, { onPeersClosing })).rejects.toThrow("disk full");
+    expect(onPeersClosing).not.toHaveBeenCalled();
 
     expect(mocks.invoke).not.toHaveBeenCalledWith(
       "runtime_issue_commands",
@@ -597,6 +599,76 @@ describe("runtime coordination", () => {
     expect(mocks.invoke).not.toHaveBeenCalledWith("runtime_finish_operation", {
       operationId: "operation-a",
     });
+  });
+
+  it("refuses to close a prepared peer that started measuring again", async () => {
+    const commands = [{ commandId: "prepare", operationId: "op", action: "prepareGlobal" }];
+    const start = vi.fn();
+    mocks.invoke.mockImplementation(async (name) =>
+      name === "runtime_poll_command" ? (commands.shift() ?? null) : undefined
+    );
+    const { rerender } = renderHook(
+      ({ measurementBusy }) =>
+        useRuntimeCoordination({
+          running: true,
+          measurementBusy,
+          blockingEditors: [],
+          stop: vi.fn(async () => {}),
+          start,
+          show: vi.fn(),
+        }),
+      { initialProps: { measurementBusy: false } }
+    );
+    await act(async () => {});
+    expect(mocks.invoke).toHaveBeenCalledWith(
+      "runtime_ack_command",
+      expect.objectContaining({
+        commandId: "prepare",
+        outcome: "ready",
+      })
+    );
+
+    rerender({ measurementBusy: true });
+    commands.push({ commandId: "commit", operationId: "op", action: "commitGlobal" });
+    await act(async () => vi.advanceTimersByTimeAsync(250));
+    expect(mocks.exit).not.toHaveBeenCalled();
+    expect(mocks.invoke).toHaveBeenCalledWith(
+      "runtime_ack_command",
+      expect.objectContaining({
+        commandId: "commit",
+        outcome: "blocked",
+        detail: expect.stringContaining("Measurement resumed"),
+      })
+    );
+
+    commands.push({ commandId: "abort", operationId: "op", action: "abortGlobal" });
+    await act(async () => vi.advanceTimersByTimeAsync(250));
+    expect(start).not.toHaveBeenCalled();
+  });
+
+  it("reports that peers may have closed when delivery to a later peer fails", async () => {
+    mocks.invoke.mockImplementation(async (name, params) => {
+      if (name === "runtime_poll_command") return null;
+      if (name === "runtime_issue_commands" && params.instanceIds[0] === "first") {
+        return [{ instanceId: "first", commandId: "commit-first" }];
+      }
+      throw new Error("Second peer disappeared");
+    });
+    renderHook(() =>
+      useRuntimeCoordination({
+        running: false,
+        blockingEditors: [],
+        stop: vi.fn(),
+        start: vi.fn(),
+        show: vi.fn(),
+      })
+    );
+    const onPeersClosing = vi.fn();
+    const operation = { id: "op", issued: [{ instanceId: "first" }, { instanceId: "second" }] };
+    await expect(commitGlobalOperation(operation, { onPeersClosing })).rejects.toThrow(
+      "Second peer disappeared"
+    );
+    expect(onPeersClosing).toHaveBeenCalledOnce();
   });
 
   it("aborts Quit PLVS if the initiating workbench opens an editor before peers commit", async () => {

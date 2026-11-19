@@ -138,6 +138,21 @@ it("stops one running item and cancels the rest only on Cancel Batch", async () 
   expect(begin).toHaveBeenCalledTimes(2);
 });
 
+it("continues the remaining batch when the current analysis cannot be stopped", async () => {
+  const { result, rerender, begin, stop } = mountQueue();
+  act(() => result.current.enqueue(["one.wav", "two.wav"]));
+  await waitFor(() => expect(begin).toHaveBeenCalledOnce());
+  rerender({ busy: true });
+  stop.mockRejectedValueOnce(new Error("Native stop failed"));
+  await act(async () => {
+    await expect(result.current.cancelBatch()).rejects.toThrow("Native stop failed");
+  });
+  expect(result.current.items).toMatchObject([{ path: "two.wav", state: "queued" }]);
+  expect(result.current.canResume).toBe(false);
+  rerender({ busy: false });
+  await waitFor(() => expect(begin).toHaveBeenCalledTimes(2));
+});
+
 it("cancels the native probe before starting the next item", async () => {
   let cancelResult;
   vi.mocked(probeFileAnalysis).mockImplementationOnce(

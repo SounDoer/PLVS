@@ -2,8 +2,10 @@
 import { act, renderHook } from "@testing-library/react";
 import { beforeEach, expect, it, vi } from "vitest";
 import { useFileImport } from "./useFileImport.js";
-import { probeFileAnalysis } from "../ipc/commands.js";
-vi.mock("../ipc/commands.js", () => ({ probeFileAnalysis: vi.fn() }));
+import { startFileProbe } from "../ipc/commands.js";
+vi.mock("../ipc/commands.js", () => ({ startFileProbe: vi.fn() }));
+const probeFileAnalysis = vi.fn();
+const cancelProbe = vi.fn();
 vi.mock("../ipc/env.js", () => ({ isTauri: () => true }));
 const track = { index: 1, language: "eng", channels: 2 };
 const probe = {
@@ -15,11 +17,17 @@ const probe = {
 };
 beforeEach(() => {
   vi.resetAllMocks();
-  vi.mocked(probeFileAnalysis).mockResolvedValue(probe);
+  probeFileAnalysis.mockResolvedValue(probe);
+  cancelProbe.mockResolvedValue(undefined);
+  vi.mocked(startFileProbe).mockImplementation((path) => ({
+    result: probeFileAnalysis(path),
+    cancel: cancelProbe,
+  }));
 });
 function mount(files = [], getFileSourceToken = undefined) {
-  const begin = vi.fn(),
-    select = vi.fn();
+  const begin = vi.fn();
+  const select = vi.fn();
+  const raiseNotice = vi.fn();
   const settings = { dialogue: { enabled: true, engine: "firered" } };
   const hook = renderHook(() =>
     useFileImport({
@@ -28,11 +36,11 @@ function mount(files = [], getFileSourceToken = undefined) {
       getSettings: () => settings,
       begin,
       select,
-      raiseNotice: vi.fn(),
+      raiseNotice,
       getFileSourceToken,
     })
   );
-  return { ...hook, begin, select, settings };
+  return { ...hook, begin, select, settings, raiseNotice };
 }
 it("waits for track confirmation and freezes settings before probing", async () => {
   const { result, begin, settings } = mount();
@@ -91,7 +99,8 @@ it("ignores a late probe after cancellation and preserves the selected result", 
   act(() => {
     pending = result.current.importFile(probe.path);
   });
-  act(() => result.current.cancel());
+  await act(async () => result.current.cancel());
+  expect(cancelProbe).toHaveBeenCalledOnce();
   await act(async () => {
     finish(probe);
     await pending;
@@ -99,6 +108,48 @@ it("ignores a late probe after cancellation and preserves the selected result", 
   expect(result.current.selection).toBeNull();
   expect(begin).not.toHaveBeenCalled();
   expect(select).not.toHaveBeenCalled();
+});
+
+it("preserves the native error message when the input has no audio track", async () => {
+  probeFileAnalysis.mockRejectedValueOnce("No audio track found in media file");
+  const { result, raiseNotice } = mount();
+  await act(async () => result.current.importFile(probe.path));
+  expect(raiseNotice).toHaveBeenCalledWith(
+    "error",
+    "Error: No audio track found in media file",
+    undefined,
+    expect.objectContaining({ helpTopic: "file-open-analysis" })
+  );
+});
+
+it("keeps the single-file probe active if the native cancel request fails", async () => {
+  let finish;
+  probeFileAnalysis.mockReturnValueOnce(
+    new Promise((resolve) => {
+      finish = resolve;
+    })
+  );
+  cancelProbe.mockRejectedValueOnce("Native stop failed");
+  const { result, begin, raiseNotice } = mount();
+  let pending;
+  act(() => {
+    pending = result.current.importFile(probe.path);
+  });
+  await act(async () => {
+    await expect(result.current.cancel()).rejects.toBe("Native stop failed");
+  });
+  expect(result.current.importBusy).toBe(true);
+  expect(raiseNotice).toHaveBeenCalledWith(
+    "error",
+    "Could not stop File probing: Native stop failed",
+    undefined,
+    expect.anything()
+  );
+  await act(async () => {
+    finish({ ...probe, audioTracks: [track] });
+    await pending;
+  });
+  expect(begin).toHaveBeenCalledOnce();
 });
 
 it("ignores an earlier File visit's native probe after returning to File", async () => {
@@ -188,7 +239,7 @@ it("does not start a rechecked file after the picker is canceled", async () => {
     confirming = result.current.confirm(1);
   });
   expect(result.current.selection).toMatchObject({ busy: true });
-  act(() => result.current.cancel());
+  await act(async () => result.current.cancel());
   await act(async () => {
     finish(probe);
     await confirming;

@@ -274,7 +274,8 @@ describe("shared update controller", () => {
     const relaunch = vi.fn(async () => {});
     const { controller, invoke, abort } = setup({
       relaunch,
-      commit: vi.fn(async () => {
+      commit: vi.fn(async (_operation, { onPeersClosing }) => {
+        onPeersClosing();
         throw new Error("Peer commit failed");
       }),
     });
@@ -287,6 +288,28 @@ describe("shared update controller", () => {
     expect(abort).toHaveBeenCalledOnce();
     expect(relaunch).toHaveBeenCalledOnce();
     expect(controller.getSnapshot().installStatus).toBe("install-error");
+  });
+
+  it("keeps the current app open when the final save fails before any peer is asked to close", async () => {
+    const relaunch = vi.fn(async () => {});
+    const { controller, invoke, abort } = setup({
+      relaunch,
+      commit: vi.fn(async () => {
+        throw new Error("Disk full");
+      }),
+    });
+    await controller.initialize();
+    await controller.check();
+    controller.openDetails();
+    await controller.confirmInstall();
+
+    expect(abort).toHaveBeenCalledOnce();
+    expect(invoke).toHaveBeenCalledWith("update_abort_install", { token: "token" });
+    expect(relaunch).not.toHaveBeenCalled();
+    expect(controller.getSnapshot()).toMatchObject({
+      installStatus: "install-error",
+      error: "Error: Disk full",
+    });
   });
   it("makes no automatic request before consent but allows an explicit check", async () => {
     const { controller, invoke } = setup();

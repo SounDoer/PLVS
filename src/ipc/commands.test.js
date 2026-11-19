@@ -17,7 +17,6 @@ import {
   getUiFrameDiagnostics,
   getVisualCaptureCapabilities,
   listCaptureApplications,
-  probeFileAnalysis,
   startFileProbe,
   getDockState,
   setDialogueGating,
@@ -151,13 +150,16 @@ describe("audio engine command seam", () => {
   });
 
   it("maps file probing and stopping to native commands", async () => {
-    await probeFileAnalysis("C:\\audio.wav");
+    invoke.mockResolvedValueOnce(3);
+    await startFileProbe("C:\\audio.wav").result;
     await stopFileAnalysis();
 
-    expect(invoke).toHaveBeenNthCalledWith(1, "file_analysis_probe", {
+    expect(invoke).toHaveBeenNthCalledWith(1, "file_analysis_reserve_probe");
+    expect(invoke).toHaveBeenNthCalledWith(2, "file_analysis_probe", {
       path: "C:\\audio.wav",
+      probeId: 3,
     });
-    expect(invoke).toHaveBeenNthCalledWith(2, "file_analysis_stop");
+    expect(invoke).toHaveBeenNthCalledWith(3, "file_analysis_stop");
   });
 
   it("bridges file-analysis Channel messages to frame payloads", async () => {

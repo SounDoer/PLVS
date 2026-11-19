@@ -78,9 +78,10 @@ disappears while workbenches are waiting at the save barrier, they attempt to re
 that the barrier stopped. If the source cannot restart, the workbench leaves the save barrier and
 reports the capture error. A workbench that is installing an update refuses a new request to
 prepare for shutdown from another workbench.
-If preparation expires or a draft opens before a workbench closes, it refuses the old close
-request. When an operation is canceled, workbenches that are still open can resume even if
-another workbench has already closed.
+If preparation expires, measurement resumes, or a draft opens before a workbench closes, it
+refuses the old close request. If the final save fails before any workbench is told to close,
+PLVS stays open and reports the error. When an operation is canceled, workbenches that are still
+open can resume even if another workbench has already closed.
 
 PLVS also keeps one system Tray. On Windows and macOS, left-clicking its icon shows or hides the
 main window, while right-clicking opens the menu. On Linux, icon interactions depend on the desktop's

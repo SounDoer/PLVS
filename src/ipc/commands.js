@@ -349,20 +349,22 @@ export function setDialogueVadEngine(engine) {
   return invoke("set_dialogue_vad_engine", { engine });
 }
 
-/** @param {string} path Local media path selected or dropped in the desktop app. */
-export function probeFileAnalysis(path) {
-  return invoke("file_analysis_probe", { path });
-}
-
-/** @param {string} path Local media path queued for analysis. */
+/** @param {string} path Local media path to inspect before analysis. */
 export function startFileProbe(path) {
   const reserved = invoke("file_analysis_reserve_probe");
   const result = reserved.then((probeId) => invoke("file_analysis_probe", { path, probeId }));
+  let cancellation = null;
   return {
     result,
-    cancel: async () => {
-      await invoke("file_analysis_cancel_probe", { probeId: await reserved });
-      await result.catch(() => {});
+    cancel: () => {
+      cancellation ??= reserved
+        .then((probeId) => invoke("file_analysis_cancel_probe", { probeId }))
+        .then(() => result.catch(() => {}))
+        .catch((error) => {
+          cancellation = null;
+          throw error;
+        });
+      return cancellation;
     },
   };
 }

@@ -130,6 +130,7 @@ export function SourceActionsProvider({ children }) {
     begin: beginRuntimeFileAnalysis,
     select: selectFile,
     stop: stopFileAnalysis,
+    raiseNotice,
   });
   const statistics = useFileStatisticsExport({
     fileSessions,
@@ -140,9 +141,9 @@ export function SourceActionsProvider({ children }) {
   const { active: queueActive, enqueue } = fileQueue;
   const { importFile } = fileImport;
   const clearFileCollection = () =>
-    clearFiles(() => {
-      fileImport.cancel();
-      fileQueue.clear();
+    clearFiles(async () => {
+      await fileImport.cancel();
+      await fileQueue.clear();
     });
   const importMedia = useCallback(
     (input) => {
@@ -175,7 +176,7 @@ export function SourceActionsProvider({ children }) {
       fileTaskBusy || fileQueue.active || fileImport.importBusy || Boolean(fileImport.selection),
     fileImportBusy: fileImport.importBusy || fileQueue.probing,
     cancelFileImport: () => {
-      fileImport.cancel();
+      void fileImport.cancel().catch(() => {});
       if (fileQueue.probing) fileQueue.stopCurrent()?.catch(() => {});
     },
     reanalyzeFile,
@@ -233,7 +234,7 @@ export function SourceActionsProvider({ children }) {
         }
         onCancel={
           replacementTrackSelection?.onCancel ??
-          (fileImport.selection ? fileImport.cancel : fileQueue.dismiss)
+          (fileImport.selection ? () => fileImport.cancel().catch(() => {}) : fileQueue.dismiss)
         }
       />
       {statistics.open ? (

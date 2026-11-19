@@ -31,7 +31,8 @@ The pill shows progress and **Cancel** while the current file is working, **Retr
 failure, and the duration after success. **Result** returns from a selected
 time without resetting zoom or scroll.
 
-If cancellation fails while analysis is still running, PLVS continues to show its progress.
+**Cancel** also stops the initial file read for Open, Reanalyze, and Restore History. If
+cancellation fails while the file is still being read or analyzed, PLVS continues to show its progress.
 A result that finishes before cancellation takes effect is kept.
 
 ## Batch import
@@ -50,7 +51,7 @@ file to resume following the queue.
 - **Stop** on the current row stops that file and the queue continues. **Cancel Batch…** stops the
   batch and cancels pending files after confirmation. Completed results and files waiting for track
   selection stay in **Files**. Both actions also stop the initial file probe if analysis has not
-  started.
+  started. If the current file cannot be stopped, the remaining files stay queued.
 - **Resume Batch** restarts the interrupted file from the beginning and continues the remaining
   files in order using their original queued settings. Files skipped with **Stop** can be added
   back individually with **Add to Queue**, or retried when the queue is idle. Different audio tracks

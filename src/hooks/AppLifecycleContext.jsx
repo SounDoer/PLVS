@@ -83,7 +83,7 @@ export function AppLifecycleProvider({ children }) {
     onSelectCaptureDevice,
     sourceDisplayName,
   } = useSource();
-  const { onStartClick } = useSourceActions();
+  const { onStartClick, fileImport, fileQueue } = useSourceActions();
 
   // Crash-report discovery must outlive the normal-window overlays. A saved Dock posture replaces
   // those overlays with the strip at boot; keeping discovery here lets App restore the main window
@@ -206,8 +206,10 @@ export function AppLifecycleProvider({ children }) {
   });
   const stopRuntimeForCoordination = useCallback(async () => {
     await stopLiveForCoordination();
+    if (fileImport?.importBusy) await fileImport.cancel();
+    if (fileQueue?.active) await fileQueue.cancelBatch();
     await stopFileAnalysis();
-  }, [stopFileAnalysis, stopLiveForCoordination]);
+  }, [fileImport, fileQueue, stopFileAnalysis, stopLiveForCoordination]);
   const startRuntimeAfterCoordination = useCallback(async () => {
     switchSource("live");
     await startLiveForControl();
@@ -224,6 +226,11 @@ export function AppLifecycleProvider({ children }) {
   useRuntimeCoordination({
     blockingEditors: activeBlockingEditors,
     running: meterRuntime.liveLifecycle === "running",
+    measurementBusy:
+      running ||
+      meterRuntime.liveLifecycle === "stopping" ||
+      fileTaskBusy ||
+      Boolean(fileImport?.importBusy || fileQueue?.active),
     stop: stopRuntimeForCoordination,
     start: startRuntimeAfterCoordination,
     show: onShowWindow,

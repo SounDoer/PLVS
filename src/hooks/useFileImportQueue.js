@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { startFileProbe } from "../ipc/commands.js";
+import { errorDetails, errorMessage } from "../lib/errorDetails.js";
 import { fileImportTracks, planFileImport, revalidateFileTrack } from "../lib/fileImportPlan.js";
 
 function cancelProbe(task) {
@@ -24,6 +25,7 @@ export function useFileImportQueue({
   begin,
   select,
   stop,
+  raiseNotice = undefined,
 }) {
   const [items, setItems] = useState([]);
   const [commandSequence, setCommandSequence] = useState(0);
@@ -31,7 +33,9 @@ export function useFileImportQueue({
   const [current, setCurrent] = useState(null);
   const [sessionIds, setSessionIds] = useState(() => new Set());
   const [browsingResult, setBrowsingResult] = useState(false);
+  const [cancelingBatch, setCancelingBatch] = useState(false);
   const currentRef = useRef(null);
+  const batchCancellationRef = useRef(null);
   const nextId = useRef(0);
   const enabledRef = useRef(enabled);
 
@@ -87,27 +91,46 @@ export function useFileImportQueue({
     else setItems((previous) => previous.filter((item) => item.id !== task.id));
   }
 
-  function cancel(batch = false) {
-    if (batch) {
-      setItems((previous) =>
-        previous.map((item) =>
-          ["queued", "probed"].includes(item.state) ? { ...item, state: "paused" } : item
-        )
-      );
-    }
+  function stopCurrent(resume = false) {
     const task = currentRef.current;
     if (!task) return;
-    if (batch && !task.stopping && !task.canceled) task.resume = true;
+    if (resume && !task.stopPromise && !task.canceled) task.resume = true;
     if (task.sessionId) {
-      if (task.stopping) return;
-      task.stopping = true;
-      return stop(task.sessionId).catch((error) => {
-        task.stopping = false;
+      task.stopPromise ??= stop(task.sessionId).catch((error) => {
+        task.stopPromise = null;
         task.resume = false;
         throw error;
       });
+      return task.stopPromise;
     }
-    return cancelProbe(task);
+    return cancelProbe(task).catch((error) => {
+      raiseNotice?.("error", errorDetails("Could not stop File probing", error), undefined, {
+        requiresAttention: true,
+        helpTopic: "file-analysis-stop",
+      });
+      throw error;
+    });
+  }
+
+  function cancelBatch() {
+    if (batchCancellationRef.current) return batchCancellationRef.current;
+    const waiting = new Set(
+      items.filter(({ state }) => state === "queued" || state === "probed").map(({ id }) => id)
+    );
+    setCancelingBatch(true);
+    const cancellation = Promise.resolve()
+      .then(() => stopCurrent(true))
+      .then(() =>
+        setItems((previous) =>
+          previous.map((item) => (waiting.has(item.id) ? { ...item, state: "paused" } : item))
+        )
+      )
+      .finally(() => {
+        batchCancellationRef.current = null;
+        setCancelingBatch(false);
+      });
+    batchCancellationRef.current = cancellation;
+    return cancellation;
   }
 
   const next = items.find((item) => item.state === "queued");
@@ -156,7 +179,7 @@ export function useFileImportQueue({
       return;
     }
     if (!next && !ready) setBrowsingResult(false);
-    if (busy || !next || ready) return;
+    if (busy || batchCancellationRef.current || !next || ready) return;
 
     const probeRequest = startFileProbe(next.path);
     const work = { id: next.id, canceled: false, sessionId: null, probe: probeRequest };
@@ -164,6 +187,7 @@ export function useFileImportQueue({
     setCurrent(work);
     update(next.id, { state: "working" });
     void probeRequest.result
+      .finally(() => work.probeCancellation?.catch(() => {}))
       .then((probe) => {
         if (work.canceled || !enabledRef.current) {
           finish(work, { state: work.resume ? "paused" : "canceled" });
@@ -183,16 +207,16 @@ export function useFileImportQueue({
             ? { state: work.resume ? "paused" : "canceled" }
             : {
                 state: "error",
-                error: error?.message || String(error || "File could not be opened"),
+                error: errorMessage(error, "File could not be opened"),
               }
         );
       });
     // Completion settles the exact task token. Launch uses current ledger state in the effect below.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [enabled, busy, files, next, ready, current]);
+  }, [enabled, busy, files, next, ready, current, cancelingBatch]);
 
   useEffect(() => {
-    if (!enabled || busy || !ready || currentRef.current) return;
+    if (!enabled || busy || !ready || currentRef.current || batchCancellationRef.current) return;
     const plan = planFileImport(files, ready.probe, ready.settings);
     const retry = ready.retryId != null && plan.sessionId === ready.retryId;
     if (plan.action === "select" && !retry) {
@@ -208,7 +232,7 @@ export function useFileImportQueue({
       !browsingResult || !activeFileId
     );
     if (!sessionId) return;
-    const task = { id: ready.id, sessionId, canceled: false, started: false, stopping: false };
+    const task = { id: ready.id, sessionId, canceled: false, started: false, stopPromise: null };
     setSessionIds((previous) => new Set(previous).add(sessionId));
     currentRef.current = task;
     setCurrent(task);
@@ -217,7 +241,7 @@ export function useFileImportQueue({
       trackIndex: ready.probe.selectedTrack.index,
       retryId: sessionId,
     });
-  }, [enabled, busy, ready, files, activeFileId, browsingResult, begin, select]);
+  }, [enabled, busy, ready, files, activeFileId, browsingResult, begin, select, cancelingBatch]);
   /* eslint-enable react-hooks/set-state-in-effect */
 
   function append(item) {
@@ -238,7 +262,7 @@ export function useFileImportQueue({
 
   return {
     snapshot: {
-      active: Boolean(current || next || ready),
+      active: Boolean(current || next || ready || cancelingBatch),
       canResume: items.some((item) => item.state === "paused"),
       currentId: current?.id ?? null,
       commandSequence,
@@ -255,7 +279,7 @@ export function useFileImportQueue({
     },
     acknowledgeCommand: () => setCommandSequence((sequence) => sequence + 1),
     items: items.filter((item) => !(item.id === current?.id && current.sessionId)),
-    active: Boolean(current || next || ready),
+    active: Boolean(current || next || ready || cancelingBatch),
     canResume: items.some((item) => item.state === "paused"),
     probing: Boolean(current && !current.sessionId),
     selection,
@@ -286,18 +310,18 @@ export function useFileImportQueue({
         session.metadata ?? null
       ),
     remove: (id) => setItems((previous) => previous.filter((item) => item.id !== id)),
-    stopCurrent: () => cancel(),
-    cancelBatch: () => cancel(true),
+    stopCurrent: () => stopCurrent(),
+    cancelBatch,
     resumeBatch: () => {
-      if (!currentRef.current && !next && !ready) {
+      if (!currentRef.current && !next && !ready && !batchCancellationRef.current) {
         setItems((previous) =>
           previous.map((item) => (item.state === "paused" ? { ...item, state: "queued" } : item))
         );
       }
     },
-    clear: () => {
+    clear: async () => {
       const task = currentRef.current;
-      if (task && !task.sessionId) void cancelProbe(task).catch(() => {});
+      if (task && !task.sessionId) await stopCurrent();
       setItems([]);
       setSessionIds(new Set());
       setBrowsingResult(false);

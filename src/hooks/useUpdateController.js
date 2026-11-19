@@ -13,6 +13,7 @@ import { openExternalUrl } from "../ipc/openExternal.js";
 import { isTauri } from "../ipc/env.js";
 import {
   abortGlobalOperation,
+  canRestartAfterPeerClose,
   commitGlobalOperation,
   prepareGlobalOperation,
 } from "../runtime/coordination.js";
@@ -27,6 +28,7 @@ export function useUpdateController({ preferences, startupEligible }) {
       abort: abortGlobalOperation,
       openExternal: openExternalUrl,
       relaunch,
+      canRelaunch: canRestartAfterPeerClose,
     })
   );
   const state = useSyncExternalStore(controller.subscribe, controller.getSnapshot);

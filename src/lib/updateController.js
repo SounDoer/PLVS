@@ -33,6 +33,7 @@ export function createUpdateController({
   abort,
   openExternal,
   relaunch = async () => {},
+  canRelaunch = () => true,
 }) {
   const listeners = new Set();
   let state = {
@@ -286,7 +287,7 @@ export function createUpdateController({
     emit({ installStatus: "installing", error: null });
     let token;
     let operation;
-    let commitAttempted = false;
+    let peersMayClose = false;
     try {
       let ready = state.ready?.id === details.target.id ? state.ready : null;
       if (!ready) {
@@ -313,15 +314,19 @@ export function createUpdateController({
         throw error;
       }
       operation = await prepare();
-      commitAttempted = true;
-      await commit(operation);
+      await commit(operation, {
+        onPeersClosing: () => {
+          peersMayClose = true;
+        },
+      });
       emit({ installStatus: "restarting" });
       await invoke("update_commit_install", { token });
     } catch (error) {
+      const recoverPeers = peersMayClose && canRelaunch();
       if (token) await invoke("update_abort_install", { token }).catch(() => {});
       if (operation) await abort(operation).catch(() => {});
       // A partial commit can already have closed peers. Ordinary relaunch restores the saved set.
-      if (commitAttempted) await relaunch().catch(() => {});
+      if (recoverPeers) await relaunch().catch(() => {});
       confirming = false;
       emit({ installStatus: "install-error", error: String(error) });
     }

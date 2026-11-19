@@ -18,7 +18,7 @@ const transport = vi.hoisted(() => ({
 vi.mock("../ipc/env.js", () => ({ isTauri: () => true, isLinux: () => false }));
 vi.mock("../ipc/commands.js", async (importOriginal) => ({
   ...(await importOriginal()),
-  probeFileAnalysis: transport.probe,
+  startFileProbe: (path) => ({ result: transport.probe(path), cancel: vi.fn() }),
 }));
 
 const useAgentControlBridge = vi.hoisted(() => vi.fn());

@@ -9,14 +9,18 @@ import {
   useFileAnalysisEngine,
 } from "./useFileAnalysisEngine.js";
 
-vi.mock("../ipc/commands.js", () => ({
-  probeFileAnalysis: vi.fn(async () => ({
+const { probeFileAnalysis, cancelProbe } = vi.hoisted(() => ({
+  probeFileAnalysis: vi.fn(async (_path) => ({
     path: "C:/mix/final.wav",
     fileName: "final.wav",
     container: "wav",
     durationMs: 1_000,
     selectedTrack: { index: 0, codec: "pcm", sampleRateHz: 48000, channels: 2 },
   })),
+  cancelProbe: vi.fn(async () => {}),
+}));
+vi.mock("../ipc/commands.js", () => ({
+  startFileProbe: vi.fn((path) => ({ result: probeFileAnalysis(path), cancel: cancelProbe })),
   startFileAnalysis: vi.fn(async ({ onFrame }) => {
     onFrame({ seq: 1, peakDb: [-12, -12], timestampMs: 100 });
     return { marker: "channel" };
@@ -55,7 +59,7 @@ vi.mock("../lib/tauriFrameApply.js", () => ({
   })),
 }));
 
-import { probeFileAnalysis, startFileAnalysis, stopFileAnalysis } from "../ipc/commands.js";
+import { startFileAnalysis, stopFileAnalysis } from "../ipc/commands.js";
 import { isTauri } from "../ipc/env.js";
 import { buildTauriFrameApply } from "../lib/tauriFrameApply.js";
 
@@ -377,7 +381,7 @@ describe("useFileAnalysisEngine", () => {
     await act(async () => {
       await /** @type {HarnessWindow} */ (window).__fileApi.stop();
     });
-
+    expect(cancelProbe).not.toHaveBeenCalled();
     expect(stopFileAnalysis).toHaveBeenCalled();
     expect(setFileSession).not.toHaveBeenCalled();
   });
@@ -498,6 +502,7 @@ describe("useFileAnalysisEngine", () => {
     await act(async () => {
       await /** @type {HarnessWindow} */ (window).__fileApi.stop();
     });
+    expect(cancelProbe).toHaveBeenCalledOnce();
     await act(async () =>
       finishProbe({ path: "C:/mix/final.wav", selectedTrack: { sampleRateHz: 48000, channels: 2 } })
     );

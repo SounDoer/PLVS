@@ -6,10 +6,12 @@ import {
   useMeterRuntime,
   useMeterRuntimeAssembly,
 } from "./MeterRuntimeContext.jsx";
-import { probeFileAnalysis } from "../ipc/commands.js";
+import { startFileProbe } from "../ipc/commands.js";
 import { selectImportTrack } from "../agentControl/transportControl.js";
 vi.mock("../ipc/env.js", () => ({ isTauri: () => true }));
-vi.mock("../ipc/commands.js", () => ({ probeFileAnalysis: vi.fn(), clearAudioHistory: vi.fn() }));
+vi.mock("../ipc/commands.js", () => ({ startFileProbe: vi.fn(), clearAudioHistory: vi.fn() }));
+const probeFileAnalysis = vi.fn();
+const cancelProbe = vi.fn(async () => {});
 const sourceVersion = { canonicalPath: "C:/mix.mkv", byteLength: 10, sha256: "old" };
 const probe = {
   path: "C:/mix.mkv",
@@ -20,7 +22,13 @@ const probe = {
   ],
   sourceVersion,
 };
-beforeEach(() => vi.clearAllMocks());
+beforeEach(() => {
+  vi.clearAllMocks();
+  vi.mocked(startFileProbe).mockImplementation((path) => ({
+    result: probeFileAnalysis(path),
+    cancel: cancelProbe,
+  }));
+});
 function mount() {
   const hook = renderHook(
     () => ({ runtime: useMeterRuntime(), assembly: useMeterRuntimeAssembly() }),
@@ -154,6 +162,7 @@ it("cancels preparation without allowing the late probe to start a task", async 
   await act(async () => {
     await result.current.runtime.stopFileAnalysis(id);
   });
+  expect(cancelProbe).toHaveBeenCalledOnce();
   await act(async () => {
     resolve(probe);
     await pending;

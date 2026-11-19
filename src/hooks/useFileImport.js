@@ -1,6 +1,7 @@
-import { useCallback, useLayoutEffect, useRef, useState } from "react";
-import { probeFileAnalysis } from "../ipc/commands.js";
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
+import { startFileProbe } from "../ipc/commands.js";
 import { isTauri } from "../ipc/env.js";
+import { errorDetails, errorMessage } from "../lib/errorDetails.js";
 import { planFileImport, revalidateFileTrack } from "../lib/fileImportPlan.js";
 
 /** Import selection is transient; it never changes an existing result before confirmation. */
@@ -16,22 +17,53 @@ export function useFileImport({
   const [selection, setSelection] = useState(null);
   const [importBusy, setImportBusy] = useState(false);
   const pendingRef = useRef(null);
-  const generationRef = useRef(0);
-  const cancel = useCallback(() => {
-    generationRef.current += 1;
+  const reset = useCallback(() => {
     pendingRef.current = null;
     setSelection(null);
     setImportBusy(false);
   }, []);
+  const cancel = useCallback(() => {
+    const pending = pendingRef.current;
+    if (!pending?.request) {
+      reset();
+      return Promise.resolve();
+    }
+    pending.cancellation ??= pending.request
+      .cancel()
+      .then(() => {
+        if (pendingRef.current === pending) reset();
+      })
+      .catch((error) => {
+        if (pendingRef.current === pending && pending.sourceToken === getFileSourceToken()) {
+          raiseNotice("error", errorDetails("Could not stop File probing", error), undefined, {
+            requiresAttention: true,
+            helpTopic: "file-analysis-stop",
+          });
+        }
+        throw error;
+      })
+      .finally(() => {
+        pending.cancellation = null;
+      });
+    return pending.cancellation;
+  }, [getFileSourceToken, raiseNotice, reset]);
+  useEffect(
+    () => () => {
+      const pending = pendingRef.current;
+      pendingRef.current = null;
+      void pending?.request?.cancel().catch(() => {});
+    },
+    []
+  );
   const launch = useCallback(
     (probe, settings) => {
       const plan = planFileImport(files, probe, settings);
       if (plan.action === "select") select(plan.sessionId);
       else if (plan.action === "rerun") begin(probe.path, settings, probe, plan.sessionId);
       else begin(probe.path, settings, probe);
-      cancel();
+      reset();
     },
-    [files, select, begin, cancel]
+    [files, select, begin, reset]
   );
   const latest = useRef({ busy, launch });
   useLayoutEffect(() => {
@@ -40,13 +72,14 @@ export function useFileImport({
 
   const inspectAndLaunch = useCallback(
     async (path, settings, sourceToken, index = null, previousProbe = null) => {
-      const generation = ++generationRef.current;
-      pendingRef.current = { generation };
+      const request = startFileProbe(path);
+      const pending = { request, sourceToken, cancellation: null };
+      pendingRef.current = pending;
       setImportBusy(true);
       try {
-        const probe = await probeFileAnalysis(path);
-        if (generation !== generationRef.current) return;
-        if (sourceToken !== getFileSourceToken()) return cancel();
+        const probe = await request.result.finally(() => pending.cancellation?.catch(() => {}));
+        if (pendingRef.current !== pending) return;
+        if (sourceToken !== getFileSourceToken()) return reset();
         const track = revalidateFileTrack(probe, index, previousProbe);
         if (track.requiresTrackSelection || (previousProbe && latest.current.busy)) {
           const next = {
@@ -59,22 +92,27 @@ export function useFileImport({
           setSelection(next);
           setImportBusy(false);
         } else if (latest.current.busy) {
-          cancel();
+          reset();
           raiseNotice("guard", "File analysis already in progress");
         } else {
           latest.current.launch(track.probe, settings);
         }
       } catch (error) {
-        if (generation !== generationRef.current) return;
-        cancel();
+        if (pendingRef.current !== pending) return;
+        reset();
         if (sourceToken !== getFileSourceToken()) return;
-        raiseNotice("error", `Error: ${error?.message || "File could not be opened"}`, undefined, {
-          requiresAttention: true,
-          helpTopic: "file-open-analysis",
-        });
+        raiseNotice(
+          "error",
+          `Error: ${errorMessage(error, "File could not be opened")}`,
+          undefined,
+          {
+            requiresAttention: true,
+            helpTopic: "file-open-analysis",
+          }
+        );
       }
     },
-    [cancel, getFileSourceToken, raiseNotice]
+    [getFileSourceToken, raiseNotice, reset]
   );
 
   const importFile = useCallback(
