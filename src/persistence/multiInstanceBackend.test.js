@@ -438,6 +438,113 @@ describe("multiInstanceBackend", () => {
     expect(observed.at(-1)).toBeNull();
   });
 
+  it.each([
+    { kind: "preset", id: "one", key: "plvs:presets", domain: "presets" },
+    { kind: "loudnessProfile", id: "broadcast", key: "plvs:settings", domain: "settings" },
+  ])(
+    "finishes saving the same $kind copy after a failed Workspace write",
+    async ({ kind, id, key, domain }) => {
+      const { createMultiInstanceBackend } = await import("./multiInstanceBackend.js");
+      const backend = createMultiInstanceBackend();
+      const observe = vi.fn();
+      backend.subscribeLibraryConflicts(observe);
+      const remote = { id, name: "Remote" };
+      const peerAddition = { id: "peer", name: "Peer Addition" };
+      const durable = [remote];
+      const failure = new Error("Workspace write failed");
+      const firstWrite = deferred();
+      let workspaceWriteCount = 0;
+      const collection = (documents) =>
+        kind === "preset" ? { list: documents } : { loudnessProfiles: { profiles: documents } };
+      invoke.mockImplementation(async (command, args) => {
+        if (command === "persistence_hydrate") {
+          return {
+            [domain]: collection([...durable]),
+            libraryItemRevisions: {
+              [kind]: Object.fromEntries(durable.map(({ id }) => [id, 4])),
+            },
+            libraryCollectionRevisions: { [kind]: 7 + durable.length },
+          };
+        }
+        if (command === "persistence_library_create") {
+          durable.push(args.document);
+          return { item: { id: args.id, revision: 1 }, collectionRevision: 7 + durable.length };
+        }
+        if (command === "persistence_save_domain" && ++workspaceWriteCount === 1) {
+          await firstWrite.promise;
+          throw failure;
+        }
+      });
+      backend.reportLibraryConflict(kind, { id, name: "Local Draft" });
+
+      const first = backend.resolveLibraryConflict("copy", { makeId: () => "copy-id" });
+      await vi.waitFor(() => expect(workspaceWriteCount).toBe(1));
+      const concurrent = backend.resolveLibraryConflict("copy", { makeId: () => "extra-copy" });
+      expect(concurrent).toBe(first);
+      const failed = expect(first).rejects.toBe(failure);
+      firstWrite.resolve();
+      await failed;
+      expect(observe).toHaveBeenLastCalledWith(expect.objectContaining({ kind, id }));
+
+      durable.push(peerAddition);
+      const copy = { id: "copy-id", name: "Local Draft Copy" };
+      const retryId = vi.fn(() => "extra-copy");
+      await expect(backend.resolveLibraryConflict("copy", { makeId: retryId })).resolves.toEqual(
+        copy
+      );
+      expect(retryId).not.toHaveBeenCalled();
+      expect(durable).toEqual([remote, copy, peerAddition]);
+      expect(backend.get(key)).toMatchObject(collection(durable));
+      expect(invoke).toHaveBeenLastCalledWith("persistence_save_domain", {
+        domain,
+        value: backend.get(key),
+      });
+      expect(workspaceWriteCount).toBe(2);
+      expect(observe).toHaveBeenLastCalledWith(null);
+    }
+  );
+
+  it("saves other Workspace settings after reloading a conflicting profile", async () => {
+    const { createMultiInstanceBackend } = await import("./multiInstanceBackend.js");
+    const backend = createMultiInstanceBackend();
+    const conflict = { reason: "conflict", message: "changed by another instance" };
+    const remote = { id: "broadcast", name: "Remote" };
+    const channelLabelOverrides = { 2: ["R", "L"] };
+    invoke
+      .mockRejectedValueOnce(conflict)
+      .mockResolvedValueOnce({
+        settings: { loudnessProfiles: { profiles: [remote] } },
+        libraryItemRevisions: { loudnessProfile: { broadcast: 3 } },
+        libraryCollectionRevisions: { loudnessProfile: 3 },
+      })
+      .mockResolvedValueOnce(undefined);
+    backend.set("plvs:settings", {
+      ...backend.get("plvs:settings"),
+      channelLabelOverrides,
+      loudnessProfiles: {
+        active: "profile:broadcast",
+        profiles: [{ id: remote.id, name: "Local" }],
+      },
+    });
+    await expect(backend.flush()).rejects.toBe(conflict);
+    await backend.resolveLibraryConflict("reload");
+    await backend.flush();
+
+    expect(backend.get("plvs:settings")).toMatchObject({
+      channelLabelOverrides,
+      loudnessProfiles: { active: "profile:broadcast", profiles: [remote] },
+    });
+    expect(invoke.mock.calls.map(([command]) => command)).toEqual([
+      "persistence_library_update",
+      "persistence_hydrate",
+      "persistence_save_domain",
+    ]);
+    expect(invoke).toHaveBeenLastCalledWith("persistence_save_domain", {
+      domain: "settings",
+      value: backend.get("plvs:settings"),
+    });
+  });
+
   it("retries the failed write and any later queued domains after a conflict", async () => {
     const conflict = { reason: "conflict", message: "changed by another instance" };
     invoke

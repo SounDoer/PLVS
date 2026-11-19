@@ -1,9 +1,10 @@
+use atomic_write_file::AtomicWriteFile;
 use serde::Serialize;
 use serde_json::Value;
 use sha2::{Digest, Sha256};
 use std::collections::BTreeSet;
 use std::fs;
-use std::io::{self, Read};
+use std::io::{self, Read, Write};
 use std::path::Path;
 use std::process::ExitCode;
 use std::sync::atomic::{AtomicU64, Ordering};
@@ -5690,8 +5691,10 @@ fn write_export_file(
   };
   // The swap happens only once the bytes are on disk. Taking the document out first loses the
   // export entirely on a write failure: no file, and an exit-1 envelope with no recoverable copy.
-  fs::write(Path::new(path), contents)
-    .map_err(|error| format!("Unable to write the {subject} to {path}: {error}"))?;
+  let write_error = |error| format!("Unable to write the {subject} to {path}: {error}");
+  let mut file = AtomicWriteFile::open(path).map_err(write_error)?;
+  file.write_all(contents.as_bytes()).map_err(write_error)?;
+  file.commit().map_err(write_error)?;
   result.remove(field);
   result.insert("out".to_string(), Value::String(path.to_string()));
   Ok(())
@@ -5803,15 +5806,34 @@ fn copy_visual_artifact(
     .ok_or_else(|| format!("PLVS returned a {subject} without a valid SHA-256 digest."))?
     .to_string();
 
-  let contents = fs::read(Path::new(&staged_path))
-    .map_err(|error| format!("Unable to read the staged {subject} at {staged_path}: {error}"))?;
-  if contents.len() as u64 != expected_bytes {
+  let read_error = |error| format!("Unable to read the staged {subject} at {staged_path}: {error}");
+  let write_error = |error| format!("Unable to write the {subject} to {out}: {error}");
+  let mut source = fs::File::open(&staged_path).map_err(read_error)?;
+  let mut destination = AtomicWriteFile::open(out).map_err(write_error)?;
+  let mut hasher = Sha256::new();
+  let mut bytes = 0;
+  let mut buffer = [0; 64 * 1024];
+  loop {
+    let chunk = source.read(&mut buffer).map_err(read_error)?;
+    if chunk == 0 {
+      break;
+    }
+    bytes += chunk as u64;
+    if bytes > expected_bytes {
+      break;
+    }
+    hasher.update(&buffer[..chunk]);
+    destination
+      .write_all(&buffer[..chunk])
+      .map_err(write_error)?;
+  }
+  if bytes != expected_bytes {
     return Err(format!(
-      "The staged {subject} byte count did not match: expected {expected_bytes}, found {}.",
-      contents.len()
+      "The staged {subject} byte count did not match: expected {expected_bytes}, read {bytes}."
     ));
   }
-  let actual_sha256 = Sha256::digest(&contents)
+  let actual_sha256 = hasher
+    .finalize()
     .iter()
     .map(|byte| format!("{byte:02x}"))
     .collect::<String>();
@@ -5821,10 +5843,9 @@ fn copy_visual_artifact(
     ));
   }
 
-  // Do not remove the recoverable staged path until the caller's copy has reached disk. Existing
-  // destinations are overwritten, matching the CLI's document-export behavior.
-  fs::write(Path::new(out), &contents)
-    .map_err(|error| format!("Unable to write the {subject} to {out}: {error}"))?;
+  // Keep the previous destination and recoverable staged path until verification and commit.
+  drop(source);
+  destination.commit().map_err(write_error)?;
   let artifact = report
     .result
     .as_mut()
@@ -10719,6 +10740,76 @@ mod tests {
     }
   }
 
+  #[cfg(any(target_os = "linux", target_os = "macos"))]
+  #[test]
+  fn partial_output_write_preserves_existing_files() {
+    use std::os::unix::process::CommandExt;
+    use std::process::Command;
+
+    const PROBE_DIR: &str = "PLVS_TEST_PARTIAL_CLI_WRITE_DIR";
+    let contents = [b'n'; 8192];
+    let original = [b'o'; 4096];
+    if let Some(directory) = std::env::var_os(PROBE_DIR) {
+      let directory = Path::new(&directory);
+      let export = directory.join("export.csv");
+      let staged = directory.join("staged.mp4");
+      let recording = directory.join("output.mp4");
+      let mut report = ControlReport {
+        schema_version: CLI_SCHEMA_VERSION,
+        ok: true,
+        result: Some(serde_json::json!({"csv": "n".repeat(contents.len())})),
+        error: None,
+      };
+      assert!(
+        write_export_file(&mut report, export.to_str().unwrap(), "csv", "CSV", true).is_err()
+      );
+      assert!(report.result.unwrap().get("csv").is_some());
+      assert_eq!(fs::read(export).unwrap(), original);
+      let mut report = recording_report(&staged, &contents);
+      assert!(copy_visual_artifact(&mut report, recording.to_str().unwrap(), true).is_err());
+      assert_eq!(fs::read(recording).unwrap(), original);
+      assert!(report
+        .result
+        .unwrap()
+        .pointer("/recording/artifact/stagedPath")
+        .is_some());
+      return;
+    }
+
+    let directory = tempfile::tempdir().unwrap();
+    fs::write(directory.path().join("export.csv"), original).unwrap();
+    fs::write(directory.path().join("output.mp4"), original).unwrap();
+    fs::write(directory.path().join("staged.mp4"), contents).unwrap();
+    let mut child = Command::new(std::env::current_exe().unwrap());
+    child
+      .args([
+        "--exact",
+        "cli_control::tests::partial_output_write_preserves_existing_files",
+      ])
+      .env(PROBE_DIR, directory.path());
+    // Confine the kernel's short-write fault to the test child.
+    unsafe {
+      child.pre_exec(|| {
+        libc::signal(libc::SIGXFSZ, libc::SIG_IGN);
+        let limit = libc::rlimit {
+          rlim_cur: 1024,
+          rlim_max: 1024,
+        };
+        if libc::setrlimit(libc::RLIMIT_FSIZE, &limit) == -1 {
+          return Err(io::Error::last_os_error());
+        }
+        Ok(())
+      });
+    }
+    let output = child.output().unwrap();
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    assert!(
+      output.status.success() && stdout.contains("1 passed"),
+      "{stdout}\n{}",
+      String::from_utf8_lossy(&output.stderr)
+    );
+  }
+
   #[test]
   fn visual_output_verifies_and_overwrites_before_replacing_staged_path() {
     let nonce = REQUEST_SEQUENCE.fetch_add(1, Ordering::Relaxed);
@@ -10817,6 +10908,12 @@ mod tests {
       out: Some(out.to_string_lossy().into_owned()),
     };
     let mut report = recording_report(&staged, contents);
+    fs::write(&out, b"previous recording").unwrap();
+    let mut damaged = recording_report(&staged, contents);
+    damaged.result.as_mut().unwrap()["recording"]["artifact"]["sha256"] =
+      Value::String("0".repeat(64));
+    assert_eq!(finish_visual_output(&command, &mut damaged, 0), 1);
+    assert_eq!(fs::read(&out).unwrap(), b"previous recording");
     assert_eq!(finish_visual_output(&command, &mut report, 0), 0);
     assert_eq!(fs::read(&out).unwrap(), contents);
     let artifact = &report.result.unwrap()["recording"]["artifact"];

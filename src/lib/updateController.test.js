@@ -152,6 +152,53 @@ describe("shared update controller", () => {
     expect(invoke).toHaveBeenCalledWith("update_commit_install", { token: "token" });
   });
 
+  it.each([true, false])(
+    "downloads the same version again after losing its staged package (automatic=%s)",
+    async (automatic) => {
+      const { controller, invoke, prepare } = setup();
+      await controller.setPreferences({ ...prefs, autoDownload: automatic });
+      const initial = { enabled: true, installationSupported: true, ready: a };
+      invoke.mockResolvedValueOnce(initial);
+      await controller.initialize();
+      controller.openDetails();
+
+      const message = "The staged update is damaged. Download it again.";
+      invoke.mockRejectedValueOnce(message).mockResolvedValueOnce({ ...initial, ready: null });
+      await controller.confirmInstall();
+      expect(controller.getSnapshot()).toMatchObject({
+        ready: null,
+        details: { target: a, staged: false },
+        error: message,
+      });
+      expect(prepare).not.toHaveBeenCalled();
+
+      if (automatic) await controller.check();
+      await controller.confirmInstall();
+      expect(invoke).toHaveBeenCalledWith("update_download", { candidateId: "a", automatic });
+      expect(invoke).toHaveBeenLastCalledWith("update_commit_install", { token: "token" });
+    }
+  );
+
+  it.each([a, null])(
+    "reconciles the ready package after failed cancellation (%j)",
+    async (ready) => {
+      const { controller, invoke } = setup();
+      await controller.setPreferences(prefs);
+      const initial = { enabled: true, installationSupported: true, ready: a };
+      invoke.mockResolvedValueOnce(initial);
+      await controller.initialize();
+      controller.openDetails();
+      const message = "Could not complete cancellation";
+      invoke.mockRejectedValueOnce(message).mockResolvedValueOnce({ ...initial, ready });
+      await controller.setPreferences({ ...prefs, autoDownload: false });
+      expect(controller.getSnapshot()).toMatchObject({
+        ready,
+        details: { target: a, staged: Boolean(ready) },
+        error: message,
+      });
+    }
+  );
+
   it.each(["2.0.0", "1.9.0"])(
     "suppresses only the failed target's startup offer (%s)",
     async (version) => {

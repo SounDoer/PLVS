@@ -147,6 +147,8 @@ export function createMultiInstanceBackend() {
   let writesPaused = false;
   let unreportedFailure = null;
   let pendingConflict = null;
+  let activeConflictResolution = null;
+  const committedConflictCopies = new WeakMap();
   let pendingDeleteFailure = null;
   let pendingConflictDevelopmentFixtureId = null;
   const conflictSubscribers = new Set();
@@ -561,10 +563,17 @@ export function createMultiInstanceBackend() {
   /**
    * @param {string} action
    */
-  async function resolveConflict(
+  function resolveConflict(
     action,
     { makeId = /** @type {() => string} */ (() => crypto.randomUUID()) } = {}
   ) {
+    activeConflictResolution ??= resolvePendingConflict(action, makeId).finally(() => {
+      activeConflictResolution = null;
+    });
+    return activeConflictResolution;
+  }
+
+  async function resolvePendingConflict(action, makeId) {
     if (!pendingConflict) return null;
     const conflict = pendingConflict;
     if (action !== "reload" && (action !== "copy" || conflict.operation === "delete")) {
@@ -602,43 +611,37 @@ export function createMultiInstanceBackend() {
         }
       }
     }
-    applyRemoteCollection(conflict.kind, hydrated, deleting);
+    applyRemoteCollection(conflict.kind, hydrated, deleting || action === "reload");
     if (action === "reload") {
       pendingConflict = null;
       pendingDeleteFailure = null;
       pendingConflictDevelopmentFixtureId = null;
       for (const listener of conflictSubscribers) listener(null);
-      if (deleting && hadPendingChanges && domainFor(key)) markDirty(key);
+      if (hadPendingChanges && domainFor(key)) markDirty(key);
       return null;
     }
-    const id = conflict.kind === "theme" ? `custom-${makeId()}` : makeId();
-    const document = {
-      ...conflict.document,
-      id,
-      ...(typeof conflict.document.name === "string"
-        ? { name: `${conflict.document.name} Copy` }
-        : {}),
-    };
-    const result = await invoke("persistence_library_create", {
-      kind: conflict.kind,
-      id,
-      document,
-    });
-    const documents = [...(persistedDocuments.get(conflict.kind) || []), document];
-    persistedDocuments.set(conflict.kind, clone(documents));
-    itemRevisions.get(conflict.kind)?.set(id, result.item.revision);
-    collectionRevisions.set(conflict.kind, result.collectionRevision);
-    const current = cache.get(key) || {};
-    if (conflict.kind === "preset") {
-      cache.set(key, { ...current, list: documents });
-    } else if (conflict.kind === "theme") {
-      const themes = Object.fromEntries(documents.map((item) => [item.id, item]));
-      cache.set(key, { themes, order: documents.map((item) => item.id) });
-    } else {
-      cache.set(key, {
-        ...current,
-        loudnessProfiles: { ...(current.loudnessProfiles || {}), profiles: documents },
+    let document = committedConflictCopies.get(conflict);
+    if (!document) {
+      const id = conflict.kind === "theme" ? `custom-${makeId()}` : makeId();
+      document = {
+        ...conflict.document,
+        id,
+        ...(typeof conflict.document.name === "string"
+          ? { name: `${conflict.document.name} Copy` }
+          : {}),
+      };
+      const result = await invoke("persistence_library_create", {
+        kind: conflict.kind,
+        id,
+        document,
       });
+      // The Library commit survives a later Workspace write failure. Retry that step only.
+      committedConflictCopies.set(conflict, document);
+      const documents = [...(persistedDocuments.get(conflict.kind) || []), document];
+      persistedDocuments.set(conflict.kind, clone(documents));
+      itemRevisions.get(conflict.kind)?.set(id, result.item.revision);
+      collectionRevisions.set(conflict.kind, result.collectionRevision);
+      cache.set(key, withCollection(conflict.kind, cache.get(key) || {}, documents));
     }
     const domain = domainFor(key);
     if (domain) await invoke("persistence_save_domain", { domain, value: cache.get(key) });

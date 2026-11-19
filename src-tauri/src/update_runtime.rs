@@ -6,7 +6,7 @@ use crate::{
 };
 use serde::Serialize;
 use std::{sync::Mutex, time::Duration};
-use tauri::{Emitter, Manager, State, WebviewWindow};
+use tauri::{Emitter, Manager, WebviewWindow};
 use tauri_plugin_updater::{Update, UpdaterExt};
 
 /// Build the Tauri context from one macro expansion. On macOS each expansion embeds an
@@ -206,47 +206,39 @@ fn automatic_allowed(app: &tauri::AppHandle, download: bool) -> Result<(), Strin
 }
 
 #[tauri::command]
-pub fn update_status(
+pub async fn update_status(
   window: WebviewWindow,
-  runtime: State<'_, UpdateRuntime>,
   app: tauri::AppHandle,
 ) -> Result<UpdateStatus, String> {
   if window.label() != "main" {
     return Err("Updates are owned by the main window.".into());
   }
-  let mut ready = if cfg!(feature = "preview-identity") {
-    None
+  tauri::async_runtime::spawn_blocking(move || read_update_status(&app))
+    .await
+    .map_err(|error| error.to_string())?
+}
+
+fn read_update_status(app: &tauri::AppHandle) -> Result<UpdateStatus, String> {
+  let runtime = app.state::<UpdateRuntime>();
+  let (ready, error) = if cfg!(feature = "preview-identity") || runtime.cache.ready()?.is_none() {
+    (None, None)
   } else {
-    runtime.cache.ready()?
-  };
-  let mut error = None;
-  if let Some(candidate) = ready.as_ref() {
     let updater = app.updater().map_err(|e| e.to_string())?;
-    match updater.from_manifest(candidate.manifest.clone()) {
-      Ok(Some(update)) => {
-        let verified = runtime.cache.load(&candidate.id).and_then(|(_, bytes)| {
-          if candidate.version != update.version {
-            return Err("Cached update version metadata is inconsistent.".into());
-          }
-          update.verify_cached(&bytes).map_err(|e| e.to_string())
-        });
-        if let Err(problem) = verified {
-          runtime.cache.cancel()?;
-          ready = None;
-          error = Some(problem);
-        }
+    runtime.cache.verify_ready(|candidate, bytes| {
+      let update = updater
+        .from_manifest(candidate.manifest.clone())
+        .map_err(|error| Some(error.to_string()))?
+        .ok_or(None)?;
+      if candidate.version != update.version {
+        return Err(Some(
+          "Cached update version metadata is inconsistent.".into(),
+        ));
       }
-      Ok(None) => {
-        runtime.cache.cancel()?;
-        ready = None;
-      }
-      Err(problem) => {
-        runtime.cache.cancel()?;
-        ready = None;
-        error = Some(problem.to_string());
-      }
-    }
-  }
+      update
+        .verify_cached(bytes)
+        .map_err(|error| Some(error.to_string()))
+    })?
+  };
   let mut attempt = crate::update_worker::read_attempt(runtime.cache.root())?;
   if let Some(previous) = attempt.as_mut() {
     if ready
@@ -421,7 +413,7 @@ pub fn update_cancel(window: WebviewWindow, app: tauri::AppHandle) -> Result<(),
   {
     return Err("Installation has been confirmed.".into());
   }
-  runtime.cache.cancel()?;
+  let cancelled = runtime.cache.cancel();
   if let Some((_, task)) = runtime
     .transfers
     .lock()
@@ -430,7 +422,7 @@ pub fn update_cancel(window: WebviewWindow, app: tauri::AppHandle) -> Result<(),
   {
     task.abort();
   }
-  Ok(())
+  cancelled
 }
 
 #[tauri::command]

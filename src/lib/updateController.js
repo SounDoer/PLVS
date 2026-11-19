@@ -118,12 +118,15 @@ export function createUpdateController({
     // Explicitly confirmed manual work is independent of automatic preferences.
     if (confirming || transfer?.automatic === false) return;
     cancellation ??= invoke("update_cancel")
-      .catch((error) => String(error))
-      .then((error) => {
+      .then(
+        () => ({ ready: null }),
+        async (error) => ({ ready: await readReadyAfterFailure(), error: String(error) })
+      )
+      .then(({ ready, error }) => {
         const details = state.details;
         emit({
-          ready: null,
-          details: details?.staged ? { ...details, staged: false } : details,
+          ready,
+          details: details ? { ...details, staged: details.target.id === ready?.id } : null,
           downloading: Boolean(transfer),
           downloadError: null,
           checkStatus: "idle",
@@ -134,6 +137,15 @@ export function createUpdateController({
         cancellation = null;
       });
     await cancellation;
+  }
+
+  async function readReadyAfterFailure() {
+    try {
+      // Native status verifies the staged package and clears it if it is no longer usable.
+      return (await invoke("update_status")).ready ?? null;
+    } catch {
+      return state.ready;
+    }
   }
 
   async function download(target, automatic) {
@@ -177,15 +189,17 @@ export function createUpdateController({
       const candidate = await invoke("update_check", { automatic });
       if (automatic && (requestGeneration !== generation || !preferences.autoCheck)) return;
       emit({ candidate, checkStatus: "ok" });
-      // Details frozen on a version that is not staged keep it. Details offering the staged package
-      // follow a newer version, because staging it replaces and removes that older package.
+      // An open offer follows a replacement of its staged package, or retries the same version
+      // after the package is lost. Otherwise the selected version stays fixed.
       const details = state.details;
       const supersedable =
         !details ||
         (details.origin !== "fixture" &&
-          details.staged &&
-          details.target.id === state.ready?.id &&
-          !transfer);
+          !transfer &&
+          ((details.staged && details.target.id === state.ready?.id) ||
+            (!state.ready &&
+              state.installStatus === "install-error" &&
+              details.target.version === candidate?.version)));
       // One attempt per check. Failed transfers wait for Check or the next interval.
       if (
         preferences.autoDownload &&
@@ -285,10 +299,19 @@ export function createUpdateController({
       }
       if (!ready) throw new Error("This update is no longer ready. Check again.");
       // Startup peer eligibility is checked under the native entry gate BEFORE stopping capture.
-      token = await invoke("update_prepare_install", {
-        packageId: ready.id,
-        startup: details.origin === "startup",
-      });
+      try {
+        token = await invoke("update_prepare_install", {
+          packageId: ready.id,
+          startup: details.origin === "startup",
+        });
+      } catch (error) {
+        const verified = await readReadyAfterFailure();
+        emit({
+          ready: verified,
+          details: { ...state.details, staged: state.details?.target.id === verified?.id },
+        });
+        throw error;
+      }
       operation = await prepare();
       commitAttempted = true;
       await commit(operation);

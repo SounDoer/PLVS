@@ -213,11 +213,43 @@ impl UpdateCache {
       .ready
       .filter(|r| r.id == expected_id)
       .ok_or_else(|| "This update is no longer ready. Reopen update details.".to_string())?;
-    let bytes = fs::read(self.package_path(&ready.id)?).map_err(io_error)?;
-    if digest(&bytes) != ready.id {
+    let bytes = self.read_package(&ready.id)?;
+    Ok((ready, bytes))
+  }
+
+  fn read_package(&self, id: &str) -> Result<Vec<u8>, String> {
+    let bytes = fs::read(self.package_path(id)?).map_err(io_error)?;
+    if digest(&bytes) != id {
       return Err("The staged update is damaged. Download it again.".to_string());
     }
-    Ok((ready, bytes))
+    Ok(bytes)
+  }
+
+  /// Verify and clear a rejected package under one lock. A redownload may publish the exact same
+  /// bytes and ID after this check, without losing the new copy or invalidating its generation.
+  pub fn verify_ready(
+    &self,
+    verify: impl FnOnce(&ReadyUpdate, &[u8]) -> Result<(), Option<String>>,
+  ) -> Result<(Option<ReadyUpdate>, Option<String>), String> {
+    let _lock = self.lock()?;
+    let mut state = self.read()?;
+    let Some(ready) = &state.ready else {
+      return Ok((None, None));
+    };
+    if let Err(problem) = self
+      .read_package(&ready.id)
+      .map_err(Some)
+      .and_then(|bytes| verify(ready, &bytes))
+    {
+      let path = self.package_path(&ready.id);
+      state.ready = None;
+      self.save(&state)?;
+      if let Ok(path) = path {
+        let _ = fs::remove_file(path);
+      }
+      return Ok((None, problem));
+    }
+    Ok((state.ready, None))
   }
 
   pub fn cancel(&self) -> Result<(), String> {
@@ -304,6 +336,33 @@ mod tests {
       .unwrap();
     assert!(reopened.load(&first.id).is_err());
     assert_eq!(reopened.load(&second.id).unwrap().1, b"second");
+  }
+
+  #[test]
+  fn discarding_a_damaged_package_keeps_inflight_and_replacement_downloads() {
+    let (_temp, cache) = cache();
+    let generation = cache.generation().unwrap();
+    let damaged = cache
+      .publish_verified(generation, "2.0.0".into(), Value::Null, b"first")
+      .unwrap()
+      .unwrap();
+    let package = cache.package_path(&damaged.id).unwrap();
+    fs::remove_file(&package).unwrap();
+    assert!(cache.load(&damaged.id).is_err());
+    let (ready, error) = cache
+      .verify_ready(|_, _| panic!("missing package"))
+      .unwrap();
+    assert!(ready.is_none());
+    assert!(error.is_some());
+    let replacement = cache
+      .publish_verified(generation, "2.0.0".into(), Value::Null, b"first")
+      .unwrap()
+      .unwrap();
+    assert_eq!(replacement.id, damaged.id);
+    let (ready, error) = cache.verify_ready(|_, _| Ok(())).unwrap();
+    assert_eq!(ready.unwrap().id, replacement.id);
+    assert!(error.is_none());
+    assert!(cache.load(&replacement.id).is_ok());
   }
 
   #[test]

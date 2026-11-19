@@ -183,16 +183,15 @@ impl ArtifactStore {
     height: u32,
     created_at: SystemTime,
   ) -> io::Result<ArtifactMetadata> {
-    let (bytes, sha256) = file_identity(&pending.temporary_path)?;
-    fs::rename(&pending.temporary_path, &pending.final_path)?;
-    {
-      let mut protected = self
-        .protected
-        .lock()
-        .map_err(|_| io::Error::other("artifact protection lock poisoned"))?;
-      protected.remove(&pending.temporary_path);
-      protected.insert(pending.final_path.clone());
+    if fs::metadata(&pending.temporary_path)?.len() > MAX_COMPLETED_BYTES {
+      return Err(io::Error::other(
+        "visual capture exceeds the 4 GiB staging limit",
+      ));
     }
+    let (bytes, sha256) = file_identity(&pending.temporary_path)?;
+    let remaining_bytes = MAX_COMPLETED_BYTES
+      .checked_sub(bytes)
+      .ok_or_else(|| io::Error::other("visual capture exceeds the 4 GiB staging limit"))?;
     let metadata = ArtifactMetadata {
       artifact_id: pending.artifact_id.clone(),
       kind: pending.kind,
@@ -205,8 +204,15 @@ impl ArtifactStore {
       created_at: format_time(created_at)?,
       expires_at: format_time(created_at + RETENTION)?,
     };
-    drop(pending);
-    self.cleanup(SystemTime::now())?;
+    OpenOptions::new()
+      .write(true)
+      .open(&pending.temporary_path)?
+      .set_modified(created_at)?;
+    // Serialize eviction and publication across workbenches. The new file is still temporary
+    // while we make room for it, so it cannot be selected for eviction by its own publication.
+    let _lease = self.lock_completed_artifacts()?;
+    self.cleanup_completed(SystemTime::now(), remaining_bytes)?;
+    fs::rename(&pending.temporary_path, &pending.final_path)?;
     Ok(metadata)
   }
 
@@ -224,13 +230,29 @@ impl ArtifactStore {
   }
 
   pub fn cleanup(&self, now: SystemTime) -> io::Result<()> {
+    let _lease = self.lock_completed_artifacts()?;
+    self.cleanup_completed(now, MAX_COMPLETED_BYTES)
+  }
+
+  fn lock_completed_artifacts(&self) -> io::Result<File> {
+    let lease = OpenOptions::new()
+      .read(true)
+      .write(true)
+      .create(true)
+      .truncate(false)
+      .open(self.root.join("completed-artifacts.lock"))?;
+    lease.lock()?;
+    Ok(lease)
+  }
+
+  fn cleanup_completed(&self, now: SystemTime, maximum_bytes: u64) -> io::Result<()> {
     let protected = self
       .protected
       .lock()
       .map_err(|_| io::Error::other("artifact protection lock poisoned"))?
       .clone();
     let entries = self.completed_entries(&protected)?;
-    for path in cleanup_candidates(&entries, now, MAX_COMPLETED_BYTES) {
+    for path in cleanup_candidates(&entries, now, maximum_bytes) {
       self.remove_contained_file(&path)?;
     }
     Ok(())
@@ -353,7 +375,7 @@ impl ArtifactStore {
     }
   }
 
-  /// Cleanup runs after every capture, so a permanently rejected entry is reported once per
+  /// Cleanup runs on every publication, so a permanently rejected entry is reported once per
   /// path. A poisoned lock skips the deduplication and warns rather than failing cleanup.
   fn should_warn(&self, path: &Path) -> bool {
     match self.warned.lock() {
@@ -563,6 +585,67 @@ mod tests {
     assert!(!temporary.exists());
     assert!(metadata.staged_path.exists());
     assert!(store.protected.lock().unwrap().is_empty());
+  }
+
+  #[test]
+  fn a_newly_published_recording_gets_a_fresh_retention_window() {
+    let parent = TestDirectory::new();
+    let store = ArtifactStore::initialize(&parent.0).unwrap();
+    let now = SystemTime::now();
+    let pending = store.begin(ArtifactKind::Recording).unwrap();
+    fs::write(pending.path(), b"recording").unwrap();
+    File::options()
+      .write(true)
+      .open(pending.path())
+      .unwrap()
+      .set_modified(now - 2 * RETENTION)
+      .unwrap();
+
+    let artifact = store.publish_blocking(pending, 2, 2, now).unwrap();
+    let peer = ArtifactStore::initialize(&parent.0).unwrap();
+    peer
+      .cleanup(now + RETENTION - Duration::from_secs(1))
+      .unwrap();
+    assert_eq!(fs::read(&artifact.staged_path).unwrap(), b"recording");
+    peer
+      .cleanup(now + RETENTION + Duration::from_secs(1))
+      .unwrap();
+    assert!(!artifact.staged_path.exists());
+  }
+
+  #[cfg(unix)]
+  #[test]
+  fn capacity_makes_room_before_publication_and_rejects_an_oversized_capture() {
+    let parent = TestDirectory::new();
+    let store = ArtifactStore::initialize(&parent.0).unwrap();
+    let old = store.root.join("art-previous.mp4");
+    File::create(&old)
+      .unwrap()
+      .set_len(MAX_COMPLETED_BYTES)
+      .unwrap();
+    let oversized = store.begin(ArtifactKind::Recording).unwrap();
+    File::options()
+      .write(true)
+      .open(oversized.path())
+      .unwrap()
+      .set_len(MAX_COMPLETED_BYTES + 1)
+      .unwrap();
+    let temporary = oversized.path().to_owned();
+    let destination = oversized.final_path.clone();
+    assert!(store
+      .publish_blocking(oversized, 1, 1, SystemTime::now())
+      .is_err());
+    assert!(old.is_file());
+    assert!(!temporary.exists());
+    assert!(!destination.exists());
+
+    let pending = store.begin(ArtifactKind::Recording).unwrap();
+    fs::write(pending.path(), b"fits").unwrap();
+    let artifact = store
+      .publish_blocking(pending, 1, 1, SystemTime::now())
+      .unwrap();
+    assert!(!old.exists());
+    assert_eq!(fs::read(artifact.staged_path).unwrap(), b"fits");
   }
 
   #[test]

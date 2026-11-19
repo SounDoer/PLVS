@@ -129,8 +129,11 @@ version in the background. Preferences are shared across workbenches and are not
 configuration profile.
 
 Turning automatic downloading off cancels background work and removes the staged update. If update
-details are open, **Update and Restart** downloads the package again on request. A manual update
-you have explicitly confirmed is separate from this preference. Installed Windows, macOS
+details are open, **Update and Restart** downloads the package again on request. If cancellation
+reports an error, PLVS checks whether the package is still ready to install. When installation finds
+a missing or damaged package, **Update and Restart** can download it again. With **Auto Download
+Updates** on, **Check** can also download the same version again. A manual update you have
+explicitly confirmed is separate from this preference. Installed Windows, macOS
 and stable Ubuntu `.deb` copies support verified local staging; Portable copies use the
 release-page download instead.
 Preview does not offer the updater. On macOS, automatic updates are unavailable on a read-only
@@ -377,8 +380,10 @@ Profile, or Preset does not silently replace the snapshot already active in anot
 workbench keeps measuring with its current snapshot until you explicitly apply a selection.
 If two workbenches edit the same Library item, the second save never overwrites the first silently:
 choose **Reload** for the committed version or **Save as Copy** to preserve the local edit under a
-new ID. An open Theme or Loudness Profile editor keeps its local draft and shows a warning as soon
-as PLVS observes that its saved source changed elsewhere.
+new ID. If saving reports an error after creating the copy, press **Save as Copy** again to finish
+saving that same copy. An open Theme or Loudness Profile editor keeps its local draft and shows a
+warning as soon as PLVS observes that its saved source changed elsewhere. **Reload** preserves
+other pending Workspace settings, such as custom channel names.
 If an item changes while you are deleting it, choose **Reload** to see the saved version before
 deciding whether to delete it again.
 
