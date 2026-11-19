@@ -3,7 +3,7 @@
 use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
 
-use tauri::{AppHandle, Emitter, State};
+use tauri::{AppHandle, Emitter, Manager, State};
 
 use crate::audio::capture::AudioCapture;
 use crate::audio::cpal_backend;
@@ -652,6 +652,10 @@ pub fn audio_stop(app: AppHandle, state: State<'_, AppState>) -> Result<(), Stri
       .source
       .lock()
       .map_err(|_| "state lock poisoned".to_string())?;
+    // Live shutdown can arrive after File Mode has already started a different session.
+    if matches!(*source, EngineSource::File(_)) {
+      return Ok(());
+    }
     *source = EngineSource::Stopped;
   }
   {
@@ -674,10 +678,36 @@ pub fn audio_stop(app: AppHandle, state: State<'_, AppState>) -> Result<(), Stri
 }
 
 #[tauri::command]
-pub async fn file_analysis_probe(path: String) -> Result<FileAnalysisProbeResult, String> {
-  tauri::async_runtime::spawn_blocking(move || crate::file_analysis::probe::probe_file(path))
-    .await
-    .map_err(|error| error.to_string())?
+pub fn file_analysis_reserve_probe(
+  probes: State<'_, crate::file_analysis::probe::FileProbes>,
+) -> Result<u32, String> {
+  probes.reserve()
+}
+
+#[tauri::command]
+pub fn file_analysis_cancel_probe(
+  probe_id: u32,
+  probes: State<'_, crate::file_analysis::probe::FileProbes>,
+) -> Result<(), String> {
+  probes.cancel(probe_id)
+}
+
+#[tauri::command]
+pub async fn file_analysis_probe(
+  app: AppHandle,
+  path: String,
+  probe_id: Option<u32>,
+) -> Result<FileAnalysisProbeResult, String> {
+  tauri::async_runtime::spawn_blocking(move || {
+    if let Some(id) = probe_id {
+      return app
+        .state::<crate::file_analysis::probe::FileProbes>()
+        .run(id, std::path::Path::new(&path));
+    }
+    crate::file_analysis::probe::probe_file(path)
+  })
+  .await
+  .map_err(|error| error.to_string())?
 }
 
 #[tauri::command]

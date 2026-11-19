@@ -153,7 +153,8 @@ The queue state exposes transient numeric item IDs, the current item, whether th
 and available tracks for items waiting for track selection. Completed and running analysis results
 are available from Transport inspection using their File session IDs.
 
-Choosing a track appends the item to the queue tail. Stop targets the current queue item. Cancel
+Choosing a track appends the item to the queue tail. Stop targets the current queue item, including
+its initial file probe. Cancel
 retains the interrupted and queued work for Resume. Resume restarts the interrupted file from the
 beginning and uses each item's original settings. Successful results, individually stopped files
 and files awaiting track selection retain their existing behavior.

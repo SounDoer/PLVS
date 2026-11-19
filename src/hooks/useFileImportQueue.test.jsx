@@ -1,10 +1,13 @@
 /** @vitest-environment jsdom */
 import { act, renderHook, waitFor } from "@testing-library/react";
 import { beforeEach, expect, it, vi } from "vitest";
-import { probeFileAnalysis } from "../ipc/commands.js";
+import { startFileProbe } from "../ipc/commands.js";
 import { useFileImportQueue } from "./useFileImportQueue.js";
 
-vi.mock("../ipc/commands.js", () => ({ probeFileAnalysis: vi.fn() }));
+vi.mock("../ipc/commands.js", () => ({ startFileProbe: vi.fn() }));
+
+const probeFileAnalysis = vi.fn();
+const cancelProbe = vi.fn();
 
 function probe(path, trackCount = 1) {
   const audioTracks = Array.from({ length: trackCount }, (_, index) => ({ index }));
@@ -46,8 +49,14 @@ function mountQueue(files = []) {
 }
 
 beforeEach(() => {
-  vi.mocked(probeFileAnalysis).mockReset();
-  vi.mocked(probeFileAnalysis).mockImplementation(async (path) => probe(path));
+  probeFileAnalysis.mockReset();
+  probeFileAnalysis.mockImplementation(async (path) => probe(path));
+  cancelProbe.mockReset();
+  cancelProbe.mockResolvedValue(undefined);
+  vi.mocked(startFileProbe).mockImplementation((path) => ({
+    result: probeFileAnalysis(path),
+    cancel: cancelProbe,
+  }));
 });
 
 it("drops the batch session ID after its result is removed", async () => {
@@ -129,23 +138,49 @@ it("stops one running item and cancels the rest only on Cancel Batch", async () 
   expect(begin).toHaveBeenCalledTimes(2);
 });
 
-it("discards a canceled probe before starting the next item", async () => {
-  let completeProbe;
+it("cancels the native probe before starting the next item", async () => {
+  let cancelResult;
   vi.mocked(probeFileAnalysis).mockImplementationOnce(
     () =>
-      new Promise((resolve) => {
-        completeProbe = resolve;
+      new Promise((_resolve, reject) => {
+        cancelResult = reject;
       })
   );
+  cancelProbe.mockImplementationOnce(async () => cancelResult(new Error("canceled")));
   const { result, begin } = mountQueue();
   act(() => result.current.enqueue(["one.wav", "two.wav"]));
   await waitFor(() => expect(result.current.probing).toBe(true));
   await act(async () => result.current.stopCurrent());
-  await act(async () => completeProbe(probe("one.wav")));
+  expect(cancelProbe).toHaveBeenCalledOnce();
   await waitFor(() =>
     expect(begin).toHaveBeenCalledWith("two.wav", {}, probe("two.wav"), null, true)
   );
   expect(begin).toHaveBeenCalledTimes(1);
+  expect(result.current.snapshot.items.find(({ path }) => path === "one.wav")?.state).toBe(
+    "canceled"
+  );
+});
+
+it("queues explicit retries for distinct tracks of the same file", () => {
+  const source = probe("movie.mov", 2);
+  const sessions = source.audioTracks.map((selectedTrack) => ({
+    id: `session-${selectedTrack.index}`,
+    path: source.path,
+    metadata: { ...source, selectedTrack },
+  }));
+  const { result, rerender } = mountQueue(sessions);
+  rerender({ busy: true });
+  act(() => {
+    result.current.retrySession(sessions[0]);
+    result.current.retrySession(sessions[1]);
+    result.current.retrySession(sessions[0]);
+  });
+  expect(
+    result.current.snapshot.items.map(({ sessionId, trackIndex }) => [sessionId, trackIndex])
+  ).toEqual([
+    ["session-0", 0],
+    ["session-1", 1],
+  ]);
 });
 
 it("resumes the interrupted file and pending files in order with their original settings", async () => {

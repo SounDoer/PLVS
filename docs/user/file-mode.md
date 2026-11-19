@@ -48,10 +48,12 @@ file to resume following the queue.
   successful result remains available for inspection and export.
 - **Stop** on the current row stops that file and the queue continues. **Cancel Batch…** stops the
   batch and cancels pending files after confirmation. Completed results and files waiting for track
-  selection stay in **Files**.
+  selection stay in **Files**. Both actions also stop the initial file probe if analysis has not
+  started.
 - **Resume Batch** restarts the interrupted file from the beginning and continues the remaining
   files in order using their original queued settings. Files skipped with **Stop** can be added
-  back individually with **Add to Queue**, or retried when the queue is idle.
+  back individually with **Add to Queue**, or retried when the queue is idle. Different audio tracks
+  from the same file can each be added for retry.
 
 **Export Statistics…** is available as soon as there is a successful result. It defaults to all
 successful results in the session, including results from earlier imports.

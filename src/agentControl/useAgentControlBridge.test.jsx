@@ -288,6 +288,7 @@ function request(method, params = {}, id = "req-1") {
  *   agentDeviceLive?: any,
  *   previewAgentDevice?: (...args: any[]) => any,
  *   commitAgentDevice?: (...args: any[]) => any,
+ *   retryAgentDevicePersistence?: (...args: any[]) => any,
  *   beginAgentDeviceRestart?: (...args: any[]) => any,
  *   deviceRuntimeUnavailable?: boolean,
  *   onDeviceState?: (...args: any[]) => any,
@@ -356,6 +357,7 @@ function Harness({
   agentDeviceLive = deviceLiveStopped,
   previewAgentDevice,
   commitAgentDevice,
+  retryAgentDevicePersistence,
   beginAgentDeviceRestart,
   deviceRuntimeUnavailable = false,
   onDeviceState = () => {},
@@ -590,6 +592,7 @@ function Harness({
       commitSelection: commitAgentDevice
         ? (deviceId) => commitAgentDevice(deviceId, { setDeviceState, setDeviceLiveState })
         : async (deviceId) => setDeviceState((current) => ({ ...current, requestedId: deviceId })),
+      retrySelectionPersistence: retryAgentDevicePersistence,
       beginRestart: beginAgentDeviceRestart
         ? () => beginAgentDeviceRestart({ setDeviceState, setDeviceLiveState })
         : () => {
@@ -1934,6 +1937,36 @@ describe("useAgentControlBridge", () => {
       expect(preview).not.toHaveBeenCalled();
       expect(commit).not.toHaveBeenCalled();
       expect(beginRestart).not.toHaveBeenCalled();
+    });
+
+    it("allows an explicit same-device selection to retry saving without changing revision", async () => {
+      const retry = vi
+        .fn()
+        .mockRejectedValueOnce(
+          Object.assign(new Error("disk full"), {
+            stateCommitted: true,
+          })
+        )
+        .mockResolvedValue(undefined);
+      mount({
+        agentDevice: { ...structuredClone(deviceSnapshot), requestedId: DEVICE_INPUT_ID },
+        retryAgentDevicePersistence: retry,
+      });
+      await waitUntilReady();
+      let sequence = 0;
+      const select = (params = {}) =>
+        send(
+          request(
+            "device.select",
+            { deviceId: DEVICE_INPUT_ID, expectedGeneration: 1, ...params },
+            `device-retry-${++sequence}`
+          )
+        );
+      await select({ dryRun: true });
+      expect(retry).not.toHaveBeenCalled();
+      expect((await select()).error?.data).toMatchObject({ reason: "persistenceFailed" });
+      expect((await select()).result).toMatchObject({ changed: false, revision: 0 });
+      expect(retry.mock.calls).toEqual([[DEVICE_INPUT_ID], [DEVICE_INPUT_ID]]);
     });
 
     it("waits for real running restart readiness before success", async () => {

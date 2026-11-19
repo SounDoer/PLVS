@@ -14,7 +14,23 @@ function liveSnapshotTimeMs({ elapsedMs = 0, selectedOffset, selectedSnapshotTim
   return Math.max(0, elapsedMs - selectedOffset * 1000);
 }
 
-function deriveLiveState({ running, selectedOffset = -1, elapsedMs = 0, selectedSnapshotTimeMs }) {
+function deriveLiveState({
+  running,
+  liveLifecycle,
+  selectedOffset = -1,
+  elapsedMs = 0,
+  selectedSnapshotTimeMs,
+}) {
+  if (liveLifecycle === "stopping") {
+    return {
+      sourceLabel: "Live",
+      statusLabel: "Stopping…",
+      actionLabel: "STOP",
+      chromeState: "live",
+      actionKind: "stopLive",
+      primaryActionDisabled: true,
+    };
+  }
   if (selectedOffset >= 0) {
     return {
       sourceLabel: "Live",

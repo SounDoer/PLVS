@@ -113,7 +113,8 @@ selection rather than retrying blindly.
 
 A no-op returns `changed: false` without persistence, restart, or revision increment. An effective
 stopped selection is persisted through the same owner as the GUI and returns only after the new
-selection is observable and durable.
+selection is observable and durable. If saving the current selection previously failed, selecting
+it again retries the write without restarting Live or advancing the revision.
 
 ## Live restart and dry-run
 

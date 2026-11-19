@@ -163,6 +163,7 @@ export function AgentControlBridge() {
     captureDeviceId,
     previewSelection,
     commitCaptureDevice,
+    retryCaptureDevicePersistence,
   } = useSource();
   const { beginDeviceRestartForControl } = meterRuntime;
   const {
@@ -219,6 +220,7 @@ export function AgentControlBridge() {
       },
       previewSelection,
       commitSelection: commitCaptureDevice,
+      retrySelectionPersistence: retryCaptureDevicePersistence,
       beginRestart: beginDeviceRestartForControl,
       runtimeUnavailable: updateBusy,
     }),
@@ -227,6 +229,7 @@ export function AgentControlBridge() {
       beginDeviceRestartForControl,
       captureDeviceId,
       commitCaptureDevice,
+      retryCaptureDevicePersistence,
       meterRuntime.liveDeviceTransition,
       meterRuntime.liveLifecycle,
       meterRuntime.liveResolvedDeviceId,

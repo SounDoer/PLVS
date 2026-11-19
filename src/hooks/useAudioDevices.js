@@ -83,6 +83,7 @@ export function useAudioDevices({
   const selectionSequenceRef = useRef(0);
   const userPreviewRef = useRef(null);
   const pendingSaveRef = useRef(Promise.resolve());
+  const savedDeviceIdRef = useRef(snapshot.requestedId);
   const liveLifecycleRef = useRef(liveLifecycle);
   const mountedRef = useRef(true);
 
@@ -109,25 +110,26 @@ export function useAudioDevices({
       if (!mountedRef.current || sequence !== selectionSequenceRef.current) {
         return { changed: false, requestedId: current.requestedId };
       }
-      if (current.requestedId === nextId) {
-        if (options.migrationState && current.migrationState !== null) {
-          updateSnapshot((latest) => ({ ...latest, migrationState: null }));
-        }
-        return { changed: false, requestedId: nextId };
+      const changed = current.requestedId !== nextId;
+      if (changed) {
+        publish({
+          ...current,
+          requestedId: nextId,
+          migrationState: options.migrationState ?? null,
+        });
       }
-      publish({
-        ...current,
-        requestedId: nextId,
-        migrationState: options.migrationState ?? null,
+      const saved = pendingSaveRef.current.then(async () => {
+        if (savedDeviceIdRef.current === nextId) return;
+        await saveCaptureDeviceId(nextId);
+        savedDeviceIdRef.current = nextId;
       });
-      const saved = pendingSaveRef.current.then(() => saveCaptureDeviceId(nextId));
       pendingSaveRef.current = saved.catch(() => {});
       try {
         await saved;
-        if (snapshotRef.current.requestedId === nextId) {
+        if (snapshotRef.current.requestedId === nextId && snapshotRef.current.migrationState) {
           updateSnapshot((latest) => ({ ...latest, migrationState: null }));
         }
-        return { changed: true, requestedId: nextId };
+        return { changed, requestedId: nextId };
       } catch (error) {
         if (snapshotRef.current.requestedId === nextId) {
           updateSnapshot((latest) => ({
@@ -145,6 +147,14 @@ export function useAudioDevices({
       }
     },
     [publish, updateSnapshot]
+  );
+
+  const retryCaptureDevicePersistence = useCallback(
+    (/** @type {string} */ id) => {
+      if (snapshotRef.current.requestedId !== id || savedDeviceIdRef.current === id) return;
+      return commitCaptureDevice(id, { selectionSequence: selectionSequenceRef.current });
+    },
+    [commitCaptureDevice]
   );
 
   const previewSelection = useCallback(async (/** @type {string} */ deviceId) => {
@@ -333,6 +343,7 @@ export function useAudioDevices({
     void loadCaptureDeviceId().then((requestedId) => {
       if (!cancelled && mountedRef.current && sequence === selectionSequenceRef.current) {
         const loadedId = requestedId || "default";
+        savedDeviceIdRef.current = loadedId;
         updateSnapshot((current) =>
           current.requestedId === loadedId
             ? current
@@ -439,6 +450,7 @@ export function useAudioDevices({
     safeAudioDeviceId,
     selectCaptureDevice,
     commitCaptureDevice,
+    retryCaptureDevicePersistence,
     setCaptureDeviceIdAndPersist: selectCaptureDevice,
     previewSelection,
     refreshInventory,

@@ -86,7 +86,6 @@ export function useAudioEngine({
   const { running, lifecycle, halt, markStarted, markStopped, markStopFailed, recordAudioDrop } =
     transport;
   const stopInFlightRef = useRef(Promise.resolve());
-  const stoppedAudioRef = useRef(null);
   const {
     frameRef,
     selectedOffsetRef,
@@ -131,19 +130,8 @@ export function useAudioEngine({
     setShowClock?.(true);
   };
 
-  /**
-   * Start/stop native or browser audio capture. Dependency list is intentionally narrow:
-   * - Capture lifecycle, Source selection and its availability/format, and recovery drive
-   *   native engine transitions. History capacities are frontend retention and update
-   *   through refs without interrupting native measurement.
-   * - All `*Ref` arguments are mutable boxes read inside the effect; their **identities** are
-   *   stable (useRef), and the effect reads `.current` on each run — listing them would
-   *   not change behavior but would force redundant teardown/restart.
-   * - `raiseNotice`, `setRunning`, etc. are React state setters with stable identity; including
-   *   them is redundant. The `display` wrapper object is a fresh literal each render — only its
-   *   identity-stable fields are read here, so it must not be listed either. If a future caller passed an unstable inline setter, stale closures
-   *   would be a bug in the caller, not fixed by widening this array.
-   */
+  // Only capture, source, format, and recovery changes should restart the native stream.
+  // History capacities and capture settings are read from refs without restarting this effect.
   // `defaultSampleRateRef` may be a ref lifted from the parent (shared with the file-analysis
   // engine); writing its `.current` inside the effect is the intended ref-box mutation, so the
   // immutability rule is disabled here alongside exhaustive-deps.
@@ -151,28 +139,34 @@ export function useAudioEngine({
   useEffect(() => {
     if (!running) {
       const stopResult = stopInFlightRef.current;
-      stopInFlightRef.current = Promise.resolve();
-      if (audioRef.current) {
-        try {
-          audioRef.current.stream?.getTracks()?.forEach((t) => t.stop());
-        } catch (_) {}
-        try {
-          audioRef.current.ctx?.close();
-        } catch (_) {}
-      }
+      let mounted = true;
       void stopResult
         .then(() => {
-          audioRef.current = null;
+          if (!mounted) return;
+          if (audioRef.current?.mode === "tauri") audioRef.current = null;
           if (lifecycle !== "error") markStopped?.();
         })
-        .catch((error) => markStopFailed?.(error));
-      return;
+        .catch((error) => {
+          if (mounted) markStopFailed?.(error);
+        });
+      return () => {
+        mounted = false;
+      };
     }
     if (isTauri() && audioRef.current?.mode === "tauri" && !captureDeviceUnavailable) {
       clearLocalMeterStateForRestart();
     }
     let mounted = true;
     let disconnected = false;
+    let nativeStart = null;
+    const unsubs = [];
+    const releaseListeners = () => {
+      for (const unlisten of unsubs.splice(0)) {
+        try {
+          unlisten();
+        } catch (_) {}
+      }
+    };
     const stopForDisconnectedSource = () => {
       disconnected = true;
       halt(new Error("Source Disconnected"));
@@ -191,9 +185,7 @@ export function useAudioEngine({
     }
     const init = async () => {
       try {
-        const stopResult = stopInFlightRef.current;
-        stopInFlightRef.current = Promise.resolve();
-        await stopResult;
+        await stopInFlightRef.current;
         if (!mounted) return;
         if (isTauri()) {
           const applicationId = /^app-[0-9a-f]{32}$/.test(captureDeviceId) ? captureDeviceId : null;
@@ -225,7 +217,6 @@ export function useAudioEngine({
             engineDeviceId = resolvedDevice.id;
           }
 
-          const unsubs = [];
           const { applyFrame: baseApply } = buildTauriFrameApply({
             histMaxSamples: histMaxSamplesRef,
             visualMaxSamples: visualMaxSamplesRef,
@@ -281,9 +272,7 @@ export function useAudioEngine({
             );
           } catch (_) {}
 
-          const releaseListeners = () => {
-            for (const u of unsubs.splice(0)) u();
-          };
+          if (!mounted || disconnected) return;
           // Subscribed before start: a capture can fail right after `audio_start` returns, or
           // later (stall, device loss). Without this the UI keeps showing LIVE over a frozen meter.
           unsubs.push(
@@ -315,19 +304,30 @@ export function useAudioEngine({
                     ? "system-output-speaker-layout"
                     : "audio-capture",
               });
-            }),
+            })
+          );
+          if (!mounted || disconnected) {
+            releaseListeners();
+            return;
+          }
+          unsubs.push(
             await onEngineBackpressure((payload) => {
               if (mounted) recordAudioDrop?.(payload?.droppedChunks);
             })
           );
 
+          if (!mounted || disconnected) {
+            releaseListeners();
+            return;
+          }
           measurementOwner?.beginSession();
           try {
-            await startAudioCapture({
+            nativeStart = startAudioCapture({
               deviceId: engineDeviceId,
               ...(applicationId ? { applicationId } : {}),
               onFrame: applyFrame,
             });
+            await nativeStart;
           } catch (error) {
             releaseListeners();
             measurementOwner?.abortSession();
@@ -348,9 +348,10 @@ export function useAudioEngine({
         setSelectedOffset(-1);
         raiseNotice(
           "error",
-          "Error: Browser preview: metering runs in the desktop app (Rust DSP). Use `npm run tauri dev`."
+          "Error: Browser preview: metering runs in the desktop app. Use `npm run desktop:dev`."
         );
       } catch (err) {
+        releaseListeners();
         if (!mounted || disconnected) return;
         halt(err);
         setSelectedOffset(-1);
@@ -363,23 +364,18 @@ export function useAudioEngine({
     init();
     return () => {
       mounted = false;
-      const currentAudio = audioRef.current;
-      if (currentAudio?.mode === "tauri" && stoppedAudioRef.current !== currentAudio) {
-        stoppedAudioRef.current = currentAudio;
-        stopInFlightRef.current = Promise.resolve(stopAudioCapture());
-        for (const u of currentAudio.unsubs || []) {
-          try {
-            u();
-          } catch (_) {}
-        }
-      }
-      if (currentAudio) {
-        try {
-          currentAudio.stream?.getTracks()?.forEach((t) => t.stop());
-        } catch (_) {}
-        try {
-          currentAudio.ctx?.close();
-        } catch (_) {}
+      releaseListeners();
+      if (nativeStart) {
+        // A stop or replacement must wait for this exact native start, even before it is visible.
+        const stopped = nativeStart.then(
+          () => stopAudioCapture(),
+          () => {}
+        );
+        stopInFlightRef.current = stopped;
+        const releaseBarrier = () => {
+          if (stopInFlightRef.current === stopped) stopInFlightRef.current = Promise.resolve();
+        };
+        void stopped.then(releaseBarrier, releaseBarrier);
       }
     };
   }, [

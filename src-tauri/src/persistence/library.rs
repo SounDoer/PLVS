@@ -5,7 +5,9 @@ use std::{
   time::{Duration, Instant},
 };
 
-use rusqlite::{params, Connection, OptionalExtension, Transaction, TransactionBehavior};
+use rusqlite::{
+  params, Connection, OpenFlags, OptionalExtension, Transaction, TransactionBehavior,
+};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use sha2::{Digest, Sha256};
@@ -64,6 +66,10 @@ pub struct LibraryRepository {
 }
 
 impl LibraryRepository {
+  fn database_path(identity_root: &Path) -> PathBuf {
+    identity_root.join("shared").join("library.sqlite3")
+  }
+
   pub fn open(identity_root: &Path) -> Result<Self, LibraryError> {
     let shared_dir = identity_root.join("shared");
     fs::create_dir_all(&shared_dir).map_err(|error| {
@@ -72,7 +78,7 @@ impl LibraryRepository {
       ))
     })?;
     let repository = Self {
-      database_path: shared_dir.join("library.sqlite3"),
+      database_path: Self::database_path(identity_root),
     };
     let connection = repository
       .connection()
@@ -697,8 +703,29 @@ impl LibraryRepository {
     &self,
     key: &str,
   ) -> Result<Option<GlobalPreference>, LibraryError> {
+    Self::query_global_preference(&self.connection()?, key)
+  }
+
+  pub(crate) fn read_existing_global_preference(
+    identity_root: &Path,
+    key: &str,
+  ) -> Result<Option<GlobalPreference>, LibraryError> {
+    let mut connection = Connection::open_with_flags(
+      Self::database_path(identity_root),
+      OpenFlags::SQLITE_OPEN_READ_ONLY,
+    )
+    .map_err(map_sqlite_error)?;
+    connection
+      .busy_handler(Some(wait_while_busy))
+      .map_err(map_sqlite_error)?;
+    Self::query_global_preference(&connection, key)
+  }
+
+  fn query_global_preference(
+    connection: &Connection,
+    key: &str,
+  ) -> Result<Option<GlobalPreference>, LibraryError> {
     validate_key(key, "Global preference key")?;
-    let connection = self.connection()?;
     let stored = connection
       .query_row(
         "SELECT revision, value_json FROM global_preferences WHERE preference_key = ?1",

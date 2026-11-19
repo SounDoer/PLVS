@@ -18,6 +18,7 @@ import {
   getVisualCaptureCapabilities,
   listCaptureApplications,
   probeFileAnalysis,
+  startFileProbe,
   getDockState,
   setDialogueGating,
   setDialogueVadEngine,
@@ -43,6 +44,39 @@ import {
 
 beforeEach(() => {
   invoke.mockReset();
+});
+
+it("targets the reserved native probe even if cancel is requested immediately", async () => {
+  let reserve = (_probeId) => {};
+  let finish = () => {};
+  invoke.mockReturnValueOnce(
+    new Promise((resolve) => {
+      reserve = resolve;
+    })
+  );
+  invoke.mockReturnValueOnce(
+    new Promise((resolve) => {
+      finish = () => resolve(null);
+    })
+  );
+  invoke.mockResolvedValueOnce(undefined);
+  const probe = startFileProbe("audio.wav");
+  let cancelled = false;
+  const cancellation = probe.cancel().then(() => {
+    cancelled = true;
+  });
+  expect(invoke.mock.calls).toEqual([["file_analysis_reserve_probe"]]);
+  reserve(2);
+  await Promise.resolve();
+  expect(invoke).toHaveBeenNthCalledWith(2, "file_analysis_probe", {
+    path: "audio.wav",
+    probeId: 2,
+  });
+  expect(invoke).toHaveBeenNthCalledWith(3, "file_analysis_cancel_probe", { probeId: 2 });
+  expect(cancelled).toBe(false);
+  finish();
+  await cancellation;
+  expect(cancelled).toBe(true);
 });
 
 describe("crash-report command seam", () => {

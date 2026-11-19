@@ -138,6 +138,24 @@ describe("useAudioDevices", () => {
     expect(result.current.captureDeviceId).toBe(CAP);
   });
 
+  it("retries writing the visible source without restarting capture", async () => {
+    mocks.saveCaptureDeviceId.mockRejectedValueOnce(new Error("disk full"));
+    const beginDeviceRestartForControl = vi.fn(async () => {});
+    const { result } = renderHook(() =>
+      useAudioDevices({ liveLifecycle: "running", beginDeviceRestartForControl })
+    );
+    await waitFor(() => expect(result.current.snapshot.inventoryReady).toBe(true));
+    await act(async () => {
+      await expect(result.current.selectCaptureDevice(CAP)).rejects.toThrow("disk full");
+      await expect(result.current.selectCaptureDevice(CAP)).resolves.toMatchObject({
+        changed: false,
+      });
+      await result.current.selectCaptureDevice(CAP);
+    });
+    expect(mocks.saveCaptureDeviceId.mock.calls).toEqual([[CAP], [CAP]]);
+    expect(beginDeviceRestartForControl).toHaveBeenCalledOnce();
+  });
+
   it.each(["resolves", "rejects"])(
     "ignores an old preview that %s after a newer selection",
     async (outcome) => {

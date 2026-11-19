@@ -4,6 +4,8 @@ Open **Sources** in the toolbar to choose any kind of input — you pick a signa
 underlying API. The footer and system tray show the selected source as
 `Output · name`, `Input · name`, or `Application · name`.
 If you make another selection while PLVS is checking a source, the latest selection takes priority.
+If the source switches but PLVS reports a save error, choose that source again to retry saving
+without restarting the measurement.
 
 ## Automatic
 
@@ -58,6 +60,9 @@ picker scrolls when the available sources do not fit on screen. The system tray'
 submenu offers the same source groups, including running applications.
 
 ## When capture is interrupted
+
+If you select **Stop** while capture is starting, Live shows **Stopping…** until the native
+capture has stopped.
 
 PLVS tells you instead of showing stale readings. A stalled stream, dropped audio, or a changed
 default output is shown as a notice. On Windows, when a system audio change such as toggling Spatial

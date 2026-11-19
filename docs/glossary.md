@@ -54,6 +54,7 @@ the UI disagree, the UI on `main` wins and this file is corrected.
 | File Mode              | Measuring a local audio file instead of a live Source                                               | 文件模式         |                             |
 | Scrubbing              | Moving through a file's timeline so every panel shows that position                                 | 拖动定位         | seeking                     |
 | Start / Stop           | Starts or stops Live capture                                                                        | 开始 / 停止      |                             |
+| Stopping…              | Live capture is waiting for native shutdown                                                         | 正在停止…        |                             |
 | Clear                  | Discards the current measurement data and begins a fresh measurement                                | 清空             | reset                       |
 | Loudness Profile       | A set of reference lines and warning thresholds for a delivery target                               | 响度配置         | target, spec                |
 | Troubleshooting        | Status link that opens the relevant troubleshooting topic in the user guide                         | 故障排查         |                             |

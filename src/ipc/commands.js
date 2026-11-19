@@ -26,12 +26,11 @@ export async function listCaptureApplications() {
   return invoke("list_capture_applications");
 }
 
-/** @param {string} deviceId Pass `"default"` for the OS default playback device (WASAPI loopback). */
+/** @param {string} deviceId Pass `"default"` for the system default playback device. */
 export async function previewAudioDevice(deviceId) {
   return invoke("preview_audio_device", { deviceId });
 }
 
-/** @returns {Promise<string | null | undefined>} Current v2 id, or nothing if unknown/unplugged. */
 /**
  * @returns {Promise<string | null | undefined>} Current v2 id, or nothing if unknown/unplugged.
  * @param {string} deviceId
@@ -349,6 +348,19 @@ export function setDialogueVadEngine(engine) {
 /** @param {string} path Local media path selected or dropped in the desktop app. */
 export function probeFileAnalysis(path) {
   return invoke("file_analysis_probe", { path });
+}
+
+/** @param {string} path Local media path queued for analysis. */
+export function startFileProbe(path) {
+  const reserved = invoke("file_analysis_reserve_probe");
+  const result = reserved.then((probeId) => invoke("file_analysis_probe", { path, probeId }));
+  return {
+    result,
+    cancel: async () => {
+      await invoke("file_analysis_cancel_probe", { probeId: await reserved });
+      await result.catch(() => {});
+    },
+  };
 }
 
 /** @param {{ path: string; probe: object; runId?: string; settings?: object; onFrame: (payload: object) => void }} opts */

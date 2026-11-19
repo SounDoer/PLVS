@@ -30,6 +30,7 @@ export function DisplaySnapshotProvider({ children }) {
   const {
     sourceMode,
     running,
+    liveLifecycle,
     analyzingFileSession,
     activeFileSession,
     preparingFileId,
@@ -70,6 +71,7 @@ export function DisplaySnapshotProvider({ children }) {
   const sourceTransportState = deriveSourceTransportState({
     sourceMode,
     running,
+    liveLifecycle,
     selectedOffset,
     latestTimestampMs,
     elapsedMs: elapsedMsRef.current,

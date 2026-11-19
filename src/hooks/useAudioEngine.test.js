@@ -532,6 +532,50 @@ describe("useAudioEngine", () => {
     expect(transport.markStarted).toHaveBeenCalledWith({ resolvedDeviceId: "lb-main" });
   });
 
+  it("waits for a pending native start and its stop before confirming Stop", async () => {
+    let releaseStart;
+    let releaseStop;
+    vi.mocked(startAudioCapture).mockReturnValueOnce(
+      new Promise((resolve) => {
+        releaseStart = resolve;
+      })
+    );
+    vi.mocked(stopAudioCapture).mockReturnValueOnce(
+      new Promise((resolve) => {
+        releaseStop = resolve;
+      })
+    );
+    const transport = {
+      running: true,
+      lifecycle: "starting",
+      halt: vi.fn(),
+      markStarted: vi.fn(),
+      markStopped: vi.fn(),
+      markStopFailed: vi.fn(),
+    };
+    const props = {
+      intake: { reset: vi.fn() },
+      setAudio: vi.fn(),
+      raiseNotice: vi.fn(),
+      halt: transport.halt,
+      setSelectedOffset: vi.fn(),
+      resetTimer: vi.fn(),
+      setShowClock: vi.fn(),
+      transport,
+    };
+    const { rerender } = renderHook((p) => useHarness(p), { initialProps: props });
+    await waitFor(() => expect(startAudioCapture).toHaveBeenCalledOnce());
+    rerender({ ...props, transport: { ...transport, running: false, lifecycle: "stopping" } });
+    expect(stopAudioCapture).not.toHaveBeenCalled();
+    expect(transport.markStopped).not.toHaveBeenCalled();
+    await act(async () => releaseStart());
+    expect(stopAudioCapture).toHaveBeenCalledOnce();
+    expect(transport.markStopped).not.toHaveBeenCalled();
+    await act(async () => releaseStop());
+    expect(transport.markStopped).toHaveBeenCalledOnce();
+    expect(transport.markStarted).not.toHaveBeenCalled();
+  });
+
   it("does not start capture while Live is stopped", async () => {
     renderHook(() =>
       useHarness({

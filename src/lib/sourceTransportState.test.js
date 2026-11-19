@@ -36,6 +36,16 @@ describe("deriveSourceTransportState", () => {
     });
   });
 
+  it("shows a disabled Stop action until native Live shutdown settles", () => {
+    expect(
+      deriveSourceTransportState({ sourceMode: "live", running: false, liveLifecycle: "stopping" })
+    ).toMatchObject({
+      statusLabel: "Stopping…",
+      actionKind: "stopLive",
+      primaryActionDisabled: true,
+    });
+  });
+
   it("derives the live scrub state from elapsed session time", () => {
     expect(
       deriveSourceTransportState({

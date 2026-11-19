@@ -1,7 +1,19 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { probeFileAnalysis } from "../ipc/commands.js";
+import { startFileProbe } from "../ipc/commands.js";
 import { sameFileSourceVersion, withSelectedAudioTrack } from "../lib/fileAnalysisSource.js";
 import { fileImportTracks, planFileImport } from "../lib/fileImportPlan.js";
+
+function cancelProbe(task) {
+  if (task.probeCancellation) return task.probeCancellation;
+  task.canceled = true;
+  task.probeCancellation = task.probe.cancel().catch((error) => {
+    task.canceled = false;
+    task.resume = false;
+    task.probeCancellation = null;
+    throw error;
+  });
+  return task.probeCancellation;
+}
 
 /** The queue owns pending imports. Once analysis starts, the File ledger owns the result. */
 export function useFileImportQueue({
@@ -27,6 +39,13 @@ export function useFileImportQueue({
   useEffect(() => {
     enabledRef.current = enabled;
   }, [enabled]);
+  useEffect(
+    () => () => {
+      const task = currentRef.current;
+      if (task && !task.sessionId) void cancelProbe(task).catch(() => {});
+    },
+    []
+  );
 
   const enqueue = useCallback(
     (paths, trackIndex = null, retryId = null, previousProbe = null) => {
@@ -48,7 +67,7 @@ export function useFileImportQueue({
           ({ path, retryId }) =>
             !previous.some(
               (item) =>
-                (item.path === path || (retryId != null && item.retryId === retryId)) &&
+                (retryId != null ? item.retryId === retryId : item.path === path) &&
                 ["queued", "working", "track", "probed", "paused"].includes(item.state)
             )
         ),
@@ -88,10 +107,8 @@ export function useFileImportQueue({
         task.resume = false;
         throw error;
       });
-    } else if (!task.canceled) {
-      task.canceled = true;
-      // A probe cannot be interrupted here. Keep its slot until it settles and ignore its result.
     }
+    return cancelProbe(task);
   }
 
   const next = items.find((item) => item.state === "queued");
@@ -117,7 +134,8 @@ export function useFileImportQueue({
             ["queued", "probed"].includes(item.state) ? { ...item, state: "canceled" } : item
           )
         );
-      if (currentRef.current && !currentRef.current.sessionId) currentRef.current.canceled = true;
+      if (currentRef.current && !currentRef.current.sessionId)
+        void cancelProbe(currentRef.current).catch(() => {});
       if (!busy && currentRef.current?.sessionId) finish(currentRef.current);
       setSelection(null);
       return;
@@ -141,11 +159,12 @@ export function useFileImportQueue({
     if (!next && !ready) setBrowsingResult(false);
     if (busy || !next || ready) return;
 
-    const work = { id: next.id, canceled: false, sessionId: null };
+    const probeRequest = startFileProbe(next.path);
+    const work = { id: next.id, canceled: false, sessionId: null, probe: probeRequest };
     currentRef.current = work;
     setCurrent(work);
     update(next.id, { state: "working" });
-    void probeFileAnalysis(next.path)
+    void probeRequest.result
       .then((probe) => {
         if (work.canceled || !enabledRef.current) {
           finish(work, { state: work.resume ? "paused" : "canceled" });
@@ -292,7 +311,7 @@ export function useFileImportQueue({
     },
     clear: () => {
       const task = currentRef.current;
-      if (task && !task.sessionId) task.canceled = true;
+      if (task && !task.sessionId) void cancelProbe(task).catch(() => {});
       setItems([]);
       setSessionIds(new Set());
       setBrowsingResult(false);

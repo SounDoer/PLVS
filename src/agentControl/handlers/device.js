@@ -137,7 +137,26 @@ async function deviceControl(ctx) {
       live: predicted.live,
     },
   };
-  if (request.params.dryRun === true || !planned.changed) {
+  if (request.params.dryRun === true) {
+    return { requestId, result };
+  }
+  if (!planned.changed) {
+    try {
+      await currentDevice.retrySelectionPersistence?.(request.params.deviceId);
+    } catch (error) {
+      throw semanticFailure(
+        "persistenceFailed",
+        "$.params.deviceId",
+        `Device selection is active but could not be saved: ${error?.message || String(error)}`,
+        -32030,
+        {
+          stateCommitted: error?.stateCommitted === true,
+          revision: clock.current(),
+          generation: currentDevice.snapshot.generation,
+          state: result.state,
+        }
+      );
+    }
     return { requestId, result };
   }
 

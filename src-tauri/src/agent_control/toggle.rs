@@ -38,14 +38,7 @@ pub fn read_enabled_from_disk() -> bool {
   };
   if let Some(root) = path.parent().map(|parent| parent.join("multi-instance")) {
     if root.is_dir() {
-      if let Ok(repository) = crate::persistence::LibraryRepository::open(&root) {
-        return repository
-          .read_global_preference(ENABLED_KEY)
-          .ok()
-          .flatten()
-          .and_then(|preference| preference.value.as_bool())
-          .unwrap_or_else(default_enabled);
-      }
+      return read_enabled_from_identity_root(&root);
     }
   }
   let Ok(map) = crate::profile::read_store_map(&path) else {
@@ -55,14 +48,9 @@ pub fn read_enabled_from_disk() -> bool {
 }
 
 pub fn read_enabled_from_identity_root(identity_root: &std::path::Path) -> bool {
-  crate::persistence::LibraryRepository::open(identity_root)
+  crate::persistence::LibraryRepository::read_existing_global_preference(identity_root, ENABLED_KEY)
     .ok()
-    .and_then(|repository| {
-      repository
-        .read_global_preference(ENABLED_KEY)
-        .ok()
-        .flatten()
-    })
+    .flatten()
     .and_then(|preference| preference.value.as_bool())
     .unwrap_or_else(default_enabled)
 }
@@ -318,6 +306,17 @@ mod tests {
 
     map.insert(ENABLED_KEY.into(), json!(false));
     assert!(!enabled_from_store_map(&map));
+  }
+
+  #[test]
+  fn isolated_cli_query_leaves_an_uninitialized_identity_untouched() {
+    let directory = tempfile::tempdir().unwrap();
+    let root = directory.path().join("multi-instance");
+    assert_eq!(read_enabled_from_identity_root(&root), default_enabled());
+    assert!(!root.exists());
+    std::fs::create_dir(&root).unwrap();
+    assert_eq!(read_enabled_from_identity_root(&root), default_enabled());
+    assert!(std::fs::read_dir(&root).unwrap().next().is_none());
   }
 
   #[test]

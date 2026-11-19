@@ -1,6 +1,8 @@
+use std::collections::HashMap;
 use std::io::Read;
 use std::path::Path;
 use std::process::{Command, Stdio};
+use std::sync::{Arc, Mutex};
 
 use super::process::FileProcess;
 
@@ -13,6 +15,72 @@ use std::os::windows::process::CommandExt;
 
 #[cfg(windows)]
 const CREATE_NO_WINDOW: u32 = 0x08000000;
+
+#[derive(Default)]
+pub(crate) struct FileProbes(Mutex<(u32, HashMap<u32, PendingProbe>)>);
+
+#[derive(Default)]
+struct PendingProbe {
+  process: Arc<FileProcess>,
+  started: bool,
+}
+
+impl FileProbes {
+  pub(crate) fn reserve(&self) -> Result<u32, String> {
+    let mut probes = self
+      .0
+      .lock()
+      .map_err(|_| "File probe registry unavailable")?;
+    let id = probes.0.checked_add(1).ok_or("File probe IDs exhausted")?;
+    probes.0 = id;
+    probes.1.insert(id, PendingProbe::default());
+    Ok(id)
+  }
+
+  pub(crate) fn run(&self, id: u32, path: &Path) -> Result<FileAnalysisProbeResult, String> {
+    let process = {
+      let mut probes = self
+        .0
+        .lock()
+        .map_err(|_| "File probe registry unavailable")?;
+      let probe = probes.1.get_mut(&id).ok_or("Unknown File probe")?;
+      if probe.started {
+        return Err("File probe already started".into());
+      }
+      probe.started = true;
+      Arc::clone(&probe.process)
+    };
+    let result = if process.is_cancelled() {
+      Ok(None)
+    } else {
+      probe_file_with_process(path, || process.is_cancelled(), &process)
+    };
+    self
+      .0
+      .lock()
+      .map_err(|_| "File probe registry unavailable")?
+      .1
+      .remove(&id);
+    if process.is_cancelled() {
+      return Err("File probing was cancelled".into());
+    }
+    result?.ok_or_else(|| "File probing was cancelled".to_string())
+  }
+
+  pub(crate) fn cancel(&self, id: u32) -> Result<(), String> {
+    let process = self
+      .0
+      .lock()
+      .map_err(|_| "File probe registry unavailable")?
+      .1
+      .get(&id)
+      .map(|probe| Arc::clone(&probe.process));
+    if let Some(process) = process {
+      process.cancel();
+    }
+    Ok(())
+  }
+}
 
 fn file_name_from_path(path: &Path) -> String {
   path
@@ -129,4 +197,32 @@ fn probe_media_file_with_process(
 
   let json = String::from_utf8_lossy(&output);
   parse_ffprobe_media_json(&json, &path_str, &file_name_from_path(path))
+}
+
+#[cfg(test)]
+mod tests {
+  use super::*;
+
+  #[test]
+  fn cancellation_before_start_is_scoped_to_the_reserved_probe() {
+    let probes = FileProbes::default();
+    let cancelled = probes.reserve().unwrap();
+    let other = probes.reserve().unwrap();
+    probes.cancel(cancelled).unwrap();
+    let missing_file = Path::new("plvs-test-missing-media");
+
+    assert_eq!(
+      probes.run(cancelled, missing_file).unwrap_err(),
+      "File probing was cancelled"
+    );
+    probes.cancel(cancelled).unwrap();
+    assert_eq!(
+      probes.run(cancelled, missing_file).unwrap_err(),
+      "Unknown File probe"
+    );
+    assert!(probes
+      .run(other, missing_file)
+      .unwrap_err()
+      .starts_with("Source file unavailable"));
+  }
 }

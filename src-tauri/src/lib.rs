@@ -261,6 +261,7 @@ pub fn run() {
         .build(),
     )
     .manage(AppState::default())
+    .manage(file_analysis::probe::FileProbes::default())
     .manage(persistence::commands::PersistenceRuntime::default())
     .manage(agent_control::broker::AgentControlState::default())
     .manage(agent_control::transport::ServerState::default())
@@ -293,6 +294,8 @@ pub fn run() {
       ipc::commands::ack_frames,
       ipc::commands::get_ui_frame_diagnostics,
       ipc::commands::audio_stop,
+      ipc::commands::file_analysis_reserve_probe,
+      ipc::commands::file_analysis_cancel_probe,
       ipc::commands::file_analysis_probe,
       ipc::commands::file_analysis_start,
       ipc::commands::file_analysis_stop,
