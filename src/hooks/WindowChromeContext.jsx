@@ -100,14 +100,16 @@ export function WindowChromeProvider({ children }) {
             changed.includes("view.focusView.autoHideControls") ||
             changed.includes("view.focusView.borderless")
           ) {
-            const applied = await setWindowDecorations(
-              !(next.focusView.autoHideControls || next.focusView.borderless)
+            await setWindowDecorations(
+              !(next.focusView.autoHideControls || next.focusView.borderless),
+              (previous) => {
+                rollback.push(() =>
+                  setWindowDecorations(
+                    previous ?? !(focusView.autoHideControls || focusView.borderless)
+                  )
+                );
+              }
             );
-            if (applied) {
-              rollback.push(() =>
-                setWindowDecorations(!(focusView.autoHideControls || focusView.borderless))
-              );
-            }
           }
         }
         if (isMacOS() && changed.includes("view.glassEnabled")) {
@@ -198,14 +200,6 @@ export function WindowChromeProvider({ children }) {
     [setFocusField]
   );
   const setBorderless = useCallback((value) => setFocusField("borderless", value), [setFocusField]);
-  const setSurfaceOpacity = useCallback(
-    (value) =>
-      void applyViewState(
-        { pinned, focusView, surfaceOpacity: value, glassEnabled },
-        { changed: ["view.surfaceOpacity"] }
-      ).catch(() => {}),
-    [applyViewState, focusView, glassEnabled, pinned]
-  );
   // No native effect, so no other view value is needed: applyViewState reads only the changed path.
   const setDockSurfaceOpacity = useCallback(
     (value) =>
@@ -269,7 +263,7 @@ export function WindowChromeProvider({ children }) {
         setAutoHideControls,
         setCompactPanels,
         setBorderless,
-        setSurfaceOpacity,
+        setSurfaceOpacity: setSurfaceOpacityStored,
         setDockSurfaceOpacity,
         setGlassEnabled,
         focusViewActive,

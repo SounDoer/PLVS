@@ -116,7 +116,9 @@ The CSV uses UTF-8 with a byte order mark, comma-separated fields, and quoted mu
 Text that starts with `=`, `+`, `-`, `@`, a tab or a line break, such as a file named
 `-6dB Mix.wav`, is prefixed with an apostrophe so a spreadsheet shows it as text instead of running
 it as a formula. Scripts that read the CSV see that apostrophe. Numeric cells are unaffected. Full
-file paths are omitted. `result_id` identifies a result only within the session that exported it.
+file paths are omitted. `result_id` identifies one successful analysis within the app session.
+Reanalysis gets a new ID when it succeeds. Exporting the retained result during reanalysis or
+restoring its browsing history keeps the original ID.
 This is whole-file statistics; time series are not included.
 
 Where the system uses a comma as the decimal separator, double-clicking the CSV can open it in

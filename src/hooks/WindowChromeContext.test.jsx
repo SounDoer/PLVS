@@ -1,5 +1,5 @@
 /** @vitest-environment jsdom */
-import { beforeEach, describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { act, renderHook, waitFor } from "@testing-library/react";
 import { MeterRuntimeProvider } from "../runtime/MeterRuntimeContext.jsx";
 import { BlockingEditorsProvider } from "./BlockingEditorsContext.jsx";
@@ -10,6 +10,28 @@ import { DockProvider } from "../dock/DockContext.jsx";
 import { presetsStore, settingsStore, workspaceStore } from "../persistence/index.js";
 import { stubMatchMedia } from "../testing/matchMedia.js";
 import { WindowChromeProvider, useWindowChrome } from "./WindowChromeContext.jsx";
+
+const native = vi.hoisted(() => ({
+  isTauri: vi.fn(() => false),
+  setDecorations: vi.fn(),
+  isDecorated: vi.fn(),
+  invoke: vi.fn(),
+}));
+vi.mock("../ipc/env.js", async (original) => ({
+  ...(await original()),
+  isTauri: native.isTauri,
+}));
+vi.mock("@tauri-apps/api/window", async (original) => ({
+  ...(await original()),
+  getCurrentWindow: () => ({
+    isDecorated: native.isDecorated,
+    setDecorations: native.setDecorations,
+  }),
+}));
+vi.mock("@tauri-apps/api/core", async (original) => ({
+  ...(await original()),
+  invoke: native.invoke,
+}));
 
 function wrapper({ children }) {
   return (
@@ -31,6 +53,10 @@ function wrapper({ children }) {
 
 describe("WindowChromeProvider", () => {
   beforeEach(() => {
+    native.isTauri.mockReturnValue(false);
+    native.invoke.mockReset().mockResolvedValue(undefined);
+    native.setDecorations.mockReset();
+    native.isDecorated.mockReset();
     localStorage.clear();
     stubMatchMedia();
     settingsStore.reset();
@@ -63,6 +89,61 @@ describe("WindowChromeProvider", () => {
     await waitFor(() =>
       expect(document.documentElement.style.getPropertyValue("--surface-opacity")).toBe("40%")
     );
+  });
+
+  it("keeps the last slider value and applies native shadow changes in order", async () => {
+    const { result } = renderHook(() => useWindowChrome(), { wrapper });
+    let finishZero;
+    native.invoke.mockImplementation((command, args) =>
+      command === "sync_surface_opacity_shadow" && args.surfaceOpacity === 0
+        ? new Promise((resolve) => {
+            finishZero = resolve;
+          })
+        : Promise.resolve()
+    );
+    native.isTauri.mockReturnValue(true);
+
+    act(() => result.current.setSurfaceOpacity(0));
+    await waitFor(() => expect(finishZero).toEqual(expect.any(Function)));
+    act(() => result.current.setSurfaceOpacity(25));
+    expect(result.current.view.surfaceOpacity).toBe(25);
+    expect(native.invoke).toHaveBeenCalledTimes(1);
+    await act(async () => finishZero());
+    await waitFor(() =>
+      expect(native.invoke).toHaveBeenNthCalledWith(2, "sync_surface_opacity_shadow", {
+        surfaceOpacity: 100,
+      })
+    );
+    settingsStore.flush();
+    expect(settingsStore.read().surfaceOpacity).toBe(25);
+    expect(result.current.view.surfaceOpacity).toBe(25);
+  });
+
+  it("restores the native frame when window chrome sync fails", async () => {
+    const { result } = renderHook(() => useWindowChrome(), { wrapper });
+    let decorated = true;
+    native.isTauri.mockReturnValue(true);
+    native.isDecorated.mockImplementation(async () => decorated);
+    native.setDecorations.mockImplementation(async (value) => {
+      decorated = value;
+    });
+    native.invoke.mockRejectedValueOnce(new Error("native sync failed"));
+
+    await act(async () => {
+      await expect(
+        result.current.applyViewState(
+          { focusView: { autoHideControls: false, borderless: true } },
+          { changed: ["view.focusView.borderless"] }
+        )
+      ).rejects.toMatchObject({
+        message: "native sync failed",
+        rollback: "completed",
+        partial: false,
+      });
+    });
+    expect(native.setDecorations.mock.calls).toEqual([[false], [true]]);
+    expect(decorated).toBe(true);
+    expect(result.current.view.focusView.borderless).toBe(false);
   });
 
   it("publishes Dock surface opacity as its own CSS variable", async () => {

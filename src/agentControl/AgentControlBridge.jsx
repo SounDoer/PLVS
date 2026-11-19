@@ -253,7 +253,12 @@ export function AgentControlBridge() {
     [captureDeviceId, docked, fileQueue?.snapshot, meterRuntime, selectedOffset]
   );
   const executeAgentControlTransport = useCallback(
-    async (/** @type {string} */ method, params, guardFileEntry = (_checkRevision) => null) => {
+    async (
+      /** @type {string} */ method,
+      params,
+      guardFileEntry = (_checkRevision) => null,
+      /** @type {AbortSignal | undefined} */ signal = undefined
+    ) => {
       const enterFileForRun = async (checkRevision = false) => {
         const current = guardFileEntry(checkRevision);
         if ((current?.live.state ?? meterRuntime.liveLifecycle) === "running") {
@@ -330,12 +335,16 @@ export function AgentControlBridge() {
         // file/track entry instead of creating another. A refusal here has no side effects.
         const settings = currentFileAnalysisSettings();
         const probe = isTauri()
-          ? selectImportTrack(await startFileProbe(params.path).result, params.trackIndex)
+          ? selectImportTrack(
+              await startFileProbe(params.path, { signal }).result,
+              params.trackIndex
+            )
           : null;
         const plan = probe
           ? planFileImport(meterRuntime.fileSessions, probe, settings)
           : { action: "analyze", sessionId: null };
         await enterFileForRun(true);
+        signal?.throwIfAborted();
         if (plan.action === "select") {
           selectFile(plan.sessionId);
           return {
@@ -358,6 +367,7 @@ export function AgentControlBridge() {
       if (method === "transport.file.reanalyze") {
         const run = await reanalyzeFileForControl(params.sessionId, currentFileAnalysisSettings(), {
           beforeRun: enterFileForRun,
+          signal,
           selectReplacementTrack: (probe) =>
             selectImportTrack(probe, undefined, { replacement: true }),
         });
@@ -368,6 +378,7 @@ export function AgentControlBridge() {
       if (method === "transport.file.restore") {
         const run = await restoreFileHistoryForControl(params.sessionId, {
           beforeRun: enterFileForRun,
+          signal,
         });
         if (!run) throw new Error("History restoration was not accepted.");
         const runId = await run.accepted;

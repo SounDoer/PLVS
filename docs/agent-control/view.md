@@ -73,7 +73,8 @@ While Dock is active, Rust owns topmost state and window chrome. Updates to `pin
 fight the Dock window form. A changed touched field that is dormant for this reason returns a
 `currentlyInactive` warning with reason `dockOwnsWindowPresentation`. The stored values are
 reasserted through the existing Dock exit path. Workspace header changes remain stored while Dock
-is active. Dock annotations use their own preference. `surfaceOpacity` applies to both surfaces.
+is active. Dock annotations and `dockSurfaceOpacity` apply to the Dock strip.
+`surfaceOpacity` controls the normal window.
 
 View Control does not enter, exit, or reconfigure Dock; that remains exclusively
 [Dock Control](dock.md).
@@ -145,8 +146,8 @@ the complete resulting `state.view`, related runtime/availability, and compact P
 
 ## Deliberate exclusions
 
-- Window size and visibility, which belong to [Window Control](window.md). Monitor placement and
-  window movement remain outside Agent Control.
+- Window size, visibility, monitor placement, and movement belong to
+  [Window Control](window.md).
 - Workspace panel-size pins. They belong to Workspace structure, despite sharing the word
   "pinned" internally.
 - Fullscreen, active tabs, open popovers/sheets/editors, hover state, and whether auto-hidden chrome

@@ -349,23 +349,37 @@ export function setDialogueVadEngine(engine) {
   return invoke("set_dialogue_vad_engine", { engine });
 }
 
-/** @param {string} path Local media path to inspect before analysis. */
-export function startFileProbe(path) {
+/**
+ * @param {string} path Local media path to inspect before analysis.
+ * @param {{ signal?: AbortSignal }} [options]
+ */
+export function startFileProbe(path, { signal } = {}) {
+  signal?.throwIfAborted();
   const reserved = invoke("file_analysis_reserve_probe");
   const result = reserved.then((probeId) => invoke("file_analysis_probe", { path, probeId }));
   let cancellation = null;
+  const cancel = () => {
+    cancellation ??= reserved
+      .then((probeId) => invoke("file_analysis_cancel_probe", { probeId }))
+      .then(() => result.catch(() => {}))
+      .catch((error) => {
+        cancellation = null;
+        throw error;
+      });
+    return cancellation;
+  };
+  if (!signal) return { result, cancel };
+
+  const abort = () => void cancel().catch(() => {});
+  signal.addEventListener("abort", abort, { once: true });
   return {
-    result,
-    cancel: () => {
-      cancellation ??= reserved
-        .then((probeId) => invoke("file_analysis_cancel_probe", { probeId }))
-        .then(() => result.catch(() => {}))
-        .catch((error) => {
-          cancellation = null;
-          throw error;
-        });
-      return cancellation;
-    },
+    result: result
+      .finally(() => signal.removeEventListener("abort", abort))
+      .then((probe) => {
+        signal.throwIfAborted();
+        return probe;
+      }),
+    cancel,
   };
 }
 

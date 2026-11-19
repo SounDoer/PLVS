@@ -338,8 +338,10 @@ export function useAgentControlBridge({
     let cancelled = false;
     let unlisten = null;
     let ready = false;
+    const queuedRequests = new Map();
 
-    const processWithBackstop = (request) => {
+    const processWithBackstop = (request, controller) => {
+      if (controller.signal.aborted) return null;
       let timer;
       const backstop = new Promise((resolve) => {
         timer = setTimeout(() => {
@@ -347,6 +349,7 @@ export function useAgentControlBridge({
           // installed and swallow every later revision bump. Its cleanup checks identity, so a late
           // finish cannot clear a batch that belongs to a later command.
           clock.abandonBatch();
+          controller.abort();
           resolve({
             requestId: typeof request?.id === "string" ? request.id : "",
             error: agentControlRpcError(
@@ -361,12 +364,15 @@ export function useAgentControlBridge({
           });
         }, QUEUED_REQUEST_TIMEOUT_MS);
       });
-      return Promise.race([processRequest(request), backstop]).finally(() => clearTimeout(timer));
+      return Promise.race([processRequest(request, controller.signal), backstop]).finally(() =>
+        clearTimeout(timer)
+      );
     };
 
     const install = async () => {
       const stop = await listenForAgentControlRequests((request) => {
         if (request?.type === "cancel" && typeof request.requestId === "string") {
+          queuedRequests.get(request.requestId)?.abort();
           ownedVisualCaptures.get(request.requestId)?.abort();
           const waiter = waiterEntries.get(request.requestId);
           if (waiter) {
@@ -391,7 +397,13 @@ export function useAgentControlBridge({
           void respond(processRequest(request));
           return;
         }
-        queueRef.current = queueRef.current.then(() => processWithBackstop(request));
+        const controller = new AbortController();
+        queuedRequests.set(request?.id, controller);
+        queueRef.current = queueRef.current
+          .then(() => processWithBackstop(request, controller))
+          .finally(() => {
+            if (queuedRequests.get(request?.id) === controller) queuedRequests.delete(request?.id);
+          });
         void respond(queueRef.current);
       });
       if (cancelled) {
@@ -418,6 +430,8 @@ export function useAgentControlBridge({
     return () => {
       cancelled = true;
       aliveRef.current = false;
+      for (const controller of queuedRequests.values()) controller.abort();
+      queuedRequests.clear();
       settlement.rejectAll(new Error("Agent-control bridge unmounted."));
       for (const waiter of waiterEntries.values()) {
         clearTimeout(waiter.timer);

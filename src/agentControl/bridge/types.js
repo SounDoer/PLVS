@@ -9,6 +9,7 @@
  * @typedef {{
  *   request: { id?: string, method: string, params: Record<string, any> },
  *   requestId: string,
+ *   signal?: AbortSignal,
  *   snap: BridgeInputs,
  *   live: () => BridgeInputs,
  *   clock: ReturnType<typeof import("./revisionClock.js").createRevisionClock>,

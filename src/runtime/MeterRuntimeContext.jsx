@@ -279,8 +279,15 @@ export function MeterRuntimeProvider({ children }) {
   const reanalyzeFile = async (
     sessionId,
     analysisSettings,
-    { onPrepared = null, kind = "analyze", selectReplacementTrack = null, beforeRun = null } = {}
+    {
+      onPrepared = null,
+      kind = "analyze",
+      selectReplacementTrack = null,
+      beforeRun = null,
+      signal = /** @type {AbortSignal | undefined} */ (undefined),
+    } = {}
   ) => {
+    signal?.throwIfAborted();
     analysisSettings = structuredClone(analysisSettings ?? {});
     display.clearNotice();
     const entry = fileHistory.sessionsById[sessionId];
@@ -320,7 +327,9 @@ export function MeterRuntimeProvider({ children }) {
     let replaced = false;
     try {
       if (isTauri()) {
-        preparation.probeRequest = startFileProbe(entry.path);
+        preparation.probeRequest = signal
+          ? startFileProbe(entry.path, { signal })
+          : startFileProbe(entry.path);
         const discovered = await preparation.probeRequest.result.finally(() => {
           const stop = pendingFileStopRef.current;
           if (stop?.sessionId === entry.id) return stop.promise.catch(() => {});
@@ -376,6 +385,7 @@ export function MeterRuntimeProvider({ children }) {
         }
       }
       if (preparation.cancelled) return null;
+      signal?.throwIfAborted();
       if (!sourceSelectionRef.current.fileToken) {
         taskSessionRef.current = null;
         return null;
@@ -396,6 +406,7 @@ export function MeterRuntimeProvider({ children }) {
     } catch (error) {
       if (preparation.cancelled) return null;
       taskSessionRef.current = null;
+      if (signal?.aborted) throw error;
       if (error?.reason === "fileTrackSelectionRequired") throw error;
       const message = errorMessage(error, "File is unavailable");
       if (kind === "analyze")
@@ -432,8 +443,12 @@ export function MeterRuntimeProvider({ children }) {
     if (!resultId) return null;
     return { sessionId: resultId, accepted };
   };
-  const restoreFileHistoryForControl = (sessionId, { beforeRun = null } = {}) =>
-    reanalyzeFileForControl(sessionId, null, { kind: "restore", beforeRun });
+  /**
+   * @param {string} sessionId
+   * @param {{ beforeRun?: (...args: any[]) => any, signal?: AbortSignal }} [options]
+   */
+  const restoreFileHistoryForControl = (sessionId, { beforeRun = null, signal } = {}) =>
+    reanalyzeFileForControl(sessionId, null, { kind: "restore", beforeRun, signal });
   const selectFile = (sessionId) => {
     display.clearNotice();
     display.setSelectedOffset(-1);

@@ -16,6 +16,7 @@
  *   analyzedAt: number | null,
  *   decodedFrames: number,
  *   runId: number,
+ *   resultId?: string,
  *   runOutcome?: "complete" | "error" | "stopped" | null,
  *   analysisSettings: any,
  *   successfulResult?: any,
@@ -162,6 +163,11 @@ export function updateFileEntry(history, id, updater) {
         : (attempt?.analysisSettings ?? updatedEntry.analysisSettings),
       intake: attempt?.intake ?? updatedEntry.intake,
       audio: restored ? entry.successfulResult.audio : updatedEntry.audio,
+      resultId: restored
+        ? (restored.resultId ?? id)
+        : attempt
+          ? `${id}:${attempt.runId}`
+          : (updatedEntry.resultId ?? `${id}:${updatedEntry.runId}`),
       historyReleased: attempt?.intake ? false : (updatedEntry.historyReleased ?? false),
       runOutcome: attempt ? "complete" : updatedEntry.runOutcome,
       attempt: null,
@@ -185,6 +191,7 @@ function captureSuccessfulResult(entry) {
     summary: entry.summary,
     analysisSettings: entry.analysisSettings,
     analyzedAt: entry.analyzedAt,
+    resultId: entry.resultId,
     decodedFrames: entry.decodedFrames,
     intake: entry.intake,
     audio: entry.audio,

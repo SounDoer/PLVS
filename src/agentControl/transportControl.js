@@ -36,6 +36,7 @@ function serializeFileSession(session) {
     summary: cloneJson(result.summary),
     createdAt: session.createdAt ?? null,
     analyzedAt: result.analyzedAt ?? null,
+    ...(result.resultId ? { resultId: result.resultId } : {}),
     decodedFrames: Number.isFinite(result.decodedFrames) ? result.decodedFrames : 0,
     analysisSettings: cloneJson(result.analysisSettings),
     error: compactError(session.error),

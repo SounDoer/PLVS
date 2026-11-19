@@ -188,11 +188,17 @@ function buildRow(report, entryId, maxChannels) {
 
 export function buildFileAnalysisStatisticsCsv(entries, options = {}) {
   const exportedAt = options.exportedAt ?? new Date().toISOString();
-  const reports = entries.flatMap((entry) =>
-    getSuccessfulFileSession(entry)
-      ? [{ id: entry.id, report: buildFileAnalysisReport(entry, { ...options, exportedAt }) }]
-      : []
-  );
+  const reports = entries.flatMap((entry) => {
+    const result = getSuccessfulFileSession(entry);
+    return result
+      ? [
+          {
+            id: result.resultId ?? entry.id,
+            report: buildFileAnalysisReport(result, { ...options, exportedAt }),
+          },
+        ]
+      : [];
+  });
   if (!reports.length) throw new Error("At least one completed file analysis is required.");
   const maxChannels = reports.reduce(
     (maximum, { report }) => Math.max(maximum, report.summary.channelCount ?? 0),

@@ -97,6 +97,8 @@ Each public summary contains immutable session ID, absolute path, file name, lif
 state, progress, public probe metadata, summary, timestamps, decoded frames, history availability,
 compact error, and the analysis-setting snapshot used for that run. Intake buffers and other
 implementation objects are never exposed.
+When a successful result exists, `resultId` identifies it in statistics CSV exports. It stays the
+same while a replacement is in progress and when browsing history is restored.
 
 The public lifecycle is `probing`, `analyzing`, `complete`, `stopped`, or `error`. `file analyze`
 resolves a relative CLI path before transport and probes it with the GUI's import decision. A file
@@ -110,6 +112,8 @@ different file or track creates a new ID. A started run
 selects FILE and returns `status: "accepted"` with its `sessionId` after Rust accepts analysis; it
 does not block until completion. A failure before acceptance fails the command and leaves an
 inspectable error session when an ID was already allocated.
+If a request times out or is canceled during the initial file probe, the app cancels that probe
+and never uses a late probe result to start a run or switch to FILE.
 
 Only one File task may run. Analyze, reanalyze or restore while another task is active fails with
 `analysisInProgress`. Reanalyze preserves the track and snapshots current analysis settings. It

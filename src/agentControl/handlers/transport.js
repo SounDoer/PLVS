@@ -231,10 +231,11 @@ async function fileExportStatistics(ctx) {
 
 /** @param {import("../bridge/types.js").BridgeContext} ctx */
 async function mutate(ctx) {
-  const { request, requestId, clock, settlement, live } = ctx;
+  const { request, requestId, clock, settlement, live, signal } = ctx;
   const { transportContext, executeTransport } = ctx.snap;
   const currentRevision = assertExpectedRevision(ctx, "Transport");
   const guardFileEntry = (checkRevision) => {
+    signal?.throwIfAborted();
     if (checkRevision) assertExpectedRevision(ctx, "Transport");
     const current = live();
     if (current.transportContext.docked) {
@@ -322,7 +323,7 @@ async function mutate(ctx) {
 
   let execution;
   try {
-    execution = await executeTransport(request.method, request.params, guardFileEntry);
+    execution = await executeTransport(request.method, request.params, guardFileEntry, signal);
   } catch (error) {
     // A refusal decided during execution, before any side effect (such as a File track choice).
     if (typeof error?.reason === "string") throw error;

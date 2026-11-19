@@ -4373,6 +4373,43 @@ describe("useAgentControlBridge", () => {
     }
   });
 
+  it("cancels timed-out File preparation and refuses a late start", async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    try {
+      const probe = createDeferred();
+      const cancel = vi.fn();
+      const start = vi.fn();
+      const executeAgentTransport = vi.fn(async (_method, _params, guardFileEntry, signal) => {
+        signal.addEventListener("abort", cancel, { once: true });
+        await probe.promise;
+        guardFileEntry(true);
+        start();
+      });
+      mount({ executeAgentTransport });
+      await vi.waitFor(() => expect(adapter.ready).toHaveBeenCalledTimes(1));
+      act(() =>
+        adapter.handler(
+          request(
+            "transport.file.analyze",
+            { path: "/audio/slow.wav", expectedRevision: 0 },
+            "slow-file-probe"
+          )
+        )
+      );
+      await act(async () => vi.advanceTimersByTimeAsync(8_100));
+
+      expect(
+        adapter.responses.find(({ requestId }) => requestId === "slow-file-probe")?.error.data
+          .reason
+      ).toBe("requestNotSettled");
+      expect(cancel).toHaveBeenCalledOnce();
+      await act(async () => probe.resolve());
+      expect(start).not.toHaveBeenCalled();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
   it("applies a Preset whose stored controls no longer match the migrated Workspace", async () => {
     // A Preset saved before a control existed stores a different `panelControlsById` than the one
     // applying it produces, because applying migrates. Waiting for the live Workspace to equal the
@@ -7029,6 +7066,8 @@ describe("File analysis report", () => {
     const retained = {
       ...completeSession,
       id: "retained",
+      runId: 5,
+      resultId: "retained:4",
       fileName: "=retained.wav",
       state: "analyzing",
       resultAvailable: true,
@@ -7051,6 +7090,7 @@ describe("File analysis report", () => {
     expect(result.result.sessionIds).toEqual([retained.id, completeSession.id]);
     const [header, first, second] = result.result.csv.split("\r\n");
     expect(header).toMatch(/^\uFEFFschema_version,/);
+    expect(first).toMatch(/^1,retained:4,/);
     expect(first).toContain("'=retained.wav");
     expect(first).toContain("Broadcast");
     expect(second).toContain(completeSession.fileName);

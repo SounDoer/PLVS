@@ -1,5 +1,11 @@
 import { describe, expect, it } from "vitest";
 import { buildFileAnalysisStatisticsCsv } from "./fileAnalysisStatisticsCsv.js";
+import {
+  addFileEntry,
+  createInitialFileHistory,
+  markFileAnalysisComplete,
+  startFileAnalysisEntry,
+} from "./fileAnalysisSessionRegistry.js";
 
 const REPORT = (channels, id = String(channels), extra = {}) => ({
   id,
@@ -49,6 +55,27 @@ function records(csv) {
 }
 
 describe("File statistics CSV", () => {
+  it("identifies the completed result through reanalysis and history restoration", () => {
+    const fixture = REPORT(2, "mix");
+    const id = "mix";
+    let history = addFileEntry(createInitialFileHistory(), fixture);
+    const resultId = () =>
+      records(buildFileAnalysisStatisticsCsv([history.sessionsById[id]]))[0].result_id;
+    history = startFileAnalysisEntry(history, id, { runId: 1 });
+    history = markFileAnalysisComplete(history, id, fixture);
+    const original = resultId();
+    history = startFileAnalysisEntry(history, id, { runId: 2 });
+    expect(resultId()).toBe(original);
+    history = markFileAnalysisComplete(history, id, fixture);
+    const replacement = resultId();
+    expect(replacement).not.toBe(original);
+    history = startFileAnalysisEntry(history, id, { runId: 3, kind: "restore" });
+    expect(resultId()).toBe(replacement);
+    history = markFileAnalysisComplete(history, id, fixture);
+    expect(resultId()).toBe(replacement);
+    expect(history.sessionsById[id].runId).toBe(3);
+  });
+
   it("keeps mixed channel counts aligned and separates missing data from missing channels", () => {
     const csv = buildFileAnalysisStatisticsCsv([REPORT(1), REPORT(2), REPORT(6), REPORT(8)]);
     const [mono, stereo, surround, wide] = records(csv);

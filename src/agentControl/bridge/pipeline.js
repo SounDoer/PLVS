@@ -55,7 +55,7 @@ export function createLatestInputs(initial) {
  *   visual: import("./types.js").BridgeContext["visual"],
  *   table: Readonly<Record<string, import("./types.js").HandlerEntry>>,
  * }} core
- * @returns {(rawRequest: any) => Promise<any>}
+ * @returns {(rawRequest: any, signal?: AbortSignal) => Promise<any>}
  */
 export function createRequestProcessor({
   latestInputs,
@@ -65,7 +65,7 @@ export function createRequestProcessor({
   visual,
   table,
 }) {
-  return async function processRequest(rawRequest) {
+  return async function processRequest(rawRequest, signal) {
     // The app state React had rendered when this request started. Handlers plan against it and
     // call `live()` after an `await` to see what has been rendered since.
     const snap = latestInputs();
@@ -135,6 +135,7 @@ export function createRequestProcessor({
       return await entry.run({
         request,
         requestId,
+        signal,
         snap,
         live: latestInputs,
         clock,

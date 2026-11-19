@@ -78,6 +78,26 @@ it("targets the reserved native probe even if cancel is requested immediately", 
   expect(cancelled).toBe(true);
 });
 
+it("cancels a signaled file probe and rejects a late successful result", async () => {
+  let finish = (_probe) => {};
+  invoke
+    .mockResolvedValueOnce(17)
+    .mockReturnValueOnce(
+      new Promise((resolve) => {
+        finish = resolve;
+      })
+    )
+    .mockResolvedValueOnce(undefined);
+  const controller = new AbortController();
+  const probe = startFileProbe("slow.wav", { signal: controller.signal });
+  const rejected = expect(probe.result).rejects.toMatchObject({ name: "AbortError" });
+  controller.abort();
+  await Promise.resolve();
+  expect(invoke).toHaveBeenCalledWith("file_analysis_cancel_probe", { probeId: 17 });
+  finish({ path: "slow.wav" });
+  await rejected;
+});
+
 describe("crash-report command seam", () => {
   it("maps report lifecycle calls to the exact native payloads", async () => {
     const input = {

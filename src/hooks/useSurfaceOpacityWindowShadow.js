@@ -2,12 +2,22 @@ import { useEffect } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { isTauri } from "../ipc/env.js";
 
+let pendingShadowSync = Promise.resolve();
+
 /**
  * @param {number} surfaceOpacity
  */
 export async function syncSurfaceOpacityWindowShadow(surfaceOpacity) {
   if (!isTauri()) return false;
-  await invoke("sync_surface_opacity_shadow", { surfaceOpacity });
+  // A newer slider value can commit while the previous native command is still in flight.
+  const sync = pendingShadowSync.then(() =>
+    invoke("sync_surface_opacity_shadow", { surfaceOpacity })
+  );
+  pendingShadowSync = sync.then(
+    () => {},
+    () => {}
+  );
+  await sync;
   return true;
 }
 

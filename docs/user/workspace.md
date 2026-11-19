@@ -110,6 +110,8 @@ it lets that window show through the gaps between meters.
 On macOS, setting **Surface Opacity** to 0 also removes the native window shadow. This prevents
 AppKit from drawing shadow-shaped outlines around the remaining opaque text and meter graphics;
 raising Surface Opacity above 0 restores the normal window shadow.
+The slider keeps its latest setting while the system updates the shadow. If applying a change to
+the window frame fails, PLVS attempts to restore the previous native frame.
 
 On Windows 11, **Hide Window Frame** also hides the outer system window outline; turning it off restores
 the system outline. **Auto-hide Controls** also uses a chromeless window, so the outline stays hidden

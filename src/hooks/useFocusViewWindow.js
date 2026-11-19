@@ -5,13 +5,15 @@ import { isTauri } from "../ipc/env.js";
 
 /**
  * @param {boolean} enabled
+ * @param {(previous: boolean | null) => void} [beforeChange]
  */
-export async function setWindowDecorations(enabled) {
+export async function setWindowDecorations(enabled, beforeChange) {
   if (!isTauri()) return false;
   const win = getCurrentWindow();
   if (typeof win.setDecorations !== "function") return false;
   const current = typeof win.isDecorated === "function" ? await win.isDecorated() : null;
   if (current === enabled) return false;
+  beforeChange?.(current);
   await win.setDecorations(enabled);
   // On macOS, changing decorations changes the native content rect but WKWebView can retain the
   // old title-bar-sized frame, exposing a black strip at the bottom. Reapplying the reported inner
