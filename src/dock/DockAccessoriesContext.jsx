@@ -131,12 +131,12 @@ export function DockAccessoriesProvider({ children }) {
     refreshInventory,
     onSelectCaptureDevice,
   } = useSource();
-  const { sourceMode, running, liveAudioDrop } = useMeterRuntime();
-  const { notice, raiseNotice, clearNotice, showClock } = useMeterDisplayState();
+  const { sourceMode, liveAudioDrop } = useMeterRuntime();
+  const { notice, raiseNotice, clearNotice } = useMeterDisplayState();
   const { sourceTransportState, histSourceList, displayAudio } = useDisplaySnapshot();
   const historyTotalSamples = histSourceList?.length ?? 0;
   const { channelCount, vectorscopePairOptions, spectrumChannelOptions } = useAnalysisSession();
-  const { clearAll, onSourceTransportAction } = useSourceActions();
+  const { canClear, clearAll, onSourceTransportAction } = useSourceActions();
   const presets = usePresetLibrary();
   const exportProfileRef = useRef(null);
   const loudnessProfile = useLoudnessProfile();
@@ -496,7 +496,7 @@ export function DockAccessoriesProvider({ children }) {
   const dockHeaderState = useMemo(
     () => ({
       interfaceSize,
-      keyboard: { bindings: keyboardShortcuts, capturing: shortcutCapturing, running, showClock },
+      keyboard: { bindings: keyboardShortcuts, capturing: shortcutCapturing, canClear },
       visible: dockAccessoryVisibility.headerVisible,
       presentationId: dockAccessoryVisibility.headerPresentationId,
       sourceTransportState,
@@ -505,7 +505,7 @@ export function DockAccessoriesProvider({ children }) {
         loudnessProfileName,
         activePresetName,
       },
-      clearDisabled: !running && !showClock,
+      clearDisabled: !canClear,
       notice,
       statusItems,
       update: JSON.parse(dockUpdateKey),
@@ -534,15 +534,14 @@ export function DockAccessoriesProvider({ children }) {
       presets.activeId,
       presets.dirty,
       reserveSpace,
-      running,
-      showClock,
+      canClear,
       sourceTransportState,
     ]
   );
   const dockEditorState = useMemo(
     () => ({
       interfaceSize,
-      keyboard: { bindings: keyboardShortcuts, capturing: shortcutCapturing, running, showClock },
+      keyboard: { bindings: keyboardShortcuts, capturing: shortcutCapturing, canClear },
       view: dockAccessoryVisibility.editorView,
       statusItems,
       edge: dockEdge,
@@ -583,8 +582,7 @@ export function DockAccessoriesProvider({ children }) {
       interfaceSize,
       keyboardShortcuts,
       shortcutCapturing,
-      running,
-      showClock,
+      canClear,
       statusItems,
       reserveSpace,
       aboveFullScreen,
@@ -788,7 +786,14 @@ export function DockAccessoriesProvider({ children }) {
         loudnessProfile.removeProfile(payload.profileId);
       } else if (type === "export-loudness-profile") {
         dockAccessoryVisibility.closeEditor("loudness-profile");
-        void exportProfileRef.current?.(payload.profileId);
+        clearNotice();
+        void exportProfileRef.current?.(payload.profileId).then((outcome) => {
+          if (outcome === "failed") {
+            raiseNotice("error", "Loudness Profile export failed", undefined, {
+              requiresAttention: true,
+            });
+          }
+        });
       } else if (type === "reorder-loudness-profiles") {
         if (Array.isArray(payload.profileIds)) loudnessProfile.reorderProfiles(payload.profileIds);
       } else if (type === "delete-preset") presets.remove(payload.presetId);

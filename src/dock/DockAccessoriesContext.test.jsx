@@ -1,6 +1,6 @@
 /** @vitest-environment jsdom */
-import { beforeEach, describe, expect, it } from "vitest";
-import { renderHook } from "@testing-library/react";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+import { act, renderHook } from "@testing-library/react";
 import { WorkspaceProvider } from "../workspace/WorkspaceContext.jsx";
 import { MeterRuntimeProvider } from "../runtime/MeterRuntimeContext.jsx";
 import { BlockingEditorsProvider } from "../hooks/BlockingEditorsContext.jsx";
@@ -19,6 +19,9 @@ import { presetsStore, settingsStore, workspaceStore } from "../persistence/inde
 import { stubMatchMedia } from "../testing/matchMedia.js";
 import { DockProvider } from "./DockContext.jsx";
 import { DockAccessoriesProvider, useDockAccessories } from "./DockAccessoriesContext.jsx";
+import { useDockAccessoryBridge } from "./useDockAccessoryBridge.js";
+
+vi.mock("./useDockAccessoryBridge.js", () => ({ useDockAccessoryBridge: vi.fn() }));
 
 function wrapper({ children }) {
   return (
@@ -94,6 +97,29 @@ describe("DockAccessoriesProvider", () => {
       result.current.navigation.showDockToolbar({ expectedRevision: null, expectedUiGeneration: 0 })
     ).rejects.toMatchObject({ reason: "surfaceUnavailable" });
     expect(result.current.navigation.inspectUi().surfaces).toEqual([]);
+  });
+
+  it("shows a Status Notice when a Dock profile export fails and clears it on retry", async () => {
+    const { result } = renderHook(() => useDockAccessories(), { wrapper });
+    const exportProfile = vi.fn().mockResolvedValueOnce("failed").mockResolvedValueOnce("written");
+    result.current.exportProfileRef.current = exportProfile;
+    const exportFromDock = () =>
+      vi.mocked(useDockAccessoryBridge).mock.lastCall[0].onAction({
+        surface: "dock-editor",
+        type: "export-loudness-profile",
+        payload: { profileId: "profile-1" },
+      });
+
+    await act(async () => exportFromDock());
+    expect(exportProfile).toHaveBeenCalledWith("profile-1");
+    expect(result.current.statusItems).toContainEqual(
+      expect.objectContaining({ kind: "error", text: "Loudness Profile export failed" })
+    );
+
+    await act(async () => exportFromDock());
+    expect(result.current.statusItems).not.toContainEqual(
+      expect.objectContaining({ kind: "error", text: "Loudness Profile export failed" })
+    );
   });
 
   it("refuses the hook outside the provider", () => {

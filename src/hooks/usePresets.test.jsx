@@ -1676,9 +1676,16 @@ describe("usePresets modified state", () => {
     const [panelId] = result.current.workspace.state.panelOrder;
     const original = result.current.workspace.state.panelControlsById[panelId];
 
-    act(() => result.current.view.setAutoHideControls(true));
+    act(() =>
+      result.current.view.setFocusView({ ...result.current.view.focusView, autoHideControls: true })
+    );
     expect(result.current.presets.dirty).toBe(true);
-    act(() => result.current.view.setAutoHideControls(false));
+    act(() =>
+      result.current.view.setFocusView({
+        ...result.current.view.focusView,
+        autoHideControls: false,
+      })
+    );
     expect(result.current.presets.dirty).toBe(false);
 
     act(() => result.current.workspace.setAxisViewport("time", { windowSec: 20, offsetSec: 4 }));

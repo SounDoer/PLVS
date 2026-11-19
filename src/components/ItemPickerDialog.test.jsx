@@ -39,6 +39,23 @@ const PROFILES = [
 ];
 
 describe("ItemPickerDialog pick mode", () => {
+  it("shows when a checked Statistics result disappears and preserves the remaining selection", () => {
+    const onExport = vi.fn();
+    const remaining = { id: "a", name: "a.wav" };
+    const removed = { id: "b", name: "b.wav" };
+    const picker = (items) => (
+      <ItemPickerDialog open type="fileStatistics" mode="pick" onExport={onExport} items={items} />
+    );
+    const { rerender } = render(picker([remaining, removed]));
+    rerender(picker([remaining]));
+
+    expect(screen.getByRole("status").textContent).toMatch(/review your selection/i);
+    expect(screen.getByRole("checkbox", { name: "a.wav" })).toHaveProperty("checked", true);
+    expect(onExport).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole("button", { name: "Export CSV…" }));
+    expect(onExport).toHaveBeenCalledWith(["a"]);
+  });
+
   it("defaults Statistics to all successful results and allows a single selection", () => {
     const onExport = vi.fn();
     render(

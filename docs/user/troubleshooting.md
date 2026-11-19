@@ -53,6 +53,9 @@ details.
 
 ## <span id="file-open-analysis"></span> A file won’t open or analyze
 
+If PLVS cannot open the file picker, the toolbar's **Status Notices** reports the failure. Try
+opening it again.
+
 Check that the original file still exists and plays in another app. For a file on
 a network drive or in cloud storage, copy it to a local folder and open that copy
 in PLVS. If a file has several audio tracks, try selecting the track you want

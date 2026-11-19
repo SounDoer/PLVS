@@ -70,6 +70,7 @@ status entry. It names the highest-priority condition and shows a count when sev
 Hover for a short explanation; click for the full list, including affected readings and available
 actions. Click outside or press Escape to close the list. Resolved conditions disappear; the list
 is not a notification history. The footer keeps Source, Loudness and Preset information.
+If clearing the Live measurement fails, the history stays visible and you can retry **Clear**.
 
 In Dock, the toolbar button in the right control column shows a status icon while closed. Open the
 toolbar to see the summary, then click it for the same list in a floating window toward the inside
@@ -116,6 +117,8 @@ the window frame fails, PLVS attempts to restore the previous native frame.
 On Windows 11, **Hide Window Frame** also hides the outer system window outline; turning it off restores
 the system outline. **Auto-hide Controls** also uses a chromeless window, so the outline stays hidden
 while that mode is enabled. Normal windows retain their native shadow in either mode.
+When **Auto-hide Controls** is on, Escape shows or hides the toolbar. Open menus and dialogs
+handle Escape first.
 
 **Hide Panel Headers** hides each Workspace panel's title, tabs and action row. **Hide Axes & Labels**
 hides chart scales and channel/mode labels, including L/R, M/ST and Vector correlation tick numbers.

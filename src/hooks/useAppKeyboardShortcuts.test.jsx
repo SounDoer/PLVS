@@ -24,26 +24,25 @@ describe("useAppKeyboardShortcuts", () => {
     document.body.innerHTML = "";
   });
 
-  it("runs clear only when capture or clock state is active", () => {
+  it("runs Clear only when the source can be cleared", () => {
     const dispatchShortcutAction = vi.fn();
     const { rerender } = renderHook(
-      ({ running, showClock }) =>
+      ({ canClear }) =>
         useAppKeyboardShortcuts({
           dispatchShortcutAction,
-          running,
-          showClock,
+          canClear,
           keyboardShortcuts,
           shortcutCapturing: false,
           autoHideControls: false,
           toggleFocusControls: vi.fn(),
         }),
-      { initialProps: { running: false, showClock: false } }
+      { initialProps: { canClear: false } }
     );
 
     keyDown({ key: "3", ctrlKey: true });
     expect(dispatchShortcutAction).not.toHaveBeenCalled();
 
-    rerender({ running: true, showClock: false });
+    rerender({ canClear: true });
     const event = keyDown({ key: "3", ctrlKey: true });
 
     expect(event.defaultPrevented).toBe(true);
@@ -58,8 +57,7 @@ describe("useAppKeyboardShortcuts", () => {
     renderHook(() =>
       useAppKeyboardShortcuts({
         dispatchShortcutAction,
-        running: true,
-        showClock: true,
+        canClear: true,
         keyboardShortcuts,
         shortcutCapturing: false,
         autoHideControls: false,
@@ -78,8 +76,7 @@ describe("useAppKeyboardShortcuts", () => {
       ({ shortcutCapturing }) =>
         useAppKeyboardShortcuts({
           dispatchShortcutAction,
-          running: true,
-          showClock: true,
+          canClear: true,
           keyboardShortcuts,
           shortcutCapturing,
           autoHideControls: false,
@@ -101,8 +98,7 @@ describe("useAppKeyboardShortcuts", () => {
     renderHook(() =>
       useAppKeyboardShortcuts({
         dispatchShortcutAction: vi.fn(),
-        running: false,
-        showClock: false,
+        canClear: false,
         keyboardShortcuts,
         shortcutCapturing: false,
         autoHideControls: true,
@@ -124,8 +120,7 @@ describe("useAppKeyboardShortcuts", () => {
     renderHook(() =>
       useAppKeyboardShortcuts({
         dispatchShortcutAction: vi.fn(),
-        running: false,
-        showClock: false,
+        canClear: false,
         keyboardShortcuts,
         shortcutCapturing: false,
         autoHideControls: true,
@@ -138,13 +133,35 @@ describe("useAppKeyboardShortcuts", () => {
     expect(toggleFocusControls).not.toHaveBeenCalled();
   });
 
+  it("leaves Focus View controls alone if a dialog already handled Escape", () => {
+    const toggleFocusControls = vi.fn();
+    renderHook(() =>
+      useAppKeyboardShortcuts({
+        dispatchShortcutAction: vi.fn(),
+        canClear: false,
+        keyboardShortcuts,
+        shortcutCapturing: false,
+        autoHideControls: true,
+        toggleFocusControls,
+      })
+    );
+    const dialog = document.createElement("div");
+    document.body.append(dialog);
+    dialog.addEventListener("keydown", (event) => event.preventDefault());
+
+    dialog.dispatchEvent(
+      new KeyboardEvent("keydown", { key: "Escape", bubbles: true, cancelable: true })
+    );
+
+    expect(toggleFocusControls).not.toHaveBeenCalled();
+  });
+
   it("leaves the comma chord unhandled unless it has a configurable binding", () => {
     const dispatch = vi.fn();
     renderHook(() =>
       useAppKeyboardShortcuts({
         dispatchShortcutAction: dispatch,
-        running: true,
-        showClock: true,
+        canClear: true,
         keyboardShortcuts,
         shortcutCapturing: false,
         autoHideControls: false,

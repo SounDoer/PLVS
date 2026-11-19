@@ -81,6 +81,7 @@ selected metrics priority and uses spare space to show more of the filename.
 Use **Clear All Files…** at the bottom of the **Files** menu to remove all entries and results after
 confirmation. If the current analysis cannot be stopped, the queue and results are kept so you
 can retry. Audio files on disk are kept.
+The toolbar **Clear** action and its shortcut remove only the selected file result.
 
 Hover the file metadata text, warning icon, or metric controls for details. Click to keep the same details
 open, and click again, press Escape, or click outside to close them. Peak details include each
@@ -104,7 +105,8 @@ For scripted export, see [File analysis automation](cli.md#file-analysis-automat
 At the bottom of the **Files** menu, choose **Export Statistics…**. All successful results are selected by
 default. Choose any number of them, including one, and then **Export CSV…**. An entry with a
 previous successful result remains eligible while it is reanalyzing. The export uses the selected
-successful results and the Loudness Profile active when you choose Export CSV. The suggested
+successful results and the Loudness Profile active when you choose Export CSV. If a selected result
+has been removed, PLVS asks you to review the selection before exporting the remaining results. The suggested
 filename starts with `plvs-file-statistics-` and includes the local export time to the second. The timestamp inside the CSV uses UTC.
 
 Each row contains one result, with numeric measurements and positions in seconds, plus channel

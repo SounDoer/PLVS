@@ -8,6 +8,16 @@ import {
   useMeterRuntimeAssembly,
 } from "./MeterRuntimeContext.jsx";
 
+const native = vi.hoisted(() => ({ enabled: false, clear: vi.fn() }));
+vi.mock("../ipc/env.js", async (original) => ({
+  ...(await original()),
+  isTauri: () => native.enabled,
+}));
+vi.mock("../ipc/commands.js", async (original) => ({
+  ...(await original()),
+  clearAudioHistory: native.clear,
+}));
+
 function wrapper({ children }) {
   return <MeterRuntimeProvider>{children}</MeterRuntimeProvider>;
 }
@@ -51,6 +61,38 @@ describe("MeterRuntimeProvider", () => {
     await act(() => result.current.clearActiveSource());
 
     expect(result.current.running).toBe(true);
+  });
+
+  it("preserves Live history after a native Clear failure and clears it on retry", async () => {
+    const { result } = renderHook(
+      () => ({
+        runtime: useMeterRuntime(),
+        assembly: useMeterRuntimeAssembly(),
+        display: useMeterDisplayState(),
+      }),
+      { wrapper }
+    );
+    const reset = vi.spyOn(result.current.assembly.liveIntakeRef.current, "reset");
+    native.clear.mockRejectedValueOnce(new Error("native Clear failed"));
+    native.clear.mockResolvedValueOnce(undefined);
+    native.enabled = true;
+    try {
+      await act(async () => expect(await result.current.runtime.clearActiveSource()).toBe(false));
+
+      expect(reset).not.toHaveBeenCalled();
+      expect(result.current.display.notice).toMatchObject({
+        kind: "error",
+        text: "Could not clear the Live measurement",
+      });
+
+      await act(async () => expect(await result.current.runtime.clearActiveSource()).toBe(true));
+
+      expect(reset).toHaveBeenCalledOnce();
+      expect(result.current.display.notice).toBeNull();
+    } finally {
+      native.enabled = false;
+      native.clear.mockReset();
+    }
   });
 
   it("can clear retained Live data while File remains selected", async () => {

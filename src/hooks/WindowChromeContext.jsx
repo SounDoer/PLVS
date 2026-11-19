@@ -1,5 +1,5 @@
 import { normalizePanelPresentation } from "../lib/panelPresentation.js";
-import { createContext, useCallback, useContext, useEffect } from "react";
+import { createContext, useCallback, useContext, useEffect, useLayoutEffect, useRef } from "react";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { useAppSettings } from "../settings/SettingsContext.jsx";
 import { useDock } from "../dock/DockContext.jsx";
@@ -13,6 +13,8 @@ import {
 } from "./useSurfaceOpacityWindowShadow.js";
 import { setGlassEffect, useGlassEffect } from "./useGlassEffect.js";
 import { useViewsChromeReveal } from "./useViewsChromeReveal.js";
+import { settingsStore } from "../persistence/index.js";
+import { normalizeSettingsFocusView } from "../settings/defaults.js";
 
 /**
  * @typedef {{
@@ -39,6 +41,23 @@ import { useViewsChromeReveal } from "./useViewsChromeReveal.js";
  * }} WindowChrome
  */
 const WindowChromeContext = createContext(/** @type {WindowChrome | null} */ (null));
+
+function mergeChangedFields(current, next, changed, prefix) {
+  return Object.fromEntries(
+    Object.keys(current).map((key) => [
+      key,
+      changed.includes(`${prefix}.${key}`) ? next[key] : current[key],
+    ])
+  );
+}
+
+function storedFocusView(settings) {
+  return {
+    ...normalizeSettingsFocusView(settings.focusView),
+    compactPanels: normalizePanelPresentation(settings.panelPresentation, settings.focusView)
+      .workspace.hidePanelHeaders,
+  };
+}
 
 /**
  * Applies the stored view values to the OS window and owns the functions that change them.
@@ -77,8 +96,12 @@ export function WindowChromeProvider({ children }) {
   useFocusViewWindow(focusView.autoHideControls, focusView.borderless, { suspended: docked });
   useSurfaceOpacityWindowShadow(surfaceOpacity);
 
-  const applyViewState = useCallback(
+  const runViewUpdate = useCallback(
     async (next, { changed = [] } = {}) => {
+      // Use the settings owner's last write even if React has yet to render it.
+      const stored = settingsStore.read();
+      const currentFocus = storedFocusView(stored);
+      const nextFocus = mergeChangedFields(currentFocus, next.focusView, changed, "view.focusView");
       const rollback = [];
       try {
         if (
@@ -94,18 +117,18 @@ export function WindowChromeProvider({ children }) {
           const win = getCurrentWindow();
           if (changed.includes("view.pinned")) {
             await win.setAlwaysOnTop(next.pinned === true);
-            rollback.push(() => win.setAlwaysOnTop(pinned === true));
+            rollback.push(() => win.setAlwaysOnTop(stored.windowPinned === true));
           }
           if (
             changed.includes("view.focusView.autoHideControls") ||
             changed.includes("view.focusView.borderless")
           ) {
             await setWindowDecorations(
-              !(next.focusView.autoHideControls || next.focusView.borderless),
+              !(nextFocus.autoHideControls || nextFocus.borderless),
               (previous) => {
                 rollback.push(() =>
                   setWindowDecorations(
-                    previous ?? !(focusView.autoHideControls || focusView.borderless)
+                    previous ?? !(currentFocus.autoHideControls || currentFocus.borderless)
                   )
                 );
               }
@@ -137,10 +160,30 @@ export function WindowChromeProvider({ children }) {
 
       if (changed.includes("view.pinned")) setPinnedStored(next.pinned);
       if (changed.some((path) => path.startsWith("view.focusView."))) {
-        setFocusView(next.focusView);
+        setFocusView(
+          mergeChangedFields(
+            storedFocusView(settingsStore.read()),
+            next.focusView,
+            changed,
+            "view.focusView"
+          )
+        );
       }
       if (changed.some((path) => path.startsWith("view.panelPresentation."))) {
-        setPanelPresentationStored(next.panelPresentation);
+        const presentation = normalizePanelPresentation(settingsStore.read().panelPresentation);
+        setPanelPresentationStored(
+          Object.fromEntries(
+            Object.keys(presentation).map((surface) => [
+              surface,
+              mergeChangedFields(
+                presentation[surface],
+                next.panelPresentation[surface],
+                changed,
+                `view.panelPresentation.${surface}`
+              ),
+            ])
+          )
+        );
       }
       if (changed.includes("view.surfaceOpacity")) {
         setSurfaceOpacityStored(next.surfaceOpacity);
@@ -152,9 +195,7 @@ export function WindowChromeProvider({ children }) {
     },
     [
       docked,
-      focusView,
       glassEnabled,
-      pinned,
       resolvedTheme.colorScheme,
       surfaceOpacity,
       setFocusView,
@@ -165,31 +206,43 @@ export function WindowChromeProvider({ children }) {
       setPinnedStored,
     ]
   );
-  const setPanelPresentation = (next) =>
-    void applyViewState(
-      { pinned, focusView, surfaceOpacity, glassEnabled, panelPresentation: next },
-      { changed: ["view.panelPresentation.workspace", "view.panelPresentation.dock"] }
-    ).catch(() => {});
+  const viewUpdate = useRef(runViewUpdate);
+  useLayoutEffect(() => {
+    viewUpdate.current = runViewUpdate;
+  }, [runViewUpdate]);
+  const pendingViewUpdate = useRef(/** @type {Promise<void> | null} */ (null));
+  const applyViewState = useCallback((next, options) => {
+    const run = () => viewUpdate.current(next, options);
+    const pending = pendingViewUpdate.current;
+    const result = pending ? pending.then(run, run) : run();
+    pendingViewUpdate.current = result;
+    const release = () => {
+      if (pendingViewUpdate.current === result) pendingViewUpdate.current = null;
+    };
+    void result.then(release, release);
+    return result;
+  }, []);
+  const setPanelPresentation = (raw) => {
+    const next = normalizePanelPresentation(raw);
+    const changed = Object.entries(panelPresentation).flatMap(([surface, values]) =>
+      Object.keys(values)
+        .filter((key) => next[surface][key] !== values[key])
+        .map((key) => `view.panelPresentation.${surface}.${key}`)
+    );
+    void applyViewState({ panelPresentation: next }, { changed }).catch(() => {});
+  };
   const setPinned = useCallback(
     (/** @type {boolean} */ value) =>
-      void applyViewState(
-        { pinned: value === true, focusView, surfaceOpacity, glassEnabled },
-        { changed: ["view.pinned"] }
-      ).catch(() => {}),
-    [applyViewState, focusView, glassEnabled, surfaceOpacity]
+      void applyViewState({ pinned: value === true }, { changed: ["view.pinned"] }).catch(() => {}),
+    [applyViewState]
   );
   const setFocusField = useCallback(
     (field, /** @type {boolean} */ value) =>
       void applyViewState(
-        {
-          pinned,
-          focusView: { ...focusView, [field]: value === true },
-          surfaceOpacity,
-          glassEnabled,
-        },
+        { focusView: { [field]: value === true } },
         { changed: [`view.focusView.${field}`] }
       ).catch(() => {}),
-    [applyViewState, focusView, glassEnabled, surfaceOpacity, pinned]
+    [applyViewState]
   );
   const setAutoHideControls = useCallback(
     (value) => setFocusField("autoHideControls", value),
@@ -212,10 +265,10 @@ export function WindowChromeProvider({ children }) {
   const setGlassEnabled = useCallback(
     (/** @type {boolean} */ value) =>
       void applyViewState(
-        { pinned, focusView, surfaceOpacity, glassEnabled: value === true },
+        { glassEnabled: value === true },
         { changed: ["view.glassEnabled"] }
       ).catch(() => {}),
-    [applyViewState, focusView, surfaceOpacity, pinned]
+    [applyViewState]
   );
 
   useGlassEffect(glassEnabled, resolvedTheme.colorScheme === "dark");

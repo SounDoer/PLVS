@@ -33,21 +33,15 @@ describe("useViewSettings", () => {
     await waitFor(() => expect(settingsStore.read()).toMatchObject({ dockSurfaceOpacity: 36 }));
   });
 
-  it("persists view settings", () => {
+  it("persists opacity and glass settings", () => {
     const { result } = renderHook(() => useViewSettings());
 
     act(() => {
-      result.current.setAutoHideControls(true);
       result.current.setSurfaceOpacity(72);
       result.current.setGlassEnabled(true);
     });
 
     expect(JSON.parse(localStorage.getItem("plvs:settings"))).toMatchObject({
-      focusView: {
-        autoHideControls: true,
-        compactPanels: false,
-        borderless: false,
-      },
       surfaceOpacity: 72,
       glassEnabled: true,
     });
@@ -100,30 +94,6 @@ describe("useViewSettings", () => {
       surfaceOpacity: 25,
       dockSurfaceOpacity: 0,
       quickTour: "dismissed",
-    });
-  });
-});
-
-describe("panel presentation persistence", () => {
-  beforeEach(() => localStorage.clear());
-  it("persists independent surfaces and resolves legacy header writes", () => {
-    const { result, unmount } = renderHook(() => useViewSettings());
-    act(() =>
-      result.current.setPanelPresentation({
-        workspace: { hidePanelHeaders: true, hideAxesAndLabels: true },
-        dock: { hideAxesAndLabels: false },
-      })
-    );
-    act(() => result.current.setCompactPanels(false));
-    expect(result.current.panelPresentation).toEqual({
-      workspace: { hidePanelHeaders: false, hideAxesAndLabels: true },
-      dock: { hideAxesAndLabels: false },
-    });
-    unmount();
-    const restored = renderHook(() => useViewSettings());
-    expect(restored.result.current.panelPresentation).toEqual({
-      workspace: { hidePanelHeaders: false, hideAxesAndLabels: true },
-      dock: { hideAxesAndLabels: false },
     });
   });
 });

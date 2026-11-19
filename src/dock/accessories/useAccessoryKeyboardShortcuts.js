@@ -4,8 +4,7 @@ import { useAppKeyboardShortcuts } from "../../hooks/useAppKeyboardShortcuts.js"
 export function useAccessoryKeyboardShortcuts(keyboard, action) {
   useAppKeyboardShortcuts({
     dispatchShortcutAction: (actionId) => action("keyboard-shortcut", { actionId }),
-    running: keyboard?.running ?? false,
-    showClock: keyboard?.showClock ?? false,
+    canClear: keyboard?.canClear ?? false,
     keyboardShortcuts: keyboard?.bindings ?? {},
     shortcutCapturing: keyboard?.capturing ?? false,
     autoHideControls: false,

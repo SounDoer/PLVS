@@ -44,27 +44,6 @@ export function useViewSettings() {
     setFocusViewState(focus);
   }
 
-  /**
-   * @param {boolean} value
-   */
-  function setAutoHideControls(value) {
-    setFocusView({ ...focusView, autoHideControls: value === true });
-  }
-
-  /**
-   * @param {boolean} value
-   */
-  function setCompactPanels(value) {
-    setFocusView({ ...focusView, compactPanels: value === true });
-  }
-
-  /**
-   * @param {boolean} value
-   */
-  function setBorderless(value) {
-    setFocusView({ ...focusView, borderless: value === true });
-  }
-
   function setSurfaceOpacity(value) {
     const next = normalizeSurfaceOpacity(value);
     // Driven by a range input's `onInput`, so this runs on every pixel of a drag.
@@ -114,9 +93,6 @@ export function useViewSettings() {
     setFocusView,
     panelPresentation,
     setPanelPresentation,
-    setAutoHideControls,
-    setCompactPanels,
-    setBorderless,
     surfaceOpacity,
     setSurfaceOpacity,
     dockSurfaceOpacity,

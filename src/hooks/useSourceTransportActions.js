@@ -27,6 +27,7 @@ import { pickMediaFile } from "../ipc/fileDialog.js";
  *   stopFileAnalysis: (...args: any[]) => any,
  *   activeFileSession: import("../lib/fileAnalysisSessionRegistry.js").FileSessionView | null,
  *   getFileAnalysisSettings: (...args: any[]) => any,
+ *   raiseNotice?: ReturnType<typeof import("./useMeterDisplay.js").useMeterDisplay>["raiseNotice"],
  *   onClearSucceeded: (...args: any[]) => any,
  *   importFile?: (...args: any[]) => any,
  *   fileTaskBusy?: boolean,
@@ -59,6 +60,7 @@ export function useSourceTransportActions({
   activeFileSession,
   getFileAnalysisSettings,
   onClearSucceeded,
+  raiseNotice,
   importFile,
   fileTaskBusy = false,
   fileImportBusy = false,
@@ -76,6 +78,7 @@ export function useSourceTransportActions({
       resetHistoryViewport();
       onClearSucceeded?.();
     }
+    return cleared;
   }, [clearActiveSource, onClearSucceeded, resetHistoryViewport]);
 
   const beginFileAnalysis = useCallback(
@@ -103,12 +106,20 @@ export function useSourceTransportActions({
     if (getFileSourceToken && token == null) return;
     pickingRef.current = true;
     try {
-      const path = await pickMediaFile();
+      const path = await pickMediaFile().catch(() => {
+        if (token === getFileSourceToken?.()) {
+          raiseNotice?.("error", "Could not open the media file picker", undefined, {
+            requiresAttention: true,
+            helpTopic: "file-open-analysis",
+          });
+        }
+        return null;
+      });
       if (path && token === getFileSourceToken?.()) await beginFileAnalysisRef.current(path);
     } finally {
       pickingRef.current = false;
     }
-  }, [getFileSourceToken, fileTaskBusy]);
+  }, [getFileSourceToken, fileTaskBusy, raiseNotice]);
 
   const onSelectFile = useCallback(
     (id) => {

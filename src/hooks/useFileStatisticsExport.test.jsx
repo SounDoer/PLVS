@@ -78,3 +78,22 @@ it("writes nothing on cancellation and allows retry after a write error", async 
   expect(result.current.busy).toBe(false);
   expect(result.current.open).toBe(true);
 });
+
+it("refuses a stale selection before opening the save dialog", async () => {
+  const { result } = renderHook(() =>
+    useFileStatisticsExport({ ...reportOptions, fileSessions: [entry] })
+  );
+  act(() => result.current.onOpen());
+
+  await act(async () => {
+    expect(await result.current.onExport(["one", "removed"])).toBe(false);
+  });
+
+  expect(result.current.open).toBe(true);
+  expect(saveFileAnalysisReportFile).not.toHaveBeenCalled();
+  expect(writeTextFile).not.toHaveBeenCalled();
+  expect(reportOptions.raiseNotice).toHaveBeenCalledWith(
+    "guard",
+    expect.stringContaining("selected results are no longer available")
+  );
+});

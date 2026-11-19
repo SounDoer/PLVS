@@ -25,6 +25,7 @@ const EMPTY_FILE_SESSION = Object.freeze({ state: "empty" });
 
 /**
  * @typedef {ReturnType<typeof useSourceTransportActions> & {
+ *   canClear: boolean,
  *   fileSession: any,
  *   dialogueGating: boolean,
  *   currentFileAnalysisSettings: () => { dialogue: {
@@ -76,8 +77,15 @@ export function SourceActionsProvider({ children }) {
     stopFileAnalysis,
   } = useMeterRuntime();
   const { liveIntakeRef, fileConditionsRef } = useMeterRuntimeAssembly();
-  const { selectedOffset, setSelectedOffset, selectSnapshot, clearSnapshot, raiseNotice } =
-    useMeterDisplayState();
+  const {
+    selectedOffset,
+    setSelectedOffset,
+    selectSnapshot,
+    clearSnapshot,
+    raiseNotice,
+    showClock,
+  } = useMeterDisplayState();
+  const canClear = sourceMode === "file" ? Boolean(activeFileSession) : running || showClock;
   const settings = useAppSettings();
   const { onClearRef, shortcutActionRef, onHistoryRetentionChangeRef, dialogueVadEngine } =
     settings;
@@ -189,6 +197,7 @@ export function SourceActionsProvider({ children }) {
     stopFileAnalysis,
     activeFileSession,
     getFileAnalysisSettings: currentFileAnalysisSettings,
+    raiseNotice,
     onClearSucceeded: () => {
       setVectorscopeResetEpoch((epoch) => epoch + 1);
       setStereoMapResetEpoch((epoch) => epoch + 1);
@@ -198,7 +207,7 @@ export function SourceActionsProvider({ children }) {
   shortcutActionRef.current = (actionId) => {
     if (actionId === "toggleLiveCapture") return actions.toggleLiveCapture();
     if (actionId === "toggleLiveSnapshot") return actions.toggleLiveSnapshot();
-    if (actionId === "clear") return actions.clearAll();
+    if (actionId === "clear") return canClear ? actions.clearAll() : false;
   };
   onHistoryRetentionChangeRef.current = sourceMode === "live" ? actions.clearAll : async () => true;
   useDialogueEngineRestart(
@@ -213,6 +222,7 @@ export function SourceActionsProvider({ children }) {
     <SourceActionsContext.Provider
       value={{
         ...actions,
+        canClear,
         fileImport,
         fileQueue,
         clearFileCollection,

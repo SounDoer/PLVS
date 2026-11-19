@@ -41,6 +41,13 @@ export function useFileStatisticsExport({
     const entries = fileSessions.filter(
       (file) => selected.has(file.id) && getSuccessfulFileSession(file)
     );
+    if (entries.length !== selected.size) {
+      raiseNotice(
+        "guard",
+        "Some selected results are no longer available. Review your selection before exporting."
+      );
+      return false;
+    }
     if (!entries.length) return false;
     pending.current = true;
     setBusy(true);

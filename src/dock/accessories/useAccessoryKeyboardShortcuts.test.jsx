@@ -8,8 +8,7 @@ it("routes configured shortcuts and leaves the unbound comma chord alone", () =>
   renderHook(() =>
     useAccessoryKeyboardShortcuts(
       {
-        running: true,
-        showClock: false,
+        canClear: true,
         bindings: { toggleLiveCapture: { accelerator: "CmdOrCtrl+1", global: false } },
       },
       action
@@ -39,7 +38,11 @@ describe("shortcut capture in an accessory", () => {
     const action = vi.fn();
     renderHook(() =>
       useAccessoryKeyboardShortcuts(
-        { capturing: true, bindings: { clear: { accelerator: "CmdOrCtrl+3", global: false } } },
+        {
+          canClear: true,
+          capturing: true,
+          bindings: { clear: { accelerator: "CmdOrCtrl+3", global: false } },
+        },
         action
       )
     );

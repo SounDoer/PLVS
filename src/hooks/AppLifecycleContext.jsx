@@ -2,7 +2,7 @@ import { createContext, useCallback, useContext, useEffect, useState } from "rea
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { useAppSettings } from "../settings/SettingsContext.jsx";
 import { useDock } from "../dock/DockContext.jsx";
-import { useMeterDisplayState, useMeterRuntime } from "../runtime/MeterRuntimeContext.jsx";
+import { useMeterRuntime } from "../runtime/MeterRuntimeContext.jsx";
 import { useSource } from "../runtime/SourceContext.jsx";
 import { useSourceActions } from "../runtime/SourceActionsContext.jsx";
 import { useRuntimeCoordination } from "../runtime/coordination.js";
@@ -73,7 +73,6 @@ export function AppLifecycleProvider({ children }) {
     startLiveForControl,
     switchSource,
   } = meterRuntime;
-  const { showClock } = useMeterDisplayState();
   const {
     audioOutputs,
     audioInputs,
@@ -83,7 +82,7 @@ export function AppLifecycleProvider({ children }) {
     onSelectCaptureDevice,
     sourceDisplayName,
   } = useSource();
-  const { onStartClick, fileImport, fileQueue } = useSourceActions();
+  const { onStartClick, fileImport, fileQueue, canClear } = useSourceActions();
 
   // Crash-report discovery must outlive the normal-window overlays. A saved Dock posture replaces
   // those overlays with the strip at boot; keeping discovery here lets App restore the main window
@@ -264,8 +263,7 @@ export function AppLifecycleProvider({ children }) {
 
   useAppKeyboardShortcuts({
     dispatchShortcutAction: (actionId) => shortcutActionRef.current?.(actionId),
-    running,
-    showClock,
+    canClear,
     keyboardShortcuts,
     shortcutCapturing,
     autoHideControls: focusView.autoHideControls,

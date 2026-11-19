@@ -147,9 +147,7 @@ export function ItemPickerDialog({
   const { label, itemLabel } = statistics
     ? { label: "Statistics", itemLabel: "File" }
     : PACK_KINDS[type];
-  const selectedIds = statistics
-    ? items.filter((item) => !item.disabled && selected.has(item.id)).map((item) => item.id)
-    : [...selected];
+  const selectedIds = [...selected];
   const pasted = mode === "review" && review?.origin === "clipboard";
   const title =
     mode === "pick"
@@ -172,14 +170,14 @@ export function ItemPickerDialog({
   }, [open]);
 
   useEffect(() => {
-    if (!open || mode !== "pick" || statistics || selected.size === 0) return;
-    const available = new Set(items.map(({ id }) => id));
+    if (!open || mode !== "pick" || selected.size === 0) return;
+    const available = new Set(items.filter((item) => !item.disabled).map(({ id }) => id));
     const next = new Set([...selected].filter((id) => available.has(id)));
     if (next.size !== selected.size) {
       setSelected(next);
       setSelectionChanged(true);
     }
-  }, [items, mode, open, selected, statistics]);
+  }, [items, mode, open, selected]);
 
   const toggle = (id) => {
     setSelected((prev) => {

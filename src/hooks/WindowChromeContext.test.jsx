@@ -81,6 +81,67 @@ describe("WindowChromeProvider", () => {
     expect(result.current.chrome.focusViewActive).toBe(true);
   });
 
+  it("persists Views switches and keeps panel axes independent of header visibility", async () => {
+    const { result, unmount } = renderHook(() => useWindowChrome(), { wrapper });
+    await act(async () => {
+      result.current.setPanelPresentation({
+        workspace: { hidePanelHeaders: true, hideAxesAndLabels: true },
+        dock: { hideAxesAndLabels: false },
+      });
+    });
+    await act(async () => {
+      result.current.setCompactPanels(false);
+      result.current.setAutoHideControls(true);
+      result.current.setBorderless(true);
+    });
+    unmount();
+
+    const restored = renderHook(() => useWindowChrome(), { wrapper });
+    await act(async () => {});
+    expect(restored.result.current.view.focusView).toEqual({
+      autoHideControls: true,
+      compactPanels: false,
+      borderless: true,
+    });
+    expect(restored.result.current.view.panelPresentation).toEqual({
+      workspace: { hidePanelHeaders: false, hideAxesAndLabels: true },
+      dock: { hideAxesAndLabels: false },
+    });
+  });
+
+  it("keeps both Views switches when a second change arrives during a native update", async () => {
+    const { result } = renderHook(() => useWindowChrome(), { wrapper });
+    let decorated = true;
+    native.isTauri.mockReturnValue(true);
+    native.isDecorated.mockImplementation(async () => decorated);
+    native.setDecorations.mockImplementation(async (value) => {
+      decorated = value;
+    });
+    let release;
+    native.invoke.mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          release = resolve;
+        })
+    );
+
+    act(() => result.current.setBorderless(true));
+    await waitFor(() => expect(release).toBeTypeOf("function"));
+    act(() => result.current.setAutoHideControls(true));
+    expect(result.current.view.focusView.autoHideControls).toBe(false);
+    await act(async () => release());
+
+    expect(result.current.view.focusView).toMatchObject({
+      autoHideControls: true,
+      borderless: true,
+    });
+    expect(native.setDecorations.mock.calls).toEqual([[false]]);
+    expect(settingsStore.read().focusView).toMatchObject({
+      autoHideControls: true,
+      borderless: true,
+    });
+  });
+
   it("publishes surface opacity as a CSS variable", async () => {
     const { result } = renderHook(() => useWindowChrome(), { wrapper });
 

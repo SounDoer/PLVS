@@ -265,29 +265,6 @@ describe("useSettings", () => {
     });
   });
 
-  it("persists Focus View toggles", () => {
-    const { result } = renderHook(() => useSettings());
-
-    act(() => {
-      result.current.setAutoHideControls(true);
-    });
-
-    expect(JSON.parse(localStorage.getItem("plvs:settings")).focusView).toEqual({
-      autoHideControls: true,
-      compactPanels: false,
-      borderless: false,
-    });
-    act(() => {
-      result.current.setCompactPanels(true);
-    });
-
-    expect(JSON.parse(localStorage.getItem("plvs:settings")).focusView).toEqual({
-      autoHideControls: true,
-      compactPanels: true,
-      borderless: false,
-    });
-  });
-
   it("updates Focus View state from storage events", async () => {
     const { result } = renderHook(() => useSettings());
 

@@ -348,6 +348,7 @@ Complete Setup includes the workbench's last normal window placement and the pla
 local Presets.
 
 For a one-item file, use **Export** on the saved Loudness Profile, Preset, or custom Theme itself.
+In Dock, a failed Loudness Profile export appears in **Status Notices**.
 In the Settings **Saved Items** exporter, choose a type, then select the Items to export together.
 If an Item disappears from the Library, PLVS asks you to review the selection. If writing the file
 fails, the exporter keeps your selection so you can retry. Each file can contain up to 256 Items and

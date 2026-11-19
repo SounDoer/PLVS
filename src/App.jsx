@@ -167,8 +167,7 @@ export default function App() {
 function AppContent() {
   const [quickTourRequest, setQuickTourRequest] = useState(0);
   const meterRuntime = useMeterRuntime();
-  const { notice, selectedOffset, setSelectedOffset, selectSnapshot, showClock } =
-    useMeterDisplayState();
+  const { notice, selectedOffset, setSelectedOffset, selectSnapshot } = useMeterDisplayState();
   const { state: workspaceState, setAxisViewport, setPanelControlsForPanel } = useWorkspaceStore();
   const {
     visibility: dockAccessoryVisibility,
@@ -196,6 +195,7 @@ function AppContent() {
     vectorscopeResetEpoch,
     stereoMapResetEpoch,
     clearAll,
+    canClear,
     onSelectFile,
     onStopFile,
     onReanalyzeFile,
@@ -591,7 +591,7 @@ function AppContent() {
     onSourceModeChange,
     onSourceTransportAction,
     onClear: clearAll,
-    clearDisabled: sourceMode === "file" ? !activeFileSession : !running && !showClock,
+    clearDisabled: !canClear,
     isTauriApp: isTauri(),
     audioDevices,
     audioOutputs,
@@ -805,8 +805,7 @@ function AppContent() {
             presentationEnabled={!docked}
             dockPresentation={{
               edge: dockEdge,
-              running,
-              showClock,
+              canClear,
               onShortcut: (actionId) => settings.shortcutActionRef.current?.(actionId),
               suspended: dockSuspended,
               onGeometry: setSettingsGeometry,

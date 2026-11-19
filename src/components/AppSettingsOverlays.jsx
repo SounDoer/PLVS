@@ -526,8 +526,7 @@ export function AppSettingsOverlays({
     keyboard: {
       bindings: settings.keyboardShortcuts,
       capturing: settings.shortcutCapturing,
-      running: dockPresentation?.running,
-      showClock: dockPresentation?.showClock,
+      canClear: dockPresentation?.canClear,
     },
     openSection: () => settings.setSettingsOpen(true),
   };

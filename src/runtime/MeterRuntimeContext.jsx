@@ -185,26 +185,30 @@ export function MeterRuntimeProvider({ children }) {
     setSourceMode("live");
     // The Live clear owed by a measurement-method change made while File was shown runs here, in
     // the business function, because a clear dispatched while File is shown removes the File.
-    if (liveClearPendingRef.current) void clearLiveSource({ live: true }).catch(() => {});
+    if (liveClearPendingRef.current) void clearLiveSource();
   };
   /** A measurement-method change while File is shown: clear Live once it is shown again. */
   const deferLiveClear = () => {
     liveClearPendingRef.current = true;
   };
-  /** @param {{ strict?: boolean, live?: boolean }} [options] */
-  const clearLiveSource = async ({ strict = false, live = sourceMode === "live" } = {}) => {
-    liveClearPendingRef.current = false;
+  /** @param {{ strict?: boolean }} [options] */
+  const clearLiveSource = async ({ strict = false } = {}) => {
     if (isTauri()) {
       try {
         await clearAudioHistory();
       } catch (error) {
         if (strict) throw error;
+        display.raiseNotice("error", "Could not clear the Live measurement", undefined, {
+          requiresAttention: true,
+        });
+        return false;
       }
     }
+    liveClearPendingRef.current = false;
     liveIntakeRef.current.reset();
     liveMeasurementOwnerRef.current.clear();
     transport.clearAudioDrop();
-    if (live) {
+    if (sourceSelectionRef.current.mode === "live") {
       display.clearAudio();
       display.setSelectedOffset(-1);
       display.clock.resetTimer({ restart: transport.running });
@@ -223,7 +227,12 @@ export function MeterRuntimeProvider({ children }) {
         fileHistory.analyzingFileId === activeId ||
         preparationRef.current?.sessionId === activeId
       ) {
-        await stopFileAnalysis();
+        try {
+          await stopFileAnalysis(activeId);
+        } catch {
+          // The stop operation already reports its failure in Status Notices.
+          return false;
+        }
       }
       activeEntry?.intake?.reset?.();
       display.clearAudio();

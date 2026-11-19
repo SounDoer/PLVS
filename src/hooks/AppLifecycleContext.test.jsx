@@ -76,6 +76,27 @@ describe("AppLifecycleProvider", () => {
     expect(typeof result.current.updateControls.refreshUpdateCheck).toBe("function");
   });
 
+  it("clears the active File with the local shortcut before Live has ever run", async () => {
+    const { result } = renderHook(() => useMeterRuntime(), { wrapper });
+    act(() => result.current.switchSource("file"));
+    act(() => result.current.beginFileAnalysis("/tmp/selected.wav", {}));
+    await act(() => result.current.stopFileAnalysis());
+    expect(result.current.activeFileSession).toBeTruthy();
+
+    await act(async () => {
+      window.dispatchEvent(
+        new KeyboardEvent("keydown", {
+          key: "3",
+          ctrlKey: true,
+          bubbles: true,
+          cancelable: true,
+        })
+      );
+    });
+
+    expect(result.current.activeFileSession).toBeNull();
+  });
+
   it("refuses the hook outside the provider", () => {
     expect(() => renderHook(() => useAppLifecycle())).toThrow(
       "useAppLifecycle must be used inside AppLifecycleProvider"

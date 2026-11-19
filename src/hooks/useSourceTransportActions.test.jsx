@@ -167,6 +167,28 @@ describe("useSourceTransportActions", () => {
     expect(props.beginRuntimeFileAnalysis).toHaveBeenCalledWith("C:/audio/test.wav", settings);
   });
 
+  it("reports a native file picker failure and lets the next attempt proceed", async () => {
+    mocks.pickMediaFile.mockRejectedValueOnce(new Error("picker unavailable"));
+    mocks.pickMediaFile.mockResolvedValueOnce("/tmp/audio.wav");
+    const raiseNotice = vi.fn();
+    const { result, props } = renderActions({ sourceMode: "file", raiseNotice });
+
+    await act(() => result.current.onSourceTransportAction("chooseFile"));
+    expect(raiseNotice).toHaveBeenCalledWith(
+      "error",
+      "Could not open the media file picker",
+      undefined,
+      { requiresAttention: true, helpTopic: "file-open-analysis" }
+    );
+    expect(props.beginRuntimeFileAnalysis).not.toHaveBeenCalled();
+
+    await act(() => result.current.onSourceTransportAction("chooseFile"));
+    expect(props.beginRuntimeFileAnalysis).toHaveBeenCalledWith(
+      "/tmp/audio.wav",
+      expect.any(Object)
+    );
+  });
+
   it("resets the history viewport when removing the displayed file", async () => {
     const { result, props } = renderActions({
       removeFile: vi.fn().mockResolvedValue(true),

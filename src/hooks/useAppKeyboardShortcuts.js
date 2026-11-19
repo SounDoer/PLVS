@@ -3,8 +3,7 @@ import { eventMatchesAccelerator, reservedAcceleratorLabel } from "../lib/accele
 
 export function useAppKeyboardShortcuts({
   dispatchShortcutAction,
-  running,
-  showClock,
+  canClear,
   keyboardShortcuts,
   shortcutCapturing,
   autoHideControls,
@@ -12,8 +11,7 @@ export function useAppKeyboardShortcuts({
 }) {
   const shortcutHandlerRef = useRef({
     dispatchShortcutAction,
-    running,
-    showClock,
+    canClear,
     keyboardShortcuts,
     shortcutCapturing,
     autoHideControls,
@@ -23,8 +21,7 @@ export function useAppKeyboardShortcuts({
   useEffect(() => {
     shortcutHandlerRef.current = {
       dispatchShortcutAction,
-      running,
-      showClock,
+      canClear,
       keyboardShortcuts,
       shortcutCapturing,
       autoHideControls,
@@ -34,18 +31,17 @@ export function useAppKeyboardShortcuts({
     autoHideControls,
     dispatchShortcutAction,
     keyboardShortcuts,
-    running,
-    showClock,
+    canClear,
     shortcutCapturing,
     toggleFocusControls,
   ]);
 
   useEffect(() => {
     const onKeyDown = (e) => {
+      if (e.defaultPrevented) return;
       const {
         dispatchShortcutAction: dispatch,
-        running: isRunning,
-        showClock: hasClock,
+        canClear: clearAvailable,
         keyboardShortcuts: bindings,
         shortcutCapturing: isCapturing,
         autoHideControls: autoHide,
@@ -67,7 +63,7 @@ export function useAppKeyboardShortcuts({
       if (configuredAction) {
         e.preventDefault();
         if (e.repeat) return;
-        if (configuredAction !== "clear" || isRunning || hasClock) dispatch(configuredAction);
+        if (configuredAction !== "clear" || clearAvailable) dispatch(configuredAction);
         return;
       }
       if (e.key === "Escape" && autoHide && !editable) {
