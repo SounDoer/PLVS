@@ -33,6 +33,21 @@ describe("chart gesture commands", () => {
     expect(gestures.resetTruePeakMax).toHaveBeenCalledOnce();
   });
 
+  it("returns the measurement failure when TP Max could not be reset", async () => {
+    const failure = new Error("The Live source stopped before the reset.");
+    await expect(
+      gestureHandlers["measurement.resetTruePeakMax"].run(
+        context(
+          "measurement.resetTruePeakMax",
+          { panelId: "spectrum", expectedRevision: 0 },
+          {
+            resetTruePeakMax: vi.fn().mockRejectedValue(failure),
+          }
+        )
+      )
+    ).rejects.toMatchObject({ reason: "applicationFailed", message: failure.message });
+  });
+
   it("holds Slow Trace for the requested time and always releases it", async () => {
     vi.useFakeTimers();
     const holdSlow = { start: vi.fn(), stop: vi.fn() };

@@ -7,9 +7,9 @@ import { normalizeAxisViewportsState } from "../workspace/axisViewports.js";
 import { normalizePanelControlsById } from "../workspace/panelControlInstances.js";
 import { resolvePanelDisplayName } from "../workspace/panelInstances.js";
 import { readPublicPanelAxes } from "./panelAxes.js";
-import { readPublicPanelControls } from "./panelControls.js";
+import { readPublicPanelControls } from "../workspace/panelControlDocument.js";
 import { buildDockSnapshot } from "./dockControl.js";
-import { serializeWorkspaceLayout } from "./workspaceLayout.js";
+import { serializeWorkspaceLayout } from "../workspace/workspaceLayout.js";
 
 /**
  * @param {string} selection

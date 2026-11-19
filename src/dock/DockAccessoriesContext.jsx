@@ -117,7 +117,6 @@ export function DockAccessoriesProvider({ children }) {
     settingsOpenEpoch,
     keyboardShortcuts,
     shortcutCapturing,
-    shortcutActionRef,
     setSettingsOpen,
   } = useAppSettings();
   const { view, setPanelPresentation, setDockSurfaceOpacity } = useWindowChrome();
@@ -136,7 +135,7 @@ export function DockAccessoriesProvider({ children }) {
   const { sourceTransportState, histSourceList, displayAudio } = useDisplaySnapshot();
   const historyTotalSamples = histSourceList?.length ?? 0;
   const { channelCount, vectorscopePairOptions, spectrumChannelOptions } = useAnalysisSession();
-  const { canClear, clearAll, onSourceTransportAction } = useSourceActions();
+  const { canClear, clearAll, onSourceTransportAction, dispatchShortcut } = useSourceActions();
   const presets = usePresetLibrary();
   const exportProfileRef = useRef(null);
   const loudnessProfile = useLoudnessProfile();
@@ -641,7 +640,7 @@ export function DockAccessoriesProvider({ children }) {
         type === "keyboard-shortcut" &&
         KEYBOARD_SHORTCUT_ACTIONS.some(({ id }) => id === payload.actionId)
       ) {
-        shortcutActionRef.current?.(payload.actionId);
+        dispatchShortcut?.(payload.actionId);
       } else if (type === "open-settings") {
         dockAccessoryVisibility.closeEditor();
         setSettingsOpen(true);
@@ -816,6 +815,7 @@ export function DockAccessoriesProvider({ children }) {
       loudnessProfile,
       onDockChange,
       onSourceTransportAction,
+      dispatchShortcut,
       presets,
       raiseNotice,
       reserveSpace,
@@ -824,7 +824,6 @@ export function DockAccessoriesProvider({ children }) {
       resetDockLayout,
       openUpdateDetails,
       runStatusAction,
-      shortcutActionRef,
     ]
   );
   useDockAccessoryBridge({

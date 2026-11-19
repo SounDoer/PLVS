@@ -1,4 +1,7 @@
-import { compileWorkspaceLayout, serializeWorkspaceLayout } from "../workspaceLayout.js";
+import {
+  compileWorkspaceLayout,
+  serializeWorkspaceLayout,
+} from "../../workspace/workspaceLayout.js";
 import { semanticFailure } from "../bridge/failures.js";
 import { workspaceMatches } from "../bridge/signatures.js";
 import { awaitWorkspacePersistence } from "../bridge/settlement.js";

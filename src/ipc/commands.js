@@ -47,12 +47,51 @@ export async function startAudioCapture({
   onFrame,
 }) {
   const onAudio = new Channel();
+  let nextResetId = 0;
+  let pendingReset = null;
+  let closed = false;
   onAudio.onmessage = (msg) => {
     const frame = frameFromChannelMessage(msg);
-    if (frame) onFrame(frame);
+    if (frame && "meterReset" in frame) {
+      if (pendingReset?.id !== frame.meterReset) return;
+      try {
+        pendingReset.apply();
+        pendingReset.resolve();
+      } catch (error) {
+        pendingReset.reject(error);
+      }
+    } else if (frame) {
+      onFrame(frame);
+    }
   };
   await invoke("audio_start", { deviceId, processId, applicationId, onFrame: onAudio });
-  return onAudio;
+  return Object.assign(onAudio, {
+    /** @param {"history" | "truePeakMax"} kind @param {() => void} apply */
+    async resetMeter(kind, apply) {
+      if (closed) throw new Error("The Live source stopped before the reset.");
+      if (pendingReset) throw new Error("A Live meter reset is already in progress.");
+      const resetId = ++nextResetId;
+      const applied = new Promise((resolve, reject) => {
+        pendingReset = { id: resetId, apply, resolve, reject };
+      });
+      try {
+        await Promise.all([
+          invoke(kind === "history" ? "clear_audio_history" : "reset_true_peak_max", {
+            streamId: onAudio.id,
+            requestId: resetId,
+          }),
+          applied,
+        ]);
+      } finally {
+        pendingReset = null;
+      }
+    },
+    closeMeterResets() {
+      closed = true;
+      pendingReset?.reject(new Error("The Live source stopped before the reset."));
+      pendingReset = null;
+    },
+  });
 }
 
 export function stopAudioCapture() {
@@ -74,16 +113,6 @@ export function ackFrames(seq) {
  */
 export function getUiFrameDiagnostics() {
   return invoke("get_ui_frame_diagnostics");
-}
-
-/** Clears native loudness history ring and peak maxima (call with UI Clear when Tauri capture is running). */
-export function clearAudioHistory() {
-  return invoke("clear_audio_history");
-}
-
-/** Resets only the native True Peak Max hold (per-metric reset, e.g. double-click on the TP Max marker). */
-export function resetTruePeakMax() {
-  return invoke("reset_true_peak_max");
 }
 
 /** @returns {Promise<"running" | "stopped">} */

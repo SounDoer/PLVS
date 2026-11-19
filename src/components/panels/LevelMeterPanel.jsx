@@ -340,6 +340,9 @@ export function LevelMeterPanel({ showAxes: axesOverride, className } = {}) {
   usePanelGestures({
     resetTruePeakMax: isPeak && showTpMaxMarkerSetting && onResetTpMax ? onResetTpMax : null,
   });
+  const onResetTpMaxClick = onResetTpMax
+    ? () => void Promise.resolve(onResetTpMax()).catch(() => {})
+    : null;
   // Peak-family modes keep their own dBFS range; the loudness-family modes (M/ST) share the
   // LoudnessPanel's LUFS Y range so zooming one rescales the other.
   const modeDefaults = isPeakFamily
@@ -417,7 +420,7 @@ export function LevelMeterPanel({ showAxes: axesOverride, className } = {}) {
           className,
           displayAudio,
           hasTpMaxValue,
-          onResetTpMax,
+          onResetTpMax: onResetTpMaxClick,
           normalizedPanelControls,
           onPanelControlsChange,
           channels,
@@ -614,7 +617,7 @@ export function LevelMeterPanel({ showAxes: axesOverride, className } = {}) {
                 dataAttribute="data-level-tp-max-marker"
                 className={loudnessMeterMarkerClass(tpMaxStatus, profileActive)}
                 loudnessStatus={profileActive ? (tpMaxStatus ?? "neutral") : "off"}
-                onReset={onResetTpMax}
+                onReset={onResetTpMaxClick}
                 resetLabel="Click to reset TP Max"
               />
             ) : null}
@@ -768,7 +771,7 @@ function HorizontalLevelMeter({
     value
   );
   const { anchorRef, showTip, hideTip, tipNode } = useHoverTip({
-    tip: isPeak && marker ? "Click to reset TP Max" : undefined,
+    tip: isPeak && marker && onResetTpMax ? "Click to reset TP Max" : undefined,
     side: "top",
   });
   const [markerWidth, setMarkerWidth] = useState(0);
@@ -862,8 +865,8 @@ function HorizontalLevelMeter({
           data-level-meter-horizontal-marker
         >
           <span
-            role={isPeak ? "button" : undefined}
-            tabIndex={isPeak ? 0 : undefined}
+            role={isPeak && onResetTpMax ? "button" : undefined}
+            tabIndex={isPeak && onResetTpMax ? 0 : undefined}
             onKeyDown={(event) => {
               if (isPeak && (event.key === "Enter" || event.key === " ")) {
                 event.preventDefault();

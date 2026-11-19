@@ -12,7 +12,7 @@ use super::spectrum_bank::{
 };
 use super::spectrum_consumer::{SpectralConsumer, SpectralProjection};
 use super::stereo_map::{StereoMapConsumer, StereoMapPrimitiveRow};
-use crate::engine::spectral_plan::{
+use crate::dsp::spectral_plan::{
   same_logical_consumer, ConsumerInput, ConsumerProjection, ProjectionKind,
   SpectralConsumerBinding, SpectralPlan, StereoMapConsumerBinding, TransformStreamId,
 };
@@ -1128,15 +1128,15 @@ pub(crate) struct RuntimeStreamSnapshot {
 #[cfg(test)]
 mod tests {
   use super::*;
+  use crate::dsp::spectral_plan::{
+    plan_analysis_requests, plan_spectral_requests, FuturePairNeed, ProjectionKind,
+    TransformStreamId,
+  };
   use crate::dsp::spectral_transform::SpectralTransform;
   use crate::dsp::spectrum_bank::{
     FFT_BIG, FFT_MID, FFT_SMALL, OVERLAP_BIG, OVERLAP_MID, OVERLAP_SMALL,
   };
   use crate::dsp::spectrum_consumer::{SpectralConsumer, SpectralProjection};
-  use crate::engine::spectral_plan::{
-    plan_analysis_requests, plan_spectral_requests, FuturePairNeed, ProjectionKind,
-    TransformStreamId,
-  };
   use crate::ipc::types::{
     AnalysisRequests, SpectrumAnalysisChannel, SpectrumAnalysisRequest, StereoMapAnalysisPair,
     StereoMapAnalysisRequest,
@@ -1203,7 +1203,7 @@ mod tests {
     requests: &[SpectrumAnalysisRequest],
     future_pair_needs: &[FuturePairNeed],
   ) -> (
-    crate::engine::spectral_plan::SpectralPlan,
+    crate::dsp::spectral_plan::SpectralPlan,
     SharedSpectralRuntime,
   ) {
     let plan = plan_spectral_requests(channels, requests, future_pair_needs);

@@ -1,13 +1,15 @@
 import {
+  compileDockLayout,
+  planDockPanelPatch,
+  planDockPanelReset,
+} from "../../dock/dockLayoutDocument.js";
+import {
   buildDockDescription,
   buildDockPanelDescription,
   buildDockSnapshot,
-  compileDockLayout,
   dockStateSignature,
   planDockFormMutation,
-  planDockPanelPatch,
   planDockLayoutReset,
-  planDockPanelReset,
   reconcileDockExecution,
 } from "../dockControl.js";
 import { panelResultPreset } from "./shared.js";

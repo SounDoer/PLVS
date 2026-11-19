@@ -32,7 +32,7 @@ impl AudioCapture for AppAudioBackend {
     frame_subscribers: FrameSubscribers,
     app: AppHandle,
     channel_selection: std::sync::Arc<
-      std::sync::Mutex<Option<crate::ipc::commands::ChannelSelection>>,
+      std::sync::Mutex<Option<crate::dsp::channel_layouts::ChannelSelection>>,
     >,
     dialogue_gating: std::sync::Arc<std::sync::Mutex<bool>>,
     dialogue_vad_engine: std::sync::Arc<std::sync::Mutex<VadEngineKind>>,

@@ -182,7 +182,7 @@ function IconButton({ children, className, ...props }) {
  *   setHistoryRetentionSec?: (...args: any[]) => any,
  *   dialogueVadEngine?: string,
  *   setDialogueVadEngine?: (...args: any[]) => any,
- *   keyboardShortcuts?: ReturnType<typeof import("../hooks/useSettings.js").useSettings>["keyboardShortcuts"],
+ *   keyboardShortcuts?: ReturnType<typeof import("../hooks/useKeyboardShortcuts.js").useKeyboardShortcuts>["keyboardShortcuts"],
  *   setShortcutAccelerator?: (...args: any[]) => any,
  *   setShortcutGlobal?: (...args: any[]) => any,
  *   resetShortcut?: (actionId: string) => any,

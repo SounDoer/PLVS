@@ -1,6 +1,7 @@
 import {
   normalizePanelPresentation,
   DEFAULT_PANEL_PRESENTATION,
+  validatePanelPresentationPatch,
 } from "../lib/panelPresentation.js";
 import { DEFAULT_FOCUS_VIEW } from "../lib/focusView.js";
 import { DEFAULT_GLASS_ENABLED, DEFAULT_SURFACE_OPACITY } from "../settings/defaults.js";
@@ -323,33 +324,4 @@ export function planViewUpdate(currentInput, patch, context = {}, options = {}) 
 
 export function planViewReset(current, context = {}) {
   return planViewUpdate(current, DEFAULT_VIEW, context, { allowUnavailableGlassReset: true });
-}
-
-export function validatePanelPresentationPatch(raw, path = "$.panelPresentation") {
-  const issues = [];
-  if (!isObject(raw)) return [issue("invalidType", path, "panelPresentation must be an object.")];
-  for (const [surface, values] of Object.entries(raw)) {
-    if (!Object.hasOwn(DEFAULT_PANEL_PRESENTATION, surface)) {
-      issues.push(issue("unknownControl", `${path}.${surface}`, "Unknown presentation surface."));
-    } else if (!isObject(values)) {
-      issues.push(
-        issue("invalidType", `${path}.${surface}`, "Surface presentation must be an object.")
-      );
-    } else
-      for (const [key, value] of Object.entries(values)) {
-        if (!Object.hasOwn(DEFAULT_PANEL_PRESENTATION[surface], key))
-          issues.push(
-            issue("unknownControl", `${path}.${surface}.${key}`, "Unknown presentation control.")
-          );
-        else if (typeof value !== "boolean")
-          issues.push(
-            issue(
-              "invalidType",
-              `${path}.${surface}.${key}`,
-              "Presentation control must be a boolean."
-            )
-          );
-      }
-  }
-  return issues;
 }

@@ -5,13 +5,12 @@ import {
   normalizeHistoryRetentionSec,
 } from "../settings/defaults.js";
 
-/** @param {{ onChangeRef?: { current?: (() => any) | null } }} [options] */
-export function useHistoryRetentionSetting({ onChangeRef } = {}) {
+export function useHistoryRetentionSetting() {
   const [historyRetentionSec, setHistoryRetentionSecState] = useState(() =>
     normalizeHistoryRetentionSec(settingsStore.read().historyRetentionSec)
   );
 
-  async function setHistoryRetentionSec(value) {
+  function setHistoryRetentionSec(value) {
     const next = normalizeHistoryRetentionSec(Number(value));
     if (next === historyRetentionSec) return false;
     if (next === DEFAULT_HISTORY_RETENTION_SEC) {
@@ -20,7 +19,6 @@ export function useHistoryRetentionSetting({ onChangeRef } = {}) {
       settingsStore.patch({ historyRetentionSec: next });
     }
     setHistoryRetentionSecState(next);
-    await onChangeRef?.current?.();
     return true;
   }
 

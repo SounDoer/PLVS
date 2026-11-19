@@ -2,7 +2,7 @@ import { createContext, useCallback, useContext, useMemo, useState } from "react
 import packageInfo from "../../package.json";
 import { useWorkspaceStore } from "../workspace/WorkspaceContext.jsx";
 import { useSharedTimeViewport } from "../workspace/useSharedTimeViewport.js";
-import { useAppSettings } from "../settings/SettingsContext.jsx";
+import { ShortcutSettingsProvider, useAppSettings } from "../settings/SettingsContext.jsx";
 import { useLoudnessProfile } from "../hooks/LoudnessProfileContext.jsx";
 import { useFileAnalysisReportExport } from "../hooks/useFileAnalysisReportExport.js";
 import { useSourceTransportActions } from "../hooks/useSourceTransportActions.js";
@@ -26,6 +26,8 @@ const EMPTY_FILE_SESSION = Object.freeze({ state: "empty" });
 /**
  * @typedef {ReturnType<typeof useSourceTransportActions> & {
  *   canClear: boolean,
+ *   dispatchShortcut: (actionId: string) => any,
+ *   changeHistoryRetention: (value: string | number) => Promise<boolean>,
  *   fileSession: any,
  *   dialogueGating: boolean,
  *   currentFileAnalysisSettings: () => { dialogue: {
@@ -49,8 +51,7 @@ const SourceActionsContext = createContext(/** @type {SourceActions | null} */ (
 /**
  * What the user does to the active source: start and stop, clear, and the file actions.
  *
- * Assigns the settings owner's clear ref during render. The clear shortcut is registered out there
- * and the action lives in here; see `SettingsProvider`.
+ * Shortcut inputs and History Length settings call the same actions as the source controls.
  */
 export function SourceActionsProvider({ children }) {
   const { state: workspaceState } = useWorkspaceStore();
@@ -87,8 +88,7 @@ export function SourceActionsProvider({ children }) {
   } = useMeterDisplayState();
   const canClear = sourceMode === "file" ? Boolean(activeFileSession) : running || showClock;
   const settings = useAppSettings();
-  const { onClearRef, shortcutActionRef, onHistoryRetentionChangeRef, dialogueVadEngine } =
-    settings;
+  const { dialogueVadEngine, setHistoryRetentionSec } = settings;
   const fileDialogueDetection = settings.fileDialogueDetection === true;
   const loudnessProfile = useLoudnessProfile();
 
@@ -203,18 +203,21 @@ export function SourceActionsProvider({ children }) {
       setStereoMapResetEpoch((epoch) => epoch + 1);
     },
   });
-  onClearRef.current = actions.clearAll;
-  shortcutActionRef.current = (actionId) => {
+  const dispatchShortcut = (actionId) => {
     if (actionId === "toggleLiveCapture") return actions.toggleLiveCapture();
     if (actionId === "toggleLiveSnapshot") return actions.toggleLiveSnapshot();
     if (actionId === "clear") return canClear ? actions.clearAll() : false;
   };
-  onHistoryRetentionChangeRef.current = sourceMode === "live" ? actions.clearAll : async () => true;
+  const changeHistoryRetention = async (value) => {
+    const changed = setHistoryRetentionSec(value);
+    if (changed && sourceMode === "live") await actions.clearAll();
+    return changed;
+  };
   useDialogueEngineRestart(
     dialogueVadEngine,
     dialogueGating,
     sourceMode === "live",
-    onClearRef,
+    actions.clearAll,
     deferLiveClear
   );
 
@@ -222,6 +225,8 @@ export function SourceActionsProvider({ children }) {
     <SourceActionsContext.Provider
       value={{
         ...actions,
+        dispatchShortcut,
+        changeHistoryRetention,
         canClear,
         fileImport,
         fileQueue,
@@ -258,7 +263,9 @@ export function SourceActionsProvider({ children }) {
           onClose={statistics.onClose}
         />
       ) : null}
-      {children}
+      <ShortcutSettingsProvider dispatchShortcut={dispatchShortcut}>
+        {children}
+      </ShortcutSettingsProvider>
     </SourceActionsContext.Provider>
   );
 }

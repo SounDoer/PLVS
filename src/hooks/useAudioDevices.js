@@ -1,8 +1,5 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
-import {
-  advanceDeviceGeneration,
-  normalizeDeviceInventory,
-} from "../agentControl/deviceControl.js";
+import { advanceDeviceGeneration, normalizeDeviceInventory } from "../runtime/deviceInventory.js";
 import {
   listAudioDevices,
   listCaptureApplications,

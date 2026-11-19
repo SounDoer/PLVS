@@ -3,7 +3,7 @@ import { useCaptureTransport } from "../hooks/useCaptureTransport.js";
 import { useFileSessionLedger } from "../hooks/useFileSessionLedger.js";
 import { useIntakeRouting } from "../hooks/useIntakeRouting.js";
 import { useMeterDisplay } from "../hooks/useMeterDisplay.js";
-import { clearAudioHistory, startFileProbe } from "../ipc/commands.js";
+import { startFileProbe } from "../ipc/commands.js";
 import { errorMessage } from "../lib/errorDetails.js";
 import { sameFileSourceVersion, withSelectedAudioTrack } from "../lib/fileAnalysisSource.js";
 import { fileImportTracks } from "../lib/fileImportPlan.js";
@@ -191,19 +191,7 @@ export function MeterRuntimeProvider({ children }) {
   const deferLiveClear = () => {
     liveClearPendingRef.current = true;
   };
-  /** @param {{ strict?: boolean }} [options] */
-  const clearLiveSource = async ({ strict = false } = {}) => {
-    if (isTauri()) {
-      try {
-        await clearAudioHistory();
-      } catch (error) {
-        if (strict) throw error;
-        display.raiseNotice("error", "Could not clear the Live measurement", undefined, {
-          requiresAttention: true,
-        });
-        return false;
-      }
-    }
+  const clearLiveDisplay = () => {
     liveClearPendingRef.current = false;
     liveIntakeRef.current.reset();
     liveMeasurementOwnerRef.current.clear();
@@ -214,12 +202,74 @@ export function MeterRuntimeProvider({ children }) {
       display.clock.resetTimer({ restart: transport.running });
       display.setShowClock(transport.running);
     }
-    return true;
+  };
+  /** @param {{ strict?: boolean }} [options] */
+  const clearLiveSource = async ({ strict = false } = {}) => {
+    const meter = audioRef.current?.meter;
+    const selection = sourceSelectionRef.current;
+    try {
+      if (isTauri() && (transport.lifecycle === "starting" || transport.lifecycle === "stopping")) {
+        throw new Error("Wait for the Live source to finish changing.");
+      }
+      if (isTauri() && transport.running) {
+        if (!meter || transport.lifecycle !== "running" || transport.deviceTransition) {
+          throw new Error("Wait for the Live source to finish changing.");
+        }
+        await meter.resetMeter("history", () => {
+          if (sourceSelectionRef.current !== selection || audioRef.current?.meter !== meter) {
+            throw new Error("The Live source changed before the reset.");
+          }
+          clearLiveDisplay();
+        });
+      } else {
+        clearLiveDisplay();
+      }
+      return true;
+    } catch (error) {
+      if (strict) throw error;
+      if (sourceSelectionRef.current === selection) {
+        display.raiseNotice("error", "Could not clear the Live measurement", error?.message, {
+          requiresAttention: true,
+        });
+      }
+      return false;
+    }
+  };
+  const resetLiveTruePeakMax = async () => {
+    const selection = sourceSelectionRef.current;
+    const meter = audioRef.current?.meter;
+    try {
+      if (
+        selection.mode !== "live" ||
+        transport.lifecycle !== "running" ||
+        transport.deviceTransition ||
+        display.selectedOffsetRef.current >= 0 ||
+        !meter
+      ) {
+        throw new Error("Reset True Peak Max is available during a Live measurement.");
+      }
+      await meter.resetMeter("truePeakMax", () => {
+        if (sourceSelectionRef.current !== selection || audioRef.current?.meter !== meter) {
+          throw new Error("The Live source changed before the reset.");
+        }
+        const nextAudio = { ...display.latestAudioRef.current, tpMax: -Infinity };
+        if (display.selectedOffsetRef.current < 0) display.setAudio(nextAudio);
+        else display.latestAudioRef.current = nextAudio;
+        liveMeasurementOwnerRef.current.resetTruePeakMax();
+      });
+    } catch (error) {
+      if (sourceSelectionRef.current === selection) {
+        display.raiseNotice("error", "Could not reset True Peak Max", error?.message, {
+          requiresAttention: true,
+        });
+      }
+      throw error;
+    }
   };
   const clearLiveForControl = () => clearLiveSource({ strict: true });
   const clearActiveSource = async () => {
     display.clearNotice();
-    if (sourceMode === "file") {
+    if (sourceSelectionRef.current.mode === "file") {
       const activeId = fileHistory.activeFileId;
       if (!activeId) return false;
       const activeEntry = fileHistory.sessionsById[activeId];
@@ -297,6 +347,8 @@ export function MeterRuntimeProvider({ children }) {
     } = {}
   ) => {
     signal?.throwIfAborted();
+    const fileSourceToken = sourceSelectionRef.current.fileToken;
+    if (!fileSourceToken) return null;
     analysisSettings = structuredClone(analysisSettings ?? {});
     display.clearNotice();
     const entry = fileHistory.sessionsById[sessionId];
@@ -330,6 +382,8 @@ export function MeterRuntimeProvider({ children }) {
       probeRequest: null,
       cancelTrackSelection: () => {},
     };
+    const sourceStillSelected = () => sourceSelectionRef.current.fileToken === fileSourceToken;
+    const preparationCurrent = () => !preparation.cancelled && sourceStillSelected();
     preparationRef.current = preparation;
     setPreparingFileId(entry.id);
     let probe = entry.metadata;
@@ -344,7 +398,7 @@ export function MeterRuntimeProvider({ children }) {
           if (stop?.sessionId === entry.id) return stop.promise.catch(() => {});
         });
         preparation.probeRequest = null;
-        if (preparation.cancelled) return null;
+        if (!preparationCurrent()) return null;
         replaced = Boolean(
           entry.metadata?.sourceVersion &&
           !sameFileSourceVersion(entry.metadata.sourceVersion, discovered.sourceVersion)
@@ -371,7 +425,7 @@ export function MeterRuntimeProvider({ children }) {
                   },
                 });
               });
-              if (!probe || preparation.cancelled) return null;
+              if (!probe || !preparationCurrent()) return null;
               setReplacementTrackSelection(null);
             }
           } else {
@@ -388,17 +442,13 @@ export function MeterRuntimeProvider({ children }) {
         try {
           await beforeRun();
         } catch (error) {
-          if (preparation.cancelled) return null;
+          if (!preparationCurrent()) return null;
           taskSessionRef.current = null;
           return Promise.reject(error);
         }
       }
-      if (preparation.cancelled) return null;
+      if (!preparationCurrent()) return null;
       signal?.throwIfAborted();
-      if (!sourceSelectionRef.current.fileToken) {
-        taskSessionRef.current = null;
-        return null;
-      }
       const activate = activeFileIdRef.current === entry.id;
       if (activate && (replaced || !getSuccessfulFileSession(entry))) {
         display.clearSnapshot();
@@ -413,7 +463,7 @@ export function MeterRuntimeProvider({ children }) {
       ledger.rerun(entry.id, entry.path, analysisSettings, probe, kind);
       return entry.id;
     } catch (error) {
-      if (preparation.cancelled) return null;
+      if (!preparationCurrent()) return null;
       taskSessionRef.current = null;
       if (signal?.aborted) throw error;
       if (error?.reason === "fileTrackSelectionRequired") throw error;
@@ -431,6 +481,9 @@ export function MeterRuntimeProvider({ children }) {
       return null;
     } finally {
       if (preparationRef.current === preparation) {
+        if (!sourceStillSelected() && taskSessionRef.current === entry.id) {
+          taskSessionRef.current = null;
+        }
         preparationRef.current = null;
         setPreparingFileId(null);
         setReplacementTrackSelection(null);
@@ -527,6 +580,7 @@ export function MeterRuntimeProvider({ children }) {
     deferLiveClear,
     clearActiveSource,
     clearLiveForControl,
+    resetLiveTruePeakMax,
     beginFileAnalysis,
     beginFileAnalysisForControl,
     reanalyzeFile,
@@ -558,6 +612,7 @@ export function MeterRuntimeProvider({ children }) {
       deferLiveClear: forward("deferLiveClear"),
       clearActiveSource: forward("clearActiveSource"),
       clearLiveForControl: forward("clearLiveForControl"),
+      resetLiveTruePeakMax: forward("resetLiveTruePeakMax"),
       beginFileAnalysis: forward("beginFileAnalysis"),
       beginFileAnalysisForControl: forward("beginFileAnalysisForControl"),
       reanalyzeFile: forward("reanalyzeFile"),

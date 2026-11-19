@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { readPublicPanelControls } from "./panelControls.js";
+import { readPublicPanelControls } from "./panelControlDocument.js";
 
 describe("readPublicPanelControls", () => {
   it("returns the complete Level Meter control document", () => {

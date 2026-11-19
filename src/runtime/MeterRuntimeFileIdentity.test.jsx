@@ -9,7 +9,7 @@ import {
 import { startFileProbe } from "../ipc/commands.js";
 import { selectImportTrack } from "../agentControl/transportControl.js";
 vi.mock("../ipc/env.js", () => ({ isTauri: () => true }));
-vi.mock("../ipc/commands.js", () => ({ startFileProbe: vi.fn(), clearAudioHistory: vi.fn() }));
+vi.mock("../ipc/commands.js", () => ({ startFileProbe: vi.fn() }));
 const probeFileAnalysis = vi.fn();
 const cancelProbe = vi.fn(async () => {});
 const sourceVersion = { canonicalPath: "C:/mix.mkv", byteLength: 10, sha256: "old" };
@@ -169,6 +169,32 @@ it("cancels preparation without allowing the late probe to start a task", async 
   });
   expect(result.current.runtime.fileTaskBusy).toBe(false);
   expect(result.current.assembly.ledger.validRunRequest).toBeNull();
+});
+
+it("discards a late probe from an earlier File selection even when cancellation fails", async () => {
+  const { result, id } = mount();
+  let resolveProbe;
+  vi.mocked(probeFileAnalysis).mockReturnValue(
+    new Promise((resolve) => {
+      resolveProbe = resolve;
+    })
+  );
+  cancelProbe.mockRejectedValueOnce(new Error("native cancellation failed"));
+
+  let pending;
+  await act(async () => {
+    pending = result.current.runtime.reanalyzeFile(id, {});
+    result.current.runtime.switchSource("live");
+    result.current.runtime.switchSource("file");
+  });
+  await act(async () => {
+    resolveProbe({ ...probe, sourceVersion: { ...sourceVersion, sha256: "new" } });
+    expect(await pending).toBeNull();
+  });
+  expect(result.current.runtime.sourceMode).toBe("file");
+  expect(result.current.runtime.replacementTrackSelection).toBeNull();
+  expect(result.current.assembly.ledger.validRunRequest).toBeNull();
+  expect(result.current.runtime.fileTaskBusy).toBe(false);
 });
 
 it.each([false, true])(

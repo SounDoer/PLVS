@@ -2,7 +2,7 @@ import { PANEL_ORIENTATIONS } from "../math/panelOrientation.js";
 import { DEFAULT_PANEL_CONTROLS, normalizePanelControls } from "../lib/panelControls.js";
 import { STATS_CANONICAL_ORDER } from "../lib/statsCatalog.js";
 import { buildSpectrumChannelOptions } from "../math/spectrumChannelOptions.js";
-import { readPublicPanelControls } from "./panelControls.js";
+import { readPublicPanelControls } from "../workspace/panelControlDocument.js";
 
 const smoothingOptions = ["off", "1/12", "1/6", "1/3"];
 

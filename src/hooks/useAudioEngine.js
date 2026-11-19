@@ -159,6 +159,7 @@ export function useAudioEngine({
     let mounted = true;
     let disconnected = false;
     let nativeStart = null;
+    let meter = null;
     const unsubs = [];
     const releaseListeners = () => {
       for (const unlisten of unsubs.splice(0)) {
@@ -278,6 +279,7 @@ export function useAudioEngine({
           unsubs.push(
             await onEngineStateChanged((payload) => {
               if (!mounted || disconnected || payload?.state !== "error") return;
+              meter?.closeMeterResets();
               if (payload.reason === "deviceDisconnected" && !isAutomatic && !applicationId) {
                 stopForDisconnectedSource();
                 return;
@@ -327,19 +329,20 @@ export function useAudioEngine({
               ...(applicationId ? { applicationId } : {}),
               onFrame: applyFrame,
             });
-            await nativeStart;
+            meter = await nativeStart;
           } catch (error) {
             releaseListeners();
             measurementOwner?.abortSession();
             throw error;
           }
           if (!mounted || disconnected) {
+            meter?.closeMeterResets();
             releaseListeners();
             measurementOwner?.abortSession();
             return;
           }
           measurementOwner?.commitSession();
-          audioRef.current = { mode: "tauri", unsubs };
+          audioRef.current = { mode: "tauri", unsubs, meter };
           markStarted?.({ resolvedDeviceId: resolvedDevice.id ?? engineDeviceId });
           return;
         }
@@ -364,6 +367,7 @@ export function useAudioEngine({
     init();
     return () => {
       mounted = false;
+      meter?.closeMeterResets();
       releaseListeners();
       if (nativeStart) {
         // A stop or replacement must wait for this exact native start, even before it is visible.

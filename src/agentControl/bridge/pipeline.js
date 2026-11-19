@@ -12,7 +12,7 @@ import {
   normalizeDevelopmentUpdateRequest,
 } from "../developmentUpdateProtocol.js";
 import { agentControlRpcError, normalizeAgentControlRequest } from "../protocol.js";
-import { WorkspaceLayoutError } from "../workspaceLayout.js";
+import { WorkspaceLayoutError } from "../../workspace/workspaceLayout.js";
 import { isCommitNotObserved, persistUnobservedCommit, semanticFailure } from "./failures.js";
 
 /**

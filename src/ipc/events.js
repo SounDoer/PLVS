@@ -44,13 +44,6 @@ export async function onSampleRateChanged(handler) {
   });
 }
 
-/** @param {() => void} handler @returns {Promise<() => void>} */
-export async function onMeterHistoryCleared(handler) {
-  return listen("meter-history-cleared", () => {
-    handler();
-  });
-}
-
 /**
  * The bounds Rust just persisted for the normal window.
  * @param {(bounds: { x: number, y: number, width: number, height: number, isMaximized: boolean }) => void} handler

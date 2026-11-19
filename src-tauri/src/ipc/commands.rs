@@ -5,7 +5,7 @@ use std::sync::Arc;
 
 use tauri::{AppHandle, Emitter, Manager, State};
 
-use crate::audio::capture::AudioCapture;
+use crate::audio::capture::{AudioCapture, MeterResetKind, MeterResetRequest};
 use crate::audio::cpal_backend;
 use crate::audio::device::DeviceInfo;
 use crate::audio::AppAudioBackend;
@@ -13,6 +13,7 @@ use crate::crash_report::{
   normalize_frontend_crash, normalize_frontend_log, CrashKind, CrashReport, CrashReporterState,
   FrontendCrashInput,
 };
+use crate::dsp::channel_layouts::ChannelSelection;
 use crate::dsp::speech::VadEngineKind;
 use crate::ipc::types::{
   AnalysisRequests, AudioDevicePreview, EngineStateChanged, FileAnalysisProbeResult,
@@ -550,31 +551,6 @@ pub fn set_analysis_requests(
   Ok(())
 }
 
-/// A user channel-role selection, with everything the audio path needs derived up front so the
-/// callback never looks anything up.
-#[derive(Debug, Clone, PartialEq)]
-pub struct ChannelSelection {
-  pub roles: Vec<String>,
-  pub weights: Vec<f64>,
-  /// The matching layout id, or `"custom"`.
-  pub layout: &'static str,
-}
-
-impl ChannelSelection {
-  pub fn from_roles(roles: Vec<String>) -> Option<Self> {
-    if roles.is_empty() || roles.len() > 64 {
-      return None;
-    }
-    let weights = crate::dsp::channel_layouts::weights_for_roles(&roles)?;
-    let layout = crate::dsp::channel_layouts::layout_id_for_roles(&roles).unwrap_or("custom");
-    Some(Self {
-      roles,
-      weights,
-      layout,
-    })
-  }
-}
-
 pub(crate) fn apply_dialogue_gating(flag: &std::sync::Arc<std::sync::Mutex<bool>>, enabled: bool) {
   if let Ok(mut g) = flag.lock() {
     *g = enabled;
@@ -787,38 +763,64 @@ pub fn file_analysis_stop(state: State<'_, AppState>) -> Result<(), String> {
   Ok(())
 }
 
-/// Reset DSP state (peak maxima + history accumulators) on the capture thread to match UI Clear
-/// for the native path, then emit `meter-history-cleared`.
+/// Reset the current Live measurement and its history.
 #[tauri::command]
-pub fn clear_audio_history(app: AppHandle, state: State<'_, AppState>) -> Result<(), String> {
-  {
-    let g = state
-      .inner()
-      .source
-      .lock()
-      .map_err(|_| "state lock poisoned".to_string())?;
-    if let EngineSource::Live(sess) = &*g {
-      sess.request_clear_peak_history();
-    }
-  }
-  let _ = app.emit("meter-history-cleared", ());
-  Ok(())
+pub async fn clear_audio_history(
+  stream_id: u32,
+  request_id: u32,
+  state: State<'_, AppState>,
+) -> Result<(), String> {
+  reset_live_meter(stream_id, request_id, MeterResetKind::History, &state).await
 }
 
-/// Reset only the session True Peak Max hold on the capture thread, leaving momentary/
-/// short-term/sample-peak maxima untouched (per-metric reset, e.g. click on the TP Max
-/// marker).
+/// Reset only the active Live session's True Peak Max hold.
 #[tauri::command]
-pub fn reset_true_peak_max(state: State<'_, AppState>) -> Result<(), String> {
-  let g = state
-    .inner()
-    .source
-    .lock()
-    .map_err(|_| "state lock poisoned".to_string())?;
-  if let EngineSource::Live(sess) = &*g {
-    sess.request_reset_true_peak_max();
+pub async fn reset_true_peak_max(
+  stream_id: u32,
+  request_id: u32,
+  state: State<'_, AppState>,
+) -> Result<(), String> {
+  reset_live_meter(stream_id, request_id, MeterResetKind::TruePeakMax, &state).await
+}
+
+async fn reset_live_meter(
+  stream_id: u32,
+  request_id: u32,
+  kind: MeterResetKind,
+  state: &AppState,
+) -> Result<(), String> {
+  let (completion, mut result) = tauri::async_runtime::channel(1);
+  {
+    let source = state.source.lock().map_err(|_| "state lock poisoned")?;
+    let EngineSource::Live(session) = &*source else {
+      return Err("There is no active Live measurement to reset".to_string());
+    };
+    let subscribers = state
+      .frame_subscribers
+      .lock()
+      .map_err(|_| "meter subscribers lock poisoned")?;
+    if !subscribers.as_ref().is_some_and(|subscribers| {
+      subscribers.lock().is_ok_and(|subscribers| {
+        subscribers
+          .get("main")
+          .is_some_and(|main| main.id() == stream_id)
+      })
+    }) {
+      return Err("The Live source changed before the reset".to_string());
+    }
+    session
+      .meter_resets()
+      .try_send(MeterResetRequest {
+        kind,
+        request_id,
+        completion,
+      })
+      .map_err(|_| "The Live meter cannot accept a reset right now")?;
   }
-  Ok(())
+  result
+    .recv()
+    .await
+    .ok_or_else(|| "The Live source stopped before the reset".to_string())?
 }
 
 /// `running` or `stopped`.

@@ -13,10 +13,6 @@ vi.mock("../ipc/env.js", async (original) => ({
   ...(await original()),
   isTauri: () => native.enabled,
 }));
-vi.mock("../ipc/commands.js", async (original) => ({
-  ...(await original()),
-  clearAudioHistory: native.clear,
-}));
 
 function wrapper({ children }) {
   return <MeterRuntimeProvider>{children}</MeterRuntimeProvider>;
@@ -74,8 +70,16 @@ describe("MeterRuntimeProvider", () => {
     );
     const reset = vi.spyOn(result.current.assembly.liveIntakeRef.current, "reset");
     native.clear.mockRejectedValueOnce(new Error("native Clear failed"));
-    native.clear.mockResolvedValueOnce(undefined);
+    native.clear.mockImplementationOnce(async (_kind, apply) => apply());
     native.enabled = true;
+    act(() => result.current.runtime.startLive());
+    act(() => {
+      result.current.assembly.audioRef.current = {
+        mode: "tauri",
+        meter: { resetMeter: native.clear },
+      };
+      result.current.assembly.transport.markStarted();
+    });
     try {
       await act(async () => expect(await result.current.runtime.clearActiveSource()).toBe(false));
 
@@ -93,6 +97,73 @@ describe("MeterRuntimeProvider", () => {
       native.enabled = false;
       native.clear.mockReset();
     }
+  });
+
+  it("preserves the TP Max on failure and resets only that value on confirmation", async () => {
+    const { result } = renderHook(
+      () => ({ runtime: useMeterRuntime(), assembly: useMeterRuntimeAssembly() }),
+      { wrapper }
+    );
+
+    act(() => result.current.runtime.startLive());
+    act(() => {
+      result.current.assembly.audioRef.current = {
+        mode: "tauri",
+        meter: { resetMeter: native.clear },
+      };
+      result.current.assembly.transport.markStarted();
+      result.current.assembly.display.setAudio({ tpMax: -1, mMax: -12, stMax: -16 });
+    });
+    native.clear.mockRejectedValueOnce(new Error("native reset failed"));
+    try {
+      await act(() =>
+        expect(result.current.runtime.resetLiveTruePeakMax()).rejects.toThrow("native reset failed")
+      );
+      expect(result.current.assembly.display.audio.tpMax).toBe(-1);
+
+      native.clear.mockImplementationOnce(async (_kind, apply) => apply());
+      await act(() => result.current.runtime.resetLiveTruePeakMax());
+      expect(result.current.assembly.display.audio).toMatchObject({
+        tpMax: -Infinity,
+        mMax: -12,
+        stMax: -16,
+      });
+    } finally {
+      native.clear.mockReset();
+    }
+  });
+
+  it("does not clear File display data when an older Live reset completes", async () => {
+    const { result } = renderHook(
+      () => ({ runtime: useMeterRuntime(), assembly: useMeterRuntimeAssembly() }),
+      { wrapper }
+    );
+    let publishReset;
+    act(() => result.current.runtime.startLive());
+    act(() => {
+      result.current.assembly.audioRef.current = {
+        mode: "tauri",
+        meter: {
+          resetMeter: (_kind, apply) =>
+            new Promise((resolve, reject) => {
+              publishReset = () => Promise.resolve().then(apply).then(resolve, reject);
+            }),
+        },
+      };
+      result.current.assembly.transport.markStarted();
+    });
+
+    let rejected;
+    await act(async () => {
+      rejected = result.current.runtime.resetLiveTruePeakMax().catch((error) => error);
+      result.current.runtime.switchSource("file");
+      result.current.assembly.display.setAudio({ tpMax: -5 });
+    });
+    await act(async () => {
+      await publishReset();
+      expect(await rejected).toBeInstanceOf(Error);
+    });
+    expect(result.current.assembly.display.audio.tpMax).toBe(-5);
   });
 
   it("can clear retained Live data while File remains selected", async () => {

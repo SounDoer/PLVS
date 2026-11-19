@@ -1,13 +1,15 @@
+import {
+  compileDockLayout,
+  planDockPanelPatch,
+  planDockPanelReset,
+} from "../dock/dockLayoutDocument.js";
 import { describe, expect, it } from "vitest";
 import {
   buildDockDescription,
   buildDockPanelDescription,
   buildDockSnapshot,
-  compileDockLayout,
   planDockFormMutation,
   planDockLayoutReset,
-  planDockPanelPatch,
-  planDockPanelReset,
   reconcileDockExecution,
 } from "./dockControl.js";
 import { firstRunDockState } from "../dock/firstRunDock.js";

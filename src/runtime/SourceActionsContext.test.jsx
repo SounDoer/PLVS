@@ -48,24 +48,26 @@ describe("SourceActionsProvider", () => {
     presetsStore.reset();
   });
 
-  it("binds the settings owner's clear ref to its clear action", () => {
+  it("clears the Live measurement after a History Length change", async () => {
     const { result } = renderHook(
       () => ({ actions: useSourceActions(), settings: useAppSettings() }),
       { wrapper }
     );
-
-    expect(result.current.settings.onClearRef.current).toBe(result.current.actions.clearAll);
+    const before = result.current.actions.vectorscopeResetEpoch;
+    await act(() => result.current.actions.changeHistoryRetention(7200));
+    expect(result.current.settings.historyRetentionSec).toBe(7200);
+    expect(result.current.actions.vectorscopeResetEpoch).toBe(before + 1);
   });
 
   it("routes the Start / Stop shortcut through the Live lifecycle action", async () => {
     const { result } = renderHook(
-      () => ({ settings: useAppSettings(), runtime: useMeterRuntime() }),
+      () => ({ actions: useSourceActions(), runtime: useMeterRuntime() }),
       { wrapper }
     );
 
     expect(result.current.runtime.liveLifecycle).toBe("stopped");
     await act(async () => {
-      await result.current.settings.shortcutActionRef.current("toggleLiveCapture");
+      await result.current.actions.dispatchShortcut("toggleLiveCapture");
     });
 
     expect(result.current.runtime.liveLifecycle).not.toBe("stopped");

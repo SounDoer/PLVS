@@ -206,7 +206,8 @@ never one it encloses. The reasons are in
 | WindowChrome            | Applying pin, decorations, shadow and glass to the window; the view setters                             | `useWindowChrome`                                                    |
 | Presets                 | Preset library and the Dock hand-off on apply                                                           | `usePresetLibrary`                                                   |
 | Source                  | Device inventory, selected source and its labels                                                        | `useSource`                                                          |
-| SourceActions           | Start, stop, clear and the file actions                                                                 | `useSourceActions`                                                   |
+| SourceActions           | Start, stop, clear, shortcut dispatch and the file actions                                              | `useSourceActions`                                                   |
+| ShortcutSettings        | Configured bindings and coordinator-owned global registrations                                          | `useAppSettings` in the workbench                                    |
 | AppLifecycle            | Window visibility, tray, updates, close dialog, crash reports, global shortcuts                         | `useAppLifecycle`                                                    |
 | DisplaySnapshot         | What the panels and the transport pill show now, live or at the scrub position; changes per meter frame | `useDisplaySnapshot`                                                 |
 | AnalysisSession         | Channel count and labels, analysis requests, their sync to the engine, panel-control clamps             | `useAnalysisSession`                                                 |
@@ -219,8 +220,8 @@ that works per frame should read them. Notices and the scrub position come from
 the channel count comes from the displayed frame, and publishes a value that changes only when the
 channel count, the labels or the requests do.
 
-`AppContent` is the consumer at the centre: it reads the owners, derives the per-frame data it
-hands to the panels, and assembles the props for the shell. It owns no domain state. Agent Control
+`AppContent` reads the owners and assembles the shell. `usePanelRuntimeData` builds the panel
+frame, history, metrics and chrome data from those owners. Agent Control
 is mounted as `AgentControlBridge` (`src/agentControl/`), which reads every area from its owner
 and takes nothing from `AppContent`.
 

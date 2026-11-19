@@ -1,7 +1,8 @@
 /** @vitest-environment jsdom */
 import { describe, expect, it } from "vitest";
 import { settingsStore } from "../persistence/index.js";
-import { buildDockPanelDescription, compileDockLayout } from "./dockControl.js";
+import { buildDockPanelDescription } from "./dockControl.js";
+import { compileDockLayout } from "../dock/dockLayoutDocument.js";
 
 const dock = {
   panelsById: { v: { id: "v", moduleId: "vectorscope" } },

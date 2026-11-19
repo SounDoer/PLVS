@@ -147,6 +147,45 @@ describe("audio engine command seam", () => {
     });
   });
 
+  it("applies the reset between older and newer frames and waits for its marker", async () => {
+    const observed = [];
+    const channel = await startAudioCapture({
+      deviceId: "default",
+      onFrame: (frame) => observed.push(frame.seq),
+    });
+    const complete = vi.fn();
+    const reset = channel.resetMeter("history", () => observed.push("reset")).then(complete);
+    await Promise.resolve();
+    expect(complete).not.toHaveBeenCalled();
+    expect(invoke).toHaveBeenLastCalledWith("clear_audio_history", {
+      streamId: channel.id,
+      requestId: 1,
+    });
+
+    channel.onmessage({ seq: 7 });
+    channel.onmessage({ meterReset: 2 });
+    channel.onmessage({ meterReset: 1 });
+    channel.onmessage({ seq: 8 });
+    await reset;
+
+    expect(observed).toEqual([7, "reset", 8]);
+    expect(complete).toHaveBeenCalledOnce();
+  });
+
+  it("does not apply a failed reset or a late marker from a closed stream", async () => {
+    const apply = vi.fn();
+    const channel = await startAudioCapture({ deviceId: "default", onFrame: vi.fn() });
+    invoke.mockRejectedValueOnce(new Error("reset failed"));
+    await expect(channel.resetMeter("truePeakMax", apply)).rejects.toThrow("reset failed");
+    channel.onmessage({ meterReset: 1 });
+
+    const reset = channel.resetMeter("truePeakMax", apply);
+    channel.closeMeterResets();
+    await expect(reset).rejects.toThrow("stopped");
+    channel.onmessage({ meterReset: 2 });
+    expect(apply).not.toHaveBeenCalled();
+  });
+
   it("reads UI frame diagnostics without changing runtime state", async () => {
     await getUiFrameDiagnostics();
     expect(invoke).toHaveBeenCalledWith("get_ui_frame_diagnostics");

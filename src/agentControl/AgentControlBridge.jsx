@@ -240,8 +240,14 @@ export function AgentControlBridge() {
       updateBusy,
     ]
   );
-  const { currentFileAnalysisSettings, dialogueGating, fileQueue, clearFileCollection } =
-    useSourceActions();
+  const {
+    currentFileAnalysisSettings,
+    dialogueGating,
+    fileQueue,
+    clearFileCollection,
+    changeHistoryRetention,
+    clearAll,
+  } = useSourceActions();
   const agentControlTransport = useMemo(
     () =>
       buildTransportSnapshot(meterRuntime, {
@@ -478,7 +484,6 @@ export function AgentControlBridge() {
     }),
     [requestCloseAction, runtime.identifier, settings.setUpdatePreferences, updateControls]
   );
-  const { onClearRef } = settings;
   const {
     state: workspaceState,
     replaceWorkspace,
@@ -608,7 +613,7 @@ export function AgentControlBridge() {
         settings.setInterfaceSize(next.interfaceSize);
       }
       if (changed.includes("settings.historyRetentionSec")) {
-        await settings.setHistoryRetentionSec(next.historyRetentionSec);
+        await changeHistoryRetention(next.historyRetentionSec);
       }
       if (changed.includes("settings.dialogueVadEngine")) {
         settings.setDialogueVadEngine(next.dialogueVadEngine);
@@ -634,7 +639,7 @@ export function AgentControlBridge() {
       // effects still use the general source Clear below; a combined patch must clear only once.
       if (effects.length > 0 && !changed.includes("settings.historyRetentionSec")) {
         try {
-          await onClearRef.current?.();
+          await clearAll?.();
         } catch (error) {
           error.partial = true;
           error.rollback = "notPossible";
@@ -648,7 +653,8 @@ export function AgentControlBridge() {
       agentControlSettings,
       channelRoles,
       crashReportSetting,
-      onClearRef,
+      changeHistoryRetention,
+      clearAll,
       setDialogueVadEngineForControl,
       setChannelRolesForControl,
       settings,

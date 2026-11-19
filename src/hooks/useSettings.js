@@ -2,7 +2,6 @@ import { useCallback, useEffect, useState } from "react";
 import { useThemeSettings } from "./useThemeSettings.js";
 import { useCustomThemeSettings } from "./useCustomThemeSettings.js";
 import { useAutostart } from "./useAutostart.js";
-import { useKeyboardShortcuts } from "./useKeyboardShortcuts.js";
 import { useCloseActionSetting } from "./useCloseActionSetting.js";
 import { useDialogueVadEngineSetting } from "./useDialogueVadEngineSetting.js";
 import { useHistoryRetentionSetting } from "./useHistoryRetentionSetting.js";
@@ -16,8 +15,7 @@ import { settingsStore } from "../persistence/index.js";
 
 const readFileDialogueDetection = () => settingsStore.read().fileDialogueDetection === true;
 
-/** @param {{ shortcutActionRef?: { current: any }, onHistoryRetentionChangeRef?: { current: any } }} [options] */
-export function useSettings({ shortcutActionRef, onHistoryRetentionChangeRef } = {}) {
+export function useSettings() {
   const [settingsOpen, setOpen] = useState(false);
   const [settingsOpenEpoch, setOpenEpoch] = useState(0);
   const setSettingsOpen = useCallback((open) => {
@@ -35,14 +33,11 @@ export function useSettings({ shortcutActionRef, onHistoryRetentionChangeRef } =
     autostartError,
     retryAutostart,
   } = useAutostart();
-  const shortcutState = useKeyboardShortcuts(shortcutActionRef);
   const themeSettings = useThemeSettings();
   const customThemeSettings = useCustomThemeSettings({ themeSettings, setSettingsOpen });
   const closeActionSetting = useCloseActionSetting();
   const dialogueVadEngineSetting = useDialogueVadEngineSetting();
-  const historyRetentionSetting = useHistoryRetentionSetting({
-    onChangeRef: onHistoryRetentionChangeRef,
-  });
+  const historyRetentionSetting = useHistoryRetentionSetting();
   const interfaceSizeSetting = useInterfaceSizeSetting();
   const meterSettings = useMeterSettings();
   const viewSettings = useViewSettings();
@@ -94,6 +89,5 @@ export function useSettings({ shortcutActionRef, onHistoryRetentionChangeRef } =
     autostartError,
     retryAutostart,
     ...customThemeSettings,
-    ...shortcutState,
   };
 }

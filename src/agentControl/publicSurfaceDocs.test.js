@@ -5,7 +5,7 @@ import { DEFAULT_PANEL_CONTROLS } from "../lib/panelControls.js";
 import { MODULE_CATALOG } from "../workspace/moduleCatalog.js";
 import { buildAxisSchema } from "./axisControl.js";
 import { buildPublicPanelControlSchema } from "./panelControlSchema.js";
-import { readPublicPanelControls } from "./panelControls.js";
+import { readPublicPanelControls } from "../workspace/panelControlDocument.js";
 import { buildSettingsSchema } from "./settingsControl.js";
 import { buildViewDescription, DEFAULT_VIEW } from "./viewControl.js";
 import { commandEntries, commandManifest } from "./commandManifest.js";

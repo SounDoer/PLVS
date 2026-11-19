@@ -71,14 +71,13 @@ export function AnalysisSessionProvider({ children }) {
   const { channelCount, displayAudio } = useDisplaySnapshot();
   const autoRolesKey = JSON.stringify(displayAudio?.autoChannelRoles ?? null);
   const autoChannelRoles = useMemo(() => JSON.parse(autoRolesKey), [autoRolesKey]);
-  const { fileSession, dialogueGating } = useSourceActions();
+  const { fileSession, dialogueGating, clearAll } = useSourceActions();
   const { docked, layout: dockLayout } = useDock();
   const {
     historyRetentionSec,
     dialogueVadEngine,
     channelLabelOverrides,
     setChannelLabelOverrides,
-    onClearRef,
   } = useAppSettings();
 
   const fileDurationMs = fileSession.summary?.durationMs ?? fileSession.metadata?.durationMs;
@@ -203,7 +202,7 @@ export function AnalysisSessionProvider({ children }) {
     liveIntakeRef.current?.setRetainedVisualKeys(retainedAnalysisKeys, historyRetentionSec * 1000);
   }, [liveIntakeRef, retainedAnalysisKeys, historyRetentionSec]);
   const { channelRoles } = channelLabelRuntime;
-  useChannelRolesRestart(channelLabelOverrides, sourceMode === "live", onClearRef, deferLiveClear);
+  useChannelRolesRestart(channelLabelOverrides, sourceMode === "live", clearAll, deferLiveClear);
   const {
     channelRolesRef,
     dialogueGatingRef,

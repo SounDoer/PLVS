@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { DEFAULT_WORKSPACE_STATE } from "../workspace/constants.js";
-import { MAX_LAYOUT_DEPTH, MAX_LAYOUT_PANELS } from "../agentControl/workspaceLayout.js";
+import { MAX_LAYOUT_DEPTH, MAX_LAYOUT_PANELS } from "../workspace/workspaceLayout.js";
 import { createDefaultPanelControls } from "../workspace/panelControlInstances.js";
 import { normalizeAxisViewportsState } from "../workspace/axisViewports.js";
 import { buildPublicPresetSnapshot } from "../agentControl/presetSnapshot.js";

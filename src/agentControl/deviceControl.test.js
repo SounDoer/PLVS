@@ -1,13 +1,11 @@
 import { describe, expect, it } from "vitest";
 import {
+  advanceDeviceGeneration,
   MAX_PUBLIC_DEVICE_LABEL_SCALARS,
   MAX_PUBLIC_DEVICE_ROWS,
-  advanceDeviceGeneration,
-  buildDeviceInspection,
-  buildDeviceList,
   normalizeDeviceInventory,
-  planDeviceSelection,
-} from "./deviceControl.js";
+} from "../runtime/deviceInventory.js";
+import { buildDeviceInspection, buildDeviceList, planDeviceSelection } from "./deviceControl.js";
 
 import { standIn } from "../testing/standIn.js";
 const LB = "lb-0123456789abcdef0123456789abcdef";

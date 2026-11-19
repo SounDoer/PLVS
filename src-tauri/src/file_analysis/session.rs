@@ -10,6 +10,7 @@ use tauri::{AppHandle, Emitter, Manager};
 use std::os::windows::process::CommandExt;
 
 use super::process::FileProcess;
+use crate::dsp::channel_layouts::ChannelSelection;
 use crate::dsp::speech::VadEngineKind;
 use crate::engine::MeterPipeline;
 use crate::file_analysis::ffmpeg::decode::{
@@ -21,7 +22,6 @@ use crate::file_analysis::summary::FileAnalysisSummaryRun;
 use crate::file_analysis::types::{
   FileAnalysisProbeResult, FileAnalysisRunSettings, FileAnalysisSummaryMetrics,
 };
-use crate::ipc::commands::ChannelSelection;
 use crate::ipc::types::{
   AnalysisRequests, AudioFramePayload, FileAnalysisCompletedPayload, FileAnalysisErrorPayload,
   FileAnalysisProgressPayload, FrameSubscribers,

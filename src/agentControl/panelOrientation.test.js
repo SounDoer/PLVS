@@ -2,8 +2,11 @@ import { describe, expect, it } from "vitest";
 import { DEFAULT_PANEL_CONTROLS } from "../lib/panelControls.js";
 import { PANEL_ORIENTATIONS } from "../math/panelOrientation.js";
 import { spectrumRequestKeyFromControls } from "../analysis/analysisRequests.js";
-import { planPublicPanelControlPatch, planPublicPanelReset } from "./panelControlPatch.js";
-import { readPublicPanelControls } from "./panelControls.js";
+import {
+  planPublicPanelControlPatch,
+  planPublicPanelReset,
+} from "../workspace/panelControlPatch.js";
+import { readPublicPanelControls } from "../workspace/panelControlDocument.js";
 import { buildPublicPanelControlSchema } from "./panelControlSchema.js";
 
 describe.each(["levelMeter", "loudness", "waveform", "spectrogram"])(

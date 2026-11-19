@@ -1,40 +1,34 @@
-import { createContext, useContext, useRef } from "react";
+import { createContext, useContext, useLayoutEffect, useMemo, useRef } from "react";
+import { useKeyboardShortcuts } from "../hooks/useKeyboardShortcuts.js";
 import { useSettings } from "../hooks/useSettings.js";
 
-/**
- * @typedef {ReturnType<typeof useSettings> & {
- *   onClearRef: import("react").MutableRefObject<(() => any) | null>,
- *   shortcutActionRef: import("react").MutableRefObject<((actionId: string) => any) | null>,
- *   onHistoryRetentionChangeRef: import("react").MutableRefObject<(() => any) | null>,
- * }} AppSettings
- */
-const SettingsContext = createContext(/** @type {AppSettings | null} */ (null));
+const SettingsContext = createContext(/** @type {ReturnType<typeof useSettings> | null} */ (null));
+const ShortcutSettingsContext = createContext(
+  /** @type {ReturnType<typeof useKeyboardShortcuts> | null} */ (null)
+);
 
-/**
- * The one mount of `useSettings`: every stored preference, including the view values the Dock
- * restores and the window chrome applies.
- *
- * The action refs point inward. Shortcut registration is a setting owned here; the actions belong
- * to the source-actions provider mounted farther inside. Refs avoid making this outer provider read
- * a context it encloses. `onClearRef` remains the focused whole-measurement restart link used by
- * other Settings effects.
- */
 export function SettingsProvider({ children }) {
-  const onClearRef = useRef(/** @type {(() => any) | null} */ (null));
-  const shortcutActionRef = useRef(/** @type {((actionId: string) => any) | null} */ (null));
-  const onHistoryRetentionChangeRef = useRef(/** @type {(() => any) | null} */ (null));
-  const settings = useSettings({ shortcutActionRef, onHistoryRetentionChangeRef });
+  return <SettingsContext.Provider value={useSettings()}>{children}</SettingsContext.Provider>;
+}
+
+/** Native registration outlives individual callbacks, so it reads the latest committed action. */
+export function ShortcutSettingsProvider({ dispatchShortcut, children }) {
+  const dispatch = useRef(dispatchShortcut);
+  useLayoutEffect(() => {
+    dispatch.current = dispatchShortcut;
+  }, [dispatchShortcut]);
+  const shortcuts = useKeyboardShortcuts(dispatch);
   return (
-    <SettingsContext.Provider
-      value={{ ...settings, onClearRef, shortcutActionRef, onHistoryRetentionChangeRef }}
-    >
+    <ShortcutSettingsContext.Provider value={shortcuts}>
       {children}
-    </SettingsContext.Provider>
+    </ShortcutSettingsContext.Provider>
   );
 }
 
 export function useAppSettings() {
   const settings = useContext(SettingsContext);
+  const shortcuts = useContext(ShortcutSettingsContext);
+  const combined = useMemo(() => ({ ...settings, ...shortcuts }), [settings, shortcuts]);
   if (!settings) throw new Error("useAppSettings must be used inside SettingsProvider");
-  return settings;
+  return combined;
 }

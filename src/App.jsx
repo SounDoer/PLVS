@@ -1,7 +1,8 @@
-import { normalizePanelPresentation } from "./lib/panelPresentation.js";
 import { isDockSupported, isWindows, isMacOS } from "./lib/platform.js";
 import { QuickTour } from "./onboarding/QuickTour.jsx";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useHistoryPerformanceHarness } from "./dev/useHistoryPerformanceHarness.js";
+import { usePanelRuntimeData } from "./workspace/usePanelRuntimeData.js";
+import { useState } from "react";
 import { WorkspaceProvider, useWorkspaceStore } from "./workspace/WorkspaceContext.jsx";
 import {
   MeterRuntimeProvider,
@@ -9,13 +10,7 @@ import {
   useMeterRuntime,
   useMeterRuntimeAssembly,
 } from "./runtime/MeterRuntimeContext.jsx";
-import {} from "./runtime/appRuntimeDerivations.js";
-import { normalizePanelControls } from "./lib/panelControls.js";
-import {
-  useLoudnessHistory,
-  HIST_SAMPLE_SEC,
-  VISUAL_HIST_SAMPLE_SEC,
-} from "./hooks/useLoudnessHistory.js";
+import { HIST_SAMPLE_SEC, VISUAL_HIST_SAMPLE_SEC } from "./hooks/useLoudnessHistory.js";
 import { SettingsProvider, useAppSettings } from "./settings/SettingsContext.jsx";
 import { LoudnessProfileProvider, useLoudnessProfile } from "./hooks/LoudnessProfileContext.jsx";
 import { BlockingEditorsProvider } from "./hooks/BlockingEditorsContext.jsx";
@@ -43,19 +38,13 @@ import { resolveAxisViewport, writeLocalRange } from "./workspace/axisViewports.
 import { getHistoryViewport } from "./math/historyMath.js";
 import { nearestTimestampIndex } from "./lib/snapshotResolve.js";
 import { historyTimestampAt, latestHistoryTimestampMs } from "./lib/historyTimestamps.js";
-import { formatVectorscopePairLabel } from "./math/vectorscopePairMath.js";
-import {} from "./math/spectrumChannelOptions.js";
-import { getPeakMeterChannelLabels } from "./math/peakMeterChannelLabels.js";
 import { AppShell } from "./components/AppShell.jsx";
 import { AppSettingsOverlays } from "./components/AppSettingsOverlays.jsx";
 import { DockImportSurface } from "./dock/DockImportSurface.jsx";
 import { UpdateSurfaces } from "./components/UpdateSurfaces.jsx";
 import { dockUpdateStatus } from "./dock/dockUpdateStatus.js";
 import { usePackTransfer } from "./transfer/usePackTransfer.js";
-import { getPanelControls } from "./workspace/panelControlInstances.js";
 import { isTauri } from "./ipc/env.js";
-import { resetTruePeakMax } from "./ipc/commands.js";
-import { spectrumViewLegend } from "./math/spectrumChannelViewOptions.js";
 import { useAppGlobalEffects } from "./hooks/useAppGlobalEffects.js";
 import { CloseConfirmDialog } from "./components/CloseConfirmDialog.jsx";
 import { LibraryConflictDialog } from "./components/LibraryConflictDialog.jsx";
@@ -63,35 +52,6 @@ import packageInfo from "../package.json";
 import { AgentControlBridge } from "./agentControl/AgentControlBridge.jsx";
 
 const APP_VERSION = packageInfo.version;
-export function historyPerformanceHarnessOptionsFromSearch(search) {
-  const params = new URLSearchParams(search);
-  const enabled = params.get("historyPerf") === "240m";
-  return {
-    enabled,
-    fullVisual: enabled && params.get("historyPerfFullVisual") === "1",
-  };
-}
-
-export function startHistoryPerformanceHarnessController({
-  start,
-  intake,
-  fullVisual,
-  publishAudio,
-  requestKeys,
-}) {
-  intake.reset();
-  return start({
-    intake,
-    fullVisual,
-    publishAudio,
-    ...requestKeys,
-  });
-}
-
-export function updateHistoryPerformanceHarnessController(controller, requestKeys) {
-  controller?.updateRequestKeys(requestKeys);
-}
-
 // The provider order is the dependency order: a provider may read the ones that enclose it and
 // never one it encloses. Each line says what the provider reads, so a new owner has one obvious
 // place to go.
@@ -125,8 +85,7 @@ export default function App() {
                           <PresetsProvider>
                             {/* Reads MeterRuntime. */}
                             <SourceProvider>
-                              {/* Reads MeterRuntime, Workspace, Settings and LoudnessProfile; assigns
-                              the clear ref Settings owns. */}
+                              {/* Reads MeterRuntime, Workspace, Settings and LoudnessProfile. */}
                               <SourceActionsProvider>
                                 {/* Reads Settings, Dock, WindowChrome, Presets, Source and
                                 SourceActions. */}
@@ -167,7 +126,7 @@ export default function App() {
 function AppContent() {
   const [quickTourRequest, setQuickTourRequest] = useState(0);
   const meterRuntime = useMeterRuntime();
-  const { notice, selectedOffset, setSelectedOffset, selectSnapshot } = useMeterDisplayState();
+  const { notice, selectedOffset, selectSnapshot } = useMeterDisplayState();
   const { state: workspaceState, setAxisViewport, setPanelControlsForPanel } = useWorkspaceStore();
   const {
     visibility: dockAccessoryVisibility,
@@ -181,7 +140,7 @@ function AppContent() {
     onSettingsError,
     exportProfileRef,
   } = useDockAccessories();
-  const { sharedTimeViewport, setHistoryWindowSec, setHistoryOffsetSec } = useSharedTimeViewport();
+  const { setHistoryOffsetSec } = useSharedTimeViewport();
   useAppGlobalEffects();
   const { sourceMode, running, fileSessions, activeFileSession, activeFileId, analyzingFileId } =
     meterRuntime;
@@ -192,8 +151,6 @@ function AppContent() {
     currentFileAnalysisSettings,
     exportFileAnalysisReport,
     copyFileAnalysisReportMarkdown,
-    vectorscopeResetEpoch,
-    stereoMapResetEpoch,
     clearAll,
     canClear,
     onSelectFile,
@@ -205,6 +162,8 @@ function AppContent() {
     fileQueue,
     onSourceTransportAction,
     onSourceModeChange,
+    dispatchShortcut,
+    changeHistoryRetention,
   } = useSourceActions();
   const settings = useAppSettings();
   const { windowPinned: pinned } = settings;
@@ -222,7 +181,7 @@ function AppContent() {
       handleCancel: handleCloseCancel,
     },
   } = useAppLifecycle();
-  const { setSettingsOpen, resolvedThemeId, focusView, surfaceOpacity, glassEnabled } = settings;
+  const { setSettingsOpen, focusView, surfaceOpacity, glassEnabled } = settings;
   // Hoisted above useDockMode and usePresets: dock entry cancels an open profile
   // draft, and preset capture and apply both need its snapshot helpers. One
   // writer for the reference too - null when Off, which every consumer treats as
@@ -246,7 +205,6 @@ function AppContent() {
     setAutoHideControls,
     setCompactPanels,
     setPanelPresentation,
-    view: chromeView,
     setBorderless,
     setSurfaceOpacity,
     setGlassEnabled,
@@ -294,6 +252,7 @@ function AppContent() {
 
   const { display, routing } = useMeterRuntimeAssembly();
   const { setAudio } = display;
+  const { intakeRef } = routing;
 
   const presets = usePresetLibrary();
   const { recordingState: visualRecordingState, setEnabled: setAgentControlEnabled } =
@@ -303,248 +262,28 @@ function AppContent() {
   const histMaxSamples = Math.round(historyRetentionSec / HIST_SAMPLE_SEC);
   const visualMaxSamples = Math.round(historyRetentionSec / VISUAL_HIST_SAMPLE_SEC);
 
-  const normalizedPanelControls = useMemo(() => {
-    const firstPanelId = workspaceState.panelOrder.find((id) => workspaceState.panelsById[id]);
-    return normalizePanelControls(
-      firstPanelId ? getPanelControls(workspaceState, firstPanelId) : undefined
-    );
-  }, [workspaceState]);
-  const referenceLufs = loudnessProfile.referenceLufs;
-  // Only the two metrics the history chart draws can tint their traces; split them out here so the
-  // panel and the dock read the same rules from one place.
-  const loudnessTraceRules = useMemo(() => {
-    const rules = loudnessProfile.document?.rules ?? [];
-    return {
-      momentary: rules.filter((rule) => rule.metricId === "momentary"),
-      shortTerm: rules.filter((rule) => rule.metricId === "shortTerm"),
-    };
-  }, [loudnessProfile.document]);
-
+  const { histSourceList, hasHistoryData, channelCount, sourceTransportState } =
+    useDisplaySnapshot();
+  const totalSamples = histSourceList?.length ?? 0;
   const loudnessProfileStats = useLoudnessProfileStats();
-  const vectorscopePairUi = normalizedPanelControls.vectorscopePair;
-  const spectrumChannelUi = normalizedPanelControls.spectrumChannel;
-  const spectrumViewUi = normalizedPanelControls.spectrumView;
-
-  const { intakeRef, getSpectrogramSnapsForKey } = routing;
-
-  const {
-    histSourceList,
-    targetTimestampMs,
-    loudnessDisplayIndex,
-    waveformHistoryIndex,
-    visualWaveformHist,
-    frequencyMarkerIndex,
-    displayAudio,
-    hasHistoryData,
-    correlation,
-    channelMetadata,
-    snapshotSpectrumByKey,
-    resolveSpectrumSnapshotForKey,
-    resolveVectorscopeSnapshotForKey,
-    resolveStereoMapSnapshotForKey,
-    channelCount,
-    sourceTransportState,
-  } = useDisplaySnapshot();
-
-  const { historyChartInteractive, totalSamples, statsMetrics } = useLoudnessHistory({
-    histSourceList,
-    hasHistoryData,
-    running,
-    displayAudio,
-    referenceLufs,
-  });
-
-  const hasTpMaxValue = Number.isFinite(displayAudio?.tpMax);
   const showFileAnalysisResult =
     sourceMode === "file" && (fileSessions.length > 0 || fileQueue.items.length > 0);
   const {
     channelLabelRuntime,
-    peakLabelContext,
     setChannelLabelToken,
     setChannelLayout,
     resetChannelLabels,
-    vectorscopePairOptions,
-    spectrumChannelOptions,
     analysisRequests,
     channelRolesRef,
     dialogueGatingRef,
     dialogueVadEngineRef,
   } = useAnalysisSession();
   const { channelLabelOverride, channelLabelTokens } = channelLabelRuntime;
-  const historyPerformanceControllerRef = useRef(null);
-  const historyPerformanceRequestKeysRef = useRef(null);
-  historyPerformanceRequestKeysRef.current = {
-    spectrumKeys: analysisRequests.spectrum.map((request) => request.key),
-    vectorscopeKeys: analysisRequests.vectorscope.map((request) => request.key),
-    stereoMapKeys: analysisRequests.stereoMap.map((request) => request.key),
-  };
-
-  useEffect(() => {
-    if (!import.meta.env.DEV) return undefined;
-    const options = historyPerformanceHarnessOptionsFromSearch(window.location.search);
-    if (!options.enabled) return undefined;
-    // `npm run dev` is browser-only and has no Tauri capture. Keep this harness out of the
-    // desktop runtime so a query parameter can never compete with the real audio engine.
-    if (isTauri()) return undefined;
-    let disposed = false;
-    void import("./dev/historyPerformanceHarness.js").then(({ startHistoryPerformanceHarness }) => {
-      if (disposed) return;
-      historyPerformanceControllerRef.current = startHistoryPerformanceHarnessController({
-        start: startHistoryPerformanceHarness,
-        intake: intakeRef.current,
-        fullVisual: options.fullVisual,
-        requestKeys: historyPerformanceRequestKeysRef.current,
-        publishAudio: (nextAudio) => setAudio((current) => ({ ...current, ...nextAudio })),
-      });
-    });
-    return () => {
-      disposed = true;
-      historyPerformanceControllerRef.current?.cancel();
-      historyPerformanceControllerRef.current = null;
-    };
-  }, [intakeRef, setAudio]);
-
-  useEffect(() => {
-    if (!import.meta.env.DEV) return;
-    const options = historyPerformanceHarnessOptionsFromSearch(window.location.search);
-    if (!options.enabled || isTauri()) return;
-    updateHistoryPerformanceHarnessController(
-      historyPerformanceControllerRef.current,
-      historyPerformanceRequestKeysRef.current
-    );
-  }, [analysisRequests]);
-  const spectrumValueKey =
-    spectrumChannelUi.type === "pair"
-      ? `p-${spectrumChannelUi.x}-${spectrumChannelUi.y}`
-      : `s-${spectrumChannelUi.ch}`;
-  const spectrumLiveLabel =
-    spectrumChannelOptions.find((o) => o.key === spectrumValueKey)?.label ??
-    spectrumChannelOptions[0]?.label ??
-    "L/R";
-  const vectorscopeChannelLabels = getPeakMeterChannelLabels(
-    channelCount >= 2 ? channelCount : 2,
-    peakLabelContext
-  );
-  const vectorscopeLiveLabel = formatVectorscopePairLabel({
-    x: vectorscopePairUi.x,
-    y: vectorscopePairUi.y,
-    channelLabels: vectorscopeChannelLabels,
-  });
-  const vectorscopeDisplayLabel = channelMetadata?.vectorscopePairLabel ?? vectorscopeLiveLabel;
-
+  useHistoryPerformanceHarness({ analysisRequests, intakeRef, setAudio });
+  const { frameData, historyData, metricsData, panelChromeData, panelPresentation } =
+    usePanelRuntimeData();
   const activePreset = presets.list.find((preset) => preset.id === presets.activeId);
   const activePresetName = activePreset ? `${activePreset.name}${presets.dirty ? " *" : ""}` : null;
-  const captureCurrentSnapshot = useCallback(() => {
-    if (!historyChartInteractive || totalSamples <= 0) return;
-    setSelectedOffset(0);
-  }, [historyChartInteractive, totalSamples, setSelectedOffset]);
-
-  const resetTpMax = async () => {
-    if (isTauri()) {
-      try {
-        await resetTruePeakMax();
-      } catch (_) {}
-    }
-    setAudio((prev) => ({ ...prev, tpMax: -Infinity }));
-  };
-
-  useEffect(() => {
-    intakeRef.current.setCurrentChannelMetadata({
-      frequencyLabel: spectrumLiveLabel,
-      vectorscopePairLabel: vectorscopeLiveLabel,
-    });
-  }, [intakeRef, spectrumLiveLabel, vectorscopeLiveLabel]);
-
-  const spectrumViewLegendValue = useMemo(
-    () => spectrumViewLegend(spectrumViewUi, spectrumChannelUi, vectorscopeChannelLabels),
-    [spectrumViewUi, spectrumChannelUi, vectorscopeChannelLabels]
-  );
-  const panelPresentation = useMemo(
-    () => normalizePanelPresentation(chromeView?.panelPresentation, focusView),
-    [chromeView?.panelPresentation, focusView]
-  );
-  const panelChromeData = useMemo(
-    () => ({
-      hidePanelHeaders: panelPresentation.workspace.hidePanelHeaders,
-      hideAxesAndLabels: panelPresentation[docked ? "dock" : "workspace"].hideAxesAndLabels,
-      docked,
-      channelCount,
-      vectorscopePairOptions,
-      stereoMapPairOptions: vectorscopePairOptions,
-      stereoMapPairDisplayLabel: vectorscopeDisplayLabel,
-      spectrumChannelOptions,
-      spectrumViewLegend: spectrumViewLegendValue,
-    }),
-    [
-      panelPresentation,
-      docked,
-      channelCount,
-      vectorscopePairOptions,
-      vectorscopeDisplayLabel,
-      spectrumChannelOptions,
-      spectrumViewLegendValue,
-    ]
-  );
-
-  const frameData = {
-    // Peak
-    displayAudio,
-    hasTpMaxValue,
-    onResetTpMax: resetTpMax,
-    // Vectorscope
-    correlation,
-    vectorscopePairX: vectorscopePairUi.x,
-    vectorscopePairY: vectorscopePairUi.y,
-    channelCount,
-    peakLabelContext,
-    resolvedThemeId,
-    spectrumChannelOptions,
-  };
-  const historyData = {
-    selectedOffset,
-    selectedMediaTimestampMs: targetTimestampMs,
-    setSelectedOffset,
-    selectSnapshot,
-    // The Time Range settings row edits the viewport these describe. It reads the effective values
-    // rather than the stored window, because those are what the axis labels are built from.
-    sourceMode,
-    fileDisplayIntake: sourceMode === "file" ? routing.fileDisplayIntake : null,
-    historyMaxWindowSec: historyRetentionSec,
-    historyWindowSec: sharedTimeViewport.windowSec,
-    historyOffsetSec: sharedTimeViewport.offsetSec,
-    setHistoryWindowSec,
-    setHistoryOffsetSec,
-    running,
-    referenceLufs,
-    momentaryRules: loudnessTraceRules.momentary,
-    shortTermRules: loudnessTraceRules.shortTerm,
-    hasHistoryData,
-    historyChartInteractive,
-    captureCurrentSnapshot,
-    frequencyMarkerIndex,
-    totalSamples,
-    histSourceList,
-    loudnessDisplayIndex,
-    waveformHistoryIndex,
-    visualWaveformHist,
-    snapshotSpectrumByKey,
-    resolveSpectrumSnapshotForKey,
-    resolveVectorscopeSnapshotForKey,
-    resolveStereoMapSnapshotForKey,
-    getVectorscopeHistoryForKey: (key) => intakeRef.current.getVisualVectorscopeHistByKey(key),
-    getStereoMapHistoryForKey: (key) => intakeRef.current.getVisualStereoMapHistByKey(key),
-    vectorscopeResetEpoch,
-    stereoMapResetEpoch,
-    getSpectrogramSnapsForKey,
-  };
-  // frameData/historyData change at frame/history-sample rate by nature, so memoizing
-  // them buys nothing; the low-frequency layers are metricsData (below), panelChromeData
-  // and the memoized runtime object in MeterRuntimeContext.
-  const dialogueActiveNow = displayAudio?.dialogueActiveNow ?? false;
-  const metricsData = useMemo(
-    () => ({ statsMetrics, dialogueActiveNow }),
-    [statsMetrics, dialogueActiveNow]
-  );
   // History Length sizes only the Live rings. File analysis owns fixed display budgets and adapts
   // its native checkpoint cadence to the complete file duration; its summary remains full-rate and
   // authoritative for the whole file.
@@ -806,7 +545,7 @@ function AppContent() {
             dockPresentation={{
               edge: dockEdge,
               canClear,
-              onShortcut: (actionId) => settings.shortcutActionRef.current?.(actionId),
+              onShortcut: dispatchShortcut,
               suspended: dockSuspended,
               onGeometry: setSettingsGeometry,
               onTargets: setSettingsTargets,
@@ -814,6 +553,7 @@ function AppContent() {
               exportProfileRef,
             }}
             settings={settings}
+            onHistoryRetentionChange={changeHistoryRetention}
             crashReportSetting={crashReportSetting}
             crashReporting={crashReporting}
             packTransfer={packTransfer}

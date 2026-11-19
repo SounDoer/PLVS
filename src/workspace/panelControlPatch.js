@@ -2,8 +2,8 @@ import { PANEL_ORIENTATIONS } from "../math/panelOrientation.js";
 import { DEFAULT_PANEL_CONTROLS, normalizePanelControls } from "../lib/panelControls.js";
 import { STATS_CANONICAL_ORDER } from "../lib/statsCatalog.js";
 import { buildSpectrumChannelOptions } from "../math/spectrumChannelOptions.js";
-import { AXIS_VIEWPORTS, axisKindsForModule } from "../workspace/axisViewports.js";
-import { readPublicPanelControls } from "./panelControls.js";
+import { AXIS_VIEWPORTS, axisKindsForModule } from "./axisViewports.js";
+import { readPublicPanelControls } from "./panelControlDocument.js";
 
 const hasOwn = (value, /** @type {string} */ key) =>
   Object.prototype.hasOwnProperty.call(value, key);

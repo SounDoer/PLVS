@@ -5,7 +5,7 @@
 //! persisted public contract.
 
 use std::mem::{size_of, ManuallyDrop};
-use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
+use std::sync::atomic::AtomicU64;
 use std::sync::{mpsc, Arc};
 use std::time::{Duration, Instant};
 
@@ -30,14 +30,14 @@ use windows::Win32::System::Com::{CoInitializeEx, CoUninitialize, BLOB, COINIT_M
 use windows::Win32::System::Threading::{CreateEventW, WaitForSingleObject};
 use windows::Win32::System::Variant::VT_BLOB;
 
-use super::capture::{AudioCaptureSession, MeasuredPcmSubscriptions};
+use super::capture::{AudioCaptureSession, MeasuredPcmSubscriptions, MeterResetRequest};
 use super::cpal_backend::{
   emit_capture_failure, pooled_pcm_buffer_capacity, run_meter_pipeline_bridge_thread,
   PcmBufferPool, PcmCallbackForwarder, PcmDeliveryQueue, PCM_QUEUE_CAP,
 };
+use crate::dsp::channel_layouts::ChannelSelection;
 use crate::dsp::speech::VadEngineKind;
 use crate::dsp::summary_meter::{SummaryMeter, SummaryMetrics};
-use crate::ipc::commands::ChannelSelection;
 use crate::ipc::types::FrameSubscribers;
 
 const DEFAULT_SAMPLE_RATE: u32 = 48_000;
@@ -346,8 +346,7 @@ fn run_process_stream(
 pub struct ProcessLoopbackSession {
   stop_tx: mpsc::Sender<()>,
   join: Option<std::thread::JoinHandle<Result<(), String>>>,
-  clear_peak_history: Arc<AtomicBool>,
-  reset_tp_max: Arc<AtomicBool>,
+  meter_resets: tauri::async_runtime::Sender<MeterResetRequest>,
 }
 
 impl Drop for ProcessLoopbackSession {
@@ -360,12 +359,8 @@ impl Drop for ProcessLoopbackSession {
 }
 
 impl AudioCaptureSession for ProcessLoopbackSession {
-  fn request_clear_peak_history(&self) {
-    self.clear_peak_history.store(true, Ordering::Release);
-  }
-
-  fn request_reset_true_peak_max(&self) {
-    self.reset_tp_max.store(true, Ordering::Release);
+  fn meter_resets(&self) -> &tauri::async_runtime::Sender<MeterResetRequest> {
+    &self.meter_resets
   }
 }
 
@@ -386,10 +381,7 @@ pub fn start_process_session(
   }
   capture_format(sample_rate, channels)?;
   let (stop_tx, stop_rx) = mpsc::channel();
-  let clear_peak_history = Arc::new(AtomicBool::new(false));
-  let reset_tp_max = Arc::new(AtomicBool::new(false));
-  let clear_for_bridge = clear_peak_history.clone();
-  let reset_for_bridge = reset_tp_max.clone();
+  let (meter_resets, reset_requests) = tauri::async_runtime::channel(1);
   let failure_app = app.clone();
 
   let join = std::thread::Builder::new()
@@ -413,8 +405,7 @@ pub fn start_process_session(
           channels,
           frame_subscribers,
           app,
-          clear_for_bridge,
-          reset_for_bridge,
+          reset_requests,
           channel_selection,
           dialogue_gating,
           dialogue_vad_engine,
@@ -440,8 +431,7 @@ pub fn start_process_session(
   Ok(Box::new(ProcessLoopbackSession {
     stop_tx,
     join: Some(join),
-    clear_peak_history,
-    reset_tp_max,
+    meter_resets,
   }))
 }
 

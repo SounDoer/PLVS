@@ -243,6 +243,7 @@ describe("usePresets", () => {
     presetsStore.patch({ list: [makePreset("one", "spectrum"), makePreset("two", "levelMeter")] });
     const onApplyError = vi.fn();
     const { result } = renderPresetHook({ applyDockPreset, onApplyError });
+    const previousTree = result.current.workspace.state.tree;
     let first;
     await act(async () => {
       first = result.current.presets.apply("one");
@@ -254,7 +255,7 @@ describe("usePresets", () => {
     expect(onApplyError).toHaveBeenCalledWith(
       expect.objectContaining({ reason: "alreadyApplying" })
     );
-    expect(result.current.workspace.state.tree).toEqual(leaf(["spectrum"]));
+    expect(result.current.workspace.state.tree).toEqual(previousTree);
     await act(async () => {
       finishFirst();
       await first;
@@ -617,7 +618,7 @@ describe("usePresets", () => {
     );
   });
 
-  it("publishes a failed scene and cleared selection before Agent Control reads them", async () => {
+  it("preserves the workspace and publishes the cleared selection after a native failure", async () => {
     const windowError = new Error("window unavailable");
     mocks.isTauri.mockReturnValue(true);
     mocks.applyWindowBounds.mockRejectedValue(windowError);
@@ -634,6 +635,7 @@ describe("usePresets", () => {
       activeId: "p1",
     });
     const { result } = renderPresetHook();
+    const previousTree = result.current.workspace.state.tree;
     let outcome;
     await act(async () => {
       outcome = result.current.presets
@@ -648,7 +650,7 @@ describe("usePresets", () => {
     expect(await outcome).toEqual({
       error: windowError,
       activeId: null,
-      tree: leaf(["spectrum"]),
+      tree: previousTree,
     });
   });
 

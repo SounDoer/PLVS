@@ -8,11 +8,11 @@ use super::spectrum_fixtures::{
   chunk_ranges, fixture, Chunking, FixtureKind, StereoFixture, ALL_CHUNKINGS, ALL_FIXTURES,
   SAMPLE_RATES,
 };
-use crate::dsp::{SpectrumChannelSel, SpectrumView};
-use crate::engine::spectral_plan::{
+use crate::dsp::spectral_plan::{
   plan_spectral_requests, ConsumerInput, ConsumerProjection, FuturePairNeed,
   SpectralConsumerBinding,
 };
+use crate::dsp::{SpectrumChannelSel, SpectrumView};
 use crate::ipc::types::{SpectrumAnalysisChannel, SpectrumAnalysisRequest};
 
 // No raw value is skipped: finite checks and a delta assertion apply on both sides of the UI's

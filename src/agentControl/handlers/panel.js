@@ -1,5 +1,8 @@
 import { buildAgentControlPanelSnapshot } from "../appSnapshot.js";
-import { planPublicPanelControlPatch, planPublicPanelReset } from "../panelControlPatch.js";
+import {
+  planPublicPanelControlPatch,
+  planPublicPanelReset,
+} from "../../workspace/panelControlPatch.js";
 import { buildPublicPanelControlSchema } from "../panelControlSchema.js";
 import { assertExpectedRevision, panelResultPreset } from "./shared.js";
 import { semanticFailure } from "../bridge/failures.js";

@@ -2,9 +2,12 @@ import { describe, expect, it } from "vitest";
 
 import { DEFAULT_PANEL_CONTROLS } from "../lib/panelControls.js";
 import { MODULE_CATALOG } from "../workspace/moduleCatalog.js";
-import { planPublicPanelControlPatch, planPublicPanelReset } from "./panelControlPatch.js";
+import {
+  planPublicPanelControlPatch,
+  planPublicPanelReset,
+} from "../workspace/panelControlPatch.js";
 import { buildPublicPanelControlSchema } from "./panelControlSchema.js";
-import { readPublicPanelControls } from "./panelControls.js";
+import { readPublicPanelControls } from "../workspace/panelControlDocument.js";
 
 const MODULE_IDS = Object.keys(MODULE_CATALOG);
 const CONTEXT = { channelCount: 2, channelLabels: ["L", "R"], hasLoudnessReference: true };

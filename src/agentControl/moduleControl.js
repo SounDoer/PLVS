@@ -1,4 +1,4 @@
-import { readPublicPanelControls } from "./panelControls.js";
+import { readPublicPanelControls } from "../workspace/panelControlDocument.js";
 import { buildPublicPanelControlSchema } from "./panelControlSchema.js";
 import { createDefaultPanelControls } from "../workspace/panelControlInstances.js";
 import { axisKindsForModule } from "../workspace/axisViewports.js";

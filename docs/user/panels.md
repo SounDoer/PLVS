@@ -52,7 +52,10 @@ reads `0%`).
 
 Shows every channel individually, as **Peak**, **RMS**, **Momentary**, or **Short-term**. It can show
 a True Peak Max marker driven by the active [Loudness Profile](loudness-profiles.md); click the
-readout to reset the maximum. Scale labels close to a marker fade out so the reading stays legible.
+readout during a Live measurement to reset only this maximum. The reset is unavailable while
+viewing a Snapshot or a File result and after stopping the measurement. If the reset fails,
+PLVS keeps the current reading and shows a notice. Scale labels close to a marker fade out so the
+reading stays legible.
 
 **Orientation** chooses the direction from lower to higher level: Left to Right, Right to Left,
 Top to Bottom, or Bottom to Top (the default), in both the workspace and Dock.

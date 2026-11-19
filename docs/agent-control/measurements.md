@@ -93,7 +93,8 @@ posts no GUI notice.
 Two clicks on a chart reset measurement state rather than read it. `measurement reset-hold
 --panel-id` clears a Spectrum's held curve or a Vectorscope's Polar Level Max Hold, as clicking the
 held curve or plot does. `measurement reset-true-peak-max --panel-id` resets TP Max, as clicking a
-peak Level Meter's TP Max marker does. Each is available exactly when the panel's gesture
+peak Level Meter's TP Max marker does during Live monitoring. The reset succeeds after the engine
+has applied it and the frame channel has reached the reset boundary. Each is available exactly when the panel's gesture
 reference lists it; otherwise it fails with `controlUnavailable`. A panel that is not rendered
 fails with `panelNotFound`. Neither advances the global revision, and both require
 `--expected-revision`.

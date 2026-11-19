@@ -1,11 +1,12 @@
 /** @vitest-environment jsdom */
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { act, render, screen, fireEvent, waitFor, cleanup, within } from "@testing-library/react";
-import App, {
+import App from "./App.jsx";
+import {
   historyPerformanceHarnessOptionsFromSearch,
   startHistoryPerformanceHarnessController,
   updateHistoryPerformanceHarnessController,
-} from "./App.jsx";
+} from "./dev/useHistoryPerformanceHarness.js";
 import { presetsStore, settingsStore, themesStore } from "./persistence/index.js";
 import { invoke } from "@tauri-apps/api/core";
 import { makeCustomThemeFromBase } from "./theme/customTheme.js";

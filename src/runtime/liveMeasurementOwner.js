@@ -96,6 +96,14 @@ export function createLiveMeasurementOwner({ now = () => Date.now() } = {}) {
       }
       return record;
     },
+    resetTruePeakMax() {
+      if (!latest) return;
+      latest = Object.freeze({
+        ...latest,
+        audio: Object.freeze({ ...latest.audio, tpMax: -Infinity }),
+      });
+      publish();
+    },
     clear() {
       generation += 1;
       latest = null;

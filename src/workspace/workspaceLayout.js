@@ -1,11 +1,8 @@
-import { normalizeAxisViewportsState } from "../workspace/axisViewports.js";
-import { MODULE_CATALOG } from "../workspace/moduleCatalog.js";
-import {
-  createDefaultPanelControls,
-  normalizePanelControlsById,
-} from "../workspace/panelControlInstances.js";
-import { createPanel } from "../workspace/panelInstances.js";
-import { normalizePinnedPanelsById } from "../workspace/reducer.js";
+import { normalizeAxisViewportsState } from "./axisViewports.js";
+import { MODULE_CATALOG } from "./moduleCatalog.js";
+import { createDefaultPanelControls, normalizePanelControlsById } from "./panelControlInstances.js";
+import { createPanel } from "./panelInstances.js";
+import { normalizePinnedPanelsById } from "./reducer.js";
 
 export const MAX_LAYOUT_BYTES = 256 * 1024;
 export const MAX_LAYOUT_DEPTH = 32;

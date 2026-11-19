@@ -3,6 +3,7 @@
 use std::collections::{HashMap, HashSet};
 use std::time::{Duration, Instant};
 
+use crate::dsp::channel_layouts::ChannelSelection;
 use crate::dsp::channel_weights::standard_layout_name;
 use crate::dsp::loudness::LoudnessBlock;
 use crate::dsp::peak::{
@@ -18,7 +19,6 @@ use crate::dsp::{
 };
 use crate::engine::file_timeline::FileTimeline;
 use crate::engine::waveform_accumulator::{HistoryWaveform, VisualWaveform, WaveformAccumulator};
-use crate::ipc::commands::ChannelSelection;
 use crate::ipc::types::{
   AnalysisRequests, AudioFramePayload, MeterHistoryEntry, SpectrumFrameResult, SpectrumVisualEntry,
   StereoMapFrameResult, StereoMapVisualEntry, VectorscopeFrameResult, VectorscopeVisualEntry,
@@ -315,6 +315,7 @@ impl MeterPipeline {
   /// marker).
   pub fn reset_true_peak_max(&mut self) {
     self.tp_max_db = f64::NEG_INFINITY;
+    self.loudness.reset_partial_block_true_peak();
   }
 
   /// Create a pipeline configured for offline file analysis. Timestamps on emitted frames and
@@ -460,7 +461,7 @@ impl MeterPipeline {
       .filter(|selection| selection.roles.len() == ch as usize)
       .map(|selection| selection.weights.clone());
     let spectral_plan =
-      crate::engine::spectral_plan::plan_analysis_requests(self.channels, analysis_requests);
+      crate::dsp::spectral_plan::plan_analysis_requests(self.channels, analysis_requests);
     self.shared_spectral_runtime.update_plan(spectral_plan);
     self
       .shared_spectral_runtime
@@ -1288,8 +1289,8 @@ impl MeterPipeline {
   fn spectral_plan_for_test(
     &self,
     analysis_requests: &AnalysisRequests,
-  ) -> crate::engine::spectral_plan::SpectralPlan {
-    crate::engine::spectral_plan::plan_analysis_requests(self.channels, analysis_requests)
+  ) -> crate::dsp::spectral_plan::SpectralPlan {
+    crate::dsp::spectral_plan::plan_analysis_requests(self.channels, analysis_requests)
   }
 
   pub(crate) fn push_shared_runtime_for_test(
@@ -1420,7 +1421,7 @@ mod tests {
 
   #[test]
   fn planner_inspection_uses_current_spectrum_requests_and_pipeline_channel_count() {
-    use crate::engine::spectral_plan::TransformStreamId;
+    use crate::dsp::spectral_plan::TransformStreamId;
     use crate::ipc::types::{SpectrumAnalysisChannel, SpectrumAnalysisRequest};
 
     let pipeline = MeterPipeline::new(48_000, 2);
@@ -1604,8 +1605,8 @@ mod tests {
 
   #[test]
   fn shared_runtime_request_changes_start_new_keys_at_activation_and_preserve_unchanged_state() {
+    use crate::dsp::spectral_plan::plan_spectral_requests;
     use crate::dsp::spectrum_bank::FFT_BIG;
-    use crate::engine::spectral_plan::plan_spectral_requests;
     use crate::ipc::types::{SpectrumAnalysisChannel, SpectrumAnalysisRequest};
 
     let unchanged = combined_request("unchanged");
@@ -1660,8 +1661,8 @@ mod tests {
 
   #[test]
   fn pipeline_clear_restarts_shared_runtime_warmup_and_is_repeatable_when_empty() {
+    use crate::dsp::spectral_plan::{ProjectionKind, TransformStreamId};
     use crate::dsp::spectrum_bank::FFT_BIG;
-    use crate::engine::spectral_plan::{ProjectionKind, TransformStreamId};
     use crate::ipc::types::{SpectrumAnalysisChannel, SpectrumAnalysisRequest};
 
     let combined = combined_request("combined");
@@ -1848,8 +1849,8 @@ mod tests {
 
   #[test]
   fn shared_runtime_rebuild_discards_old_sample_rate_grid_and_channel_state() {
+    use crate::dsp::spectral_plan::{plan_spectral_requests, TransformStreamId};
     use crate::dsp::spectrum_bank::FFT_BIG;
-    use crate::engine::spectral_plan::{plan_spectral_requests, TransformStreamId};
     use crate::ipc::types::{SpectrumAnalysisChannel, SpectrumAnalysisRequest};
 
     let request = SpectrumAnalysisRequest {
@@ -1900,10 +1901,10 @@ mod tests {
 
   #[test]
   fn topology_transition_visible_output_matches_uninterrupted_direct_reference_both_directions() {
-    use crate::dsp::spectrum_bank::{FFT_BIG, FFT_MID, FFT_SMALL};
-    use crate::engine::spectral_plan::{
+    use crate::dsp::spectral_plan::{
       plan_spectral_requests, ConsumerInput, FuturePairNeed, ProjectionKind, TransformStreamId,
     };
+    use crate::dsp::spectrum_bank::{FFT_BIG, FFT_MID, FFT_SMALL};
 
     let request = combined_request("combined");
     let direct_plan = plan_spectral_requests(2, std::slice::from_ref(&request), &[]);
@@ -2111,10 +2112,10 @@ mod tests {
 
   #[test]
   fn topology_transition_overlaps_and_hands_combined_consumer_both_directions() {
-    use crate::dsp::spectrum_bank::{FFT_BIG, FFT_MID, FFT_SMALL};
-    use crate::engine::spectral_plan::{
+    use crate::dsp::spectral_plan::{
       plan_spectral_requests, ConsumerInput, FuturePairNeed, ProjectionKind, TransformStreamId,
     };
+    use crate::dsp::spectrum_bank::{FFT_BIG, FFT_MID, FFT_SMALL};
 
     let projection = TransformStreamId::Projection {
       first: 0,
@@ -2248,8 +2249,8 @@ mod tests {
 
   #[test]
   fn topology_transition_prunes_removed_keys_but_keeps_still_needed_physical_streams() {
+    use crate::dsp::spectral_plan::{plan_spectral_requests, TransformStreamId};
     use crate::dsp::spectrum_bank::FFT_BIG;
-    use crate::engine::spectral_plan::{plan_spectral_requests, TransformStreamId};
     use crate::ipc::types::{SpectrumAnalysisChannel, SpectrumAnalysisRequest};
 
     let combined = combined_request("combined");
@@ -4182,7 +4183,8 @@ mod tests {
     .iter()
     .map(|s| s.to_string())
     .collect();
-    let selection = crate::ipc::commands::ChannelSelection::from_roles(roles).expect("roles");
+    let selection =
+      crate::dsp::channel_layouts::ChannelSelection::from_roles(roles).expect("roles");
     assert_eq!(
       loudness_layout_meta(12, Some(&selection)),
       ("7.1.4".to_string(), true)
@@ -4191,9 +4193,11 @@ mod tests {
 
   #[test]
   fn a_selection_of_the_wrong_length_falls_back_to_auto_detection() {
-    let selection =
-      crate::ipc::commands::ChannelSelection::from_roles(vec!["L".to_string(), "R".to_string()])
-        .expect("roles");
+    let selection = crate::dsp::channel_layouts::ChannelSelection::from_roles(vec![
+      "L".to_string(),
+      "R".to_string(),
+    ])
+    .expect("roles");
     assert_eq!(
       loudness_layout_meta(12, Some(&selection)),
       ("unknown".to_string(), false)

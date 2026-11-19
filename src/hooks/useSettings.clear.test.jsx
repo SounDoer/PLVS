@@ -1,7 +1,7 @@
 /** @vitest-environment jsdom */
 import { describe, expect, it, vi, beforeEach } from "vitest";
 import { renderHook } from "@testing-library/react";
-import { useSettings } from "./useSettings.js";
+import { useKeyboardShortcuts } from "./useKeyboardShortcuts.js";
 
 beforeEach(() => {
   window.matchMedia = vi.fn().mockImplementation((query) => ({
@@ -12,9 +12,9 @@ beforeEach(() => {
   }));
 });
 
-describe("useSettings keyboard shortcut wiring", () => {
+describe("keyboard shortcut configuration", () => {
   it("exposes the shortcut catalogue with safe defaults outside Tauri", () => {
-    const { result } = renderHook(() => useSettings());
+    const { result } = renderHook(() => useKeyboardShortcuts({ current: null }));
     expect(result.current.keyboardShortcuts.clear).toEqual({
       accelerator: "CmdOrCtrl+3",
       global: false,

@@ -690,6 +690,12 @@ impl LoudnessMeter {
     self.sliding.peek_block_max()
   }
 
+  /// On a hold reset, only new samples can contribute to the next block's overall maximum.
+  /// The per-channel block readings still describe the entire block.
+  pub(crate) fn reset_partial_block_true_peak(&mut self) {
+    self.tp_block = 0.0;
+  }
+
   /// True Peak (dBTP, every channel) of the block still being filled, for the same case.
   pub fn partial_block_true_peak(&self) -> f64 {
     if self.tp_block > 0.0 {
@@ -858,6 +864,23 @@ mod tests {
   /// The control for the case above: the same sine aligned so that its peaks land *on* samples.
   /// True peak and sample peak now agree, which is what separates a working oversampler from one
   /// that simply adds gain to everything.
+  #[test]
+  fn resetting_true_peak_hold_mid_block_excludes_earlier_samples() {
+    let mut meter = LoudnessMeter::new(48_000.0);
+    let mut before_reset = vec![0.0; 4800];
+    before_reset[0] = 0.75;
+    assert!(meter.push_interleaved(&before_reset).is_none());
+    assert!(meter.partial_block_true_peak() > -3.0);
+
+    meter.reset_partial_block_true_peak();
+    let block = meter
+      .push_interleaved(&vec![0.0; 4800])
+      .expect("completed 100 ms block");
+
+    assert_eq!(block.true_peak, f64::NEG_INFINITY);
+    assert!(block.true_peak_l > -3.0);
+  }
+
   #[test]
   fn true_peak_matches_sample_peak_when_the_peak_lands_on_a_sample() {
     let (sample_peak_db, true_peak_db, _) = true_peak_of_quarter_rate_sine(0.0, 1.0, 1.0);

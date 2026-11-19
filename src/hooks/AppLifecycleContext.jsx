@@ -54,7 +54,6 @@ export function AppLifecycleProvider({ children }) {
     setSettingsSectionRequest,
     keyboardShortcuts,
     shortcutCapturing,
-    shortcutActionRef,
     focusView,
     resolvedTheme,
     updatePreferences,
@@ -82,7 +81,7 @@ export function AppLifecycleProvider({ children }) {
     onSelectCaptureDevice,
     sourceDisplayName,
   } = useSource();
-  const { onStartClick, fileImport, fileQueue, canClear } = useSourceActions();
+  const { onStartClick, fileImport, fileQueue, canClear, dispatchShortcut } = useSourceActions();
 
   // Crash-report discovery must outlive the normal-window overlays. A saved Dock posture replaces
   // those overlays with the strip at boot; keeping discovery here lets App restore the main window
@@ -239,7 +238,7 @@ export function AppLifecycleProvider({ children }) {
       settings: trayActions.onOpenSettings,
       selectSource: onSelectCaptureDevice,
       applyPreset: presets.apply,
-      clearActiveSource: () => shortcutActionRef.current?.("clear") ?? false,
+      clearActiveSource: () => dispatchShortcut?.("clear") ?? false,
     },
   });
   useTray({
@@ -262,7 +261,7 @@ export function AppLifecycleProvider({ children }) {
   });
 
   useAppKeyboardShortcuts({
-    dispatchShortcutAction: (actionId) => shortcutActionRef.current?.(actionId),
+    dispatchShortcutAction: dispatchShortcut,
     canClear,
     keyboardShortcuts,
     shortcutCapturing,

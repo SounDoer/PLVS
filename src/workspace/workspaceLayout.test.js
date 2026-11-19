@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { normalizeAxisViewportsState } from "../workspace/axisViewports.js";
-import { createDefaultPanelControls } from "../workspace/panelControlInstances.js";
+import { normalizeAxisViewportsState } from "./axisViewports.js";
+import { createDefaultPanelControls } from "./panelControlInstances.js";
 import {
   MAX_LAYOUT_BYTES,
   MAX_LAYOUT_DEPTH,

@@ -54,7 +54,9 @@ its logical content size or shrinks to fit the work area. **Update** captures th
 placement, including the display. Older Presets keep their original pixel-based behavior until
 updated. Sharesets and other portable Presets carry the layout without window placement.
 If PLVS cannot restore a Preset's normal window placement after changing its frame, it attempts to
-restore the previously configured frame. Other parts of the Preset may already be applied.
+restore the previously configured frame. Workspace and Dock panel layouts are applied after their
+window operations succeed. If several native window changes are needed, an earlier one may already
+have succeeded when a later one fails.
 
 Toolbar configuration entries such as Loudness Profile, Views, and Presets remain neutral while
 closed, even when their configuration is active. Hover and an open menu use the same neutral
@@ -70,6 +72,8 @@ status entry. It names the highest-priority condition and shows a count when sev
 Hover for a short explanation; click for the full list, including affected readings and available
 actions. Click outside or press Escape to close the list. Resolved conditions disappear; the list
 is not a notification history. The footer keeps Source, Loudness and Preset information.
+During a Live measurement, **Clear** waits for the audio engine to reset the measurement before
+clearing the displayed history. After stopping, **Clear** can still remove the retained history.
 If clearing the Live measurement fails, the history stays visible and you can retry **Clear**.
 
 In Dock, the toolbar button in the right control column shows a status icon while closed. Open the

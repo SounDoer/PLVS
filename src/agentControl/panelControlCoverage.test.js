@@ -33,7 +33,7 @@ vi.mock("../lib/panelControls.js", async (importOriginal) => {
 });
 
 const { DEFAULT_PANEL_CONTROLS } = await import("../lib/panelControls.js");
-const { readPublicPanelControls } = await import("./panelControls.js");
+const { readPublicPanelControls } = await import("../workspace/panelControlDocument.js");
 
 /** Contexts that widen the mapping's conditional branches -- channel topology, loudness reference. */
 const CONTEXTS = [

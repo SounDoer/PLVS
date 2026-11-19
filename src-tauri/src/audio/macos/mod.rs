@@ -5,14 +5,16 @@ mod pcm_shim;
 
 use std::collections::HashSet;
 use std::ffi::{c_char, c_int, c_void, CString};
-use std::sync::atomic::{AtomicBool, AtomicU64, AtomicU8, Ordering};
+use std::sync::atomic::{AtomicU64, AtomicU8};
 use std::sync::Arc;
 use std::thread::JoinHandle;
 
 use cpal::StreamConfig;
 use tauri::AppHandle;
 
-use super::capture::{AudioCapture, AudioCaptureSession, MeasuredPcmSubscriptions};
+use super::capture::{
+  AudioCapture, AudioCaptureSession, MeasuredPcmSubscriptions, MeterResetRequest,
+};
 use super::cpal_backend::{
   append_input_devices, collect_outputs, create_silence_output_stream, device_id_key,
   device_list_label, emit_capture_failure, pick_output_by_index, pooled_pcm_buffer_capacity,
@@ -190,9 +192,8 @@ struct MacosTapWorkerArgs {
   frame_subscribers: FrameSubscribers,
   app: AppHandle,
   stop_rx: std::sync::mpsc::Receiver<()>,
-  clear_peak_history: Arc<AtomicBool>,
-  reset_tp_max: Arc<AtomicBool>,
-  channel_selection: Arc<std::sync::Mutex<Option<crate::ipc::commands::ChannelSelection>>>,
+  meter_resets: tauri::async_runtime::Receiver<MeterResetRequest>,
+  channel_selection: Arc<std::sync::Mutex<Option<crate::dsp::channel_layouts::ChannelSelection>>>,
   dialogue_gating: Arc<std::sync::Mutex<bool>>,
   dialogue_vad_engine: Arc<std::sync::Mutex<VadEngineKind>>,
   measured_pcm: Arc<MeasuredPcmSubscriptions>,
@@ -206,8 +207,7 @@ fn run_macos_tap_worker(args: MacosTapWorkerArgs) -> Result<(), CaptureWorkerErr
     frame_subscribers,
     app,
     stop_rx,
-    clear_peak_history,
-    reset_tp_max,
+    meter_resets,
     channel_selection,
     dialogue_gating,
     dialogue_vad_engine,
@@ -229,8 +229,6 @@ fn run_macos_tap_worker(args: MacosTapWorkerArgs) -> Result<(), CaptureWorkerErr
   let bridge_pool = pcm_pool.clone();
   let delivery = PcmDeliveryQueue::new(PCM_QUEUE_CAP);
   let consumer_delivery = delivery.clone();
-  let clear_for_thread = clear_peak_history.clone();
-  let reset_tp_max_for_thread = reset_tp_max.clone();
   let dropped_for_thread = dropped_chunks.clone();
   let native_layout = layout_for_uid(&uid, channels);
   super::source_layout::MonitoringPlan::require_system_scope(channels, native_layout.clone())
@@ -242,8 +240,7 @@ fn run_macos_tap_worker(args: MacosTapWorkerArgs) -> Result<(), CaptureWorkerErr
       channels,
       frame_subscribers,
       app,
-      clear_for_thread,
-      reset_tp_max_for_thread,
+      meter_resets,
       channel_selection,
       dialogue_gating,
       dialogue_vad_engine,
@@ -336,8 +333,7 @@ fn run_macos_tap_worker(args: MacosTapWorkerArgs) -> Result<(), CaptureWorkerErr
 pub(crate) struct MacosTapCaptureSession {
   stop_tx: std::sync::mpsc::Sender<()>,
   join: Option<JoinHandle<Result<(), CaptureWorkerError>>>,
-  clear_peak_history: Arc<AtomicBool>,
-  reset_tp_max: Arc<AtomicBool>,
+  meter_resets: tauri::async_runtime::Sender<MeterResetRequest>,
 }
 
 impl Drop for MacosTapCaptureSession {
@@ -350,12 +346,8 @@ impl Drop for MacosTapCaptureSession {
 }
 
 impl AudioCaptureSession for MacosTapCaptureSession {
-  fn request_clear_peak_history(&self) {
-    self.clear_peak_history.store(true, Ordering::Release);
-  }
-
-  fn request_reset_true_peak_max(&self) {
-    self.reset_tp_max.store(true, Ordering::Release);
+  fn meter_resets(&self) -> &tauri::async_runtime::Sender<MeterResetRequest> {
+    &self.meter_resets
   }
 }
 
@@ -366,16 +358,13 @@ impl MacosTapCaptureSession {
     process_object_ids: Vec<u32>,
     frame_subscribers: FrameSubscribers,
     app: AppHandle,
-    channel_selection: Arc<std::sync::Mutex<Option<crate::ipc::commands::ChannelSelection>>>,
+    channel_selection: Arc<std::sync::Mutex<Option<crate::dsp::channel_layouts::ChannelSelection>>>,
     dialogue_gating: Arc<std::sync::Mutex<bool>>,
     dialogue_vad_engine: Arc<std::sync::Mutex<VadEngineKind>>,
     measured_pcm: Arc<MeasuredPcmSubscriptions>,
   ) -> Result<Self, String> {
     let (stop_tx, stop_rx) = std::sync::mpsc::channel::<()>();
-    let clear_peak_history = Arc::new(AtomicBool::new(false));
-    let clear_worker = clear_peak_history.clone();
-    let reset_tp_max = Arc::new(AtomicBool::new(false));
-    let reset_tp_max_worker = reset_tp_max.clone();
+    let (meter_resets, reset_requests) = tauri::async_runtime::channel(1);
     let dropped_chunks = Arc::new(AtomicU64::new(0));
     let device_id = device_id.to_string();
     let failure_app = app.clone();
@@ -388,8 +377,7 @@ impl MacosTapCaptureSession {
           frame_subscribers,
           app,
           stop_rx,
-          clear_peak_history: clear_worker,
-          reset_tp_max: reset_tp_max_worker,
+          meter_resets: reset_requests,
           channel_selection,
           dialogue_gating,
           dialogue_vad_engine,
@@ -405,8 +393,7 @@ impl MacosTapCaptureSession {
     Ok(MacosTapCaptureSession {
       stop_tx,
       join: Some(join),
-      clear_peak_history,
-      reset_tp_max,
+      meter_resets,
     })
   }
 }
@@ -423,7 +410,7 @@ pub fn start_session(
   device_id: &str,
   frame_subscribers: FrameSubscribers,
   app: AppHandle,
-  channel_selection: Arc<std::sync::Mutex<Option<crate::ipc::commands::ChannelSelection>>>,
+  channel_selection: Arc<std::sync::Mutex<Option<crate::dsp::channel_layouts::ChannelSelection>>>,
   dialogue_gating: Arc<std::sync::Mutex<bool>>,
   dialogue_vad_engine: Arc<std::sync::Mutex<VadEngineKind>>,
   measured_pcm: Arc<MeasuredPcmSubscriptions>,
@@ -458,7 +445,7 @@ pub fn start_application_session(
   device_id: &str,
   frame_subscribers: FrameSubscribers,
   app: AppHandle,
-  channel_selection: Arc<std::sync::Mutex<Option<crate::ipc::commands::ChannelSelection>>>,
+  channel_selection: Arc<std::sync::Mutex<Option<crate::dsp::channel_layouts::ChannelSelection>>>,
   dialogue_gating: Arc<std::sync::Mutex<bool>>,
   dialogue_vad_engine: Arc<std::sync::Mutex<VadEngineKind>>,
   measured_pcm: Arc<MeasuredPcmSubscriptions>,

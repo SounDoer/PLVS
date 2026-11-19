@@ -13,14 +13,14 @@ import { useEffect, useRef } from "react";
  * @param {string} dialogueVadEngine - current engine, from settings.
  * @param {boolean} dialogueGating - whether the dialogue detector is currently running.
  * @param {boolean} live - whether Live is the shown source.
- * @param {{ current: (() => void) | null }} onClearRef - ref whose `.current` is the latest clearAll.
+ * @param {() => void} clearMeasurement - the source owner's Clear action.
  * @param {() => void} deferLiveClear - owes Live one clear when it is shown again.
  */
 export function useDialogueEngineRestart(
   dialogueVadEngine,
   dialogueGating,
   live,
-  onClearRef,
+  clearMeasurement,
   deferLiveClear
 ) {
   const previousDialogueVadEngineRef = useRef(dialogueVadEngine);
@@ -28,9 +28,9 @@ export function useDialogueEngineRestart(
     if (previousDialogueVadEngineRef.current === dialogueVadEngine) return;
     previousDialogueVadEngineRef.current = dialogueVadEngine;
     if (!dialogueGating) return;
-    if (live) onClearRef?.current?.();
+    if (live) clearMeasurement?.();
     else deferLiveClear?.();
-  }, [dialogueVadEngine, dialogueGating, live, onClearRef, deferLiveClear]);
+  }, [dialogueVadEngine, dialogueGating, live, clearMeasurement, deferLiveClear]);
 }
 
 /**
@@ -40,16 +40,21 @@ export function useDialogueEngineRestart(
  *
  * @param {Record<number, string[]>} channelLabelOverrides
  * @param {boolean} live
- * @param {{ current: (() => void) | null }} onClearRef
+ * @param {() => void} clearMeasurement
  * @param {() => void} deferLiveClear
  */
-export function useChannelRolesRestart(channelLabelOverrides, live, onClearRef, deferLiveClear) {
+export function useChannelRolesRestart(
+  channelLabelOverrides,
+  live,
+  clearMeasurement,
+  deferLiveClear
+) {
   const key = JSON.stringify(channelLabelOverrides);
   const previousKeyRef = useRef(key);
   useEffect(() => {
     if (previousKeyRef.current === key) return;
     previousKeyRef.current = key;
-    if (live) onClearRef?.current?.();
+    if (live) clearMeasurement?.();
     else deferLiveClear?.();
-  }, [key, live, onClearRef, deferLiveClear]);
+  }, [key, live, clearMeasurement, deferLiveClear]);
 }

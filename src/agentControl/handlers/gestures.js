@@ -57,7 +57,17 @@ async function run(ctx) {
     }
     return { requestId, result: { revision: clock.current(), panelId, durationMs } };
   }
-  await gesture();
+  try {
+    await gesture();
+  } catch (error) {
+    throw semanticFailure(
+      "applicationFailed",
+      "$.params.panelId",
+      error?.message || String(error),
+      -32050,
+      { panelId }
+    );
+  }
   return { requestId, result: { revision: clock.current(), panelId } };
 }
 

@@ -10,7 +10,9 @@ use std::sync::{Arc, Mutex};
 use std::thread::JoinHandle;
 use std::time::{Duration, Instant};
 
-use super::capture::{AudioCapture, AudioCaptureSession, MeasuredPcmSubscriptions};
+use super::capture::{
+  AudioCapture, AudioCaptureSession, MeasuredPcmSubscriptions, MeterResetKind, MeterResetRequest,
+};
 use super::device::DeviceInfo;
 #[cfg(target_os = "windows")]
 use super::device_enum::is_loopback_capture;
@@ -346,7 +348,7 @@ impl AudioCapture for CpalBackend {
     device_id: &str,
     frame_subscribers: crate::ipc::types::FrameSubscribers,
     app: AppHandle,
-    channel_selection: Arc<std::sync::Mutex<Option<crate::ipc::commands::ChannelSelection>>>,
+    channel_selection: Arc<std::sync::Mutex<Option<crate::dsp::channel_layouts::ChannelSelection>>>,
     dialogue_gating: Arc<std::sync::Mutex<bool>>,
     dialogue_vad_engine: Arc<std::sync::Mutex<VadEngineKind>>,
     measured_pcm: Arc<MeasuredPcmSubscriptions>,
@@ -366,8 +368,7 @@ impl AudioCapture for CpalBackend {
 pub(crate) struct CaptureSession {
   stop_tx: std::sync::mpsc::Sender<()>,
   join: Option<JoinHandle<Result<(), CaptureWorkerError>>>,
-  clear_peak_history: Arc<AtomicBool>,
-  reset_tp_max: Arc<AtomicBool>,
+  meter_resets: tauri::async_runtime::Sender<MeterResetRequest>,
 }
 
 impl Drop for CaptureSession {
@@ -380,12 +381,8 @@ impl Drop for CaptureSession {
 }
 
 impl AudioCaptureSession for CaptureSession {
-  fn request_clear_peak_history(&self) {
-    self.clear_peak_history.store(true, Ordering::Release);
-  }
-
-  fn request_reset_true_peak_max(&self) {
-    self.reset_tp_max.store(true, Ordering::Release);
+  fn meter_resets(&self) -> &tauri::async_runtime::Sender<MeterResetRequest> {
+    &self.meter_resets
   }
 }
 
@@ -395,7 +392,7 @@ impl CaptureSession {
     device_id: &str,
     frame_subscribers: crate::ipc::types::FrameSubscribers,
     app: AppHandle,
-    channel_selection: Arc<std::sync::Mutex<Option<crate::ipc::commands::ChannelSelection>>>,
+    channel_selection: Arc<std::sync::Mutex<Option<crate::dsp::channel_layouts::ChannelSelection>>>,
     dialogue_gating: Arc<std::sync::Mutex<bool>>,
     dialogue_vad_engine: Arc<std::sync::Mutex<VadEngineKind>>,
     measured_pcm: Arc<MeasuredPcmSubscriptions>,
@@ -404,10 +401,7 @@ impl CaptureSession {
     let sample_rate = supported.sample_rate();
     let channels = supported.channels();
     let (stop_tx, stop_rx) = std::sync::mpsc::channel::<()>();
-    let clear_peak_history = Arc::new(AtomicBool::new(false));
-    let clear_worker = clear_peak_history.clone();
-    let reset_tp_max = Arc::new(AtomicBool::new(false));
-    let reset_tp_max_worker = reset_tp_max.clone();
+    let (meter_resets, reset_requests) = tauri::async_runtime::channel(1);
     let dropped_chunks = Arc::new(AtomicU64::new(0));
     let device_id = device_id.to_string();
     let failure_app = app.clone();
@@ -426,8 +420,7 @@ impl CaptureSession {
           frame_subscribers,
           app,
           stop_rx,
-          clear_peak_history: clear_worker,
-          reset_tp_max: reset_tp_max_worker,
+          meter_resets: reset_requests,
           channel_selection,
           dialogue_gating,
           dialogue_vad_engine,
@@ -454,8 +447,7 @@ impl CaptureSession {
     Ok(CaptureSession {
       stop_tx,
       join: Some(join),
-      clear_peak_history,
-      reset_tp_max,
+      meter_resets,
     })
   }
 }
@@ -469,9 +461,8 @@ struct RunCaptureArgs {
   frame_subscribers: crate::ipc::types::FrameSubscribers,
   app: tauri::AppHandle,
   stop_rx: std::sync::mpsc::Receiver<()>,
-  clear_peak_history: Arc<AtomicBool>,
-  reset_tp_max: Arc<AtomicBool>,
-  channel_selection: Arc<std::sync::Mutex<Option<crate::ipc::commands::ChannelSelection>>>,
+  meter_resets: tauri::async_runtime::Receiver<MeterResetRequest>,
+  channel_selection: Arc<std::sync::Mutex<Option<crate::dsp::channel_layouts::ChannelSelection>>>,
   dialogue_gating: Arc<std::sync::Mutex<bool>>,
   dialogue_vad_engine: Arc<std::sync::Mutex<VadEngineKind>>,
   measured_pcm: Arc<MeasuredPcmSubscriptions>,
@@ -764,9 +755,8 @@ pub(crate) fn run_meter_pipeline_bridge_thread(
   channels: u16,
   frame_subscribers: crate::ipc::types::FrameSubscribers,
   app: tauri::AppHandle,
-  clear_peak_history: Arc<AtomicBool>,
-  reset_tp_max: Arc<AtomicBool>,
-  channel_selection: Arc<std::sync::Mutex<Option<crate::ipc::commands::ChannelSelection>>>,
+  mut meter_resets: tauri::async_runtime::Receiver<MeterResetRequest>,
+  channel_selection: Arc<std::sync::Mutex<Option<crate::dsp::channel_layouts::ChannelSelection>>>,
   dialogue_gating: Arc<std::sync::Mutex<bool>>,
   dialogue_vad_engine: Arc<std::sync::Mutex<VadEngineKind>>,
   measured_pcm: Arc<MeasuredPcmSubscriptions>,
@@ -799,7 +789,20 @@ pub(crate) fn run_meter_pipeline_bridge_thread(
   pipeline.set_source_channel_roles(plan.roles.clone());
   pipeline.enable_async_dialogue();
   let mut recv_tick: u32 = 0;
-  while let Some((floats, arrived_at)) = delivery.pop_until_stopped_with_arrival() {
+  loop {
+    if delivery.producer_stopped.load(Ordering::Acquire) && delivery.buffers.is_empty() {
+      break;
+    }
+    if let Ok(request) = meter_resets.try_recv() {
+      if !request.completion.is_closed() {
+        let result = apply_meter_reset(&mut pipeline, &frame_subscribers, &request);
+        let _ = request.completion.try_send(result);
+      }
+    }
+    let Some((floats, arrived_at)) = delivery.buffers.pop() else {
+      std::thread::sleep(PCM_WORKER_IDLE_POLL);
+      continue;
+    };
     let samples = plan.pcm(&floats, &mut projected);
     recv_tick = recv_tick.wrapping_add(1);
     if recv_tick.is_multiple_of(480) {
@@ -820,14 +823,6 @@ pub(crate) fn run_meter_pipeline_bridge_thread(
         );
         dropped_frames = 0;
       }
-    }
-    if clear_peak_history.load(Ordering::Acquire) {
-      clear_peak_history.store(false, Ordering::Release);
-      pipeline.clear_peak_and_history();
-    }
-    if reset_tp_max.load(Ordering::Acquire) {
-      reset_tp_max.store(false, Ordering::Release);
-      pipeline.reset_true_peak_max();
     }
     if publish_measured_pcm {
       measured_pcm.publish_arrived_at(samples, sample_rate, channels, arrived_at);
@@ -911,6 +906,27 @@ pub(crate) fn run_meter_pipeline_bridge_thread(
       break;
     }
   }
+}
+
+fn apply_meter_reset(
+  pipeline: &mut MeterPipeline,
+  subscribers: &crate::ipc::types::FrameSubscribers,
+  request: &MeterResetRequest,
+) -> Result<(), String> {
+  let subscribers = subscribers
+    .lock()
+    .map_err(|_| "meter subscribers lock poisoned")?;
+  let main = subscribers.get("main").ok_or("Live meter stream closed")?;
+  // This marker shares the ordered frame channel, so the WebView applies the reset after
+  // all older frames and before any newer frames. It does not occupy a frame sequence number.
+  let marker = serde_json::json!({ "meterReset": request.request_id }).to_string();
+  match request.kind {
+    MeterResetKind::History => pipeline.clear_peak_and_history(),
+    MeterResetKind::TruePeakMax => pipeline.reset_true_peak_max(),
+  }
+  main
+    .send(tauri::ipc::InvokeResponseBody::Json(marker))
+    .map_err(|_| "Could not publish the Live meter reset".to_string())
 }
 
 /// Create a zero-filled output stream on the same device as capture. Windows keeps it for the
@@ -1113,8 +1129,7 @@ fn run_capture_worker(args: RunCaptureArgs) -> Result<(), CaptureWorkerError> {
     frame_subscribers,
     app,
     stop_rx,
-    clear_peak_history,
-    reset_tp_max,
+    meter_resets,
     channel_selection,
     dialogue_gating,
     dialogue_vad_engine,
@@ -1161,8 +1176,7 @@ fn run_capture_worker(args: RunCaptureArgs) -> Result<(), CaptureWorkerError> {
         channels,
         frame_subscribers,
         app,
-        clear_peak_history,
-        reset_tp_max,
+        meter_resets,
         channel_selection,
         dialogue_gating,
         dialogue_vad_engine,

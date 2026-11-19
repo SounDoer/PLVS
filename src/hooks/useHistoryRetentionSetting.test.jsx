@@ -1,6 +1,6 @@
 /** @vitest-environment jsdom */
 import { act, renderHook } from "@testing-library/react";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it } from "vitest";
 import { settingsStore } from "../persistence/index.js";
 import { useHistoryRetentionSetting } from "./useHistoryRetentionSetting.js";
 
@@ -9,28 +9,16 @@ describe("useHistoryRetentionSetting", () => {
     settingsStore.reset();
   });
 
-  it("persists a changed retention and runs the shared Live-clear operation", async () => {
-    const onChange = vi.fn().mockResolvedValue(true);
-    const { result } = renderHook(() =>
-      useHistoryRetentionSetting({ onChangeRef: { current: onChange } })
-    );
-
-    await act(() => result.current.setHistoryRetentionSec("7200"));
-
+  it("persists a changed retention", async () => {
+    const { result } = renderHook(() => useHistoryRetentionSetting());
+    await act(() => expect(result.current.setHistoryRetentionSec("7200")).toBe(true));
     expect(result.current.historyRetentionSec).toBe(7200);
     expect(settingsStore.read().historyRetentionSec).toBe(7200);
-    expect(onChange).toHaveBeenCalledTimes(1);
   });
 
-  it("does not clear when the normalized retention is unchanged", async () => {
-    const onChange = vi.fn();
-    const { result } = renderHook(() =>
-      useHistoryRetentionSetting({ onChangeRef: { current: onChange } })
-    );
-
-    await act(() => result.current.setHistoryRetentionSec("3600"));
-
-    expect(onChange).not.toHaveBeenCalled();
+  it("reports when the normalized retention is unchanged", () => {
+    const { result } = renderHook(() => useHistoryRetentionSetting());
+    expect(result.current.setHistoryRetentionSec("3600")).toBe(false);
   });
 
   it("keeps pending opacity changes when restoring the default History Length", async () => {

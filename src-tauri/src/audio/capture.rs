@@ -231,10 +231,20 @@ impl Drop for MeasuredPcmReceiver {
   }
 }
 
+pub enum MeterResetKind {
+  History,
+  TruePeakMax,
+}
+
+pub struct MeterResetRequest {
+  pub kind: MeterResetKind,
+  pub request_id: u32,
+  pub completion: tauri::async_runtime::Sender<Result<(), String>>,
+}
+
 /// One active capture session; removing it from `AppState` and dropping it stops the stream.
 pub trait AudioCaptureSession: Send {
-  fn request_clear_peak_history(&self);
-  fn request_reset_true_peak_max(&self);
+  fn meter_resets(&self) -> &tauri::async_runtime::Sender<MeterResetRequest>;
 }
 
 /// List devices + start capture; returns a session as a trait object to avoid circular deps between `capture` and concrete backends.
@@ -248,7 +258,7 @@ pub trait AudioCapture: Send + Sync {
     frame_subscribers: FrameSubscribers,
     app: AppHandle,
     channel_selection: std::sync::Arc<
-      std::sync::Mutex<Option<crate::ipc::commands::ChannelSelection>>,
+      std::sync::Mutex<Option<crate::dsp::channel_layouts::ChannelSelection>>,
     >,
     dialogue_gating: std::sync::Arc<std::sync::Mutex<bool>>,
     dialogue_vad_engine: std::sync::Arc<std::sync::Mutex<VadEngineKind>>,

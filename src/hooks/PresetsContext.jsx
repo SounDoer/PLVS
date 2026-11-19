@@ -66,7 +66,6 @@ export function PresetsProvider({ children }) {
     async (presetDock, normalWindow = {}) => {
       clearNotice();
       if (presetDock.enabled) {
-        dockLayout.setPanels(presetDock);
         const requiresDockTransition =
           !dockEnabled || dockEdge !== presetDock.edge || dockMonitor !== presetDock.monitor;
         if (requiresDockTransition) {
@@ -89,6 +88,7 @@ export function PresetsProvider({ children }) {
             await resizeDockHeight(presetDock.height, { persist: true, origin: "preset" });
           }
         }
+        dockLayout.setPanels(presetDock);
         setSelectedOffset(-1);
       } else if (dockEnabled) {
         const result = await exitDockRestoringAttributes({

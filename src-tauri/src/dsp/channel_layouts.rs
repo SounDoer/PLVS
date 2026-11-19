@@ -8,6 +8,31 @@
 use serde::Deserialize;
 use std::sync::OnceLock;
 
+/// A user channel-role selection, with everything the audio path needs derived up front so the
+/// callback never looks anything up.
+#[derive(Debug, Clone, PartialEq)]
+pub struct ChannelSelection {
+  pub roles: Vec<String>,
+  pub weights: Vec<f64>,
+  /// The matching layout id, or `"custom"`.
+  pub layout: &'static str,
+}
+
+impl ChannelSelection {
+  pub fn from_roles(roles: Vec<String>) -> Option<Self> {
+    if roles.is_empty() || roles.len() > 64 {
+      return None;
+    }
+    let weights = weights_for_roles(&roles)?;
+    let layout = layout_id_for_roles(&roles).unwrap_or("custom");
+    Some(Self {
+      roles,
+      weights,
+      layout,
+    })
+  }
+}
+
 pub const CHANNEL_LAYOUTS_JSON: &str = include_str!("../../../shared/channel-layouts.json");
 
 #[derive(Debug, Clone, Deserialize)]

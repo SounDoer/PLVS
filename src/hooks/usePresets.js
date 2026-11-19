@@ -424,9 +424,6 @@ export function usePresets({
 
   const applyPreparedSnapshot = useCallback(
     async (id, { preset, presetDock }, applyWorkspace) => {
-      if (applyWorkspace) {
-        setView(presetWorkspaceView(preset));
-      }
       const presetFocusView = preset.focusView ? normalizeFocusView(preset.focusView) : null;
       const presetSurfaceOpacity =
         typeof preset.surfaceOpacity === "number" ? preset.surfaceOpacity : null;
@@ -490,6 +487,9 @@ export function usePresets({
           await rollbackSurfaceOpacityShadow();
           throw presetApplyError(error, "window");
         }
+      }
+      if (applyWorkspace) {
+        setView(presetWorkspaceView(preset));
       }
       if (typeof preset.windowPinned === "boolean") {
         setWindowPinned(preset.windowPinned);

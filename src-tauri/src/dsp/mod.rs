@@ -17,6 +17,7 @@ pub mod meter;
 pub mod peak;
 pub mod shared_spectral_engine;
 mod sliding_window;
+pub(crate) mod spectral_plan;
 pub mod spectral_transform;
 pub mod spectral_waveform;
 pub mod spectrum;

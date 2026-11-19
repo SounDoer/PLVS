@@ -1,9 +1,11 @@
-import { normalizePanelPresentation } from "../lib/panelPresentation.js";
-import { validatePanelPresentationPatch } from "../agentControl/viewControl.js";
+import {
+  normalizePanelPresentation,
+  validatePanelPresentationPatch,
+} from "../lib/panelPresentation.js";
 import { buildPublicPresetSnapshot } from "../agentControl/presetSnapshot.js";
-import { compileWorkspaceLayout, WorkspaceLayoutError } from "../agentControl/workspaceLayout.js";
-import { planPublicPanelControlPatch } from "../agentControl/panelControlPatch.js";
-import { compileDockLayout } from "../agentControl/dockControl.js";
+import { compileWorkspaceLayout, WorkspaceLayoutError } from "../workspace/workspaceLayout.js";
+import { planPublicPanelControlPatch } from "../workspace/panelControlPatch.js";
+import { compileDockLayout } from "../dock/dockLayoutDocument.js";
 import { DOCK_MAX_HEIGHT, DOCK_MIN_HEIGHT } from "../dock/dockSizing.js";
 import { DEFAULT_FOCUS_VIEW, normalizeFocusView } from "../lib/focusView.js";
 import { DEFAULT_SURFACE_OPACITY } from "../settings/defaults.js";

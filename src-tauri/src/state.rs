@@ -86,7 +86,7 @@ pub struct AppState {
   /// Active per-instance analysis requests requested by the workspace UI.
   pub analysis_requests: Arc<Mutex<AnalysisRequests>>,
   /// The user's channel-role selection, with its weights and layout id derived when it arrives.
-  pub channel_selection: Arc<Mutex<Option<crate::ipc::commands::ChannelSelection>>>,
+  pub channel_selection: Arc<Mutex<Option<crate::dsp::channel_layouts::ChannelSelection>>>,
   /// Dialogue gating enabled flag. Updated by UI.
   pub dialogue_gating_enabled: Arc<Mutex<bool>>,
   /// VAD engine used by dialogue-gated stats.

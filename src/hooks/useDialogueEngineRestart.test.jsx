@@ -1,7 +1,6 @@
 /** @vitest-environment jsdom */
 import { describe, expect, it, vi } from "vitest";
 import { renderHook } from "@testing-library/react";
-import { useRef } from "react";
 
 import { useChannelRolesRestart, useDialogueEngineRestart } from "./useDialogueEngineRestart.js";
 
@@ -11,9 +10,7 @@ describe("useDialogueEngineRestart", () => {
     const deferLiveClear = vi.fn();
     const { rerender } = renderHook(
       ({ engine, gating }) => {
-        const ref = useRef(clearAll);
-        ref.current = clearAll;
-        useDialogueEngineRestart(engine, gating, true, ref, deferLiveClear);
+        useDialogueEngineRestart(engine, gating, true, clearAll, deferLiveClear);
       },
       { initialProps: { engine: "webrtc", gating: true } }
     );
@@ -28,9 +25,7 @@ describe("useDialogueEngineRestart", () => {
     const deferLiveClear = vi.fn();
     const { rerender } = renderHook(
       ({ engine, gating }) => {
-        const ref = useRef(clearAll);
-        ref.current = clearAll;
-        useDialogueEngineRestart(engine, gating, true, ref, deferLiveClear);
+        useDialogueEngineRestart(engine, gating, true, clearAll, deferLiveClear);
       },
       { initialProps: { engine: "webrtc", gating: false } }
     );
@@ -44,9 +39,7 @@ describe("useDialogueEngineRestart", () => {
     const deferLiveClear = vi.fn();
     const { rerender } = renderHook(
       ({ engine, gating }) => {
-        const ref = useRef(clearAll);
-        ref.current = clearAll;
-        useDialogueEngineRestart(engine, gating, true, ref, deferLiveClear);
+        useDialogueEngineRestart(engine, gating, true, clearAll, deferLiveClear);
       },
       { initialProps: { engine: "webrtc", gating: true } }
     );
@@ -64,9 +57,7 @@ describe("useDialogueEngineRestart", () => {
     const deferLiveClear = vi.fn();
     const { rerender } = renderHook(
       ({ engine, gating }) => {
-        const ref = useRef(clearAll);
-        ref.current = clearAll;
-        useDialogueEngineRestart(engine, gating, true, ref, deferLiveClear);
+        useDialogueEngineRestart(engine, gating, true, clearAll, deferLiveClear);
       },
       { initialProps: { engine: "webrtc", gating: false } }
     );
@@ -83,9 +74,7 @@ describe("useDialogueEngineRestart while File is shown", () => {
     const deferLiveClear = vi.fn();
     const { rerender } = renderHook(
       ({ engine }) => {
-        const ref = useRef(clearAll);
-        ref.current = clearAll;
-        useDialogueEngineRestart(engine, true, false, ref, deferLiveClear);
+        useDialogueEngineRestart(engine, true, false, clearAll, deferLiveClear);
       },
       { initialProps: { engine: "webrtc" } }
     );
@@ -102,9 +91,7 @@ describe("useChannelRolesRestart", () => {
     const deferLiveClear = vi.fn();
     const { rerender } = renderHook(
       ({ roles, live }) => {
-        const ref = useRef(clearAll);
-        ref.current = clearAll;
-        useChannelRolesRestart(roles, live, ref, deferLiveClear);
+        useChannelRolesRestart(roles, live, clearAll, deferLiveClear);
       },
       { initialProps: { roles: {}, live: true } }
     );
@@ -118,9 +105,7 @@ describe("useChannelRolesRestart", () => {
     const deferLiveClear = vi.fn();
     const { rerender } = renderHook(
       ({ roles, live }) => {
-        const ref = useRef(clearAll);
-        ref.current = clearAll;
-        useChannelRolesRestart(roles, live, ref, deferLiveClear);
+        useChannelRolesRestart(roles, live, clearAll, deferLiveClear);
       },
       { initialProps: { roles: { 2: ["L", "R"] }, live: false } }
     );

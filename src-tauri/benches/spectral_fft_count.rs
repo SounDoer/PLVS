@@ -51,7 +51,7 @@ mod ipc {
 pub(crate) mod channel_sel;
 #[path = "../src/dsp/shared_spectral_engine.rs"]
 pub(crate) mod shared_spectral_engine;
-#[path = "../src/engine/spectral_plan.rs"]
+#[path = "../src/dsp/spectral_plan.rs"]
 pub(crate) mod spectral_plan;
 #[path = "../src/dsp/spectral_transform.rs"]
 pub(crate) mod spectral_transform;
@@ -86,13 +86,9 @@ mod meter {
 mod dsp {
   pub(crate) use crate::channel_sel::{SpectrumChannelSel, SpectrumView};
   pub(crate) use crate::{
-    meter, shared_spectral_engine, spectral_transform, spectral_waveform, spectrum, spectrum_bank,
-    spectrum_consumer, stereo_map,
+    meter, shared_spectral_engine, spectral_plan, spectral_transform, spectral_waveform, spectrum,
+    spectrum_bank, spectrum_consumer, stereo_map,
   };
-}
-
-mod engine {
-  pub(crate) use crate::spectral_plan;
 }
 
 use ipc::types::{AnalysisRequests, SpectrumAnalysisChannel, SpectrumAnalysisRequest};
