@@ -20,7 +20,6 @@ import {
   KEYBOARD_SHORTCUT_ACTIONS,
   configuredShortcutConflict,
 } from "@/data/keyboardShortcutActions.js";
-import { reservedComboConflict } from "@/data/keyboardShortcuts.js";
 import { CHANNEL_ROLE_VOCABULARY } from "@/math/channelRoles.js";
 import { layoutsForChannelCount } from "@/math/channelLayoutTable.js";
 import { INTERFACE_SIZE_OPTIONS } from "@/settings/defaults.js";
@@ -186,6 +185,7 @@ function IconButton({ children, className, ...props }) {
  *   keyboardShortcuts?: ReturnType<typeof import("../hooks/useSettings.js").useSettings>["keyboardShortcuts"],
  *   setShortcutAccelerator?: (...args: any[]) => any,
  *   setShortcutGlobal?: (...args: any[]) => any,
+ *   resetShortcut?: (actionId: string) => any,
  *   setShortcutCapturing?: (...args: any[]) => any,
  *   shortcutsReady?: boolean,
  *   shortcutRegistrationErrors?: Record<string, string>,
@@ -263,6 +263,7 @@ export function SettingsContent({
   keyboardShortcuts = DEFAULT_KEYBOARD_SHORTCUTS,
   setShortcutAccelerator = () => {},
   setShortcutGlobal = () => {},
+  resetShortcut = () => {},
   setShortcutCapturing = () => {},
   shortcutsReady = false,
   shortcutRegistrationErrors = {},
@@ -593,7 +594,6 @@ export function SettingsContent({
                       value={binding.accelerator}
                       onChange={(accelerator) => setShortcutAccelerator(action.id, accelerator)}
                       conflictForAccelerator={(accelerator) =>
-                        reservedComboConflict(accelerator) ??
                         configuredShortcutConflict(keyboardShortcuts, action.id, accelerator)
                       }
                       onRecordingChange={setShortcutCapturing}
@@ -613,10 +613,7 @@ export function SettingsContent({
                       compact
                       label={`Reset ${action.label} shortcut settings`}
                       isDefault={!shortcutsReady || isDefault}
-                      onReset={() => {
-                        setShortcutAccelerator(action.id, defaultBinding.accelerator);
-                        setShortcutGlobal(action.id, defaultBinding.global);
-                      }}
+                      onReset={() => resetShortcut(action.id)}
                       confirmLabel={`Confirm reset ${action.label} shortcut settings`}
                       cancelLabel={`Cancel reset ${action.label} shortcut settings`}
                     />

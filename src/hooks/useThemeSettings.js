@@ -66,11 +66,18 @@ export function useThemeSettings() {
     setThemeIdState(next);
   }
 
-  const setCustomThemesFromController = useCallback((documents) => {
+  const setCustomThemesFromController = useCallback((documents, appliedChange = "document") => {
     const next = Object.fromEntries(documents.map((theme) => [theme.id, theme]));
     customThemesRef.current = next;
     setCustomThemes(next);
-    setAppliedThemeSnapshot(getTheme(resolvedThemeIdRef.current, next));
+    if (appliedChange === "document") {
+      setAppliedThemeSnapshot(getTheme(resolvedThemeIdRef.current, next));
+    } else if (appliedChange === "name") {
+      setAppliedThemeSnapshot((applied) => ({
+        ...applied,
+        name: next[applied.id]?.name ?? applied.name,
+      }));
+    }
   }, []);
 
   const readAppearanceForControl = useCallback(() => {

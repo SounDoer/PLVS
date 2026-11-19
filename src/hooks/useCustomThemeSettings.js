@@ -50,7 +50,11 @@ export function useCustomThemeSettings({ themeSettings, setSettingsOpen, makeId 
       const current = readState();
       if (JSON.stringify(planned.state.themes) !== JSON.stringify(current.themes)) {
         replaceCustomThemesOrdered(planned.state.themes);
-        themeSettings.setCustomThemesFromController(planned.state.themes);
+        const selectedPath = `themes.${current.appearance.resolvedThemeId}`;
+        const appliedChange = ["document", "name"].find((field) =>
+          planned.changed.includes(`${selectedPath}.${field}`)
+        );
+        themeSettings.setCustomThemesFromController(planned.state.themes, appliedChange ?? "");
       }
       if (JSON.stringify(planned.state.appearance) !== JSON.stringify(current.appearance)) {
         themeSettings.applyAppearanceForControl(planned.state.appearance);

@@ -81,7 +81,7 @@ describe("normalizeKeyboardShortcuts", () => {
     ).toEqual({ accelerator: "CmdOrCtrl+2", global: false });
   });
 
-  it("moves the unreleased previous defaults to the numbered defaults", () => {
+  it("preserves explicitly configured former defaults", () => {
     expect(
       normalizeKeyboardShortcuts({
         toggleLiveCapture: { accelerator: "CmdOrCtrl+Shift+Space", global: true },
@@ -89,9 +89,9 @@ describe("normalizeKeyboardShortcuts", () => {
         clear: { accelerator: "CmdOrCtrl+K", global: false },
       })
     ).toEqual({
-      toggleLiveCapture: { accelerator: "CmdOrCtrl+1", global: true },
-      toggleLiveSnapshot: { accelerator: "CmdOrCtrl+2", global: false },
-      clear: { accelerator: "CmdOrCtrl+3", global: false },
+      toggleLiveCapture: { accelerator: "CmdOrCtrl+Shift+Space", global: true },
+      toggleLiveSnapshot: { accelerator: "CmdOrCtrl+Shift+L", global: false },
+      clear: { accelerator: "CmdOrCtrl+K", global: false },
     });
   });
 });

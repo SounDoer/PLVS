@@ -1167,8 +1167,7 @@ describe("SettingsPanel — Channel labels", () => {
 
 describe("SettingsPanel — shortcut reset", () => {
   it("resets the Clear key and Global scope only after confirming", () => {
-    const setShortcutAccelerator = vi.fn();
-    const setShortcutGlobal = vi.fn();
+    const resetShortcut = vi.fn();
     render(
       <SettingsPanel
         {...BASE_PROPS}
@@ -1177,8 +1176,7 @@ describe("SettingsPanel — shortcut reset", () => {
           ...DEFAULT_KEYBOARD_SHORTCUTS,
           clear: { accelerator: "CmdOrCtrl+Shift+K", global: true },
         }}
-        setShortcutAccelerator={setShortcutAccelerator}
-        setShortcutGlobal={setShortcutGlobal}
+        resetShortcut={resetShortcut}
       />
     );
     const reset = screen.getByRole("button", { name: "Reset Clear shortcut settings" });
@@ -1186,11 +1184,9 @@ describe("SettingsPanel — shortcut reset", () => {
     expect(reset.compareDocumentPosition(global) & Node.DOCUMENT_POSITION_PRECEDING).toBeTruthy();
 
     fireEvent.click(reset);
-    expect(setShortcutAccelerator).not.toHaveBeenCalled();
-    expect(setShortcutGlobal).not.toHaveBeenCalled();
+    expect(resetShortcut).not.toHaveBeenCalled();
     fireEvent.click(screen.getByLabelText("Confirm reset Clear shortcut settings"));
-    expect(setShortcutAccelerator).toHaveBeenCalledWith("clear", "CmdOrCtrl+3");
-    expect(setShortcutGlobal).toHaveBeenCalledWith("clear", false);
+    expect(resetShortcut).toHaveBeenCalledExactlyOnceWith("clear");
   });
 });
 

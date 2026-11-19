@@ -1,5 +1,4 @@
-import { reservedComboConflict } from "../data/keyboardShortcuts.js";
-import { isValidAccelerator } from "../lib/accelerator.js";
+import { normalizeAccelerator, reservedAcceleratorLabel } from "../lib/accelerator.js";
 import {
   KEYBOARD_SHORTCUT_ACTIONS,
   KEYBOARD_SHORTCUT_ACTION_IDS,
@@ -355,12 +354,13 @@ export function planSettingsUpdate(current, patch, context, options = {}) {
             );
           }
         }
-        const accelerator = Object.hasOwn(value, "accelerator")
+        const requestedAccelerator = Object.hasOwn(value, "accelerator")
           ? value.accelerator
           : nextKeyboardShortcuts[actionId].accelerator;
+        const accelerator = normalizeAccelerator(requestedAccelerator);
         if (
-          accelerator !== null &&
-          (!isValidAccelerator(accelerator) || reservedComboConflict(accelerator))
+          requestedAccelerator !== null &&
+          (accelerator === null || reservedAcceleratorLabel(accelerator))
         ) {
           issues.push(
             issue(
@@ -384,6 +384,7 @@ export function planSettingsUpdate(current, patch, context, options = {}) {
           [actionId]: {
             ...nextKeyboardShortcuts[actionId],
             ...value,
+            accelerator,
             ...(accelerator === null ? { global: false } : null),
           },
         };

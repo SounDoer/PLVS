@@ -3,7 +3,7 @@ import { renderHook } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import { useAccessoryKeyboardShortcuts } from "./useAccessoryKeyboardShortcuts.js";
 
-it("routes Settings and configured shortcuts through their existing owners", () => {
+it("routes configured shortcuts and leaves the unbound comma chord alone", () => {
   const action = vi.fn();
   renderHook(() =>
     useAccessoryKeyboardShortcuts(
@@ -22,7 +22,7 @@ it("routes Settings and configured shortcuts through their existing owners", () 
     cancelable: true,
   });
   window.dispatchEvent(settings);
-  expect(action).toHaveBeenLastCalledWith("open-settings");
+  expect(action).not.toHaveBeenCalled();
   const transport = new KeyboardEvent("keydown", {
     key: "1",
     ctrlKey: true,
@@ -31,7 +31,7 @@ it("routes Settings and configured shortcuts through their existing owners", () 
   });
   window.dispatchEvent(transport);
   expect(action).toHaveBeenLastCalledWith("keyboard-shortcut", { actionId: "toggleLiveCapture" });
-  expect(settings.defaultPrevented).toBe(true);
+  expect(settings.defaultPrevented).toBe(false);
 });
 
 describe("shortcut capture in an accessory", () => {

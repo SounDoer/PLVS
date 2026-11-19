@@ -146,6 +146,40 @@ describe("useCustomThemeSettings", () => {
     });
   });
 
+  it("keeps the applied palette through unrelated library changes and a local rename", () => {
+    const shared = {
+      ...structuredClone(BUILTIN_THEMES_V2["plvs-dark"]),
+      id: "custom-shared",
+      name: "Shared",
+    };
+    const other = {
+      ...structuredClone(BUILTIN_THEMES_V2["plvs-light"]),
+      id: "custom-other",
+      name: "Other",
+    };
+    upsertCustomTheme(shared);
+    upsertCustomTheme(other);
+    settingsStore.patch({ appearance: "fixed", themeId: shared.id });
+    const { result } = renderCustomThemeSettings();
+    const initialColor = themeRuntime.getSnapshot().css["--background"];
+    const peerEdit = { ...shared, core: { ...shared.core, workspace: "#123456" } };
+    act(() => {
+      upsertCustomTheme(peerEdit);
+      themesStore.notifyLocal();
+    });
+    act(() => result.current.deleteCustomTheme(other.id));
+    expect(themesStore.read().themes[other.id]).toBeUndefined();
+    expect(themeRuntime.getSnapshot().css["--background"]).toBe(initialColor);
+
+    act(() => result.current.themeControl.rename(shared.id, "Local Rename"));
+    expect(themesStore.read().themes[shared.id].name).toBe("Local Rename");
+    expect(themeRuntime.getSnapshot().css["--background"]).toBe(initialColor);
+
+    act(() => result.current.themeControl.select("plvs-dark"));
+    act(() => result.current.themeControl.select(shared.id));
+    expect(themeRuntime.getSnapshot().css["--background"]).toBe("#123456");
+  });
+
   it("keeps a Theme draft visible through external refresh and restores the applied snapshot on Cancel", async () => {
     const shared = {
       ...structuredClone(BUILTIN_THEMES_V2["plvs-dark"]),

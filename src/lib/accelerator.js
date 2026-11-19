@@ -1,3 +1,5 @@
+import { isMacOS } from "./platform.js";
+
 const MOD_ORDER = ["CmdOrCtrl", "Alt", "Shift"];
 const BARE_MODIFIER_KEYS = ["Control", "Meta", "Alt", "Shift", "OS", "Dead"];
 const DISPLAY_SPECIAL = { Escape: "Esc" };
@@ -17,18 +19,33 @@ export function keyEventToAccelerator(e) {
   if (key === " ") main = "Space";
   else if (key.length === 1) main = key.toUpperCase();
   else main = key;
-  return [...mods, main].join("+");
+  return normalizeAccelerator([...mods, main].join("+"));
 }
 
 /**
  * @param {string} str
  */
-export function isValidAccelerator(str) {
-  if (typeof str !== "string" || !str.includes("+")) return false;
+export function normalizeAccelerator(str) {
+  if (typeof str !== "string") return null;
   const parts = str.split("+");
-  const mods = parts.filter((p) => MOD_ORDER.includes(p));
-  const keys = parts.filter((p) => !MOD_ORDER.includes(p));
-  return mods.length >= 1 && keys.length === 1 && keys[0].length >= 1;
+  const mods = MOD_ORDER.filter((modifier) => parts.includes(modifier));
+  const keys = parts.filter((part) => !MOD_ORDER.includes(part));
+  const key = keys[0];
+  if (
+    mods.length === 0 ||
+    keys.length !== 1 ||
+    mods.length + 1 !== parts.length ||
+    !key.trim() ||
+    key !== key.trim() ||
+    BARE_MODIFIER_KEYS.includes(key)
+  )
+    return null;
+  return [...mods, key.length === 1 ? key.toUpperCase() : key].join("+");
+}
+
+/** The native macOS Quit menu owns this chord even when a WebView has focus. */
+export function reservedAcceleratorLabel(accelerator, isMac = isMacOS()) {
+  return isMac && normalizeAccelerator(accelerator) === "CmdOrCtrl+Q" ? "Quit PLVS" : null;
 }
 
 /**
@@ -47,11 +64,11 @@ export function formatAcceleratorForDisplay(str, { isMac = false } = {}) {
     .join(isMac ? "" : "+");
 }
 
-/** True when a KeyboardEvent-like object produces exactly `accel`. */
 /**
- * True when a KeyboardEvent-like object produces exactly `accel`.
+ * True when a KeyboardEvent-like object produces the configured chord.
  * @param {string} accel
  */
 export function eventMatchesAccelerator(e, accel) {
-  return keyEventToAccelerator(e) === accel;
+  const key = keyEventToAccelerator(e);
+  return key !== null && key === normalizeAccelerator(accel);
 }

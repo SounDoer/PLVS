@@ -2,8 +2,10 @@ import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react
 import { invoke } from "@tauri-apps/api/core";
 import {
   configuredShortcutConflict,
+  DEFAULT_KEYBOARD_SHORTCUTS,
   normalizeKeyboardShortcuts,
 } from "../data/keyboardShortcutActions.js";
+import { normalizeAccelerator, reservedAcceleratorLabel } from "../lib/accelerator.js";
 import { isTauri } from "../ipc/env.js";
 import {
   keyboardShortcutPrefsRevision,
@@ -160,10 +162,9 @@ export function useKeyboardShortcuts(dispatchRef) {
     (/** @type {string} */ actionId, update) =>
       enqueueUpdate(async () => {
         const { shortcuts: current, revision } = saved.current;
-        const updated = update(current);
-        if (updated === current) return;
-        const next = normalizeKeyboardShortcuts(updated);
         try {
+          const updated = update(current);
+          const next = normalizeKeyboardShortcuts(updated);
           const savedRevision = await saveKeyboardShortcutPrefs(next, revision);
           publishShortcuts(next, savedRevision ?? revision);
         } catch (error) {
@@ -172,7 +173,9 @@ export function useKeyboardShortcuts(dispatchRef) {
             [actionId]:
               error?.reason === "conflict"
                 ? "Shortcuts changed in another workbench. Try again."
-                : "Could not save shortcut. Try again.",
+                : error?.code === "invalidShortcut"
+                  ? error.message
+                  : "Could not save shortcut. Try again.",
           }));
           return;
         }
@@ -181,22 +184,40 @@ export function useKeyboardShortcuts(dispatchRef) {
     [enqueueUpdate, publishShortcuts]
   );
 
-  const setShortcutAccelerator = useCallback(
-    (actionId, accelerator) => {
-      commitGuiUpdate(actionId, (current) =>
-        configuredShortcutConflict(current, actionId, accelerator)
-          ? current
-          : {
-              ...current,
-              [actionId]: {
-                ...current[actionId],
-                accelerator,
-                ...(accelerator === null ? { global: false } : null),
-              },
-            }
-      );
-    },
+  const saveShortcutBinding = useCallback(
+    (actionId, accelerator, /** @type {boolean | undefined} */ global = undefined) =>
+      commitGuiUpdate(actionId, (current) => {
+        const canonical = normalizeAccelerator(accelerator);
+        const conflict =
+          reservedAcceleratorLabel(canonical) ??
+          configuredShortcutConflict(current, actionId, canonical);
+        if (conflict || (canonical === null && accelerator !== null)) {
+          throw Object.assign(new Error(conflict ? `Used by ${conflict}` : "Invalid shortcut."), {
+            code: "invalidShortcut",
+          });
+        }
+        return {
+          ...current,
+          [actionId]: {
+            accelerator: canonical,
+            global: canonical !== null && (global ?? current[actionId].global),
+          },
+        };
+      }),
     [commitGuiUpdate]
+  );
+
+  const setShortcutAccelerator = useCallback(
+    (actionId, accelerator) => saveShortcutBinding(actionId, accelerator),
+    [saveShortcutBinding]
+  );
+
+  const resetShortcut = useCallback(
+    (actionId) => {
+      const binding = DEFAULT_KEYBOARD_SHORTCUTS[actionId];
+      return saveShortcutBinding(actionId, binding.accelerator, binding.global);
+    },
+    [saveShortcutBinding]
   );
 
   const setShortcutGlobal = useCallback(
@@ -278,6 +299,7 @@ export function useKeyboardShortcuts(dispatchRef) {
     shortcutSaveErrors: saveErrors,
     setShortcutAccelerator,
     setShortcutGlobal,
+    resetShortcut,
     setShortcutCapturing: setCapturing,
     applyKeyboardShortcutsForControl,
   };

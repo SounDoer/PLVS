@@ -295,10 +295,6 @@ export function useDockSettingsWindow(options) {
             });
           return;
         }
-        if (action.type === "open-settings") {
-          latest.current.openSection();
-          return;
-        }
         if (
           action.type === "keyboard-shortcut" &&
           KEYBOARD_SHORTCUT_ACTIONS.some(({ id }) => id === value.actionId)

@@ -2,7 +2,7 @@ use std::{
   fs::{self, File, OpenOptions},
   path::{Path, PathBuf},
   sync::Mutex,
-  time::{Duration, Instant},
+  time::{Duration, Instant, SystemTime, UNIX_EPOCH},
 };
 
 use super::write_json_atomic;
@@ -13,6 +13,7 @@ use serde::{Deserialize, Serialize};
 /// Well above the frontend's 10-second coordinated-operation wait.
 const ACKNOWLEDGEMENT_RETENTION: Duration = Duration::from_secs(60);
 const COMMAND_SCHEMA_VERSION: u32 = 1;
+pub(super) const CLEAR_SHORTCUT_TIMEOUT: Duration = Duration::from_secs(10);
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -24,6 +25,8 @@ pub struct RuntimeCommand {
   pub action: String,
   #[serde(default)]
   pub payload: Option<String>,
+  #[serde(default, skip_serializing_if = "Option::is_none")]
+  pub expires_at_ms: Option<u64>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -168,6 +171,7 @@ impl RuntimeCommandMailbox {
         | "settings"
         | "selectSource"
         | "applyPreset"
+        | "clearActiveSource"
         | "quitInstance"
         | "prepareGlobal"
         | "abortGlobal"
@@ -192,6 +196,17 @@ impl RuntimeCommandMailbox {
       }
     }
     let command_id = random_id()?;
+    let expires_at_ms = if action == "clearActiveSource" {
+      let deadline = SystemTime::now() + CLEAR_SHORTCUT_TIMEOUT;
+      Some(
+        deadline
+          .duration_since(UNIX_EPOCH)
+          .map_err(|error| format!("Unable to set clear shortcut deadline: {error}"))?
+          .as_millis() as u64,
+      )
+    } else {
+      None
+    };
     let command = RuntimeCommand {
       schema_version: COMMAND_SCHEMA_VERSION,
       command_id: command_id.clone(),
@@ -199,6 +214,7 @@ impl RuntimeCommandMailbox {
       instance_id: instance_id.to_string(),
       action: action.to_string(),
       payload: payload.map(str::to_string),
+      expires_at_ms,
     };
     write_json_atomic(&self.pending_path(instance_id), &command)?;
     Ok(IssuedRuntimeCommand {
@@ -411,7 +427,7 @@ fn validate_component(value: &str) -> Result<(), String> {
   Ok(())
 }
 
-fn random_id() -> Result<String, String> {
+pub(super) fn random_id() -> Result<String, String> {
   let mut bytes = [0_u8; 16];
   getrandom::fill(&mut bytes)
     .map_err(|error| format!("Unable to generate runtime command identity: {error}"))?;

@@ -1,7 +1,10 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
-import { keyEventToAccelerator, formatAcceleratorForDisplay } from "@/lib/accelerator.js";
-import { reservedComboConflict } from "@/data/keyboardShortcuts.js";
+import {
+  keyEventToAccelerator,
+  formatAcceleratorForDisplay,
+  reservedAcceleratorLabel,
+} from "@/lib/accelerator.js";
 
 /**
  * @param {{
@@ -18,7 +21,7 @@ export function ShortcutCapture({
   value,
   onChange,
   label = "Clear shortcut",
-  conflictForAccelerator = reservedComboConflict,
+  conflictForAccelerator = () => null,
   isMac = false,
   disabled = false,
   onRecordingChange = () => {},
@@ -52,7 +55,7 @@ export function ShortcutCapture({
         setHint("Needs a modifier (Ctrl/Alt/Shift)");
         return;
       }
-      const conflict = conflictForAccelerator(accel);
+      const conflict = reservedAcceleratorLabel(accel, isMac) ?? conflictForAccelerator(accel);
       if (conflict) {
         setHint(`Used by ${conflict}`);
         return;
@@ -60,7 +63,7 @@ export function ShortcutCapture({
       onChange(accel);
       stopRecording();
     },
-    [conflictForAccelerator, onChange, stopRecording]
+    [conflictForAccelerator, isMac, onChange, stopRecording]
   );
 
   useEffect(() => {

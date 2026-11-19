@@ -94,9 +94,16 @@ async function handleRuntimeCommand(command, prepared) {
       await acknowledge(command, "completed");
       return;
     }
-    if (["hide", "settings", "selectSource", "applyPreset"].includes(command.action)) {
+    if (
+      ["hide", "settings", "selectSource", "applyPreset", "clearActiveSource"].includes(
+        command.action
+      )
+    ) {
       if (current.busy || prepared.size)
         throw new Error("PLVS is preparing an application operation.");
+      if (command.action === "clearActiveSource" && !(command.expiresAtMs > Date.now())) {
+        throw new Error("The Clear shortcut expired before this workbench could handle it.");
+      }
       const handler = current.actions?.[command.action];
       if (!handler) throw new Error("The workbench action is not available.");
       const accepted = await handler(command.payload);

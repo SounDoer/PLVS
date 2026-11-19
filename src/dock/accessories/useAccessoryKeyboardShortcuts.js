@@ -6,7 +6,6 @@ export function useAccessoryKeyboardShortcuts(keyboard, action) {
     dispatchShortcutAction: (actionId) => action("keyboard-shortcut", { actionId }),
     running: keyboard?.running ?? false,
     showClock: keyboard?.showClock ?? false,
-    setSettingsOpen: () => action("open-settings"),
     keyboardShortcuts: keyboard?.bindings ?? {},
     shortcutCapturing: keyboard?.capturing ?? false,
     autoHideControls: false,

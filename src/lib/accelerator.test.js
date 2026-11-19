@@ -1,7 +1,8 @@
 import { describe, expect, it } from "vitest";
 import {
   keyEventToAccelerator,
-  isValidAccelerator,
+  normalizeAccelerator,
+  reservedAcceleratorLabel,
   formatAcceleratorForDisplay,
   eventMatchesAccelerator,
 } from "./accelerator.js";
@@ -27,14 +28,21 @@ describe("keyEventToAccelerator", () => {
   });
 });
 
-describe("isValidAccelerator", () => {
+describe("normalizeAccelerator", () => {
   it("requires a modifier and exactly one key", () => {
-    expect(isValidAccelerator("CmdOrCtrl+Alt+K")).toBe(true);
-    expect(isValidAccelerator("Alt+Shift+Z")).toBe(true);
-    expect(isValidAccelerator("K")).toBe(false);
-    expect(isValidAccelerator("CmdOrCtrl")).toBe(false);
-    expect(isValidAccelerator("")).toBe(false);
+    expect(normalizeAccelerator("CmdOrCtrl+Alt+K")).toBe("CmdOrCtrl+Alt+K");
+    expect(normalizeAccelerator("Shift+Alt+z")).toBe("Alt+Shift+Z");
+    expect(normalizeAccelerator("Alt+Alt+Z")).toBeNull();
+    expect(normalizeAccelerator("Alt+Control")).toBeNull();
+    expect(normalizeAccelerator("K")).toBeNull();
+    expect(normalizeAccelerator("CmdOrCtrl")).toBeNull();
   });
+});
+
+it("leaves the comma chord assignable and reserves native Quit on macOS", () => {
+  expect(reservedAcceleratorLabel("CmdOrCtrl+,", true)).toBeNull();
+  expect(reservedAcceleratorLabel("CmdOrCtrl+q", true)).toBe("Quit PLVS");
+  expect(reservedAcceleratorLabel("CmdOrCtrl+Q", false)).toBeNull();
 });
 
 describe("formatAcceleratorForDisplay", () => {
@@ -53,6 +61,11 @@ describe("eventMatchesAccelerator", () => {
   it("matches an event that produces the accelerator", () => {
     expect(eventMatchesAccelerator({ key: "k", ctrlKey: true }, "CmdOrCtrl+K")).toBe(true);
     expect(eventMatchesAccelerator({ key: "k", metaKey: true }, "CmdOrCtrl+K")).toBe(true);
+  });
+  it("matches a stored chord with legacy modifier order", () => {
+    expect(
+      eventMatchesAccelerator({ key: "g", ctrlKey: true, shiftKey: true }, "Shift+CmdOrCtrl+g")
+    ).toBe(true);
   });
   it("does not match a different key or missing modifier", () => {
     expect(eventMatchesAccelerator({ key: "j", ctrlKey: true }, "CmdOrCtrl+K")).toBe(false);

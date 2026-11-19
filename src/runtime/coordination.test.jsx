@@ -27,9 +27,16 @@ describe("runtime coordination", () => {
     ["settings", null],
     ["selectSource", "output-peer"],
     ["applyPreset", "preset-peer"],
+    ["clearActiveSource", null],
   ])("dispatches %s to the receiving workbench's business action", async (action, payload) => {
     const handler = vi.fn().mockResolvedValue(undefined);
-    const command = { commandId: "tray-command", operationId: "tray-operation", action, payload };
+    const command = {
+      commandId: "tray-command",
+      operationId: "tray-operation",
+      action,
+      payload,
+      expiresAtMs: Date.now() + 1000,
+    };
     mocks.invoke.mockImplementation((name) =>
       Promise.resolve(name === "runtime_poll_command" ? command : null)
     );
@@ -52,6 +59,35 @@ describe("runtime coordination", () => {
     });
     expect(mocks.flush).not.toHaveBeenCalled();
     unmount();
+  });
+
+  it("does not clear the active source if the routed shortcut has expired", async () => {
+    const clearActiveSource = vi.fn();
+    const command = {
+      commandId: "expired-clear",
+      action: "clearActiveSource",
+      expiresAtMs: Date.now() - 1,
+    };
+    mocks.invoke.mockImplementation(async (name) =>
+      name === "runtime_poll_command" ? command : null
+    );
+    renderHook(() =>
+      useRuntimeCoordination({
+        blockingEditors: [],
+        running: false,
+        stop: vi.fn(),
+        start: vi.fn(),
+        show: vi.fn(),
+        actions: { clearActiveSource },
+      })
+    );
+    await act(async () => {});
+    expect(clearActiveSource).not.toHaveBeenCalled();
+    expect(mocks.invoke).toHaveBeenCalledWith("runtime_ack_command", {
+      commandId: "expired-clear",
+      outcome: "failed",
+      detail: expect.stringContaining("expired"),
+    });
   });
 
   it("acknowledges a preset guard refusal without mutating the scene", async () => {

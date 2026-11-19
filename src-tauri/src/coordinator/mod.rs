@@ -522,6 +522,7 @@ pub async fn runtime_route_global_shortcut(
   identity: State<'_, RuntimeIdentity>,
   registry: State<'_, InstanceRegistry>,
   persistence: State<'_, crate::persistence::commands::PersistenceRuntime>,
+  operations: State<'_, RuntimeOperationCoordinator>,
   action_id: String,
 ) -> Result<bool, String> {
   if !matches!(
@@ -539,9 +540,13 @@ pub async fn runtime_route_global_shortcut(
   if target_instance_id == current_instance_id {
     return Ok(false);
   }
+  if action_id == "clear" {
+    operations.require_idle()?;
+  }
   let identity_root = persistence.identity_root()?;
-  tauri::async_runtime::spawn_blocking(move || {
-    route_shortcut_to_instance(&identity_root, &target_instance_id, &action_id)
+  tauri::async_runtime::spawn_blocking(move || match action_id.as_str() {
+    "clear" => route_clear_to_instance(&identity_root, &target_instance_id),
+    _ => route_shortcut_to_instance(&identity_root, &target_instance_id, &action_id),
   })
   .await
   .map_err(|error| format!("Global shortcut routing task failed: {error}"))??;
@@ -584,6 +589,22 @@ pub async fn runtime_route_instance_transport(
   Ok(true)
 }
 
+fn route_clear_to_instance(identity_root: &Path, instance_id: &str) -> Result<(), String> {
+  let mailbox = RuntimeCommandMailbox::open(identity_root)?;
+  let issued = mailbox.issue(instance_id, &commands::random_id()?, "clearActiveSource")?;
+  let acknowledgements = mailbox.wait_for(&[issued], commands::CLEAR_SHORTCUT_TIMEOUT)?;
+  let acknowledgement = &acknowledgements[0];
+  if acknowledgement.outcome == "completed" {
+    return Ok(());
+  }
+  Err(
+    acknowledgement
+      .detail
+      .clone()
+      .unwrap_or_else(|| "The selected workbench could not clear its active source.".to_string()),
+  )
+}
+
 fn route_shortcut_to_instance(
   identity_root: &Path,
   instance_id: &str,
@@ -619,7 +640,6 @@ fn route_shortcut_to_instance(
     .and_then(|value| value.get("source"))
     .and_then(serde_json::Value::as_str);
   let (method, extra_params) = match action_id {
-    "clear" => ("transport.live.clear", serde_json::json!({})),
     "toggleLiveCapture" if source == Some("live") => {
       match transport
         .and_then(|value| value.pointer("/live/state"))
@@ -1149,5 +1169,28 @@ mod tests {
       global_shortcut_target(&instances, "coordinator").as_deref(),
       Some("coordinator")
     );
+  }
+
+  #[test]
+  fn global_clear_sends_the_active_source_action_to_the_target_mailbox() {
+    let root = tempfile::tempdir().unwrap();
+    let mailbox = RuntimeCommandMailbox::open(root.path()).unwrap();
+    let receiver = std::thread::spawn(move || {
+      let deadline = std::time::Instant::now() + std::time::Duration::from_secs(2);
+      loop {
+        if let Some(command) = mailbox.poll("participant").unwrap() {
+          assert_eq!(command.action, "clearActiveSource");
+          assert!(command.payload.is_none());
+          assert!(command.expires_at_ms.is_some());
+          assert!(mailbox.poll("coordinator").unwrap().is_none());
+          mailbox.acknowledge(&command, "completed", None).unwrap();
+          return;
+        }
+        assert!(std::time::Instant::now() < deadline);
+        std::thread::sleep(std::time::Duration::from_millis(10));
+      }
+    });
+    route_clear_to_instance(root.path(), "participant").unwrap();
+    receiver.join().unwrap();
   }
 }

@@ -67,6 +67,42 @@ function mockNativeShortcuts() {
 }
 
 describe("useKeyboardShortcuts", () => {
+  it("keeps the whole binding on a reset conflict and saves both fields after it is resolved", async () => {
+    loadShortcuts.mockResolvedValue({
+      toggleLiveCapture: { accelerator: "CmdOrCtrl+3", global: false },
+      toggleLiveSnapshot: { accelerator: "CmdOrCtrl+2", global: false },
+      clear: { accelerator: "CmdOrCtrl+Alt+K", global: true },
+    });
+    render(<Harness dispatch={vi.fn()} />);
+    await waitFor(() => expect(latest.shortcutsReady).toBe(true));
+
+    await act(async () => latest.resetShortcut("clear"));
+    expect(saveShortcuts).not.toHaveBeenCalled();
+    expect(latest.shortcutSaveErrors.clear).toBe("Used by Start / Stop");
+    expect(latest.keyboardShortcuts.clear).toEqual({
+      accelerator: "CmdOrCtrl+Alt+K",
+      global: true,
+    });
+
+    await act(async () => latest.setShortcutAccelerator("toggleLiveCapture", "CmdOrCtrl+1"));
+    saveShortcuts.mockClear();
+    await act(async () => latest.resetShortcut("clear"));
+    expect(saveShortcuts).toHaveBeenCalledOnce();
+    expect(saveShortcuts.mock.calls[0][0].clear).toEqual({
+      accelerator: "CmdOrCtrl+3",
+      global: false,
+    });
+    expect(latest.shortcutSaveErrors.clear).toBeUndefined();
+  });
+
+  it("saves a former default as an explicit binding", async () => {
+    render(<Harness dispatch={vi.fn()} />);
+    await waitFor(() => expect(latest.shortcutsReady).toBe(true));
+    await act(async () => latest.setShortcutAccelerator("clear", "CmdOrCtrl+K"));
+    expect(latest.keyboardShortcuts.clear.accelerator).toBe("CmdOrCtrl+K");
+    expect(saveShortcuts.mock.calls[0][0].clear.accelerator).toBe("CmdOrCtrl+K");
+  });
+
   it("registers every requested global action and routes its action id", async () => {
     const dispatch = vi.fn();
     render(<Harness dispatch={dispatch} />);

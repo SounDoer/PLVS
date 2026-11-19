@@ -1,11 +1,10 @@
 import { useEffect, useRef } from "react";
-import { eventMatchesAccelerator } from "../lib/accelerator.js";
+import { eventMatchesAccelerator, reservedAcceleratorLabel } from "../lib/accelerator.js";
 
 export function useAppKeyboardShortcuts({
   dispatchShortcutAction,
   running,
   showClock,
-  setSettingsOpen,
   keyboardShortcuts,
   shortcutCapturing,
   autoHideControls,
@@ -15,7 +14,6 @@ export function useAppKeyboardShortcuts({
     dispatchShortcutAction,
     running,
     showClock,
-    setSettingsOpen,
     keyboardShortcuts,
     shortcutCapturing,
     autoHideControls,
@@ -27,7 +25,6 @@ export function useAppKeyboardShortcuts({
       dispatchShortcutAction,
       running,
       showClock,
-      setSettingsOpen,
       keyboardShortcuts,
       shortcutCapturing,
       autoHideControls,
@@ -38,7 +35,6 @@ export function useAppKeyboardShortcuts({
     dispatchShortcutAction,
     keyboardShortcuts,
     running,
-    setSettingsOpen,
     showClock,
     shortcutCapturing,
     toggleFocusControls,
@@ -50,7 +46,6 @@ export function useAppKeyboardShortcuts({
         dispatchShortcutAction: dispatch,
         running: isRunning,
         showClock: hasClock,
-        setSettingsOpen: openSettings,
         keyboardShortcuts: bindings,
         shortcutCapturing: isCapturing,
         autoHideControls: autoHide,
@@ -63,8 +58,11 @@ export function useAppKeyboardShortcuts({
         /** @type {HTMLElement | null} */ (document.activeElement)?.isContentEditable;
       const configuredAction = isCapturing
         ? null
-        : Object.entries(bindings ?? {}).find(([, binding]) =>
-            binding.accelerator ? eventMatchesAccelerator(e, binding.accelerator) : false
+        : Object.entries(bindings ?? {}).find(
+            ([, binding]) =>
+              binding.accelerator &&
+              !reservedAcceleratorLabel(binding.accelerator) &&
+              eventMatchesAccelerator(e, binding.accelerator)
           )?.[0];
       if (configuredAction) {
         e.preventDefault();
@@ -76,10 +74,6 @@ export function useAppKeyboardShortcuts({
         e.preventDefault();
         toggleFocus();
         return;
-      }
-      if ((e.metaKey || e.ctrlKey) && e.key === ",") {
-        e.preventDefault();
-        openSettings(true);
       }
     };
     window.addEventListener("keydown", onKeyDown);

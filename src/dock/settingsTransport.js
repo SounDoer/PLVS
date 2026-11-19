@@ -19,6 +19,7 @@ export const SETTINGS_ACTIONS = Object.freeze({
     "setDialogueVadEngine",
     "setShortcutAccelerator",
     "setShortcutGlobal",
+    "resetShortcut",
     "setShortcutCapturing",
     "createCustomTheme",
     "editCustomTheme",

@@ -240,6 +240,7 @@ export function AppLifecycleProvider({ children }) {
       settings: trayActions.onOpenSettings,
       selectSource: onSelectCaptureDevice,
       applyPreset: presets.apply,
+      clearActiveSource: () => shortcutActionRef.current?.("clear") ?? false,
     },
   });
   useTray({
@@ -265,7 +266,6 @@ export function AppLifecycleProvider({ children }) {
     dispatchShortcutAction: (actionId) => shortcutActionRef.current?.(actionId),
     running,
     showClock,
-    setSettingsOpen,
     keyboardShortcuts,
     shortcutCapturing,
     autoHideControls: focusView.autoHideControls,

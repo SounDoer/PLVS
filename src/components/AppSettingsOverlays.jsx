@@ -397,6 +397,7 @@ export function AppSettingsOverlays({
       keyboardShortcuts: settings.keyboardShortcuts,
       setShortcutAccelerator: settings.setShortcutAccelerator,
       setShortcutGlobal: settings.setShortcutGlobal,
+      resetShortcut: settings.resetShortcut,
       setShortcutCapturing: settings.setShortcutCapturing,
       shortcutsReady: settings.shortcutsReady,
       shortcutRegistrationErrors: settings.shortcutRegistrationErrors,

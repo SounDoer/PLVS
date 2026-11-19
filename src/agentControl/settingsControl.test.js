@@ -34,6 +34,21 @@ const context = {
 };
 
 describe("Settings Control", () => {
+  it("normalizes modifier order before saving and detecting conflicts", () => {
+    const binding = { accelerator: "Shift+CmdOrCtrl+g", global: true };
+    const planned = planSettingsUpdate(current, { keyboardShortcuts: { clear: binding } }, context);
+    expect(planned.issues).toEqual([]);
+    expect(planned.settings.keyboardShortcuts.clear.accelerator).toBe("CmdOrCtrl+Shift+G");
+    const conflict = planSettingsUpdate(
+      planned.settings,
+      {
+        keyboardShortcuts: { toggleLiveCapture: { accelerator: "CmdOrCtrl+Shift+G" } },
+      },
+      context
+    );
+    expect(conflict.issues).toContainEqual(expect.objectContaining({ code: "invalidShortcut" }));
+  });
+
   it("merges File Summary Metrics with the same order and visibility rules as the toolbar", () => {
     const planned = planSettingsUpdate(
       current,

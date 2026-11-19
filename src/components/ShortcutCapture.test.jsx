@@ -66,7 +66,7 @@ describe("ShortcutCapture", () => {
     expect(screen.getByText(/needs a modifier/i)).toBeTruthy();
   });
 
-  it("accepts CmdOrCtrl+, now that Open Settings is not in the reserved list", () => {
+  it("lets the user assign the comma chord", () => {
     const onChange = vi.fn();
     render(<ShortcutCapture value="CmdOrCtrl+Alt+K" onChange={onChange} isMac={false} />);
     const btn = screen.getByLabelText("Clear shortcut");

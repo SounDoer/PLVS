@@ -89,7 +89,7 @@ PLVS also keeps one system Tray. On Windows and macOS, left-clicking its icon sh
 main window, while right-clicking opens the menu. On Linux, icon interactions depend on the desktop's
 tray host; use the menu's **Show** or **Hide**, available on all three platforms.
 **Settings…** brings the owning workbench forward and opens Settings. In Dock mode, it shows the
-Settings window while keeping Dock active. The Settings keyboard shortcut uses the same entry.
+Settings window while keeping Dock active.
 
 With one workbench open, its window, Start / Stop, Source, Preset and Settings controls appear
 directly in the Tray menu. With several open, each workbench's Source-derived name appears directly
@@ -202,12 +202,13 @@ PLVS provides three configurable shortcuts: **Start / Stop** (`CmdOrCtrl+1`),
 **Live / Snapshot** (`CmdOrCtrl+2`), and **Clear** (`CmdOrCtrl+3`). Select a shortcut to record
 a replacement, press Delete or Backspace while recording to remove it, or use Reset to restore its
 built-in key and turn Global off. PLVS rejects bare keys, reserved combinations, and combinations
-already assigned to another configurable action.
+already assigned to another configurable action. If the default key is in use by another action,
+Reset keeps the current binding and shows the conflict.
 
 Each row has its own **Global** switch. An enabled action works even when PLVS is not focused; its
 ordinary shortcut continues to work whenever PLVS is focused. When several PLVS workbenches are
 open, the coordinator registers each global combination once and sends the action to the workbench
-that was focused most recently. Saved changes also update what the coordinator runs for
+that was focused most recently. Clear acts on the source shown in that workbench. Saved changes also update what the coordinator runs for
 combinations it already registered. A registration error affects only that row. If a combination
 becomes unavailable, you can choose another one or toggle **Global** to try registering it again.
 Shortcut changes appear after they save. If another workbench changes the shortcuts while you are
@@ -284,6 +285,7 @@ a 1px opaque Accent outline and its grip stays in primary text colour until the 
 
 Imports and edits from another workbench refresh the Theme Library without replacing this
 workbench's applied Theme. Switch away and select the Theme again to apply its updated version.
+Changing a different Library item keeps the applied Theme in place.
 While the Theme editor is open, your unsaved draft remains visible; external changes mark an
 existing draft as stale. **Cancel** restores this workbench's applied Theme, rather than applying
 the peer edit or keeping the preview of an unselected Library item.

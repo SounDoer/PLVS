@@ -87,11 +87,12 @@ and members retain their current values. The respective default accelerators are
 `CmdOrCtrl+1`, `CmdOrCtrl+2`, and `CmdOrCtrl+3`, with Global off. An accelerator may
 be null to remove the binding, which also forces Global off. Other accelerator values use the same
 canonical, cross-platform Tauri form produced and validated by the GUI: at least one modifier plus
-exactly one non-modifier key. Display-form strings, bare modifiers, invalid chords, fixed PLVS
+exactly one non-modifier key. The app normalizes modifier order before detecting conflicts and
+saving the binding. Display-form strings, bare modifiers, invalid chords, fixed PLVS
 conflicts, duplicate configurable accelerators, unknown actions, and unknown members are rejected
 atomically.
 
-Inspection separates requested configuration from runtime registration. Runtime
+Inspection separates requested configuration from runtime registration.
 Each action's runtime `globalRegistration` is `active`, `notRequested`, or `unavailable`. A global
 registration failure is a command failure, not a warning. Replacing active global chords and
 multi-action swaps are one public update; failure preserves the old configuration and registrations.

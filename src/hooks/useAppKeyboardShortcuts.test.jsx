@@ -32,7 +32,6 @@ describe("useAppKeyboardShortcuts", () => {
           dispatchShortcutAction,
           running,
           showClock,
-          setSettingsOpen: vi.fn(),
           keyboardShortcuts,
           shortcutCapturing: false,
           autoHideControls: false,
@@ -61,7 +60,6 @@ describe("useAppKeyboardShortcuts", () => {
         dispatchShortcutAction,
         running: true,
         showClock: true,
-        setSettingsOpen: vi.fn(),
         keyboardShortcuts,
         shortcutCapturing: false,
         autoHideControls: false,
@@ -82,7 +80,6 @@ describe("useAppKeyboardShortcuts", () => {
           dispatchShortcutAction,
           running: true,
           showClock: true,
-          setSettingsOpen: vi.fn(),
           keyboardShortcuts,
           shortcutCapturing,
           autoHideControls: false,
@@ -106,7 +103,6 @@ describe("useAppKeyboardShortcuts", () => {
         dispatchShortcutAction: vi.fn(),
         running: false,
         showClock: false,
-        setSettingsOpen: vi.fn(),
         keyboardShortcuts,
         shortcutCapturing: false,
         autoHideControls: true,
@@ -130,7 +126,6 @@ describe("useAppKeyboardShortcuts", () => {
         dispatchShortcutAction: vi.fn(),
         running: false,
         showClock: false,
-        setSettingsOpen: vi.fn(),
         keyboardShortcuts,
         shortcutCapturing: false,
         autoHideControls: true,
@@ -143,24 +138,20 @@ describe("useAppKeyboardShortcuts", () => {
     expect(toggleFocusControls).not.toHaveBeenCalled();
   });
 
-  it("opens settings with the platform settings shortcut", () => {
-    const setSettingsOpen = vi.fn();
+  it("leaves the comma chord unhandled unless it has a configurable binding", () => {
+    const dispatch = vi.fn();
     renderHook(() =>
       useAppKeyboardShortcuts({
-        dispatchShortcutAction: vi.fn(),
-        running: false,
-        showClock: false,
-        setSettingsOpen,
+        dispatchShortcutAction: dispatch,
+        running: true,
+        showClock: true,
         keyboardShortcuts,
         shortcutCapturing: false,
         autoHideControls: false,
         toggleFocusControls: vi.fn(),
       })
     );
-
-    const event = keyDown({ key: ",", ctrlKey: true });
-
-    expect(event.defaultPrevented).toBe(true);
-    expect(setSettingsOpen).toHaveBeenCalledWith(true);
+    expect(keyDown({ key: ",", ctrlKey: true }).defaultPrevented).toBe(false);
+    expect(dispatch).not.toHaveBeenCalled();
   });
 });
