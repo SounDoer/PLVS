@@ -1,6 +1,6 @@
 use std::path::{Path, PathBuf};
 
-use rusqlite::{params, TransactionBehavior};
+use rusqlite::{params, OptionalExtension, TransactionBehavior};
 
 use super::{LibraryRepository, WorkspaceStore};
 
@@ -85,9 +85,9 @@ impl WorkspaceCatalog {
     Ok(workspace_id)
   }
 
-  pub fn remove_from_restore_set(&self, workspace_id: &str) -> Result<(), String> {
+  pub fn remove_from_restore_set(&self, workspace_id: &str) -> Result<Option<i64>, String> {
     if workspace_id == DEFAULT_WORKSPACE_ID {
-      return Ok(());
+      return Ok(None);
     }
     let mut connection = self
       .repository
@@ -96,15 +96,23 @@ impl WorkspaceCatalog {
     let transaction = connection
       .transaction_with_behavior(TransactionBehavior::Immediate)
       .map_err(|error| format!("Unable to lock workspace restore set: {error}"))?;
-    let removed = transaction
+    let position = transaction
+      .query_row(
+        "SELECT position FROM workspace_restore_set WHERE workspace_id = ?1",
+        [workspace_id],
+        |row| row.get::<_, i64>(0),
+      )
+      .optional()
+      .map_err(|error| format!("Unable to find workspace in restore set: {error}"))?;
+    let Some(position) = position else {
+      return Ok(None);
+    };
+    transaction
       .execute(
         "DELETE FROM workspace_restore_set WHERE workspace_id = ?1",
         [workspace_id],
       )
       .map_err(|error| format!("Unable to remove workspace from restore set: {error}"))?;
-    if removed == 0 {
-      return Ok(());
-    }
     let remaining = {
       let mut statement = transaction
         .prepare("SELECT workspace_id FROM workspace_restore_set ORDER BY position ASC")
@@ -132,7 +140,63 @@ impl WorkspaceCatalog {
       .map_err(|error| format!("Unable to advance workspace registry revision: {error}"))?;
     transaction
       .commit()
-      .map_err(|error| format!("Unable to commit workspace removal: {error}"))
+      .map_err(|error| format!("Unable to commit workspace removal: {error}"))?;
+    Ok(Some(position))
+  }
+
+  pub fn restore_retired_workbench(&self, workspace_id: &str, position: i64) -> Result<(), String> {
+    if workspace_id == DEFAULT_WORKSPACE_ID {
+      return Ok(());
+    }
+    let mut connection = self
+      .repository
+      .connection()
+      .map_err(|error| error.to_string())?;
+    let transaction = connection
+      .transaction_with_behavior(TransactionBehavior::Immediate)
+      .map_err(|error| format!("Unable to lock workspace restore set: {error}"))?;
+    let present = transaction
+      .query_row(
+        "SELECT EXISTS(SELECT 1 FROM workspace_restore_set WHERE workspace_id = ?1)",
+        [workspace_id],
+        |row| row.get::<_, bool>(0),
+      )
+      .map_err(|error| format!("Unable to check workspace restore membership: {error}"))?;
+    if present {
+      return Ok(());
+    }
+    let end = transaction
+      .query_row(
+        "SELECT COALESCE(MAX(position) + 1, 1) FROM workspace_restore_set",
+        [],
+        |row| row.get::<_, i64>(0),
+      )
+      .map_err(|error| format!("Unable to read workspace restore position: {error}"))?;
+    let position = position.clamp(1, end);
+    // Position is unique, so make room from the end towards the insertion point.
+    for shifted in (position..end).rev() {
+      transaction
+        .execute(
+          "UPDATE workspace_restore_set SET position = ?1 WHERE position = ?2",
+          params![shifted + 1, shifted],
+        )
+        .map_err(|error| format!("Unable to make room in workspace restore set: {error}"))?;
+    }
+    transaction
+      .execute(
+        "INSERT INTO workspace_restore_set (workspace_id, position) VALUES (?1, ?2)",
+        params![workspace_id, position],
+      )
+      .map_err(|error| format!("Unable to restore retired workbench: {error}"))?;
+    transaction
+      .execute(
+        "UPDATE workspace_registry_state SET revision = revision + 1 WHERE singleton = 1",
+        [],
+      )
+      .map_err(|error| format!("Unable to advance workspace registry revision: {error}"))?;
+    transaction
+      .commit()
+      .map_err(|error| format!("Unable to commit workspace restoration: {error}"))
   }
 }
 
@@ -147,4 +211,31 @@ fn random_uuid() -> Result<String, String> {
     bytes[0], bytes[1], bytes[2], bytes[3], bytes[4], bytes[5], bytes[6], bytes[7], bytes[8],
     bytes[9], bytes[10], bytes[11], bytes[12], bytes[13], bytes[14], bytes[15]
   ))
+}
+
+#[cfg(test)]
+mod tests {
+  use super::*;
+
+  #[test]
+  fn failed_retirement_restores_the_same_workspace_in_order_after_reopening_the_catalog() {
+    let root = tempfile::tempdir().unwrap();
+    let catalog = WorkspaceCatalog::open(root.path()).unwrap();
+    let first = catalog.allocate_blank_workbench().unwrap();
+    let retired = catalog.allocate_blank_workbench().unwrap();
+    let last = catalog.allocate_blank_workbench().unwrap();
+    let original = catalog.restore_set().unwrap();
+    let position = catalog.remove_from_restore_set(&retired).unwrap().unwrap();
+    assert_eq!(catalog.restore_set().unwrap(), ["default", &first, &last]);
+    catalog
+      .restore_retired_workbench(&retired, position)
+      .unwrap();
+    catalog
+      .restore_retired_workbench(&retired, position)
+      .unwrap();
+    drop(catalog);
+
+    let reopened = WorkspaceCatalog::open(root.path()).unwrap();
+    assert_eq!(reopened.restore_set().unwrap(), original);
+  }
 }

@@ -97,7 +97,9 @@ level because they affect the application as a whole. **Show** brings the select
 to the front, restoring it if minimized. A workbench with an open editor or dialog refuses to quit
 and comes to the front instead,
 so you can finish or close what is open first. **Quit PLVS** flushes and closes the complete
-workbench set; quitting one workbench does not close its peers.
+workbench set; quitting one workbench does not close its peers. PLVS checks again for open
+editors before closing prepared workbenches. If a remote Quit Workbench fails before closing,
+PLVS attempts to restore its previous capture state and place in the restore set.
 If Live capture is still starting or changing devices, coordinated quit can be retried after
 the transition finishes. The same applies when preparing to install an update.
 On macOS, the application menu's **Quit PLVS** command (⌘Q) also quits the complete workbench set.

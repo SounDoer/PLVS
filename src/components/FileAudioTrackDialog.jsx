@@ -14,7 +14,7 @@ import { useUiSurface } from "../uiNavigation/UiNavigationContext.jsx";
 export function FileAudioTrackDialog({ selection, onConfirm, onCancel }) {
   return selection ? (
     <TrackSelection
-      key={selection.probe.path}
+      key={JSON.stringify([selection.probe.path, selection.probe.sourceVersion])}
       selection={selection}
       onConfirm={onConfirm}
       onCancel={onCancel}
@@ -23,7 +23,7 @@ export function FileAudioTrackDialog({ selection, onConfirm, onCancel }) {
 }
 
 function TrackSelection({ selection, onConfirm, onCancel }) {
-  const { probe } = selection;
+  const { probe, busy, sourceChanged } = selection;
   const [index, setIndex] = useState(probe.selectedTrack.index);
   useUiSurface({
     active: true,
@@ -44,6 +44,7 @@ function TrackSelection({ selection, onConfirm, onCancel }) {
           .filter(Boolean)
           .join(" · "),
         run: () => onConfirm(track.index),
+        disabled: busy,
       })),
     ],
     onCancel,
@@ -57,11 +58,15 @@ function TrackSelection({ selection, onConfirm, onCancel }) {
     >
       <DialogContent
         aria-describedby="file-audio-track-description"
+        aria-busy={busy}
         overlayProps={{ onClick: onCancel }}
       >
         <DialogTitle>Select Audio Track</DialogTitle>
         <DialogDescription id="file-audio-track-description" className="break-words">
           {probe.fileName}
+          {sourceChanged ? (
+            <span className="block">The source file changed. Choose an audio track again.</span>
+          ) : null}
         </DialogDescription>
         <div
           role="radiogroup"
@@ -120,7 +125,9 @@ function TrackSelection({ selection, onConfirm, onCancel }) {
           <Button variant="ghost" onClick={onCancel}>
             Cancel
           </Button>
-          <Button onClick={() => onConfirm(index)}>Analyze</Button>
+          <Button disabled={busy} onClick={() => onConfirm(index)}>
+            Analyze
+          </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

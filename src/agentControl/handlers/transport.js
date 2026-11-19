@@ -6,6 +6,7 @@ import { isTransportAction } from "../protocol.js";
 import { planTransportMutation, projectTransportMutation } from "../transportControl.js";
 import { semanticFailure, WAIT_CANCELLED } from "../bridge/failures.js";
 import { paced } from "./paced.js";
+import { assertExpectedRevision } from "./shared.js";
 
 /**
  * @param {string} method
@@ -232,22 +233,21 @@ async function fileExportStatistics(ctx) {
 async function mutate(ctx) {
   const { request, requestId, clock, settlement, live } = ctx;
   const { transportContext, executeTransport } = ctx.snap;
-  const currentRevision = clock.current();
-  if (
-    request.params.expectedRevision !== undefined &&
-    request.params.expectedRevision !== currentRevision
-  ) {
-    throw semanticFailure(
-      "revisionConflict",
-      "$.params.expectedRevision",
-      `Transport changed after revision ${request.params.expectedRevision}.`,
-      -32004,
-      {
-        expectedRevision: request.params.expectedRevision,
-        currentRevision,
-      }
-    );
-  }
+  const currentRevision = assertExpectedRevision(ctx, "Transport");
+  const guardFileEntry = (checkRevision) => {
+    if (checkRevision) assertExpectedRevision(ctx, "Transport");
+    const current = live();
+    if (current.transportContext.docked) {
+      throw semanticFailure(
+        "dockActive",
+        "$.params",
+        "The Transport operation is unavailable in the current state.",
+        -32083,
+        { code: "dockActive" }
+      );
+    }
+    return current.transport;
+  };
   const planned = planTransportMutation(
     live().transport,
     request.method,
@@ -322,7 +322,7 @@ async function mutate(ctx) {
 
   let execution;
   try {
-    execution = await executeTransport(request.method, request.params);
+    execution = await executeTransport(request.method, request.params, guardFileEntry);
   } catch (error) {
     // A refusal decided during execution, before any side effect (such as a File track choice).
     if (typeof error?.reason === "string") throw error;

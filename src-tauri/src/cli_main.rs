@@ -4,7 +4,6 @@
 //! linked into the installer only once.
 
 use std::collections::{BTreeMap, BTreeSet};
-use std::fs;
 use std::io::{self, Write};
 use std::process::ExitCode;
 
@@ -540,7 +539,7 @@ fn parse_positive_duration(value: &str, flag: &str) -> Result<u64, String> {
 
 fn emit_json(json: &str, out: Option<&str>, command: &str) -> Result<(), String> {
   if let Some(path) = out {
-    fs::write(path, format!("{json}\n"))
+    crate::profile::write_export(std::path::Path::new(path), format!("{json}\n").as_bytes())
       .map_err(|err| format!("Failed to write {command} output: {err}"))?;
   }
   println!("{json}");
@@ -807,7 +806,8 @@ fn emit_cli_failure(code: &str, message: &str, json: bool, exit_code: u8) -> Exi
 #[cfg(any(feature = "capture-harness", test))]
 fn emit_text(text: &str, out: Option<&str>, command: &str) -> Result<(), String> {
   if let Some(path) = out {
-    fs::write(path, text).map_err(|err| format!("Failed to write {command} output: {err}"))?;
+    crate::profile::write_export(std::path::Path::new(path), text.as_bytes())
+      .map_err(|err| format!("Failed to write {command} output: {err}"))?;
   }
   print!("{text}");
   Ok(())
@@ -1110,7 +1110,10 @@ fn execute(command: CliCommand) -> ExitCode {
         println!("{json}");
         lines.push(json);
         if let Some(path) = out.as_deref() {
-          if let Err(err) = fs::write(path, format!("{}\n", lines.join("\n"))) {
+          if let Err(err) = crate::profile::write_export(
+            std::path::Path::new(&path),
+            format!("{}\n", lines.join("\n")).as_bytes(),
+          ) {
             eprintln!("Failed to write capture output: {err}");
             return ExitCode::from(2);
           }

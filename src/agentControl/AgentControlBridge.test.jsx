@@ -2,6 +2,25 @@
 import { describe, expect, it, vi } from "vitest";
 import { render } from "@testing-library/react";
 
+import { createRevisionClock } from "./bridge/revisionClock.js";
+import { createSettlementRegistry } from "./bridge/settlement.js";
+import { createWaiters } from "./bridge/waiters.js";
+import { transportHandlers } from "./handlers/transport.js";
+
+const transport = vi.hoisted(() => ({
+  lifecycle: "stopped",
+  stop: vi.fn(),
+  restore: vi.fn(),
+  switchSource: vi.fn(),
+  begin: vi.fn(),
+  probe: vi.fn(),
+}));
+vi.mock("../ipc/env.js", () => ({ isTauri: () => true, isLinux: () => false }));
+vi.mock("../ipc/commands.js", async (importOriginal) => ({
+  ...(await importOriginal()),
+  probeFileAnalysis: transport.probe,
+}));
+
 const useAgentControlBridge = vi.hoisted(() => vi.fn());
 vi.mock("./useAgentControlBridge.js", () => ({ useAgentControlBridge }));
 vi.mock("../dev/useDevelopmentPerformance.js", () => ({
@@ -58,7 +77,11 @@ vi.mock("../settings/SettingsContext.jsx", () => ({
 vi.mock("../runtime/MeterRuntimeContext.jsx", () => ({
   useMeterRuntime: () => ({
     sourceMode: "live",
-    liveLifecycle: "stopped",
+    liveLifecycle: transport.lifecycle,
+    stopLiveForControl: transport.stop,
+    restoreFileHistoryForControl: transport.restore,
+    switchSource: transport.switchSource,
+    beginFileAnalysisForControl: transport.begin,
     getLiveMeasurement: () => null,
     subscribeLiveMeasurement: () => () => {},
     running: false,
@@ -222,5 +245,90 @@ describe("AgentControlBridge", () => {
     expect(passed.presets).toMatchObject({ activeId: null });
     expect(passed.hasLoudnessReference).toBe(false);
     expect(passed.theme.state).toEqual({ appearance: {}, themes: [] });
+  });
+
+  it("keeps Live running when restoring File history fails source verification", async () => {
+    transport.lifecycle = "running";
+    transport.stop.mockClear();
+    transport.switchSource.mockClear();
+    transport.restore.mockRejectedValueOnce(new Error("Could not open the original file"));
+    render(<AgentControlBridge />);
+    const { executeTransport } = useAgentControlBridge.mock.calls.at(-1)[0];
+
+    await expect(executeTransport("transport.file.restore", { sessionId: "old" })).rejects.toThrow(
+      "Could not open the original file"
+    );
+    expect(transport.stop).not.toHaveBeenCalled();
+    expect(transport.switchSource).not.toHaveBeenCalled();
+    expect(transport.restore).toHaveBeenLastCalledWith("old", { beforeRun: expect.any(Function) });
+  });
+
+  it("switches to File for restore after preflight succeeds", async () => {
+    transport.lifecycle = "running";
+    const order = [];
+    transport.stop.mockImplementationOnce(async () => {
+      order.push("stop");
+    });
+    transport.switchSource.mockImplementationOnce(() => {
+      order.push("switch");
+    });
+    transport.restore.mockImplementationOnce(async (sessionId, { beforeRun }) => {
+      order.push("preflight");
+      await beforeRun();
+      order.push("restore");
+      return { sessionId, accepted: Promise.resolve(2) };
+    });
+    render(<AgentControlBridge />);
+    const { executeTransport } = useAgentControlBridge.mock.calls.at(-1)[0];
+
+    await expect(executeTransport("transport.file.restore", { sessionId: "old" })).resolves.toEqual(
+      {
+        sessionId: "old",
+        runId: 2,
+      }
+    );
+    expect(order).toEqual(["preflight", "stop", "switch", "restore"]);
+  });
+
+  it("leaves the workbench alone when its revision changes while native probing is pending", async () => {
+    transport.lifecycle = "stopped";
+    transport.switchSource.mockClear();
+    transport.begin.mockClear();
+    let finishProbe = (_value) => {};
+    transport.probe.mockReturnValueOnce(
+      new Promise((resolve) => {
+        finishProbe = resolve;
+      })
+    );
+    render(<AgentControlBridge />);
+    const snap = useAgentControlBridge.mock.calls.at(-1)[0];
+    const state = { ...snap, transportContext: { ...snap.transportContext } };
+    const clock = createRevisionClock({ onWake: () => {} });
+    const revisionBatch = clock.beginBatch();
+    try {
+      const result = transportHandlers["transport.file.analyze"].run({
+        request: {
+          method: "transport.file.analyze",
+          params: { path: "new.wav", expectedRevision: 0 },
+        },
+        requestId: "probe",
+        clock,
+        snap,
+        live: () => state,
+        settlement: createSettlementRegistry(clock),
+        waiters: createWaiters(),
+        visual: { captures: new Map(), recordings: new Map(), captureActive: { current: false } },
+        dockRequestContext: {},
+        flush: async () => {},
+      });
+      state.transportContext.docked = true;
+      clock.bumpWorkspace();
+      finishProbe({ path: "new.wav", selectedTrack: { index: 0 }, audioTracks: [{ index: 0 }] });
+      await expect(result).rejects.toMatchObject({ reason: "revisionConflict" });
+      expect(transport.switchSource).not.toHaveBeenCalled();
+      expect(transport.begin).not.toHaveBeenCalled();
+    } finally {
+      clock.endBatch(revisionBatch);
+    }
   });
 });

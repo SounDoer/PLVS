@@ -732,7 +732,7 @@ pretty-printed JSON. Visual screenshots and recording wait/stop also accept `--o
 binary PNG/MP4 artifacts with metadata in the JSON response; see [Visual Capture](../agent-control/visual.md).
 Library and configuration exports, File Statistics and reports, and visual artifacts replace an
 existing destination only after the new output is ready. An interrupted write leaves the old file
-intact.
+intact. When the destination is a symbolic link to an existing file, the export replaces the target.
 For commands without `--out`, capture their clean JSON stdout programmatically.
 
 If `doctor --out` cannot replace its destination, the previous file is preserved. The full report

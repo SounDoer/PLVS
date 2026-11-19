@@ -39,7 +39,7 @@ it("waits for track confirmation and freezes settings before probing", async () 
   await act(async () => result.current.importFile(probe.path));
   expect(begin).not.toHaveBeenCalled();
   settings.dialogue.engine = "silero";
-  act(() => result.current.confirm(2));
+  await act(async () => result.current.confirm(2));
   expect(begin).toHaveBeenCalledWith(
     probe.path,
     { dialogue: { enabled: true, engine: "firered" } },
@@ -57,7 +57,7 @@ it("selects an identical file/track result without recomputation", async () => {
     },
   ]);
   await act(async () => result.current.importFile(probe.path));
-  act(() => result.current.confirm(1));
+  await act(async () => result.current.confirm(1));
   expect(select).toHaveBeenCalledWith("old");
   expect(begin).not.toHaveBeenCalled();
 });
@@ -74,7 +74,7 @@ it("creates another entry for another track or changed content", async () => {
     { id: "old", metadata: { ...probe, sourceVersion: { ...probe.sourceVersion, sha256: "old" } } },
   ]);
   await act(async () => result.current.importFile(probe.path));
-  act(() => result.current.confirm(1));
+  await act(async () => result.current.confirm(1));
   expect(begin).toHaveBeenCalledTimes(1);
   expect(select).not.toHaveBeenCalled();
 });
@@ -125,4 +125,74 @@ it("ignores an earlier File visit's native probe after returning to File", async
   expect(result.current.selection).toBeNull();
   expect(begin).not.toHaveBeenCalled();
   expect(select).not.toHaveBeenCalled();
+});
+
+it("requires a new choice if the multitrack file changes while its picker is open", async () => {
+  const { result, select, begin, settings } = mount([
+    {
+      id: "old",
+      metadata: probe,
+      state: "complete",
+      summary: {},
+      analysisSettings: { dialogue: { enabled: true, engine: "firered" } },
+    },
+  ]);
+  await act(async () => result.current.importFile(probe.path));
+  const replacement = {
+    ...probe,
+    sourceVersion: { ...probe.sourceVersion, sha256: "new" },
+  };
+  vi.mocked(probeFileAnalysis).mockResolvedValue(replacement);
+  await act(async () => result.current.confirm(1));
+  expect(select).not.toHaveBeenCalled();
+  expect(begin).not.toHaveBeenCalled();
+  expect(result.current.selection).toMatchObject({ probe: replacement, sourceChanged: true });
+
+  settings.dialogue.engine = "silero";
+  await act(async () => result.current.confirm(1));
+  expect(begin).toHaveBeenCalledWith(
+    probe.path,
+    { dialogue: { enabled: true, engine: "firered" } },
+    replacement
+  );
+  expect(select).not.toHaveBeenCalled();
+});
+
+it("uses the only available track when the file becomes single-track during selection", async () => {
+  const { result, begin, settings } = mount();
+  await act(async () => result.current.importFile(probe.path));
+  const selectedTrack = probe.audioTracks[1];
+  const replacement = {
+    ...probe,
+    selectedTrack,
+    audioTracks: [selectedTrack],
+    sourceVersion: { ...probe.sourceVersion, sha256: "single-track" },
+  };
+  vi.mocked(probeFileAnalysis).mockResolvedValue(replacement);
+  await act(async () => result.current.confirm(1));
+  expect(begin).toHaveBeenCalledWith(probe.path, settings, replacement);
+  expect(result.current.selection).toBeNull();
+});
+
+it("does not start a rechecked file after the picker is canceled", async () => {
+  const { result, begin } = mount();
+  await act(async () => result.current.importFile(probe.path));
+  let finish;
+  vi.mocked(probeFileAnalysis).mockReturnValueOnce(
+    new Promise((resolve) => {
+      finish = resolve;
+    })
+  );
+  let confirming;
+  act(() => {
+    confirming = result.current.confirm(1);
+  });
+  expect(result.current.selection).toMatchObject({ busy: true });
+  act(() => result.current.cancel());
+  await act(async () => {
+    finish(probe);
+    await confirming;
+  });
+  expect(begin).not.toHaveBeenCalled();
+  expect(result.current.selection).toBeNull();
 });

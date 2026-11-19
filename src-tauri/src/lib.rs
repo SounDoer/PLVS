@@ -321,6 +321,7 @@ pub fn run() {
       coordinator::runtime_list_instances,
       runtime_open_workbench,
       coordinator::runtime_retire_current_workspace,
+      coordinator::runtime_restore_retired_workspace,
       coordinator::runtime_route_global_shortcut,
       coordinator::runtime_route_instance_transport,
       coordinator::runtime_issue_commands,

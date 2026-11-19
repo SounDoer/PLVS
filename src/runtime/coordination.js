@@ -110,14 +110,33 @@ async function handleRuntimeCommand(command, prepared) {
         return;
       }
       const wasRunning = await stopAndFlush(current);
+      let retiredPosition = null;
       try {
-        await invoke("runtime_retire_current_workspace");
+        assertNoBlockingEditors(current);
+        retiredPosition = await invoke("runtime_retire_current_workspace");
+        await acknowledge(command, "completed");
+        await exit(0);
       } catch (error) {
-        if (wasRunning) await current.start();
+        const recoveries = [];
+        if (Number.isInteger(retiredPosition))
+          recoveries.push(
+            invoke("runtime_restore_retired_workspace", { position: retiredPosition })
+          );
+        if (wasRunning) recoveries.push(Promise.resolve().then(() => current.start()));
+        const failures = (await Promise.allSettled(recoveries)).filter(
+          (result) => result.status === "rejected"
+        );
+        if (failures.length) {
+          throw new AggregateError(
+            [error, ...failures.map(({ reason }) => reason)],
+            `${failureDetail(error)} Recovery failed: ${failures
+              .map(({ reason }) => failureDetail(reason))
+              .join(" ")}`,
+            { cause: error }
+          );
+        }
         throw error;
       }
-      await acknowledge(command, "completed");
-      await exit(0);
       return;
     }
     if (command.action === "prepareGlobal") {
@@ -235,13 +254,22 @@ export function useRuntimeCoordination({
   }, []);
 }
 
-export async function prepareGlobalOperation() {
-  if (!lifecycle) throw new Error("Runtime coordination is not ready.");
-  if (lifecycle.blockingEditors.length) {
+function assertNoBlockingEditors(current) {
+  if (!current) throw new Error("Runtime coordination is not ready.");
+  if (current.blockingEditors.length) {
     throw new Error(
-      `Close the open editor before continuing: ${lifecycle.blockingEditors.join(", ")}`
+      `Close the open editor before continuing: ${current.blockingEditors.join(", ")}`
     );
   }
+}
+
+function assertLocalQuitAllowed() {
+  assertNoBlockingEditors(lifecycle);
+  if (lifecycle.busy) throw new Error("PLVS is installing an update.");
+}
+
+export async function prepareGlobalOperation() {
+  assertNoBlockingEditors(lifecycle);
   const id = operationId();
   const localWasRunning = await stopAndFlush(lifecycle);
   let issued;
@@ -254,6 +282,7 @@ export async function prepareGlobalOperation() {
   let acknowledgements;
   try {
     acknowledgements = await waitFor(issued);
+    assertNoBlockingEditors(lifecycle);
   } catch (error) {
     await abortGlobalOperation({ id, issued, localWasRunning });
     throw error;
@@ -284,8 +313,9 @@ export async function abortGlobalOperation(operation) {
   }
 }
 
-export async function commitGlobalOperation(operation) {
+export async function commitGlobalOperation(operation, beforeCommit = () => {}) {
   await flushPersistence();
+  beforeCommit();
   const commits = await issue(
     "commitGlobal",
     operation.id,
@@ -319,7 +349,9 @@ export async function quitAllInstances() {
  */
 export async function quitPreparedInstances(operation) {
   try {
-    await commitGlobalOperation(operation);
+    assertLocalQuitAllowed();
+    await commitGlobalOperation(operation, assertLocalQuitAllowed);
+    assertLocalQuitAllowed();
     await exit(0);
   } catch (error) {
     await abortGlobalOperation(operation);

@@ -253,7 +253,21 @@ export function AgentControlBridge() {
     [captureDeviceId, docked, fileQueue?.snapshot, meterRuntime, selectedOffset]
   );
   const executeAgentControlTransport = useCallback(
-    async (/** @type {string} */ method, params) => {
+    async (/** @type {string} */ method, params, guardFileEntry = (_checkRevision) => null) => {
+      const enterFileForRun = async (checkRevision = false) => {
+        const current = guardFileEntry(checkRevision);
+        if ((current?.live.state ?? meterRuntime.liveLifecycle) === "running") {
+          await stopLiveForControl();
+          try {
+            guardFileEntry(false);
+          } catch (error) {
+            throw Object.assign(new Error(error.message, { cause: error }), {
+              stage: "enterFile",
+            });
+          }
+        }
+        switchSource("file");
+      };
       const fileTaskId = analyzingFileId ?? preparingFileId;
       if (method.startsWith("transport.file.batch.")) {
         const batch = fileQueue.snapshot;
@@ -321,8 +335,7 @@ export function AgentControlBridge() {
         const plan = probe
           ? planFileImport(meterRuntime.fileSessions, probe, settings)
           : { action: "analyze", sessionId: null };
-        if (meterRuntime.liveLifecycle === "running") await stopLiveForControl();
-        switchSource("file");
+        await enterFileForRun(true);
         if (plan.action === "select") {
           selectFile(plan.sessionId);
           return {
@@ -344,10 +357,7 @@ export function AgentControlBridge() {
       }
       if (method === "transport.file.reanalyze") {
         const run = await reanalyzeFileForControl(params.sessionId, currentFileAnalysisSettings(), {
-          beforeRun: async () => {
-            if (meterRuntime.liveLifecycle === "running") await stopLiveForControl();
-            switchSource("file");
-          },
+          beforeRun: enterFileForRun,
           selectReplacementTrack: (probe) =>
             selectImportTrack(probe, undefined, { replacement: true }),
         });
@@ -356,9 +366,9 @@ export function AgentControlBridge() {
         return { sessionId: run.sessionId, runId };
       }
       if (method === "transport.file.restore") {
-        if (meterRuntime.liveLifecycle === "running") await stopLiveForControl();
-        switchSource("file");
-        const run = await restoreFileHistoryForControl(params.sessionId);
+        const run = await restoreFileHistoryForControl(params.sessionId, {
+          beforeRun: enterFileForRun,
+        });
         if (!run) throw new Error("History restoration was not accepted.");
         const runId = await run.accepted;
         return { sessionId: run.sessionId, runId };

@@ -477,10 +477,21 @@ pub async fn runtime_wait_commands(
 pub fn runtime_retire_current_workspace(
   identity: State<'_, RuntimeIdentity>,
   persistence: State<'_, crate::persistence::commands::PersistenceRuntime>,
-) -> Result<(), String> {
+) -> Result<Option<i64>, String> {
   let identity_root = persistence.identity_root()?;
   crate::persistence::WorkspaceCatalog::open(&identity_root)?
     .remove_from_restore_set(identity.workspace_id())
+}
+
+#[tauri::command]
+pub fn runtime_restore_retired_workspace(
+  identity: State<'_, RuntimeIdentity>,
+  persistence: State<'_, crate::persistence::commands::PersistenceRuntime>,
+  position: i64,
+) -> Result<(), String> {
+  let identity_root = persistence.identity_root()?;
+  crate::persistence::WorkspaceCatalog::open(&identity_root)?
+    .restore_retired_workbench(identity.workspace_id(), position)
 }
 
 fn global_shortcut_target(

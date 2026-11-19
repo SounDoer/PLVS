@@ -126,8 +126,10 @@ Completed statistics are retained until removed, cleared or the application exit
 is managed independently by resource budget. Inspection exposes `historyReleased`,
 `historyAvailable` and `files.preparingId`. `file restore <session-id>` rebuilds released history
 with the original source version, track and analysis conditions while preserving statistics and
-provenance. Changed or unavailable sources cannot restore the old history. `file remove` and
-`file clear` can preview the sessions they would delete.
+provenance. Restore verifies the source before switching modes or stopping LIVE. Changed or
+unavailable sources cannot restore the old history. `file analyze` rechecks the revision and Dock
+state after probing, before entering FILE. `file remove` and `file clear` can preview the sessions
+they would delete. When LIVE is selected, both preserve its display, Snapshot, and clock.
 
 Entering FILE by source, analyze, or select is refused while Dock is active; Agent Control never exits
 Dock implicitly. Leaving an active FILE analysis for LIVE requires `--allow-stop-file-analysis` and

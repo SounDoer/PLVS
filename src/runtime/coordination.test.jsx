@@ -16,6 +16,7 @@ vi.mock("../ipc/env.js", () => ({ isTauri: () => true }));
 import {
   commitGlobalOperation,
   prepareGlobalOperation,
+  quitPreparedInstances,
   issueInstanceCommand,
   useRuntimeCoordination,
 } from "./coordination.js";
@@ -595,6 +596,72 @@ describe("runtime coordination", () => {
     );
     expect(mocks.invoke).not.toHaveBeenCalledWith("runtime_finish_operation", {
       operationId: "operation-a",
+    });
+  });
+
+  it("aborts Quit PLVS if the initiating workbench opens an editor before peers commit", async () => {
+    mocks.invoke.mockImplementation(async (name, params) => {
+      if (name === "runtime_poll_command") return null;
+      if (name === "runtime_issue_commands" && params.action === "prepareGlobal") {
+        return [{ instanceId: "peer", commandId: "prepare" }];
+      }
+      if (name === "runtime_wait_commands") return [{ outcome: "ready" }];
+      return [];
+    });
+    const start = vi.fn(async () => {});
+    const { rerender } = renderHook(
+      ({ blockingEditors }) =>
+        useRuntimeCoordination({
+          blockingEditors,
+          running: true,
+          stop: async () => {},
+          start,
+          show: vi.fn(),
+        }),
+      { initialProps: { blockingEditors: [] } }
+    );
+    const operation = await prepareGlobalOperation();
+    rerender({ blockingEditors: ["theme-editor"] });
+    await expect(quitPreparedInstances(operation)).rejects.toThrow("theme-editor");
+    expect(mocks.exit).not.toHaveBeenCalled();
+    expect(mocks.invoke).not.toHaveBeenCalledWith(
+      "runtime_issue_commands",
+      expect.objectContaining({ action: "commitGlobal" })
+    );
+    expect(mocks.invoke).toHaveBeenCalledWith(
+      "runtime_issue_commands",
+      expect.objectContaining({ action: "abortGlobal", instanceIds: ["peer"] })
+    );
+    expect(start).toHaveBeenCalledOnce();
+  });
+
+  it("restores retirement and capture when a remote quit acknowledgement fails", async () => {
+    const command = { commandId: "quit-probe", operationId: "quit", action: "quitInstance" };
+    const start = vi.fn(async () => {});
+    mocks.invoke.mockImplementation(async (name, params) => {
+      if (name === "runtime_poll_command") return command;
+      if (name === "runtime_retire_current_workspace") return 2;
+      if (name === "runtime_ack_command" && params.outcome === "completed")
+        throw new Error("Unable to save acknowledgement");
+    });
+    renderHook(() =>
+      useRuntimeCoordination({
+        blockingEditors: [],
+        running: true,
+        stop: async () => {},
+        start,
+        show: vi.fn(),
+      })
+    );
+    await act(async () => {});
+
+    expect(mocks.exit).not.toHaveBeenCalled();
+    expect(mocks.invoke).toHaveBeenCalledWith("runtime_restore_retired_workspace", { position: 2 });
+    expect(start).toHaveBeenCalledOnce();
+    expect(mocks.invoke).toHaveBeenCalledWith("runtime_ack_command", {
+      commandId: command.commandId,
+      outcome: "failed",
+      detail: "Error: Unable to save acknowledgement",
     });
   });
 });

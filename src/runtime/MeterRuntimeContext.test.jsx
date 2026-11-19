@@ -300,4 +300,33 @@ describe("MeterRuntimeProvider", () => {
       expect(result.current.runtime.beginFileAnalysis("C:/b.wav", {})).toBeTruthy();
     });
   });
+  it.each(["removeFile", "clearFiles"])(
+    "preserves the Live snapshot and clock during %s",
+    async (method) => {
+      const { result } = renderHook(
+        () => ({
+          runtime: useMeterRuntime(),
+          display: useMeterDisplayState(),
+        }),
+        { wrapper }
+      );
+      act(() => result.current.runtime.switchSource("file"));
+      act(() => result.current.runtime.beginFileAnalysis("old.wav", {}));
+      const id = result.current.runtime.activeFileId;
+      await act(() => result.current.runtime.stopFileAnalysis());
+      act(() => result.current.runtime.switchSource("live"));
+      act(() => result.current.runtime.startLive());
+      act(() => result.current.display.selectSnapshot(0));
+      expect(result.current.display).toMatchObject({ selectedOffset: 0, showClock: true });
+
+      await act(() =>
+        method === "removeFile"
+          ? result.current.runtime.removeFile(id)
+          : result.current.runtime.clearFiles()
+      );
+      expect(result.current.runtime.fileSessions).toHaveLength(0);
+      expect(result.current.runtime.running).toBe(true);
+      expect(result.current.display).toMatchObject({ selectedOffset: 0, showClock: true });
+    }
+  );
 });

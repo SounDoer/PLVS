@@ -1,8 +1,7 @@
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useLayoutEffect, useRef, useState } from "react";
 import { probeFileAnalysis } from "../ipc/commands.js";
 import { isTauri } from "../ipc/env.js";
-import { withSelectedAudioTrack } from "../lib/fileAnalysisSource.js";
-import { fileImportTracks, planFileImport } from "../lib/fileImportPlan.js";
+import { planFileImport, revalidateFileTrack } from "../lib/fileImportPlan.js";
 
 /** Import selection is transient; it never changes an existing result before confirmation. */
 export function useFileImport({
@@ -34,6 +33,50 @@ export function useFileImport({
     },
     [files, select, begin, cancel]
   );
+  const latest = useRef({ busy, launch });
+  useLayoutEffect(() => {
+    latest.current = { busy, launch };
+  }, [busy, launch]);
+
+  const inspectAndLaunch = useCallback(
+    async (path, settings, sourceToken, index = null, previousProbe = null) => {
+      const generation = ++generationRef.current;
+      pendingRef.current = { generation };
+      setImportBusy(true);
+      try {
+        const probe = await probeFileAnalysis(path);
+        if (generation !== generationRef.current) return;
+        if (sourceToken !== getFileSourceToken()) return cancel();
+        const track = revalidateFileTrack(probe, index, previousProbe);
+        if (track.requiresTrackSelection || (previousProbe && latest.current.busy)) {
+          const next = {
+            probe: track.probe,
+            settings,
+            sourceToken,
+            sourceChanged: track.sourceChanged,
+          };
+          pendingRef.current = next;
+          setSelection(next);
+          setImportBusy(false);
+        } else if (latest.current.busy) {
+          cancel();
+          raiseNotice("guard", "File analysis already in progress");
+        } else {
+          latest.current.launch(track.probe, settings);
+        }
+      } catch (error) {
+        if (generation !== generationRef.current) return;
+        cancel();
+        if (sourceToken !== getFileSourceToken()) return;
+        raiseNotice("error", `Error: ${error?.message || "File could not be opened"}`, undefined, {
+          requiresAttention: true,
+          helpTopic: "file-open-analysis",
+        });
+      }
+    },
+    [cancel, getFileSourceToken, raiseNotice]
+  );
+
   const importFile = useCallback(
     async (path) => {
       if (!path) return;
@@ -46,39 +89,25 @@ export function useFileImport({
         begin(path, settings);
         return;
       }
-      const generation = ++generationRef.current;
-      const sourceToken = getFileSourceToken();
-      pendingRef.current = { generation };
-      setImportBusy(true);
-      try {
-        const probe = await probeFileAnalysis(path);
-        if (generation !== generationRef.current) return;
-        if (sourceToken !== getFileSourceToken()) return cancel();
-        if (fileImportTracks(probe).length > 1) {
-          const next = { probe, settings, sourceToken };
-          pendingRef.current = next;
-          setSelection(next);
-          setImportBusy(false);
-        } else launch(probe, settings);
-      } catch (error) {
-        if (generation !== generationRef.current) return;
-        cancel();
-        if (sourceToken !== getFileSourceToken()) return;
-        raiseNotice("error", `Error: ${error?.message || "File could not be opened"}`, undefined, {
-          requiresAttention: true,
-          helpTopic: "file-open-analysis",
-        });
-      }
+      await inspectAndLaunch(path, settings, getFileSourceToken());
     },
-    [busy, getSettings, begin, launch, cancel, raiseNotice, getFileSourceToken]
+    [busy, getSettings, begin, inspectAndLaunch, raiseNotice, getFileSourceToken]
   );
+
   const confirm = useCallback(
     (index) => {
-      if (!selection || busy) return;
+      if (!selection || busy || pendingRef.current !== selection) return;
       if (selection.sourceToken !== getFileSourceToken()) return cancel();
-      launch(withSelectedAudioTrack(selection.probe, index), selection.settings);
+      setSelection({ ...selection, busy: true });
+      return inspectAndLaunch(
+        selection.probe.path,
+        selection.settings,
+        selection.sourceToken,
+        index,
+        selection.probe
+      );
     },
-    [selection, busy, launch, cancel, getFileSourceToken]
+    [selection, busy, cancel, getFileSourceToken, inspectAndLaunch]
   );
   return { importFile, importBusy, selection, cancel, confirm };
 }

@@ -1,9 +1,23 @@
 import { getSuccessfulFileSession } from "./fileAnalysisSessionRegistry.js";
-import { sameFileSourceVersion } from "./fileAnalysisSource.js";
+import { sameFileSourceVersion, withSelectedAudioTrack } from "./fileAnalysisSource.js";
 
 /** The audio tracks an import chooses from; a file with more than one needs an explicit choice. */
 export function fileImportTracks(probe) {
   return probe.audioTracks?.length ? probe.audioTracks : [probe.selectedTrack];
+}
+
+/** A previously chosen track is valid only for the source version it was chosen from. */
+export function revalidateFileTrack(probe, index, previousProbe) {
+  const sourceChanged =
+    previousProbe != null &&
+    !sameFileSourceVersion(previousProbe.sourceVersion, probe.sourceVersion);
+  const trackIndex = sourceChanged ? null : index;
+  return {
+    probe: trackIndex == null ? probe : withSelectedAudioTrack(probe, trackIndex),
+    trackIndex,
+    sourceChanged,
+    requiresTrackSelection: trackIndex == null && fileImportTracks(probe).length > 1,
+  };
 }
 
 /**

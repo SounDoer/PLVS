@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { startFileProbe } from "../ipc/commands.js";
-import { sameFileSourceVersion, withSelectedAudioTrack } from "../lib/fileAnalysisSource.js";
-import { fileImportTracks, planFileImport } from "../lib/fileImportPlan.js";
+import { fileImportTracks, planFileImport, revalidateFileTrack } from "../lib/fileImportPlan.js";
 
 function cancelProbe(task) {
   if (task.probeCancellation) return task.probeCancellation;
@@ -170,24 +169,11 @@ export function useFileImportQueue({
           finish(work, { state: work.resume ? "paused" : "canceled" });
           return;
         }
-        // Revalidate queued track choices against the current source before starting analysis.
-        if (
-          next.trackIndex != null &&
-          next.probe &&
-          !sameFileSourceVersion(next.probe.sourceVersion, probe.sourceVersion)
-        ) {
-          finish(work, {
-            state: fileImportTracks(probe).length > 1 ? "track" : "probed",
-            trackIndex: null,
-            probe,
-          });
-          return;
-        }
-        const selected =
-          next.trackIndex == null ? probe : withSelectedAudioTrack(probe, next.trackIndex);
+        const track = revalidateFileTrack(probe, next.trackIndex, next.probe);
         finish(work, {
-          state: next.trackIndex == null && fileImportTracks(probe).length > 1 ? "track" : "probed",
-          probe: selected,
+          state: track.requiresTrackSelection ? "track" : "probed",
+          trackIndex: track.trackIndex,
+          probe: track.probe,
         });
       })
       .catch((error) => {

@@ -1,4 +1,3 @@
-use atomic_write_file::AtomicWriteFile;
 use serde::Serialize;
 use serde_json::Value;
 use sha2::{Digest, Sha256};
@@ -5692,9 +5691,7 @@ fn write_export_file(
   // The swap happens only once the bytes are on disk. Taking the document out first loses the
   // export entirely on a write failure: no file, and an exit-1 envelope with no recoverable copy.
   let write_error = |error| format!("Unable to write the {subject} to {path}: {error}");
-  let mut file = AtomicWriteFile::open(path).map_err(write_error)?;
-  file.write_all(contents.as_bytes()).map_err(write_error)?;
-  file.commit().map_err(write_error)?;
+  crate::profile::write_export(Path::new(path), contents.as_bytes()).map_err(write_error)?;
   result.remove(field);
   result.insert("out".to_string(), Value::String(path.to_string()));
   Ok(())
@@ -5809,7 +5806,7 @@ fn copy_visual_artifact(
   let read_error = |error| format!("Unable to read the staged {subject} at {staged_path}: {error}");
   let write_error = |error| format!("Unable to write the {subject} to {out}: {error}");
   let mut source = fs::File::open(&staged_path).map_err(read_error)?;
-  let mut destination = AtomicWriteFile::open(out).map_err(write_error)?;
+  let mut destination = crate::profile::open_export(Path::new(out)).map_err(write_error)?;
   let mut hasher = Sha256::new();
   let mut bytes = 0;
   let mut buffer = [0; 64 * 1024];
@@ -10738,6 +10735,33 @@ mod tests {
       })),
       error: None,
     }
+  }
+
+  #[cfg(unix)]
+  #[test]
+  fn document_and_visual_exports_preserve_destination_symlinks() {
+    let directory = tempfile::tempdir().unwrap();
+    let target = directory.path().join("target");
+    let output = directory.path().join("output");
+    let staged = directory.path().join("staged.mp4");
+    fs::write(&target, b"old").unwrap();
+    std::os::unix::fs::symlink(&target, &output).unwrap();
+
+    let mut report = ControlReport {
+      schema_version: CLI_SCHEMA_VERSION,
+      ok: true,
+      result: Some(serde_json::json!({"csv": "new csv"})),
+      error: None,
+    };
+    write_export_file(&mut report, output.to_str().unwrap(), "csv", "CSV", true).unwrap();
+    assert_eq!(fs::read(&target).unwrap(), b"new csv");
+    assert!(fs::symlink_metadata(&output).unwrap().is_symlink());
+
+    fs::write(&staged, b"new video").unwrap();
+    let mut report = recording_report(&staged, b"new video");
+    copy_visual_artifact(&mut report, output.to_str().unwrap(), true).unwrap();
+    assert_eq!(fs::read(&target).unwrap(), b"new video");
+    assert!(fs::symlink_metadata(&output).unwrap().is_symlink());
   }
 
   #[cfg(any(target_os = "linux", target_os = "macos"))]

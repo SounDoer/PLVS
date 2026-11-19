@@ -409,8 +409,8 @@ export function MeterRuntimeProvider({ children }) {
     if (!resultId) return null;
     return { sessionId: resultId, accepted };
   };
-  const restoreFileHistoryForControl = (sessionId) =>
-    reanalyzeFileForControl(sessionId, null, { kind: "restore" });
+  const restoreFileHistoryForControl = (sessionId, { beforeRun = null } = {}) =>
+    reanalyzeFileForControl(sessionId, null, { kind: "restore", beforeRun });
   const selectFile = (sessionId) => {
     display.clearNotice();
     display.setSelectedOffset(-1);
@@ -418,44 +418,41 @@ export function MeterRuntimeProvider({ children }) {
     display.clearAudio();
     ledger.select(sessionId);
   };
+  const resetFileDisplay = () => {
+    display.clearAudio();
+    display.setSelectedOffset(-1);
+    display.clock.resetTimer({ restart: false });
+    display.setShowClock(false);
+  };
   const removeFile = async (sessionId) => {
-    display.clearNotice();
+    if (sourceSelectionRef.current.mode === "file") display.clearNotice();
     const entry = fileHistory.sessionsById[sessionId];
     if (!entry) return false;
     const removedAnalyzingFile =
       fileHistory.analyzingFileId === sessionId || preparationRef.current?.sessionId === sessionId;
-    const clearedDisplay = fileHistory.activeFileId === sessionId || fileHistory.order.length <= 1;
 
     if (removedAnalyzingFile) {
       await stopFileAnalysis();
-    }
-    entry.intake?.reset?.();
-    if (clearedDisplay) {
-      display.clearAudio();
-      display.setSelectedOffset(-1);
-    }
-    if (removedAnalyzingFile) {
       ledger.clearRunRequest();
     }
+    entry.intake?.reset?.();
+    const clearedDisplay =
+      sourceSelectionRef.current.mode === "file" && activeFileIdRef.current === sessionId;
+    if (clearedDisplay) resetFileDisplay();
     ledger.remove(sessionId);
-    display.clock.resetTimer({ restart: false });
-    display.setShowClock(false);
     return clearedDisplay;
   };
   const clearFiles = async (afterStop) => {
     if (clearingFilesRef.current) return clearingFilesRef.current;
     const clearing = (async () => {
-      display.clearNotice();
+      if (sourceSelectionRef.current.mode === "file") display.clearNotice();
       await stopFileAnalysis();
       afterStop?.();
       for (const entry of Object.values(fileHistory.sessionsById)) {
         entry.intake?.reset?.();
       }
-      display.clearAudio();
-      display.setSelectedOffset(-1);
+      if (sourceSelectionRef.current.mode === "file") resetFileDisplay();
       ledger.clearAll();
-      display.clock.resetTimer({ restart: false });
-      display.setShowClock(false);
     })();
     clearingFilesRef.current = clearing;
     try {

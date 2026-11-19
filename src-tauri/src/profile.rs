@@ -581,6 +581,12 @@ pub fn write_text_file(path: String, contents: String) -> Result<(), String> {
 }
 
 pub(crate) fn write_export(path: &Path, contents: &[u8]) -> std::io::Result<()> {
+  let mut file = open_export(path)?;
+  file.write_all(contents)?;
+  file.commit()
+}
+
+pub(crate) fn open_export(path: &Path) -> std::io::Result<AtomicWriteFile> {
   // An existing symlink should keep redirecting exports to the same file.
   let destination = if fs::symlink_metadata(path).is_ok_and(|metadata| metadata.is_symlink()) {
     path.canonicalize()?
@@ -601,9 +607,7 @@ pub(crate) fn write_export(path: &Path, contents: &[u8]) -> std::io::Result<()> 
     Err(error) if error.kind() == std::io::ErrorKind::NotFound => {}
     Err(error) => return Err(error),
   }
-  let mut file = AtomicWriteFile::open(destination)?;
-  file.write_all(contents)?;
-  file.commit()
+  AtomicWriteFile::open(destination)
 }
 
 #[cfg(test)]

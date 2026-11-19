@@ -39,6 +39,43 @@ it("selects a track without starting until confirmation and reports unknown layo
   fireEvent.click(screen.getByRole("button", { name: "Analyze" }));
   expect(onConfirm).toHaveBeenCalledWith(2);
 });
+it("asks again with the replacement file's default track and prevents repeated confirmation", () => {
+  const onConfirm = vi.fn();
+  const onCancel = vi.fn();
+  const picker = (sha256, { busy = false, sourceChanged = false } = {}) => (
+    <UiNavigationProvider>
+      <FileAudioTrackDialog
+        selection={{
+          probe: {
+            path: "mix.mkv",
+            fileName: "mix.mkv",
+            selectedTrack: english,
+            audioTracks: [english, chinese],
+            sourceVersion: { sha256 },
+          },
+          busy,
+          sourceChanged,
+        }}
+        onConfirm={onConfirm}
+        onCancel={onCancel}
+      />
+    </UiNavigationProvider>
+  );
+  const { rerender } = render(picker("original"), { wrapper: BlockingEditorsProvider });
+  fireEvent.click(screen.getByRole("radio", { name: /Chinese/ }));
+  rerender(picker("original", { busy: true }));
+  const analyze = screen.getByRole("button", { name: "Analyze" });
+  expect(analyze.hasAttribute("disabled")).toBe(true);
+  fireEvent.click(analyze);
+  expect(onConfirm).not.toHaveBeenCalled();
+
+  rerender(picker("replacement", { sourceChanged: true }));
+  expect(screen.getByText(/the source file changed/i)).toBeTruthy();
+  expect(screen.getByRole("radio", { name: /English/ }).getAttribute("aria-checked")).toBe("true");
+  fireEvent.click(screen.getByRole("button", { name: "Analyze" }));
+  expect(onConfirm).toHaveBeenCalledExactlyOnceWith(english.index);
+});
+
 it("cancels without confirming or changing a result", () => {
   const onConfirm = vi.fn(),
     onCancel = vi.fn();

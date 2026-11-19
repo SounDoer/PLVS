@@ -10,8 +10,9 @@ PLVS analyzes files locally using bundled ffprobe and FFmpeg.
 If you leave File Mode while choosing a file, the pending selection is discarded.
 
 When a file contains multiple audio tracks, choose one in **Select Audio Track**, then choose
-**Analyze**. The default-marked track is selected initially. Cancelling leaves the current file
-and result unchanged. To choose another track, open or drop the file again; each track has its own
+**Analyze**. The default-marked track is selected initially. PLVS checks the source again on
+confirmation. If the file changed, PLVS uses its only audio track or asks you to choose again.
+Cancelling leaves the current file and result unchanged. To choose another track, open or drop the file again; each track has its own
 analysis entry. Reopening an unchanged file and track reuses its existing result when Dialogue
 Detection settings match. Otherwise, reopening analyzes it again in the same entry. Agent Control's
 `transport file analyze` follows the same rules and takes `--track <index>` for a file with several
