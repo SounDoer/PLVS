@@ -163,7 +163,7 @@ export function FeedbackContent({
         ) : null}
         {status === "error" ? (
           <span className="text-[length:var(--ui-fs-axis)] text-destructive">
-            Failed to send, please try again.
+            Feedback delivery could not be confirmed. You can try again.
           </span>
         ) : null}
         {status === "diagnostics-error" ? (

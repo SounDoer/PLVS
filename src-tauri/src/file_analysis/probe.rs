@@ -1,5 +1,8 @@
+use std::io::Read;
 use std::path::Path;
-use std::process::Command;
+use std::process::{Command, Stdio};
+
+use super::process::FileProcess;
 
 use crate::file_analysis::ffmpeg::locate::locate_sidecar;
 use crate::file_analysis::ffmpeg::probe::parse_ffprobe_media_json;
@@ -20,15 +23,17 @@ fn file_name_from_path(path: &Path) -> String {
 }
 
 pub fn probe_file(path: impl AsRef<Path>) -> Result<FileAnalysisProbeResult, String> {
-  probe_file_until(path, || false)?.ok_or_else(|| "File probing was cancelled".to_string())
+  probe_file_with_process(path, || false, &FileProcess::default())?
+    .ok_or_else(|| "File probing was cancelled".to_string())
 }
 
 /// `Ok(None)` when `should_stop` cancels the source fingerprint read.
-pub(crate) fn probe_file_until(
+pub(super) fn probe_file_with_process(
   path: impl AsRef<Path>,
   should_stop: impl Fn() -> bool,
+  process: &FileProcess,
 ) -> Result<Option<FileAnalysisProbeResult>, String> {
-  let Some(media) = probe_identified_media_file_until(path, should_stop)? else {
+  let Some(media) = probe_identified_media_file_until(path, should_stop, process)? else {
     return Ok(None);
   };
   let selected_track = media
@@ -53,27 +58,34 @@ pub(crate) fn probe_file_until(
 pub(crate) fn probe_identified_media_file(
   path: impl AsRef<Path>,
 ) -> Result<FileAnalysisMediaProbeResult, String> {
-  probe_identified_media_file_until(path, || false)?
+  probe_identified_media_file_until(path, || false, &FileProcess::default())?
     .ok_or_else(|| "File probing was cancelled".to_string())
 }
 
 fn probe_identified_media_file_until(
   path: impl AsRef<Path>,
   should_stop: impl Fn() -> bool,
+  process: &FileProcess,
 ) -> Result<Option<FileAnalysisMediaProbeResult>, String> {
   let path = path.as_ref();
   let Some(source_version) = super::source_identity::identify_source_until(path, should_stop)?
   else {
     return Ok(None);
   };
-  let mut media = probe_media_file(path)?;
+  let mut media = probe_media_file_with_process(path, process)?;
   media.source_version = Some(source_version);
   Ok(Some(media))
 }
 
 /// Metadata only. Discovery (`plvs-cli probe`) does not read the whole file for a fingerprint.
 pub fn probe_media_file(path: impl AsRef<Path>) -> Result<FileAnalysisMediaProbeResult, String> {
-  let path = path.as_ref();
+  probe_media_file_with_process(path.as_ref(), &FileProcess::default())
+}
+
+fn probe_media_file_with_process(
+  path: &Path,
+  process: &FileProcess,
+) -> Result<FileAnalysisMediaProbeResult, String> {
   let path_str = path.to_string_lossy().to_string();
   let ffprobe = locate_sidecar("ffprobe");
 
@@ -89,18 +101,32 @@ pub fn probe_media_file(path: impl AsRef<Path>) -> Result<FileAnalysisMediaProbe
       "-show_streams",
       "-show_format",
     ])
-    .arg(&path_str);
+    .arg(&path_str)
+    .stdin(Stdio::null())
+    .stdout(Stdio::piped())
+    .stderr(Stdio::null());
   #[cfg(windows)]
   command.creation_flags(CREATE_NO_WINDOW);
 
-  let output = command
-    .output()
+  let mut child = process
+    .spawn(&mut command)
     .map_err(|err| format!("FFmpeg component missing or unrunnable: {err}"))?;
 
-  if !output.status.success() {
+  let mut output = Vec::new();
+  child
+    .stdout
+    .take()
+    .ok_or("ffprobe stdout unavailable")?
+    .read_to_end(&mut output)
+    .map_err(|err| format!("Unable to read media metadata: {err}"))?;
+  if !child
+    .wait()
+    .map_err(|err| format!("ffprobe did not exit cleanly: {err}"))?
+    .success()
+  {
     return Err("Unsupported or unreadable media file".to_string());
   }
 
-  let json = String::from_utf8_lossy(&output.stdout);
+  let json = String::from_utf8_lossy(&output);
   parse_ffprobe_media_json(&json, &path_str, &file_name_from_path(path))
 }

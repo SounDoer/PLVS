@@ -133,7 +133,7 @@ pub async fn visual_capture_capabilities() -> PlatformCapabilities {
 #[tauri::command]
 pub async fn visual_capture_screenshot(
   app: AppHandle,
-  artifact_store: State<'_, ArtifactStore>,
+  artifact_store: State<'_, Result<ArtifactStore, String>>,
   capture_state: State<'_, ScreenshotCaptureState>,
   request: ScreenshotRequest,
 ) -> Result<ArtifactMetadata, NativeCaptureError> {
@@ -154,7 +154,13 @@ pub async fn visual_capture_screenshot(
     ));
   }
 
-  let store = artifact_store.inner().clone();
+  let store = artifact_store
+    .inner()
+    .as_ref()
+    .map_err(|_| {
+      NativeCaptureError::artifact("The visual capture staging directory is unavailable.")
+    })?
+    .clone();
   let pending = store.begin(ArtifactKind::Screenshot).map_err(|_| {
     NativeCaptureError::artifact("The screenshot staging file could not be created.")
   })?;
@@ -219,11 +225,14 @@ fn output_canvas(request: &RecordingStartRequest) -> Result<(u32, u32), NativeCa
 #[tauri::command]
 pub async fn visual_recording_start(
   app: AppHandle,
-  artifact_store: State<'_, ArtifactStore>,
+  artifact_store: State<'_, Result<ArtifactStore, String>>,
   controller: State<'_, RecordingController>,
   _engine_state: State<'_, crate::state::AppState>,
   request: RecordingStartRequest,
 ) -> Result<RecordingSnapshot, NativeCaptureError> {
+  let artifact_store = artifact_store.inner().as_ref().map_err(|_| {
+    NativeCaptureError::artifact("The visual capture staging directory is unavailable.")
+  })?;
   if request.window_label != "main" {
     return Err(NativeCaptureError::recording(
       "targetUnavailable",
@@ -319,7 +328,7 @@ pub async fn visual_recording_start(
       }
     };
     let recording_id = created.recording_id.clone();
-    let store = artifact_store.inner().clone();
+    let store = artifact_store.clone();
     let registry = controller.registry().clone();
     let rect = request.rect;
     let viewport = request.viewport;
@@ -415,7 +424,7 @@ pub async fn visual_recording_start(
     };
     let recording_id = created.recording_id.clone();
     let session_recording_id = recording_id.clone();
-    let store = artifact_store.inner().clone();
+    let store = artifact_store.clone();
     let registry = controller.registry().clone();
     let measured_pcm = _engine_state.inner().measured_pcm.clone();
     let audio_origin_ns = measured_pcm.timestamp_ns();
@@ -563,7 +572,7 @@ pub async fn visual_recording_start(
       audio_receiver,
       request.audio_state.silence_reason(),
       pending,
-      artifact_store.inner().clone(),
+      artifact_store.clone(),
       controller.registry().clone(),
     )
     .map_err(|message| {

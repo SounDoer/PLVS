@@ -7,6 +7,8 @@ import { flushPersistence, settingsStore } from "../persistence/index.js";
 
 const PERSISTENCE_ERROR =
   "PLVS couldn't save your latest settings. The window was left open so you can retry or cancel.";
+const HIDE_ERROR = "PLVS couldn't hide the window. You can retry or cancel.";
+const QUIT_ERROR = "PLVS couldn't quit. You can retry or cancel.";
 const NOOP_ASYNC = async () => {};
 
 export function useCloseConfirm({ onHideWindow, onShowWindow = NOOP_ASYNC, closeBlocked = false }) {
@@ -31,33 +33,33 @@ export function useCloseConfirm({ onHideWindow, onShowWindow = NOOP_ASYNC, close
       closingRef.current = true;
       setCloseError(null);
       setClosing(true);
+      let failureMessage = PERSISTENCE_ERROR;
       try {
-        try {
-          if (dontAskAgain) {
-            await settingsStore.persist({ closeAction: action });
-            settingsStore.notifyLocal();
-          }
-          await flushPersistence();
-          if (action === "quit" && isTauri()) {
-            await invoke("runtime_retire_current_workspace");
-          }
-        } catch (error) {
-          console.error("Failed to flush persistence before closing PLVS", error);
-          await onShowWindow().catch((showError) => {
-            console.error("Failed to reveal the persistence error", showError);
-          });
-          setCloseError(PERSISTENCE_ERROR);
-          setDialogOpen(true);
-          return false;
+        if (dontAskAgain) {
+          await settingsStore.persist({ closeAction: action });
+          settingsStore.notifyLocal();
         }
-        setDialogOpen(false);
-        pendingActionRef.current = null;
+        await flushPersistence();
+        if (action === "quit" && isTauri()) {
+          await invoke("runtime_retire_current_workspace");
+        }
+        failureMessage = action === "tray" ? HIDE_ERROR : QUIT_ERROR;
         if (action === "tray") {
           await onHideWindow();
         } else {
           await exit(0);
         }
+        setDialogOpen(false);
+        pendingActionRef.current = null;
         return true;
+      } catch (error) {
+        console.error(failureMessage, error);
+        await onShowWindow().catch((showError) => {
+          console.error("Failed to reveal the close error", showError);
+        });
+        setCloseError(failureMessage);
+        setDialogOpen(true);
+        return false;
       } finally {
         closingRef.current = false;
         setClosing(false);

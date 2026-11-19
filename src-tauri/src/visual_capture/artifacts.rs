@@ -1,5 +1,5 @@
 use std::collections::HashSet;
-use std::fs::{self, File, OpenOptions};
+use std::fs::{self, File, OpenOptions, TryLockError};
 use std::io::{self, Read};
 use std::path::{Component, Path, PathBuf};
 use std::sync::{Arc, Mutex};
@@ -65,6 +65,7 @@ pub struct PendingArtifact {
   temporary_path: PathBuf,
   final_path: PathBuf,
   protected: Arc<Mutex<HashSet<PathBuf>>>,
+  _temporary_lease: File,
 }
 
 impl PendingArtifact {
@@ -105,8 +106,12 @@ impl ArtifactStore {
       protected: Arc::new(Mutex::new(HashSet::new())),
       warned: Arc::new(Mutex::new(HashSet::new())),
     };
-    store.cleanup_orphan_temporaries()?;
-    store.cleanup(SystemTime::now())?;
+    if let Err(error) = store.cleanup_orphan_temporaries() {
+      log::warn!("Unable to clean visual capture temporary files: {error}");
+    }
+    if let Err(error) = store.cleanup(SystemTime::now()) {
+      log::warn!("Unable to clean completed visual captures: {error}");
+    }
     Ok(store)
   }
 
@@ -115,6 +120,8 @@ impl ArtifactStore {
   }
 
   pub fn begin(&self, kind: ArtifactKind) -> io::Result<PendingArtifact> {
+    let temporary_lease = self.open_temporary_lease()?;
+    temporary_lease.lock_shared()?;
     for _ in 0..16 {
       let artifact_id = random_id("art")?;
       let final_path = self
@@ -140,6 +147,7 @@ impl ArtifactStore {
             temporary_path,
             final_path,
             protected: Arc::clone(&self.protected),
+            _temporary_lease: temporary_lease,
           });
         }
         Err(error) if error.kind() == io::ErrorKind::AlreadyExists => continue,
@@ -228,7 +236,23 @@ impl ArtifactStore {
     Ok(())
   }
 
+  fn open_temporary_lease(&self) -> io::Result<File> {
+    OpenOptions::new()
+      .read(true)
+      .write(true)
+      .create(true)
+      .truncate(false)
+      .open(self.root.join("temporary-artifacts.lock"))
+  }
+
   fn cleanup_orphan_temporaries(&self) -> io::Result<()> {
+    let lease = self.open_temporary_lease()?;
+    match lease.try_lock() {
+      Ok(()) => {}
+      // All workbenches share this directory. Leave temporary files alone while a writer is active.
+      Err(TryLockError::WouldBlock) => return Ok(()),
+      Err(TryLockError::Error(error)) => return Err(error),
+    }
     for entry in fs::read_dir(&self.root)? {
       let entry = entry?;
       let path = entry.path();
@@ -237,6 +261,9 @@ impl ArtifactStore {
         .and_then(|name| name.to_str())
         .is_some_and(|name| name.starts_with(".art-") && name.ends_with(".tmp"))
       {
+        if entry.file_type().is_ok_and(|kind| kind.is_dir()) {
+          continue;
+        }
         let contained = match self.contained_existing_path(&path) {
           Ok(contained) => contained,
           Err(error) if error.kind() == io::ErrorKind::NotFound => continue,
@@ -564,6 +591,36 @@ mod tests {
     ArtifactStore::initialize(&parent.0).unwrap();
     assert!(!orphan.exists());
     assert!(complete.exists());
+  }
+
+  #[test]
+  fn another_workbench_does_not_clean_an_active_recording_temporary() {
+    let parent = TestDirectory::new();
+    let first = ArtifactStore::initialize(&parent.0).unwrap();
+    let pending = first.begin(ArtifactKind::Recording).unwrap();
+    fs::write(pending.path(), b"recording").unwrap();
+
+    let second = ArtifactStore::initialize(&parent.0).unwrap();
+    assert_eq!(fs::read(pending.path()).unwrap(), b"recording");
+    drop(pending);
+    let orphan = first.root.join(".art-orphan.mp4.tmp");
+    fs::write(&orphan, b"interrupted").unwrap();
+    second.cleanup_orphan_temporaries().unwrap();
+    assert!(!orphan.exists());
+  }
+
+  #[test]
+  fn startup_skips_directories_named_like_temporary_artifacts() {
+    let parent = TestDirectory::new();
+    let root = parent.0.join(ARTIFACT_DIRECTORY);
+    let unexpected = root.join(".art-unexpected.mp4.tmp");
+    fs::create_dir_all(&unexpected).unwrap();
+    let orphan = root.join(".art-orphan.mp4.tmp");
+    fs::write(&orphan, b"interrupted").unwrap();
+
+    ArtifactStore::initialize(&parent.0).unwrap();
+    assert!(unexpected.is_dir());
+    assert!(!orphan.exists());
   }
 
   #[test]

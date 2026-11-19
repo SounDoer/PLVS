@@ -45,27 +45,29 @@ function fail(message) {
   process.exit(1);
 }
 
-function findRun(sha, requestId) {
+export function previewRunListArgs(branch) {
+  return [
+    "run",
+    "list",
+    "--repo",
+    REPOSITORY,
+    "--workflow",
+    "preview-build.yml",
+    "--branch",
+    branch,
+    "--event",
+    "workflow_dispatch",
+    "--limit",
+    "20",
+    "--json",
+    "databaseId,displayTitle,url",
+  ];
+}
+
+function findRun(branch, requestId) {
   for (let attempt = 0; attempt < 30; attempt += 1) {
-    const runs = JSON.parse(
-      capture("gh", [
-        "run",
-        "list",
-        "--repo",
-        REPOSITORY,
-        "--workflow",
-        "preview-build.yml",
-        "--commit",
-        sha,
-        "--event",
-        "workflow_dispatch",
-        "--limit",
-        "20",
-        "--json",
-        "databaseId,displayTitle,url",
-      ])
-    );
-    const run = runs.find((candidate) => candidate.displayTitle.includes(`(${requestId})`));
+    const runs = JSON.parse(capture("gh", previewRunListArgs(branch)));
+    const run = runs.find((candidate) => candidate.displayTitle.endsWith(`(${requestId})`));
     if (run) return run;
     Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 2000);
   }
@@ -116,10 +118,10 @@ if (process.argv[1] && pathToFileURL(process.argv[1]).href === import.meta.url) 
   console.log(`Dispatched preview-build.yml: platform=${platform} ${branch} @ ${sha}`);
   console.log(`Request id: ${requestId}`);
 
-  const run = findRun(sha, requestId);
+  const run = findRun(branch, requestId);
   if (!run) {
     fail(
-      `No run appeared yet. Find it with: gh run list --workflow=preview-build.yml --commit ${sha} --event workflow_dispatch (title contains ${requestId})`
+      `No run appeared yet. Find it with: gh run list --workflow=preview-build.yml --branch ${branch} --event workflow_dispatch (title ends with ${requestId})`
     );
   }
   console.log(`Run ${run.databaseId}: ${run.url}`);

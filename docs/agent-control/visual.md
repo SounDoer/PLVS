@@ -180,6 +180,8 @@ stable apps therefore do not share artifacts. Files are published atomically wit
 retention, then removed; cleanup also evicts the oldest completed files until staged usage is at most
 4 GiB. Active recording temporary files are not evicted. Copying with `--out` does not extend
 retention.
+If the staging directory is unavailable, PLVS still starts. Screenshot and recording requests
+report an artifact error until storage is available on the next launch.
 
 ## Desktop smoke
 

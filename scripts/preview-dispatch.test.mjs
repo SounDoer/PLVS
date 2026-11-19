@@ -1,7 +1,20 @@
 import { describe, expect, it } from "vitest";
-import { newRequestId, parsePreviewPlatform, remoteBranchSha } from "./preview-dispatch.mjs";
+import {
+  newRequestId,
+  parsePreviewPlatform,
+  previewRunListArgs,
+  remoteBranchSha,
+} from "./preview-dispatch.mjs";
 
 describe("preview dispatch", () => {
+  it("looks up workflow dispatches by branch independently of the build commit", () => {
+    const args = previewRunListArgs("codex/review");
+    expect(args.slice(args.indexOf("--branch"), args.indexOf("--branch") + 2)).toEqual([
+      "--branch",
+      "codex/review",
+    ]);
+    expect(args).not.toContain("--commit");
+  });
   it("defaults to every platform and accepts each single platform", () => {
     expect(parsePreviewPlatform([])).toBe("all");
     for (const platform of ["all", "windows", "macos", "linux"]) {

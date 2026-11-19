@@ -50,6 +50,19 @@ beforeEach(() => {
   vi.mocked(probeFileAnalysis).mockImplementation(async (path) => probe(path));
 });
 
+it("drops the batch session ID after its result is removed", async () => {
+  const { result, begin, rerender } = mountQueue();
+  act(() => result.current.enqueue(["one.wav"]));
+  await waitFor(() => expect(begin).toHaveBeenCalledOnce());
+  rerender({ busy: true });
+  rerender({ busy: false, sessions: [{ id: "one.wav", state: "complete" }] });
+  await waitFor(() => expect(result.current.active).toBe(false));
+  expect(result.current.sessionIds.has("one.wav")).toBe(true);
+
+  rerender({ busy: false, sessions: [] });
+  expect(result.current.sessionIds.has("one.wav")).toBe(false);
+});
+
 it("preserves an explicitly selected result until the running row is selected again", async () => {
   const { result, rerender, begin } = mountQueue([{ id: "displayed" }]);
   act(() => result.current.enqueue(["one.wav", "two.wav", "three.wav"]));

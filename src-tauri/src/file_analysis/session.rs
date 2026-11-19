@@ -1,7 +1,7 @@
 use std::io::Read;
 use std::path::Path;
 use std::process::{Command, Stdio};
-use std::sync::mpsc::{self, Receiver, Sender};
+use std::sync::Arc;
 use std::thread::{self, JoinHandle};
 
 use tauri::{AppHandle, Emitter, Manager};
@@ -9,13 +9,14 @@ use tauri::{AppHandle, Emitter, Manager};
 #[cfg(windows)]
 use std::os::windows::process::CommandExt;
 
+use super::process::FileProcess;
 use crate::dsp::speech::VadEngineKind;
 use crate::engine::MeterPipeline;
 use crate::file_analysis::ffmpeg::decode::{
   build_decode_args, bytes_to_f32_le_into, parse_out_time_us,
 };
 use crate::file_analysis::ffmpeg::locate::locate_sidecar;
-use crate::file_analysis::probe::{probe_file_until, probe_identified_media_file};
+use crate::file_analysis::probe::{probe_file_with_process, probe_identified_media_file};
 use crate::file_analysis::summary::FileAnalysisSummaryRun;
 use crate::file_analysis::types::{
   FileAnalysisProbeResult, FileAnalysisRunSettings, FileAnalysisSummaryMetrics,
@@ -179,7 +180,7 @@ fn snapshot_config(app: &AppHandle) -> WorkerConfig {
 }
 
 pub struct FileAnalysisSession {
-  stop_tx: Sender<()>,
+  process: Arc<FileProcess>,
   worker: Option<JoinHandle<()>>,
 }
 
@@ -197,13 +198,6 @@ pub(crate) fn validate_run_settings(settings: &FileAnalysisRunSettings) -> Resul
 }
 
 impl FileAnalysisSession {
-  pub fn new(stop_tx: Sender<()>, worker: JoinHandle<()>) -> Self {
-    Self {
-      stop_tx,
-      worker: Some(worker),
-    }
-  }
-
   pub fn start(
     path: String,
     probe: Option<FileAnalysisProbeResult>,
@@ -240,20 +234,25 @@ impl FileAnalysisSession {
       }
       None => snapshot_config(&app),
     };
-    let (stop_tx, stop_rx) = mpsc::channel();
+    let process = Arc::new(FileProcess::default());
+    let worker_process = Arc::clone(&process);
     let worker_path = path.clone();
     let worker = thread::Builder::new()
       .name("file-analysis-worker".into())
       .spawn(move || {
-        if let Err(message) = run_file_worker(
+        let result = run_file_worker(
           worker_path.clone(),
           probe,
           frame_subscribers,
           app.clone(),
-          stop_rx,
+          &worker_process,
           run_id.clone(),
           config,
-        ) {
+        );
+        if worker_process.is_cancelled() {
+          return;
+        }
+        if let Err(message) = result {
           let _ = app.emit(
             "file-analysis-error",
             FileAnalysisErrorPayload {
@@ -266,13 +265,16 @@ impl FileAnalysisSession {
       })
       .map_err(|err| format!("Unable to start file analysis worker: {err}"))?;
 
-    Ok(Self::new(stop_tx, worker))
+    Ok(Self {
+      process,
+      worker: Some(worker),
+    })
   }
 }
 
 impl Drop for FileAnalysisSession {
   fn drop(&mut self) {
-    let _ = self.stop_tx.send(());
+    self.process.cancel();
     if let Some(worker) = self.worker.take() {
       let _ = worker.join();
     }
@@ -378,13 +380,36 @@ pub(crate) fn analyze_file_core(
   path: &str,
   probe: Option<&FileAnalysisProbeResult>,
   config: &WorkerConfig,
+  on_frame: impl FnMut(AudioFramePayload) -> Result<(), String>,
+  on_progress: impl FnMut(FileAnalysisProgressPayload),
+  should_stop: impl Fn() -> bool,
+) -> Result<Option<(u64, FileAnalysisSummaryMetrics)>, String> {
+  analyze_file_with_process(
+    path,
+    probe,
+    config,
+    on_frame,
+    on_progress,
+    should_stop,
+    &FileProcess::default(),
+  )
+}
+
+fn analyze_file_with_process(
+  path: &str,
+  probe: Option<&FileAnalysisProbeResult>,
+  config: &WorkerConfig,
   mut on_frame: impl FnMut(AudioFramePayload) -> Result<(), String>,
   mut on_progress: impl FnMut(FileAnalysisProgressPayload),
   should_stop: impl Fn() -> bool,
+  process: &FileProcess,
 ) -> Result<Option<(u64, FileAnalysisSummaryMetrics)>, String> {
+  if should_stop() {
+    return Ok(None);
+  }
   let probe = match probe {
     Some(probe) if probe.path == path => probe.clone(),
-    _ => match probe_file_until(Path::new(path), &should_stop)? {
+    _ => match probe_file_with_process(Path::new(path), &should_stop, process)? {
       Some(probe) => probe,
       None => return Ok(None),
     },
@@ -411,8 +436,8 @@ pub(crate) fn analyze_file_core(
   #[cfg(windows)]
   command.creation_flags(CREATE_NO_WINDOW);
 
-  let mut child = command
-    .spawn()
+  let mut child = process
+    .spawn(&mut command)
     .map_err(|err| format!("FFmpeg component missing or unrunnable: {err}"))?;
 
   let mut stdout = child.stdout.take().ok_or("ffmpeg stdout unavailable")?;
@@ -443,53 +468,60 @@ pub(crate) fn analyze_file_core(
   let mut pcm: Vec<f32> = Vec::new();
   let mut read_buf = [0_u8; 64 * 1024];
 
-  loop {
+  let decode = (|| -> Result<bool, String> {
+    loop {
+      if should_stop() {
+        return Ok(false);
+      }
+      let n = stdout
+        .read(&mut read_buf)
+        .map_err(|err| format!("Unable to read decoded audio: {err}"))?;
+      if n == 0 {
+        break;
+      }
+
+      // Stitch any byte that straddles two reads onto the front of this chunk.
+      carry.extend_from_slice(&read_buf[..n]);
+      let usable = carry.len() - (carry.len() % 4);
+      bytes_to_f32_le_into(&carry[..usable], &mut pcm);
+      carry.drain(..usable);
+      if pcm.is_empty() {
+        continue;
+      }
+
+      pcm_chunker.push_pcm(&mut pipeline, &pcm, config, &mut on_frame)?;
+
+      if pcm_chunker.decoded_frames() - last_progress_emit_frames >= sample_rate as u64 {
+        last_progress_emit_frames = pcm_chunker.decoded_frames();
+        let out_us = latest_us.load(std::sync::atomic::Ordering::Relaxed);
+        let progress = duration_ms
+          .filter(|d| *d > 0)
+          .map(|d| ((out_us as f64 / 1000.0) / d as f64).clamp(0.0, 1.0));
+        on_progress(FileAnalysisProgressPayload {
+          run_id: None,
+          path: path.to_string(),
+          decoded_frames: pcm_chunker.decoded_frames(),
+          total_frames: None,
+          progress,
+        });
+      }
+    }
+
+    let status = child
+      .wait()
+      .map_err(|err| format!("ffmpeg did not exit cleanly: {err}"))?;
     if should_stop() {
-      let _ = child.kill();
-      let _ = child.wait();
-      let _ = stderr_thread.join();
-      return Ok(None);
+      return Ok(false);
     }
-    let n = stdout
-      .read(&mut read_buf)
-      .map_err(|err| format!("Unable to read decoded audio: {err}"))?;
-    if n == 0 {
-      break;
+    if !status.success() {
+      return Err("ffmpeg failed to decode the audio track".to_string());
     }
-
-    // Stitch any byte that straddles two reads onto the front of this chunk.
-    carry.extend_from_slice(&read_buf[..n]);
-    let usable = carry.len() - (carry.len() % 4);
-    bytes_to_f32_le_into(&carry[..usable], &mut pcm);
-    carry.drain(..usable);
-    if pcm.is_empty() {
-      continue;
-    }
-
-    pcm_chunker.push_pcm(&mut pipeline, &pcm, config, &mut on_frame)?;
-
-    if pcm_chunker.decoded_frames() - last_progress_emit_frames >= sample_rate as u64 {
-      last_progress_emit_frames = pcm_chunker.decoded_frames();
-      let out_us = latest_us.load(std::sync::atomic::Ordering::Relaxed);
-      let progress = duration_ms
-        .filter(|d| *d > 0)
-        .map(|d| ((out_us as f64 / 1000.0) / d as f64).clamp(0.0, 1.0));
-      on_progress(FileAnalysisProgressPayload {
-        run_id: None,
-        path: path.to_string(),
-        decoded_frames: pcm_chunker.decoded_frames(),
-        total_frames: None,
-        progress,
-      });
-    }
-  }
-
-  let status = child
-    .wait()
-    .map_err(|err| format!("ffmpeg did not exit cleanly: {err}"))?;
+    Ok(true)
+  })();
+  drop(child);
   let _ = stderr_thread.join();
-  if !status.success() {
-    return Err("ffmpeg failed to decode the audio track".to_string());
+  if !decode? {
+    return Ok(None);
   }
 
   pcm_chunker.flush(&mut pipeline, config, &mut on_frame)?;
@@ -537,12 +569,12 @@ fn run_file_worker(
   probe: Option<FileAnalysisProbeResult>,
   frame_subscribers: FrameSubscribers,
   app: AppHandle,
-  stop_rx: Receiver<()>,
+  process: &FileProcess,
   run_id: Option<String>,
   config: WorkerConfig,
 ) -> Result<(), String> {
   let mut seq = 0_u64;
-  let outcome = analyze_file_core(
+  let outcome = analyze_file_with_process(
     &path,
     probe.as_ref(),
     &config,
@@ -555,10 +587,11 @@ fn run_file_worker(
       progress.run_id = run_id.clone();
       let _ = app.emit("file-analysis-progress", progress);
     },
-    || stop_rx.try_recv().is_ok(),
+    || process.is_cancelled(),
+    process,
   )?;
 
-  if let Some((decoded_frames, summary)) = outcome {
+  if let Some((decoded_frames, summary)) = outcome.filter(|_| !process.is_cancelled()) {
     let _ = app.emit(
       "file-analysis-completed",
       FileAnalysisCompletedPayload {

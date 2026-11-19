@@ -100,6 +100,15 @@ export function useFileImportQueue({
   // publishes its UI state in the same turn, before another operation can take its slot.
   /* eslint-disable react-hooks/set-state-in-effect */
   useEffect(() => {
+    setSessionIds((previous) => {
+      const live = new Set(files.map((file) => file.id));
+      if (currentRef.current?.sessionId) live.add(currentRef.current.sessionId);
+      const next = new Set([...previous].filter((id) => live.has(id)));
+      return next.size === previous.size ? previous : next;
+    });
+  }, [files, current]);
+
+  useEffect(() => {
     if (!enabled) {
       setBrowsingResult(false);
       if (next || ready)

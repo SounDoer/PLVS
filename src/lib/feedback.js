@@ -5,12 +5,15 @@
  */
 
 const FEEDBACK_URL = "https://list.plvs.soundoer.com/feedback";
+const FEEDBACK_TIMEOUT_MS = 30_000;
 
 /**
  * @param {{ content: string, email?: string, diagnostics?: object }} input
  * @returns {Promise<boolean>}
  */
 export async function submitFeedback({ content, email, diagnostics }) {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), FEEDBACK_TIMEOUT_MS);
   try {
     const payload = { content, email };
     if (diagnostics !== undefined) payload.diagnostics = diagnostics;
@@ -18,9 +21,12 @@ export async function submitFeedback({ content, email, diagnostics }) {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload),
+      signal: controller.signal,
     });
     return res.ok;
   } catch {
     return false;
+  } finally {
+    clearTimeout(timeout);
   }
 }

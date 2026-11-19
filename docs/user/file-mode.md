@@ -24,6 +24,7 @@ current result intact. Missing sources do not remove results or reports already 
 Source versions use a content fingerprint taken when the file is opened and checked again after
 decoding; Cancel also stops a fingerprint read in progress. Completed
 duration comes from decoded audio frames; container duration is only a progress estimate.
+Cancel can stop an active decoder even while it is waiting for more data.
 
 The pill shows progress and **Cancel** while the current file is working, **Retry** after a
 failure, and the duration after success. **Result** returns from a selected

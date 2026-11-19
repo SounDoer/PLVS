@@ -207,7 +207,9 @@ describe("FeedbackDialog", () => {
     });
     fireEvent.click(screen.getByRole("button", { name: "Send" }));
 
-    expect(await screen.findByText("Failed to send, please try again.")).toBeTruthy();
+    expect(
+      await screen.findByText("Feedback delivery could not be confirmed. You can try again.")
+    ).toBeTruthy();
     expect(/** @type {HTMLInputElement} */ (screen.getByLabelText("Feedback content")).value).toBe(
       "Great app!"
     );

@@ -397,7 +397,10 @@ pub fn run() {
       std::fs::create_dir_all(&app_data_dir)
         .map_err(|error| format!("create app data directory: {error}"))?;
       let artifact_store = visual_capture::artifacts::ArtifactStore::initialize(&app_data_dir)
-        .map_err(|error| format!("agent artifact storage: {error}"))?;
+        .map_err(|error| {
+          log::warn!("Visual capture staging is unavailable: {error}");
+          error.to_string()
+        });
       app.manage(artifact_store);
       if !update_runtime::manage(app, &app_data_dir)? {
         return Ok(());

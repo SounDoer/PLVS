@@ -267,6 +267,24 @@ describe("useCloseConfirm", () => {
     expect(result.current.closeError).toBeNull();
   });
 
+  it("keeps the Retry action when the native hide fails", async () => {
+    const onHideWindow = vi
+      .fn()
+      .mockRejectedValueOnce(new Error("native hide failed"))
+      .mockResolvedValueOnce(undefined);
+    const { result } = renderHook(() => useCloseConfirm({ onHideWindow }));
+
+    await act(async () => {
+      await expect(result.current.requestCloseAction("tray")).resolves.toBe(false);
+    });
+    expect(result.current.dialogOpen).toBe(true);
+    expect(result.current.closeError).toContain("hide the window");
+
+    await act(() => result.current.handleRetry());
+    expect(onHideWindow).toHaveBeenCalledTimes(2);
+    expect(result.current.dialogOpen).toBe(false);
+  });
+
   it("handleConfirm with dontAskAgain=false does not write to localStorage", async () => {
     const { result } = renderHook(() => useCloseConfirm({ onHideWindow: vi.fn() }));
     await act(async () => {

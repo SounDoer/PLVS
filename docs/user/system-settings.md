@@ -63,6 +63,7 @@ Behavior** chooses whether closing the window keeps PLVS running in the system t
 Choosing **Don't ask again** in the close confirmation updates **Close Behavior** in Settings.
 Before either action, PLVS finishes saving pending settings. If saving fails, the window stays open
 and offers **Retry** or **Cancel**.
+If PLVS cannot hide or quit the window after saving, the close dialog offers the same retry.
 
 Quitting one additional workbench removes it from the next restore set. If a workbench crashes, its
 saved workspace remains recoverable instead of being treated as an intentional removal.
@@ -499,6 +500,8 @@ and workspace identifiers so the matching per-process log can be diagnosed. See 
 [Privacy Policy](https://plvs.soundoer.com/privacy/) for the exact contents, retention and
 deletion-request details. Feedback and crash-report prompts also link to that policy before any
 diagnostics are sent.
+If the feedback connection stops responding, PLVS reports that delivery could not be confirmed
+and keeps the draft available.
 
 **Attach Diagnostics** includes a timestamped app and window-state snapshot, recent Dock operations,
 and up to 500 log lines from the current run. The operation timeline can include the previous

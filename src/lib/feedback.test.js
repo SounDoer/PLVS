@@ -16,6 +16,7 @@ describe("submitFeedback", () => {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ content: "hello", email: "a@example.com" }),
+      signal: expect.any(AbortSignal),
     });
   });
 
@@ -45,4 +46,24 @@ describe("submitFeedback", () => {
     vi.stubGlobal("fetch", vi.fn().mockRejectedValue(new Error("network")));
     await expect(submitFeedback({ content: "hello" })).resolves.toBe(false);
   });
+});
+
+it("times out a feedback POST when the connection stops responding", async () => {
+  vi.useFakeTimers();
+  const fetch = vi.fn(
+    (_url, { signal }) =>
+      new Promise((_resolve, reject) => {
+        signal.addEventListener("abort", () => reject(signal.reason), { once: true });
+      })
+  );
+  vi.stubGlobal("fetch", fetch);
+  try {
+    const response = submitFeedback({ content: "Local fixture" });
+    await vi.advanceTimersByTimeAsync(30_000);
+    await expect(response).resolves.toBe(false);
+    expect(fetch.mock.calls[0][1].signal.aborted).toBe(true);
+  } finally {
+    vi.unstubAllGlobals();
+    vi.useRealTimers();
+  }
 });
