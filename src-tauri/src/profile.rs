@@ -18,12 +18,6 @@ const DEFAULT_TOGGLE_LIVE_CAPTURE_SHORTCUT: &str = "CmdOrCtrl+Shift+Space";
 const DEFAULT_TOGGLE_LIVE_SNAPSHOT_SHORTCUT: &str = "CmdOrCtrl+Shift+L";
 const STARTER_ITEMS_SEEDED_KEY: &str = "starterItemsSeeded";
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
-pub struct ProfileImportOptions {
-  pub include_window_bounds: bool,
-  pub include_capture_device: bool,
-}
-
 const DOMAIN_KEYS: [&str; 4] = [
   "plvs:settings",
   "plvs:workspace",
@@ -209,7 +203,7 @@ pub fn normalize_profile_for_store(profile: Value) -> Map<String, Value> {
   out
 }
 
-pub fn validate_profile_identity(profile: &Value) -> Result<(), String> {
+fn validate_profile(profile: &Value) -> Result<(), String> {
   let Some(obj) = profile.as_object() else {
     return Err("Choose a PLVS configuration file.".into());
   };
@@ -224,6 +218,18 @@ pub fn validate_profile_identity(profile: &Value) -> Result<(), String> {
   }
   if version > PROFILE_VERSION {
     return Err("This PLVS configuration file was made by a newer version.".into());
+  }
+  if !profile["settings"].is_object()
+    || !profile["workspace"].is_object()
+    || !profile["presets"]["list"].is_array()
+    || !profile["themes"]["themes"].is_object()
+    || profile["settings"]
+      .get("loudnessProfiles")
+      .is_some_and(|profiles| !profiles["profiles"].is_array())
+  {
+    return Err(
+      "This PLVS configuration is incomplete. Choose a complete configuration export.".into(),
+    );
   }
   Ok(())
 }
@@ -248,40 +254,6 @@ pub fn read_store_map(path: &Path) -> Result<Map<String, Value>, String> {
   }
 }
 
-pub fn write_store_map(path: &Path, map: &Map<String, Value>) -> Result<(), String> {
-  if let Some(parent) = path.parent() {
-    fs::create_dir_all(parent)
-      .map_err(|err| format!("Unable to create configuration directory: {err}"))?;
-  }
-  let contents = serde_json::to_string_pretty(map)
-    .map_err(|err| format!("Unable to serialize settings store: {err}"))?;
-  fs::write(path, format!("{contents}\n"))
-    .map_err(|err| format!("Unable to write settings store: {err}"))
-}
-
-pub fn build_profile_snapshot_from_store(store: &Map<String, Value>) -> Value {
-  let mut settings = store
-    .get("plvs:settings")
-    .cloned()
-    .unwrap_or_else(|| json!({}));
-  if let Some(settings) = settings.as_object_mut() {
-    settings.remove("quickTour");
-  }
-  json!({
-    "app": PROFILE_APP,
-    "kind": PROFILE_KIND,
-    "version": PROFILE_VERSION,
-    "exportedAt": chrono_like_utc_now(),
-    "settings": settings,
-    "workspace": store.get("plvs:workspace").cloned().unwrap_or_else(|| json!({})),
-    "presets": store.get("plvs:presets").cloned().unwrap_or_else(|| json!({})),
-    "themes": store.get("plvs:themes").cloned().unwrap_or_else(|| json!({})),
-    "windowBounds": store.get("windowBounds").cloned().unwrap_or(Value::Null),
-    "captureDeviceId": store.get("captureDeviceId").cloned().unwrap_or_else(|| json!("default")),
-    "keyboardShortcuts": normalize_keyboard_shortcuts(Some(store)),
-  })
-}
-
 fn profile_from_hydrated(mut hydrated: crate::persistence::HydratedWorkspace) -> Value {
   if let Some(settings) = hydrated.settings.as_object_mut() {
     settings.remove("quickTour");
@@ -296,28 +268,6 @@ fn profile_from_hydrated(mut hydrated: crate::persistence::HydratedWorkspace) ->
     "keyboardShortcuts": normalize_keyboard_shortcuts(Some(&hydrated.global_preferences
       .into_iter().collect::<Map<String, Value>>())),
   })
-}
-
-fn profile_snapshot_from_hydrated(hydrated: crate::persistence::HydratedWorkspace) -> Value {
-  let raw = profile_from_hydrated(hydrated);
-  json!({
-    "app": PROFILE_APP,
-    "kind": PROFILE_KIND,
-    "version": PROFILE_VERSION,
-    "exportedAt": chrono_like_utc_now(),
-    "settings": raw["settings"],
-    "workspace": raw["workspace"],
-    "presets": raw["presets"],
-    "themes": raw["themes"],
-    "windowBounds": raw["windowBounds"],
-    "captureDeviceId": raw["captureDeviceId"],
-    "keyboardShortcuts": raw["keyboardShortcuts"],
-  })
-}
-
-fn transactional_root_for_store_path(store_path: &Path) -> Option<PathBuf> {
-  let root = store_path.parent()?.join("multi-instance");
-  root.is_dir().then_some(root)
 }
 
 fn ordered_theme_documents(themes: &Value) -> Vec<Value> {
@@ -536,80 +486,6 @@ fn apply_profile_to_session(
   apply_profile_to_session_before_commit(session, profile, false, || Ok(()))
 }
 
-fn chrono_like_utc_now() -> String {
-  time::OffsetDateTime::now_utc()
-    .format(&time::format_description::well_known::Rfc3339)
-    .unwrap_or_else(|_| "1970-01-01T00:00:00Z".to_string())
-}
-
-/// Headless export of the installed configuration profile.
-pub fn export_profile_from_disk() -> Result<Value, String> {
-  let path = store_file_path()?;
-  if let Some(root) = transactional_root_for_store_path(&path) {
-    return crate::persistence::hydrate_workspace(&root, "default")
-      .map(profile_snapshot_from_hydrated);
-  }
-  let store = read_store_map(&path)?;
-  Ok(build_profile_snapshot_from_store(&store))
-}
-
-/// Headless import. By default skips machine-specific window bounds and capture device id.
-pub fn import_profile_to_disk(
-  profile: Value,
-  options: ProfileImportOptions,
-) -> Result<PathBuf, String> {
-  validate_profile_identity(&profile)?;
-  let path = store_file_path()?;
-  if let Some(root) = transactional_root_for_store_path(&path) {
-    let session = crate::persistence::WorkspacePersistenceSession::open(&root, "default")?;
-    apply_profile_to_session(&session, profile)?;
-    return Ok(root);
-  }
-  let mut store = read_store_map(&path)?;
-  let values = normalize_profile_for_store(profile);
-
-  for key in DOMAIN_KEYS {
-    store.insert(
-      key.to_string(),
-      values.get(key).cloned().unwrap_or_else(|| json!({})),
-    );
-  }
-
-  store.insert(
-    "keyboardShortcuts".into(),
-    values
-      .get("keyboardShortcuts")
-      .cloned()
-      .unwrap_or_else(default_keyboard_shortcuts),
-  );
-  store.remove("clearShortcut");
-  store.remove("clearGlobal");
-
-  if options.include_window_bounds {
-    match values.get("windowBounds") {
-      Some(Value::Null) | None => {
-        store.remove("windowBounds");
-      }
-      Some(value) => {
-        store.insert("windowBounds".into(), value.clone());
-      }
-    }
-  }
-
-  if options.include_capture_device {
-    store.insert(
-      "captureDeviceId".into(),
-      values
-        .get("captureDeviceId")
-        .cloned()
-        .unwrap_or_else(|| json!("default")),
-    );
-  }
-
-  write_store_map(&path, &store)?;
-  Ok(path)
-}
-
 #[tauri::command]
 pub fn export_profile(app: AppHandle) -> Result<Value, String> {
   let runtime = app.state::<crate::persistence::commands::PersistenceRuntime>();
@@ -636,7 +512,7 @@ pub fn export_profile(app: AppHandle) -> Result<Value, String> {
 
 #[tauri::command]
 pub fn import_profile(app: AppHandle, profile: Value) -> Result<(), String> {
-  validate_profile_identity(&profile)?;
+  validate_profile(&profile)?;
   let runtime = app.state::<crate::persistence::commands::PersistenceRuntime>();
   if runtime.is_installed() {
     return runtime.with_session_raw(|session| apply_profile_to_session(session, profile));
@@ -704,7 +580,7 @@ pub fn write_text_file(path: String, contents: String) -> Result<(), String> {
   write_export(Path::new(&path), contents.as_bytes()).map_err(|e| format!("write text file: {e}"))
 }
 
-fn write_export(path: &Path, contents: &[u8]) -> std::io::Result<()> {
+pub(crate) fn write_export(path: &Path, contents: &[u8]) -> std::io::Result<()> {
   // An existing symlink should keep redirecting exports to the same file.
   let destination = if fs::symlink_metadata(path).is_ok_and(|metadata| metadata.is_symlink()) {
     path.canonicalize()?
@@ -1112,8 +988,8 @@ mod tests {
 
   #[test]
   fn rejects_non_plvs_profiles() {
-    assert!(validate_profile_identity(&json!({ "app": "Other" })).is_err());
-    assert!(validate_profile_identity(&json!({
+    assert!(validate_profile(&json!({ "app": "Other" })).is_err());
+    assert!(validate_profile(&json!({
       "app": "PLVS",
       "kind": "configuration-profile",
       "version": 3
@@ -1122,12 +998,50 @@ mod tests {
   }
 
   #[test]
+  fn incomplete_profiles_do_not_replace_an_existing_library() {
+    let directory = tempfile::tempdir().unwrap();
+    let session =
+      crate::persistence::WorkspacePersistenceSession::open(directory.path(), "default").unwrap();
+    session
+      .library()
+      .create(
+        "preset",
+        "existing",
+        &json!({"id":"existing","name":"Existing"}),
+      )
+      .unwrap();
+    let header = json!({"app":"PLVS","kind":"configuration-profile","version":2});
+    assert!(validate_profile(&header)
+      .and_then(|()| apply_profile_to_session(&session, header))
+      .is_err());
+    drop(session);
+    let reopened =
+      crate::persistence::WorkspacePersistenceSession::open(directory.path(), "default").unwrap();
+    assert_eq!(
+      reopened.hydrate().unwrap().presets["list"][0]["id"],
+      "existing"
+    );
+    for version in [1, 2] {
+      assert!(validate_profile(&json!({
+        "app":"PLVS", "kind":"configuration-profile", "version":version,
+        "settings":{}, "workspace":{}, "presets":{"list":[]}, "themes":{"themes":{}}
+      }))
+      .is_ok());
+    }
+  }
+
+  #[test]
   fn agent_control_is_neither_exported_nor_imported() {
     use crate::agent_control::toggle::ENABLED_KEY;
 
-    let mut store = Map::new();
-    store.insert(ENABLED_KEY.into(), json!(true));
-    let snapshot = build_profile_snapshot_from_store(&store);
+    let directory = tempfile::tempdir().unwrap();
+    let session =
+      crate::persistence::WorkspacePersistenceSession::open(directory.path(), "default").unwrap();
+    session
+      .library()
+      .set_global_preference(ENABLED_KEY, 0, &json!(true))
+      .unwrap();
+    let snapshot = profile_from_hydrated(session.hydrate().unwrap());
     assert!(
       snapshot.get(ENABLED_KEY).is_none(),
       "a permission must not travel inside an exported configuration"

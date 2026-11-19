@@ -45,6 +45,8 @@ Get-Content backup.plvsconfig -Raw | npm run desktop:control -- config import - 
 Import validates and normalizes the complete document before the first write. It is revision
 guarded and is refused while a blocking editor is open, because replacing the complete setup would
 destroy that editor's draft.
+Missing required sections or malformed collection containers return `invalidConfiguration` and
+leave the existing configuration and Library intact.
 
 Dry-run performs validation and returns the normalized configuration without writing or
 relaunching. A successful real import replaces the same four domains and machine-specific siblings

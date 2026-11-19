@@ -247,6 +247,104 @@ describe("runtime coordination", () => {
     unmount();
   });
 
+  it("retains the recovery record when acknowledging a commit fails", async () => {
+    const commands = [{ commandId: "prepare", operationId: "op", action: "prepareGlobal" }];
+    const start = vi.fn().mockResolvedValue(undefined);
+    mocks.invoke.mockImplementation(async (name, params) => {
+      if (name === "runtime_poll_command") return commands.shift() ?? null;
+      if (
+        name === "runtime_ack_command" &&
+        params.commandId === "commit" &&
+        params.outcome === "completed"
+      )
+        throw new Error("Unable to write acknowledgement");
+    });
+    const { unmount } = renderHook(() =>
+      useRuntimeCoordination({
+        blockingEditors: [],
+        running: true,
+        stop: vi.fn().mockResolvedValue(undefined),
+        start,
+        show: vi.fn(),
+      })
+    );
+    await act(async () => {});
+    commands.push({ commandId: "commit", operationId: "op", action: "commitGlobal" });
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(250);
+    });
+    commands.push({ commandId: "abort", operationId: "op", action: "abortGlobal" });
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(250);
+    });
+    expect(mocks.exit).not.toHaveBeenCalled();
+    expect(start).toHaveBeenCalledOnce();
+    unmount();
+  });
+
+  it.each(["expired", "aborted"])(
+    "clears a %s preparation if Live cannot resume",
+    async (outcome) => {
+      const commands = [{ commandId: "prepare", operationId: "op", action: "prepareGlobal" }];
+      const start = vi.fn().mockRejectedValue(new Error("Source disconnected"));
+      const settings = vi.fn();
+      vi.spyOn(console, "warn").mockImplementationOnce(() => {});
+      mocks.invoke.mockImplementation(async (name) =>
+        name === "runtime_poll_command" ? (commands.shift() ?? null) : undefined
+      );
+      const { unmount } = renderHook(() =>
+        useRuntimeCoordination({
+          blockingEditors: [],
+          running: true,
+          stop: vi.fn().mockResolvedValue(undefined),
+          start,
+          show: vi.fn(),
+          actions: { settings },
+        })
+      );
+      await act(async () => {});
+      if (outcome === "aborted")
+        commands.push({ commandId: "abort", operationId: "op", action: "abortGlobal" });
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(31_000);
+      });
+      commands.push({ commandId: "settings", operationId: "open-settings", action: "settings" });
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(250);
+      });
+      expect(start).toHaveBeenCalledOnce();
+      expect(settings).toHaveBeenCalledOnce();
+      vi.mocked(console.warn).mockRestore();
+      unmount();
+    }
+  );
+
+  it("refuses a peer's preparation while installing an update", async () => {
+    const command = { commandId: "prepare", operationId: "op", action: "prepareGlobal" };
+    const stop = vi.fn();
+    mocks.invoke.mockImplementation(async (name) =>
+      name === "runtime_poll_command" ? command : undefined
+    );
+    const { unmount } = renderHook(() =>
+      useRuntimeCoordination({
+        blockingEditors: [],
+        running: true,
+        busy: true,
+        stop,
+        start: vi.fn(),
+        show: vi.fn(),
+      })
+    );
+    await act(async () => {});
+    expect(stop).not.toHaveBeenCalled();
+    expect(mocks.invoke).toHaveBeenCalledWith("runtime_ack_command", {
+      commandId: "prepare",
+      outcome: "blocked",
+      detail: "This workbench is installing an update.",
+    });
+    unmount();
+  });
+
   it.each([false, true])(
     "refuses a commit with an open editor (preparation expired: %s)",
     async (expired) => {

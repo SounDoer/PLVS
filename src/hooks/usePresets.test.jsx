@@ -164,7 +164,7 @@ describe("usePresets", () => {
 
     const saved = presetsStore.read().list[0];
     expect(saved).toMatchObject({
-      id: "preset-123",
+      id: expect.stringMatching(/^preset-[0-9a-f-]{36}$/),
       name: "Mixing",
       windowBounds: { x: 10, y: 20, width: 800, height: 600, isMaximized: false },
       windowPinned: true,
@@ -177,7 +177,94 @@ describe("usePresets", () => {
     expect(saved.panelOrder).toEqual(DEFAULT_WORKSPACE_STATE.panelOrder);
     expect(saved.panelOrder).not.toBe(DEFAULT_WORKSPACE_STATE.panelOrder);
     expect(saved.pinnedPanelsById).toEqual({});
-    expect(presetsStore.read().activeId).toBe("preset-123");
+    expect(presetsStore.read().activeId).toBe(saved.id);
+  });
+
+  it("assigns distinct IDs when two snapshots are saved at the same time", async () => {
+    const { result } = renderPresetHook();
+    await act(async () => {
+      await Promise.all([result.current.presets.save("One"), result.current.presets.save("Two")]);
+    });
+    const saved = presetsStore.read().list;
+    expect(saved.map(({ name }) => name)).toEqual(["One", "Two"]);
+    expect(new Set(saved.map(({ id }) => id)).size).toBe(2);
+  });
+
+  it.each(["save", "update"])(
+    "rechecks blocking editors immediately before %s writes a snapshot",
+    async (action) => {
+      mocks.isTauri.mockReturnValue(true);
+      let editorOpen = false;
+      const assertSceneOperationAllowed = () => {
+        if (editorOpen) throw new Error("Open editor");
+      };
+      const { result } = renderPresetHook({ assertSceneOperationAllowed });
+      let original;
+      await act(async () => {
+        original = await result.current.presets.save("Original");
+      });
+      const before = presetsStore.read();
+      let finishSnapshot = () => {};
+      mocks.currentWindowBounds.mockReturnValueOnce(
+        new Promise((resolve) => {
+          finishSnapshot = () => resolve({ x: 100, y: 200, width: 800, height: 600 });
+        })
+      );
+      await act(async () => {
+        const operation =
+          action === "save"
+            ? result.current.presets.save("Another")
+            : result.current.presets.update(original.id);
+        editorOpen = true;
+        finishSnapshot();
+        await expect(operation).rejects.toThrow("Open editor");
+      });
+      expect(presetsStore.read()).toEqual(before);
+    }
+  );
+
+  it("refuses a second preset application before changing the workspace", async () => {
+    let finishFirst = () => {};
+    const applyDockPreset = vi
+      .fn()
+      .mockReturnValueOnce(
+        new Promise((resolve) => {
+          finishFirst = () => resolve(undefined);
+        })
+      )
+      .mockResolvedValue(undefined);
+    const makePreset = (id, panel) => ({
+      id,
+      name: id,
+      tree: leaf([panel]),
+      panelsById: { [panel]: { id: panel, moduleId: panel } },
+      panelOrder: [panel],
+    });
+    presetsStore.patch({ list: [makePreset("one", "spectrum"), makePreset("two", "levelMeter")] });
+    const onApplyError = vi.fn();
+    const { result } = renderPresetHook({ applyDockPreset, onApplyError });
+    let first;
+    await act(async () => {
+      first = result.current.presets.apply("one");
+    });
+    expect(() => result.current.presets.activateSnapshot("two")).toThrow("already being applied");
+    await act(async () => {
+      await expect(result.current.presets.apply("two")).resolves.toBe(false);
+    });
+    expect(onApplyError).toHaveBeenCalledWith(
+      expect.objectContaining({ reason: "alreadyApplying" })
+    );
+    expect(result.current.workspace.state.tree).toEqual(leaf(["spectrum"]));
+    await act(async () => {
+      finishFirst();
+      await first;
+    });
+    expect(presetsStore.read().activeId).toBe("one");
+    await act(async () => {
+      await expect(result.current.presets.apply("two")).resolves.toBe(true);
+    });
+    expect(result.current.workspace.state.tree).toEqual(leaf(["levelMeter"]));
+    expect(presetsStore.read().activeId).toBe("two");
   });
 
   it.each([false, true])(

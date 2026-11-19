@@ -22,6 +22,16 @@ const TEST_PRESET = {
   loudnessProfileActive: "profile:test-profile",
 };
 
+const LEGACY_CONFIGURATION = {
+  app: "PLVS",
+  kind: "configuration-profile",
+  version: 1,
+  settings: {},
+  workspace: {},
+  presets: { list: [] },
+  themes: { themes: {} },
+};
+
 /** @param {{ tauri?: boolean, commandMocks?: any }} [options] */
 async function importProfileModule({ tauri = false, commandMocks = {} } = {}) {
   vi.resetModules();
@@ -180,7 +190,7 @@ describe("profile API", () => {
       await importProfileModule({ tauri: true, commandMocks });
 
     expect(await exportProfile()).toMatchObject({ settings: { referenceLufs: -20 } });
-    await importProfile({ app: "PLVS", kind: "configuration-profile", version: 1 });
+    await importProfile(LEGACY_CONFIGURATION);
     await reloadAfterProfileChange();
     await resetProfile();
 
@@ -244,7 +254,7 @@ describe("profile API", () => {
     };
     const { configurationRestartPending, importProfile, reloadAfterProfileChange, resetProfile } =
       await importProfileModule({ tauri: true, commandMocks: mocks });
-    await importProfile({ app: "PLVS", kind: "configuration-profile", version: 1 });
+    await importProfile(LEGACY_CONFIGURATION);
 
     await expect(reloadAfterProfileChange()).rejects.toThrow("peer failed");
     expect(configurationRestartPending()).toBe(true);
@@ -304,5 +314,19 @@ describe("profile API", () => {
     await reloadAfterProfileChange();
 
     expect(reload).toHaveBeenCalledTimes(1);
+  });
+
+  it("rejects an incomplete configuration before stopping workbenches or writing", async () => {
+    const prepareGlobalOperation = vi.fn();
+    const importProfileCommand = vi.fn();
+    const { importProfile } = await importProfileModule({
+      tauri: true,
+      commandMocks: { prepareGlobalOperation, importProfileCommand },
+    });
+    await expect(
+      importProfile({ app: "PLVS", kind: "configuration-profile", version: 2 })
+    ).rejects.toThrow("configuration is incomplete");
+    expect(prepareGlobalOperation).not.toHaveBeenCalled();
+    expect(importProfileCommand).not.toHaveBeenCalled();
   });
 });

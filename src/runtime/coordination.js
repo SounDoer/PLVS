@@ -59,8 +59,14 @@ async function recoverExpiredPreparations(current, prepared) {
   const now = performance.now();
   for (const [operationId, state] of prepared) {
     if (state.expiresAt > now) continue;
-    if (state.wasRunning) await current.start();
     prepared.delete(operationId);
+    if (state.wasRunning) {
+      try {
+        await current.start();
+      } catch (error) {
+        console.warn("Unable to resume Live capture after an expired workbench operation:", error);
+      }
+    }
   }
 }
 
@@ -115,6 +121,10 @@ async function handleRuntimeCommand(command, prepared) {
       return;
     }
     if (command.action === "prepareGlobal") {
+      if (current.busy) {
+        await acknowledge(command, "blocked", "This workbench is installing an update.");
+        return;
+      }
       if (prepared.has(command.operationId)) {
         prepared.get(command.operationId).expiresAt = performance.now() + PREPARED_LEASE_MS;
         await acknowledge(command, "ready");
@@ -141,8 +151,9 @@ async function handleRuntimeCommand(command, prepared) {
       return;
     }
     if (command.action === "abortGlobal") {
-      if (prepared.get(command.operationId)?.wasRunning) await current.start();
+      const preparation = prepared.get(command.operationId);
       prepared.delete(command.operationId);
+      if (preparation?.wasRunning) await current.start();
       await acknowledge(command, "completed");
       return;
     }
@@ -157,13 +168,17 @@ async function handleRuntimeCommand(command, prepared) {
         return;
       }
       await flushPersistence();
-      if (preparation.expiresAt <= performance.now() || current.blockingEditors.length) {
+      if (
+        preparation.expiresAt <= performance.now() ||
+        current.blockingEditors.length ||
+        current.busy
+      ) {
         await acknowledge(command, "blocked", "This workbench is no longer ready to close.");
         return;
       }
-      prepared.delete(command.operationId);
       await acknowledge(command, "completed");
       await exit(0);
+      prepared.delete(command.operationId);
     }
   } catch (error) {
     await acknowledge(command, "failed", failureDetail(error)).catch(() => {});
@@ -247,9 +262,9 @@ export async function prepareGlobalOperation() {
   if (refused) {
     await abortGlobalOperation({ id, issued, localWasRunning });
     throw new Error(
-      refused.outcome === "blocked"
-        ? `Another PLVS workbench has an open editor: ${refused.detail ?? refused.instanceId}`
-        : (refused.detail ?? "Another PLVS workbench could not prepare.")
+      refused.detail
+        ? `Another PLVS workbench could not prepare: ${refused.detail}`
+        : "Another PLVS workbench could not prepare."
     );
   }
   return { id, issued, localWasRunning };

@@ -804,6 +804,7 @@ fn emit_cli_failure(code: &str, message: &str, json: bool, exit_code: u8) -> Exi
   ExitCode::from(exit_code)
 }
 
+#[cfg(any(feature = "capture-harness", test))]
 fn emit_text(text: &str, out: Option<&str>, command: &str) -> Result<(), String> {
   if let Some(path) = out {
     fs::write(path, text).map_err(|err| format!("Failed to write {command} output: {err}"))?;
@@ -1001,13 +1002,9 @@ fn execute(command: CliCommand) -> ExitCode {
     },
     CliCommand::Doctor { json, out } => {
       let report = run_doctor();
-      if json {
+      let text = if json {
         match serialize_doctor_json(&report) {
-          Ok(json) => {
-            if let Err(err) = emit_json(&json, out.as_deref(), "doctor") {
-              return emit_cli_failure("outputWriteFailed", &err, true, 1);
-            }
-          }
+          Ok(json) => format!("{json}\n"),
           Err(err) => {
             return emit_cli_failure(
               "internalError",
@@ -1018,9 +1015,15 @@ fn execute(command: CliCommand) -> ExitCode {
           }
         }
       } else {
-        let text = render_doctor_text(&report);
-        if let Err(err) = emit_text(&text, out.as_deref(), "doctor") {
-          return emit_cli_failure("outputWriteFailed", &err, false, 1);
+        render_doctor_text(&report)
+      };
+      print!("{text}");
+      if let Some(path) = out {
+        if let Err(error) =
+          crate::profile::write_export(std::path::Path::new(&path), text.as_bytes())
+        {
+          eprintln!("Failed to write doctor output: {error}");
+          return ExitCode::FAILURE;
         }
       }
 

@@ -74,8 +74,10 @@ finish saving. The update package downloads before that interruption. A refusal 
 the update; a successful update closes the workbench set and restores it after relaunch. If the
 installer fails after peer workbenches have already closed, PLVS relaunches the current version so
 the saved set is restored instead of leaving those workbenches closed. If the coordinator itself
-disappears while workbenches are waiting at the save barrier, they resume any capture that the
-barrier stopped.
+disappears while workbenches are waiting at the save barrier, they attempt to resume any capture
+that the barrier stopped. If the source cannot restart, the workbench leaves the save barrier and
+reports the capture error. A workbench that is installing an update refuses a new request to
+prepare for shutdown from another workbench.
 If preparation expires or a draft opens before a workbench closes, it refuses the old close
 request. When an operation is canceled, workbenches that are still open can resume even if
 another workbench has already closed.
@@ -327,6 +329,7 @@ one configuration file instead: importing it replaces your whole setup and resta
 rather than merging. These operations move configuration only, never measurement data. With several
 workbenches open, PLVS first checks every workbench for an open draft, stops capture and saves before
 replacing shared data; the workbench where you chose Import receives the instance-owned fields.
+An incomplete configuration file is refused before any Workspace or Library data changes.
 When overwriting an export, PLVS replaces the existing file after the new contents are fully written.
 **Reset PLVS to Default** uses the same coordinated restart and restores a fresh installation.
 The local Agent Control switch keeps its current setting.

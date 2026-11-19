@@ -112,6 +112,7 @@ Read the message in Status first. If PLVS asks you to finish an open edit,
 save or cancel it before retrying. A Dock Preset needs Live mode and a
 platform where Dock is available. For a Preset that fails to apply in Dock,
 restore the main window and check the current layout before trying again.
+If another Preset is still being applied, wait for it to finish before retrying.
 If saving or applying still fails, send diagnostics with the Preset name,
 whether it came from a Shareset, and the action you tried.
 

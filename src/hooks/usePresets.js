@@ -328,7 +328,7 @@ export function usePresets({
       const trimmed = String(name ?? "").trim();
       if (!trimmed) return null;
       const preset = {
-        id: `preset-${Date.now()}`,
+        id: `preset-${crypto.randomUUID()}`,
         name: trimmed,
         ...snapshot,
       };
@@ -360,13 +360,23 @@ export function usePresets({
       const trimmed = String(name ?? "").trim();
       if (!trimmed) return null;
       const snapshot = await captureSnapshot();
+      assertSceneOperationAllowed(SCENE_OPERATIONS.presetSave);
       return saveSnapshot(trimmed, snapshot);
     },
     [assertSceneOperationAllowed, captureSnapshot, saveSnapshot]
   );
 
+  const applyingPresetRef = useRef(false);
+  const assertCanApplySnapshot = useCallback(() => {
+    assertSceneOperationAllowed(SCENE_OPERATIONS.presetApply);
+    if (applyingPresetRef.current) {
+      throw new SceneOperationUnavailableError(SCENE_OPERATIONS.presetApply, "alreadyApplying");
+    }
+  }, [assertSceneOperationAllowed]);
+
   const preflightApplySnapshot = useCallback(
     (id, { presetOverride = null } = {}) => {
+      assertCanApplySnapshot();
       const current = normalizePresets(presetsStore.read());
       const savedPreset = current.list.find((p) => p.id === id);
       const preset = presetOverride?.id === id ? presetOverride : savedPreset;
@@ -396,14 +406,11 @@ export function usePresets({
       }
       return { preset, presetDock };
     },
-    [dockPresetUnavailableReason]
+    [assertCanApplySnapshot, dockPresetUnavailableReason]
   );
 
-  const applySnapshot = useCallback(
-    async (id, { applyWorkspace = true, presetOverride = null } = {}) => {
-      const preflight = preflightApplySnapshot(id, { presetOverride });
-      if (!preflight) return false;
-      const { preset, presetDock } = preflight;
+  const applyPreparedSnapshot = useCallback(
+    async (id, { preset, presetDock }, applyWorkspace) => {
       if (applyWorkspace) {
         setView(presetWorkspaceView(preset));
       }
@@ -511,19 +518,33 @@ export function usePresets({
       applySurfaceOpacity,
       surfaceOpacity,
       applyLoudnessProfileSnapshot,
-      preflightApplySnapshot,
       write,
     ]
   );
 
+  const applySnapshot = useCallback(
+    async (id, { applyWorkspace = true, presetOverride = null } = {}) => {
+      const preflight = preflightApplySnapshot(id, { presetOverride });
+      if (!preflight) return false;
+      applyingPresetRef.current = true;
+      try {
+        return await applyPreparedSnapshot(id, preflight, applyWorkspace);
+      } finally {
+        applyingPresetRef.current = false;
+      }
+    },
+    [applyPreparedSnapshot, preflightApplySnapshot]
+  );
+
   const activateSnapshot = useCallback(
     (id) => {
+      assertCanApplySnapshot();
       const current = normalizePresets(presetsStore.read());
       if (!current.list.some((preset) => preset.id === id)) return false;
       write({ activeId: id });
       return true;
     },
-    [write]
+    [assertCanApplySnapshot, write]
   );
 
   const apply = useCallback(
@@ -560,6 +581,7 @@ export function usePresets({
     async (id) => {
       assertSceneOperationAllowed(SCENE_OPERATIONS.presetUpdate);
       const snapshot = await captureSnapshot();
+      assertSceneOperationAllowed(SCENE_OPERATIONS.presetUpdate);
       return updateSnapshot(id, snapshot);
     },
     [assertSceneOperationAllowed, captureSnapshot, updateSnapshot]

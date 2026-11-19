@@ -185,6 +185,17 @@ export function normalizeImportedProfile(raw) {
   if (raw.version > PROFILE_VERSION) {
     throw new ProfileValidationError("This PLVS configuration file was made by a newer version.");
   }
+  if (
+    !isPlainObject(raw.settings) ||
+    !isPlainObject(raw.workspace) ||
+    !Array.isArray(raw.presets?.list) ||
+    !isPlainObject(raw.themes?.themes) ||
+    ("loudnessProfiles" in raw.settings && !Array.isArray(raw.settings.loudnessProfiles?.profiles))
+  ) {
+    throw new ProfileValidationError(
+      "This PLVS configuration is incomplete. Choose a complete configuration export."
+    );
+  }
   const opts = typeof raw.exportedAt === "string" ? { exportedAt: raw.exportedAt } : undefined;
   return buildProfileSnapshot(raw, opts);
 }

@@ -13,7 +13,6 @@ pub mod cli_main;
 pub mod cli_manifest;
 mod cli_path;
 pub mod cli_probe;
-pub mod cli_profile;
 pub mod cli_report;
 pub mod coordinator;
 mod crash_report;

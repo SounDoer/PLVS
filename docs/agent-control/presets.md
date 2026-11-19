@@ -209,6 +209,8 @@ Preset Apply cannot promise absolute atomicity because Dock and window changes c
 system APIs that may fail at execution time. It instead performs a complete side-effect-free
 preflight first: editor safety, revision, target and snapshot validity, referenced-resource
 resolution, and every compatibility check that can be decided in advance.
+While a Preset application is in progress, another application is refused with
+`operationUnavailable` before changing the scene.
 
 An execution-time failure does not trigger an automatic rollback. The error reports
 `applicationFailed`, the failing `stage`, whether application was `partial`, the public paths already

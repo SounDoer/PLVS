@@ -123,6 +123,10 @@ describe("profileShape", () => {
       app: "PLVS",
       kind: "configuration-profile",
       version: 1,
+      settings: {},
+      workspace: {},
+      presets: { list: [] },
+      themes: { themes: {} },
       clearShortcut: "CmdOrCtrl+Alt+K",
       clearGlobal: true,
     });
@@ -216,6 +220,21 @@ describe("profileShape", () => {
         version: PROFILE_VERSION + 1,
       })
     ).toThrow("newer version");
+  });
+
+  it.each([
+    {},
+    { settings: {}, workspace: {}, presets: {}, themes: { themes: {} } },
+    { settings: {}, workspace: {}, presets: { list: [] }, themes: { themes: [] } },
+  ])("rejects missing or malformed configuration domains (%j)", (domains) => {
+    expect(() =>
+      normalizeImportedProfile({
+        app: "PLVS",
+        kind: "configuration-profile",
+        version: 2,
+        ...domains,
+      })
+    ).toThrow("configuration is incomplete");
   });
 
   it("falls back invalid capture device ids to default", () => {

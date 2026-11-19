@@ -50,6 +50,7 @@ export class SceneOperationBlockedError extends SceneOperationRefusedError {
 const UNAVAILABLE_MESSAGES = {
   "dock.enter:fileMode": "Dock is unavailable in FILE mode.",
   "preset.apply:fileMode": "Preset needs Dock, which is unavailable in FILE mode.",
+  "preset.apply:alreadyApplying": "A preset is already being applied. Try again when it finishes.",
 };
 
 const UNAVAILABLE_CODES = { fileMode: "fileModeActive" };

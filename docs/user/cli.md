@@ -560,9 +560,9 @@ The canonical v1 examples live in
 ```
 
 A completed report is a successful command even when it diagnoses an unhealthy installation. A
-report with a required check in `error` state therefore keeps `ok: true` and exits `1`. This is one
-of only two documented `ok: true` responses with a nonzero exit code; the other is a library export
-whose `--out` file could not be written, described under [Output Files](#output-files).
+report with a required check in `error` state therefore keeps `ok: true` and exits `1`.
+A failed `--out` write can also leave a complete response on stdout, as described under
+[Output Files](#output-files).
 
 ### Running-app queries and global revision
 
@@ -735,11 +735,13 @@ existing destination only after the new output is ready. An interrupted write le
 intact.
 For commands without `--out`, capture their clean JSON stdout programmatically.
 
+If `doctor --out` cannot replace its destination, the previous file is preserved. The full report
+still goes to stdout, the write error goes to stderr, and the command exits `1`.
+
 If an exported document cannot be written, the CLI prints one line on stderr and exits `1` while
 stdout still carries the full `ok: true` envelope, including `result.pack`,
 `result.configuration`, `result.report`, or `result.markdown` — the swap happens only after the bytes are on disk, so the export is
-recoverable from stdout without re-running the command. This is the second of the two documented
-`ok: true` responses with a nonzero exit code; the other is an unhealthy doctor report.
+recoverable from stdout without re-running the command.
 
 In Windows PowerShell 5.1, use `cmd` for byte-preserving redirection because PowerShell's `>`
 transcodes native output to UTF-16LE:
