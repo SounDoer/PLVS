@@ -33,6 +33,23 @@ describe("edgesFromViewport, live", () => {
 });
 
 describe("edgesFromViewport, file", () => {
+  it("uses the same recorded timestamps to display and edit media-time edges", () => {
+    const v = {
+      sourceMode: "file",
+      ...viewport(5, 5, 200),
+      history: { length: 200, timestampAt: (i) => i * 200 },
+    };
+    expect(edgesFromViewport(v)).toEqual({ left: 20, right: 30 });
+    expect(viewportFromEdges({ ...v, left: 20, right: 30 })).toEqual({
+      windowSec: 5,
+      offsetSec: 5,
+    });
+    expect(viewportFromEdges({ ...v, left: 10, right: 30 })).toEqual({
+      windowSec: 10,
+      offsetSec: 5,
+    });
+  });
+
   it("counts up from the left, matching the media-time labels", () => {
     const v = viewport(30, 0, 600);
     const { startSec, endSec } = mediaTimeAxisRangeSec(

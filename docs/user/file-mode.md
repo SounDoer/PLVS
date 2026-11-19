@@ -120,6 +120,9 @@ Analysis stays read-only and local to the current session. File history covers t
 does not use the Live **History Length** setting. Long files use fewer display checkpoints while
 remaining navigable from beginning to end.
 
+The time axis, **Time Range** fields, and chart hover readouts use positions measured from the
+start of the file. Hover readouts show the file time in `HH:MM:SS.mmm`.
+
 Changing Live History Length does not reset the File timeline's zoom, scroll, or selected time.
 Changing the Dialogue Detection engine in Settings also preserves File entries and results; a
 running analysis continues with the conditions captured when the run was requested, including

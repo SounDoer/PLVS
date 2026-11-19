@@ -42,7 +42,7 @@ import { useSharedTimeViewport } from "./workspace/useSharedTimeViewport.js";
 import { resolveAxisViewport, writeLocalRange } from "./workspace/axisViewports.js";
 import { getHistoryViewport } from "./math/historyMath.js";
 import { nearestTimestampIndex } from "./lib/snapshotResolve.js";
-import { latestHistoryTimestampMs } from "./lib/historyTimestamps.js";
+import { historyTimestampAt, latestHistoryTimestampMs } from "./lib/historyTimestamps.js";
 import { formatVectorscopePairLabel } from "./math/vectorscopePairMath.js";
 import {} from "./math/spectrumChannelOptions.js";
 import { getPeakMeterChannelLabels } from "./math/peakMeterChannelLabels.js";
@@ -648,7 +648,8 @@ function AppContent() {
             const index = nearestTimestampIndex(histSourceList, target);
             if (index < 0) return;
             const steps = totalSamples - 1 - index;
-            selectSnapshot(Math.max(0, latest - target) / 1000);
+            const timestamp = historyTimestampAt(histSourceList, index);
+            selectSnapshot(Math.max(0, latest - timestamp) / 1000);
 
             let sharedViewportHandled = false;
             for (const panelId of workspaceState.panelOrder) {
@@ -666,7 +667,7 @@ function AppContent() {
                   Math.min(viewport.windowSec, totalSamples * HIST_SAMPLE_SEC),
                   viewport.offsetSec,
                   HIST_SAMPLE_SEC,
-                  historyRetentionSec
+                  totalSamples * HIST_SAMPLE_SEC
                 );
               if (
                 steps >= effectiveOffsetSamples &&

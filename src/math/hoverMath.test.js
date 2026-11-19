@@ -77,6 +77,18 @@ describe("formatSpectrumFreq", () => {
 });
 
 describe("computeHistoryHoverPoint", () => {
+  it("uses the plotted checkpoint and its media time for File history", () => {
+    const rows = [
+      { timestampMs: 7100, m: -24, st: -24 },
+      { timestampMs: 7350, m: -18, st: -24 },
+      { timestampMs: 7700, m: -12, st: -24 },
+    ];
+    expect(computeHistoryHoverPoint(0.5, rows, 0, 3, 0.1, {}, ["momentary"], true)).toMatchObject({
+      momentary: -18,
+      offsetLabel: "00:00:07.350",
+    });
+  });
+
   const samples = [
     { m: -23, st: -24 },
     { m: -22, st: -23 },
@@ -154,6 +166,12 @@ describe("computeSpectrumHoverIndex", () => {
 });
 
 describe("computeWaveformHoverPoint", () => {
+  it("labels File waveform positions in media time between checkpoints", () => {
+    const history = [{ timestampMs: 10100 }, { timestampMs: 10500 }];
+    const point = computeWaveformHoverPoint(0.5, [[-1]], [[1]], 1, 0, 2, 0.1, ["L"], 0, 0, history);
+    expect(point.timeLabel).toBe("00:00:10.300");
+  });
+
   it("reads dBFS from the column under xFrac and time from the window", () => {
     const columns = 1000;
     const maxes = [new Array(columns).fill(0)];
@@ -210,6 +228,23 @@ describe("computeSpectrogramHoverPoint", () => {
     return out;
   };
   const snaps = viewOf(makeSnaps());
+
+  it("labels the File spectrogram cursor in media time even in a scrolled window", () => {
+    const point = computeSpectrogramHoverPoint(
+      0.5,
+      0.5,
+      snaps,
+      200,
+      800,
+      SMS,
+      [],
+      20,
+      20000,
+      2000,
+      true
+    );
+    expect(point.timeLabel).toBe("00:00:00.500");
+  });
 
   it("returns null for empty snaps array", () => {
     expect(computeSpectrogramHoverPoint(0.5, 0.5, viewOf([]), OLD, NEW, SMS)).toBeNull();

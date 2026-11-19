@@ -290,6 +290,7 @@ function WaveformPanelContent({
     : { left: showAxes ? WAVEFORM_CHART_LEFT : 0 };
   const {
     histSourceList,
+    sourceMode,
     waveformHistoryIndex,
     visualWaveformHist,
     visibleSamples,
@@ -417,12 +418,13 @@ function WaveformPanelContent({
             HIST_SAMPLE_SEC,
             labels,
             firstBucket,
-            lastBucket
+            lastBucket,
+            sourceMode === "file" ? waveformSourceList : null
           )
         : null,
     selectedOffset < 0
-      ? `${orientation}:${waveformHistoryWindow.startIndex}:${waveformHistoryWindow.endIndex}:${waveformHistoryWindow.startRow?.timestampMs ?? ""}:${waveformHistoryWindow.endRow?.timestampMs ?? ""}:${effectiveOffsetSamples ?? 0}:${visibleSamples ?? 0}:${bucketCount}:${fracPhase}:${firstBucket}:${lastBucket}`
-      : orientation
+      ? `${sourceMode}:${orientation}:${waveformHistoryWindow.startIndex}:${waveformHistoryWindow.endIndex}:${waveformHistoryWindow.startRow?.timestampMs ?? ""}:${waveformHistoryWindow.endRow?.timestampMs ?? ""}:${effectiveOffsetSamples ?? 0}:${visibleSamples ?? 0}:${bucketCount}:${fracPhase}:${firstBucket}:${lastBucket}`
+      : `${sourceMode}:${orientation}`
   );
   const [chartDragging, setChartDragging] = useState(null);
   const { isCtrlHover, notePointerMove, notePointerLeave } = useCtrlHoverState();

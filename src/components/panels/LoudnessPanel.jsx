@@ -43,6 +43,7 @@ export function LoudnessPanel({ showAxes: axesOverride, className } = {}) {
     historyTimeTicks,
     effectiveOffsetSec,
     histSourceList,
+    sourceMode,
     loudnessDisplayIndex,
     effectiveOffsetSamples,
     visibleSamples,
@@ -181,12 +182,13 @@ export function LoudnessPanel({ showAxes: axesOverride, className } = {}) {
             visibleSamples,
             HIST_SAMPLE_SEC,
             loudnessYRange,
-            loudnessHistoryVisibleLayerIds
+            loudnessHistoryVisibleLayerIds,
+            sourceMode === "file"
           )
         : null,
     selectedOffset < 0
-      ? `${orientation}:${totalSamples ?? 0}:${effectiveOffsetSamples}:${visibleSamples}:${loudnessYMinDb}:${loudnessYMaxDb}:${loudnessHistoryVisibleLayerIds.join(",")}`
-      : orientation
+      ? `${sourceMode}:${orientation}:${totalSamples ?? 0}:${effectiveOffsetSamples}:${visibleSamples}:${loudnessYMinDb}:${loudnessYMaxDb}:${loudnessHistoryVisibleLayerIds.join(",")}`
+      : `${sourceMode}:${orientation}`
   );
 
   return (

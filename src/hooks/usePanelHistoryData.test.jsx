@@ -99,6 +99,36 @@ describe("usePanelHistoryData", () => {
     expect(result.current.showSelLine).toBe(true);
   });
 
+  it.each(["loudness", "waveform", "spectrogram"])(
+    "labels a coarser File history by media time in %s",
+    (moduleId) => {
+      const { result } = renderHook(() => usePanelHistoryData(moduleId), {
+        wrapper: wrapperFor(
+          historyData({
+            sourceMode: "file",
+            histSourceList: { length: 100, timestampAt: (i) => (i + 1) * 200 },
+            historyOffsetSec: 0,
+          })
+        ),
+      });
+      expect(result.current.historyTimeTicks.at(-1)).toBe("20s");
+    }
+  );
+
+  it("keeps a File viewport wider than the Live history retention", () => {
+    const { result } = renderHook(() => usePanelHistoryData("loudness"), {
+      wrapper: wrapperFor(
+        historyData({
+          sourceMode: "file",
+          histSourceList: { length: 42000, timestampAt: (i) => i * 100 },
+          historyWindowSec: 3600,
+          historyMaxWindowSec: 1800,
+        })
+      ),
+    });
+    expect(result.current.clampedWindowSec).toBe(3600);
+  });
+
   it("leaves non-timeline panels on the global history data path", () => {
     const value = historyData({ captureCurrentSnapshot: vi.fn() });
     const { result } = renderHook(() => usePanelHistoryData("spectrum"), {

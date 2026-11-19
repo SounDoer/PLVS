@@ -104,6 +104,7 @@ import { createContext, useContext } from "react";
  *   selLineX: number,
  *   isHistoryHudVisible: boolean,
  *   historyTimeTicks: string[],
+ *   fileTimeRange: { startSec: number, endSec: number } | null,
  *   holdHistoryHud: (...args: any[]) => any,
  *   showHistoryHud: (...args: any[]) => any,
  *   onHistoryPointerDown: (...args: any[]) => any,

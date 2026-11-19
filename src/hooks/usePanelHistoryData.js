@@ -3,6 +3,7 @@ import { UI_PREFERENCES } from "../uiPreferences.js";
 import {
   buildHistoryTimeAxisLabels,
   buildMediaTimeAxisLabels,
+  buildFileHistoryTimeAxisLabels,
   getHistoryViewport,
   HISTORY_MAX_WINDOW_SEC,
   HISTORY_MIN_WINDOW_SEC,
@@ -12,7 +13,7 @@ import { useHistoryData } from "../workspace/AudioDataContext.jsx";
 import { HIST_SAMPLE_SEC } from "./useLoudnessHistory.js";
 import { useHistoryInteraction } from "./useHistoryInteraction.js";
 import { nearestTimestampIndex } from "../lib/snapshotResolve.js";
-import { latestHistoryTimestampMs } from "../lib/historyTimestamps.js";
+import { historyTimestampAt, latestHistoryTimestampMs } from "../lib/historyTimestamps.js";
 
 const TIMELINE_MODULE_IDS = new Set(["loudness", "spectrogram", "waveform"]);
 
@@ -51,7 +52,10 @@ export function usePanelHistoryData(moduleId, axisViewportData = null, controls 
   }, [historyHudHold, isHudTimerActive, isTimelinePanel]);
 
   const totalSamples = historyData?.histSourceList?.length ?? 0;
-  const historyMaxWindowSec = historyData?.historyMaxWindowSec ?? HISTORY_MAX_WINDOW_SEC;
+  const fileHistory = historyData?.sourceMode === "file" ? historyData.histSourceList : null;
+  const historyMaxWindowSec = fileHistory
+    ? Math.max(HISTORY_MIN_WINDOW_SEC, totalSamples * HIST_SAMPLE_SEC)
+    : (historyData?.historyMaxWindowSec ?? HISTORY_MAX_WINDOW_SEC);
   const historyWindowSec =
     timeViewport?.windowSec ??
     historyData?.historyWindowSec ??
@@ -98,20 +102,24 @@ export function usePanelHistoryData(moduleId, axisViewportData = null, controls 
     },
     [axisViewportData, historyData]
   );
-  const fileMaxWindowSec = totalSamples * HIST_SAMPLE_SEC;
-  const effectiveWindowSec =
-    historyData?.sourceMode === "file" && totalSamples > 0
-      ? Math.min(historyWindowSec, fileMaxWindowSec)
-      : Math.min(historyWindowSec, historyMaxWindowSec);
   const viewport = getHistoryViewport(
     totalSamples,
-    effectiveWindowSec,
+    historyWindowSec,
     historyOffsetSec,
     HIST_SAMPLE_SEC,
     historyMaxWindowSec
   );
+  const fileTimeRange =
+    fileHistory?.length && moduleId === "spectrogram"
+      ? mediaTimeAxisRangeSec(
+          totalSamples,
+          viewport.effectiveOffsetSamples,
+          viewport.visibleSamples,
+          HIST_SAMPLE_SEC,
+          fileHistory
+        )
+      : null;
 
-  const fileHistory = historyData?.sourceMode === "file" ? historyData.histSourceList : null;
   const selectedFileIndex = fileHistory
     ? nearestTimestampIndex(fileHistory, historyData.selectedMediaTimestampMs)
     : -1;
@@ -124,18 +132,34 @@ export function usePanelHistoryData(moduleId, axisViewportData = null, controls 
   const selectTimelineSnapshot = useCallback(
     (/** @type {number} */ offsetSec) => {
       if (fileHistory?.length) {
-        const index = fileHistory.length - 1 - Math.round(offsetSec / HIST_SAMPLE_SEC);
-        const row =
-          typeof fileHistory.rowAt === "function" ? fileHistory.rowAt(index) : fileHistory[index];
+        const steps = Math.round(offsetSec / HIST_SAMPLE_SEC);
+        const index = fileHistory.length - 1 - steps;
+        const fraction = Math.max(
+          0,
+          Math.min(
+            1,
+            1 - (steps - viewport.effectiveOffsetSamples) / Math.max(1, viewport.visibleSamples - 1)
+          )
+        );
+        const time = fileTimeRange
+          ? 1000 *
+            (fileTimeRange.startSec + fraction * (fileTimeRange.endSec - fileTimeRange.startSec))
+          : historyTimestampAt(fileHistory, index);
         const latest = latestHistoryTimestampMs(fileHistory);
-        if (Number.isFinite(latest) && Number.isFinite(row?.timestampMs)) {
-          historyData.selectSnapshot((latest - row.timestampMs) / 1000);
+        if (Number.isFinite(latest) && Number.isFinite(time)) {
+          historyData.selectSnapshot((latest - time) / 1000);
           return;
         }
       }
       historyData?.selectSnapshot?.(offsetSec);
     },
-    [fileHistory, historyData]
+    [
+      fileHistory,
+      historyData,
+      fileTimeRange,
+      viewport.effectiveOffsetSamples,
+      viewport.visibleSamples,
+    ]
   );
   const hasValidSelection =
     historyData?.selectedOffset >= 0 &&
@@ -156,38 +180,23 @@ export function usePanelHistoryData(moduleId, axisViewportData = null, controls 
       : selectedHistSteps > lastVisibleSelectionStep
         ? "left"
         : null;
-  const selLineX = Math.max(
-    0,
-    Math.min(
-      600,
-      600 -
-        ((selectedHistSteps - viewport.effectiveOffsetSamples) /
-          Math.max(1, viewport.visibleSamples - 1)) *
-          600
-    )
-  );
+  const selectionFraction =
+    fileTimeRange && selectedFileIndex >= 0 && fileTimeRange.endSec > fileTimeRange.startSec
+      ? (historyData.selectedMediaTimestampMs / 1000 - fileTimeRange.startSec) /
+        (fileTimeRange.endSec - fileTimeRange.startSec)
+      : 1 -
+        (selectedHistSteps - viewport.effectiveOffsetSamples) /
+          Math.max(1, viewport.visibleSamples - 1);
+  const selLineX = 600 * Math.max(0, Math.min(1, selectionFraction));
 
-  const historyTimeTicks = useMemo(() => {
-    if (historyData?.sourceMode === "file") {
-      const { startSec, endSec } = mediaTimeAxisRangeSec(
-        totalSamples,
-        viewport.effectiveOffsetSamples,
-        viewport.visibleSamples,
-        HIST_SAMPLE_SEC
-      );
-      return buildMediaTimeAxisLabels(startSec, endSec);
-    }
-    return buildHistoryTimeAxisLabels(
-      viewport.effectiveOffsetSec,
-      viewport.visibleSamples * HIST_SAMPLE_SEC
-    );
-  }, [
-    historyData?.sourceMode,
-    totalSamples,
-    viewport.effectiveOffsetSamples,
-    viewport.effectiveOffsetSec,
-    viewport.visibleSamples,
-  ]);
+  const liveTimeTicks = useMemo(
+    () =>
+      buildHistoryTimeAxisLabels(
+        viewport.effectiveOffsetSec,
+        viewport.visibleSamples * HIST_SAMPLE_SEC
+      ),
+    [viewport.effectiveOffsetSec, viewport.visibleSamples]
+  );
 
   const interaction = useHistoryInteraction({
     orientation:
@@ -214,8 +223,19 @@ export function usePanelHistoryData(moduleId, axisViewportData = null, controls 
 
   if (!isTimelinePanel) return historyData;
 
+  const historyTimeTicks = fileTimeRange
+    ? buildMediaTimeAxisLabels(fileTimeRange.startSec, fileTimeRange.endSec)
+    : fileHistory
+      ? buildFileHistoryTimeAxisLabels(
+          fileHistory,
+          viewport.effectiveOffsetSamples,
+          viewport.visibleSamples,
+          HIST_SAMPLE_SEC
+        )
+      : liveTimeTicks;
   return {
     ...historyData,
+    historyMaxWindowSec,
     historyWindowSec,
     historyOffsetSec,
     setHistoryWindowSec,
@@ -230,6 +250,7 @@ export function usePanelHistoryData(moduleId, axisViewportData = null, controls 
     isHistoryHudVisible:
       (historyData?.running || historyData?.hasHistoryData) && (historyHudHold || isHudTimerActive),
     historyTimeTicks,
+    fileTimeRange,
     holdHistoryHud: interaction.holdHistoryHud,
     showHistoryHud: interaction.showHistoryHud,
     onHistoryPointerDown: interaction.onHistoryPointerDown,

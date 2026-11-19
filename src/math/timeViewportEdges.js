@@ -3,6 +3,7 @@ import {
   HISTORY_MIN_WINDOW_SEC,
   mediaTimeAxisRangeSec,
 } from "./historyMath";
+import { nearestTimestampIndex } from "../lib/snapshotResolve.js";
 
 // The time viewport is stored as a window length and an offset, but the settings row shows the two
 // numbers written at the ends of the rail -- and the rail runs in opposite directions depending on
@@ -21,13 +22,15 @@ export function edgesFromViewport({
   visibleSamples,
   effectiveOffsetSamples,
   sampleSec,
+  history = null,
 }) {
   if (sourceMode === "file") {
     const { startSec, endSec } = mediaTimeAxisRangeSec(
       totalSamples,
       effectiveOffsetSamples,
       visibleSamples,
-      sampleSec
+      sampleSec,
+      history
     );
     return { left: Math.round(startSec), right: Math.round(endSec) };
   }
@@ -45,9 +48,38 @@ export function viewportFromEdges({
   sourceMode,
   totalSamples,
   sampleSec,
+  history = null,
+  effectiveOffsetSamples = 0,
+  visibleSamples = 0,
   maxWindowSec = HISTORY_MAX_WINDOW_SEC,
 }) {
   const isFile = sourceMode === "file";
+  if (isFile && history?.length) {
+    const oldRight = totalSamples - 1 - effectiveOffsetSamples;
+    const oldLeft = Math.max(0, oldRight - visibleSamples + 1);
+    const current = edgesFromViewport({
+      sourceMode,
+      totalSamples,
+      visibleSamples,
+      effectiveOffsetSamples,
+      sampleSec,
+      history,
+    });
+    const start = Math.min(left, right);
+    const end = Math.max(left, right);
+    const first = start === current.left ? oldLeft : nearestTimestampIndex(history, start * 1000);
+    const last = end === current.right ? oldRight : nearestTimestampIndex(history, end * 1000);
+    if (first >= 0 && last >= first) {
+      const samples = Math.min(
+        totalSamples,
+        Math.max(Math.ceil(HISTORY_MIN_WINDOW_SEC / sampleSec), last - first + 1)
+      );
+      return {
+        windowSec: samples * sampleSec,
+        offsetSec: Math.min(totalSamples - samples, totalSamples - 1 - last) * sampleSec,
+      };
+    }
+  }
   // A range input can hand back its ends in either order. Reading the span as an absolute value
   // keeps that from becoming a negative window, which every consumer downstream would clamp
   // differently.

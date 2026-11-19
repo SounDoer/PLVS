@@ -5,6 +5,8 @@ import { inWindowRange } from "./spectrogramTimeline.js";
 import { STEREO_MAP_MODES } from "./stereoMapMath.js";
 import { nearestTimestampIndex } from "../lib/snapshotResolve.js";
 import { rowAt } from "../lib/historyRow.js";
+import { fileHistoryTimeAtFractionMs } from "./historyMath.js";
+import { formatClock } from "../hooks/useSessionTimer.js";
 
 /**
  * Formats a history hover age as a human-readable "X ago" string.
@@ -19,6 +21,13 @@ export function formatHoverOffset(sec) {
     return `${m}m ${rem.toFixed(rem >= 10 ? 0 : 1)}s ago`;
   }
   return `${s.toFixed(s >= 10 ? 0 : 1)}s ago`;
+}
+
+/** @param {number} ms */
+function formatFileHoverTime(ms) {
+  if (!Number.isFinite(ms)) return "-";
+  const rounded = Math.max(0, Math.round(ms));
+  return `${formatClock(rounded)}.${String(rounded % 1000).padStart(3, "0")}`;
 }
 
 /**
@@ -88,7 +97,8 @@ export function computeHistoryHoverPoint(
   visibleSamples,
   sampleSec,
   yRange = {},
-  visibleLayerIds = []
+  visibleLayerIds = [],
+  fileMode = false
 ) {
   if (!histSourceList.length) return null;
   const normalized = 1 - xFrac;
@@ -101,7 +111,7 @@ export function computeHistoryHoverPoint(
   const newest = rowAt(histSourceList, histSourceList.length - 1);
   let hoverIndex;
   let offsetSec;
-  if (newest && Number.isFinite(newest.timestampMs)) {
+  if (!fileMode && newest && Number.isFinite(newest.timestampMs)) {
     // Hovering past the earliest sample (window wider than the data collected so far) has no row
     // to show, same as the plain index path below -- nearestTimestampIndex would otherwise clamp.
     if (fromEndSamples > histSourceList.length - 1) return null;
@@ -125,7 +135,7 @@ export function computeHistoryHoverPoint(
     topPct: Number.isFinite(yValue) ? loudnessFromTopFrac(yValue, yRange) * 100 : null,
     momentary: Number.isFinite(point.m) ? point.m : null,
     shortTerm: Number.isFinite(point.st) ? point.st : null,
-    offsetLabel: formatHoverOffset(offsetSec),
+    offsetLabel: fileMode ? formatFileHoverTime(point.timestampMs) : formatHoverOffset(offsetSec),
   };
 }
 
@@ -155,7 +165,8 @@ export function computeWaveformHoverPoint(
   sampleSec,
   labels,
   firstBucket = 0,
-  lastBucket = Math.max(0, columns - 1)
+  lastBucket = Math.max(0, columns - 1),
+  fileHistory = null
 ) {
   if (!columns || columns === 0) return null;
   const col = Math.round(xFrac * Math.max(0, columns - 1));
@@ -166,7 +177,11 @@ export function computeWaveformHoverPoint(
   const offsetSec = Math.max(0, offsetFromEnd * sampleSec);
   return {
     leftPct: xFrac * 100,
-    timeLabel: formatHoverOffset(offsetSec),
+    timeLabel: fileHistory
+      ? formatFileHoverTime(
+          fileHistoryTimeAtFractionMs(fileHistory, effectiveOffsetSamples, visibleSamples, xFrac)
+        )
+      : formatHoverOffset(offsetSec),
     channels: labels.map((label, ch) => {
       const amplitude = Math.abs(maxes[ch]?.[col] ?? 0);
       return {
@@ -209,6 +224,7 @@ export function findMarkerNoteAtX(xFrac, markers, hitFrac = 0.015) {
  * @param {number} [minHz]
  * @param {number} [maxHz]
  * @param {number} [ageReferenceMs] newest master-history timestamp, including offscreen history
+ * @param {boolean} [fileMode] label the cursor in media time
  * @returns {{ leftPct: number, topPct: number, timeLabel: string, freqLabel: string, dbLabel: string, noteLabel?: string, markerNoteLabel?: string } | null}
  */
 export function computeSpectrogramHoverPoint(
@@ -221,7 +237,8 @@ export function computeSpectrogramHoverPoint(
   markerNotes,
   minHz = 20,
   maxHz = 20000,
-  ageReferenceMs = newestMs
+  ageReferenceMs = newestMs,
+  fileMode = false
 ) {
   if (!snaps || !snaps.length || !(newestMs > oldestMs)) return null;
 
@@ -273,7 +290,7 @@ export function computeSpectrogramHoverPoint(
   return {
     leftPct: xFrac * 100,
     topPct: yFrac * 100,
-    timeLabel: formatHoverOffset(offsetSec),
+    timeLabel: fileMode ? formatFileHoverTime(ts) : formatHoverOffset(offsetSec),
     freqLabel: formatSpectrumFreq(hz),
     dbLabel: Number.isFinite(db) ? `${db.toFixed(1)} dB` : "-",
     noteLabel: freqToNote(bands[lo]?.fCenter ?? hz),

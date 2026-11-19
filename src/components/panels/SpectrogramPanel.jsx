@@ -83,6 +83,7 @@ export function SpectrogramPanel({ showAxes: axesOverride, className } = {}) {
     historyTimeAxisHandlers,
     historyTimeAxisActive,
     historyTimeTicks,
+    fileTimeRange,
     sourceMode,
     running,
     getSpectrogramSnapsForKey,
@@ -336,12 +337,14 @@ export function SpectrogramPanel({ showAxes: axesOverride, className } = {}) {
   // live mode, so a useMemo keyed on it never recomputes as data arrives and would freeze the
   // window at its first (empty -> NaN) value. spectrogramTimeWindow is O(1), so recomputing each
   // render is free and keeps the window advancing with live capture.
-  const timeWindow = spectrogramTimeWindow(
-    histSourceList ?? [],
-    effectiveOffsetSamples,
-    visibleSamples,
-    HIST_SAMPLE_SEC * 1000
-  );
+  const timeWindow = fileTimeRange
+    ? { oldestMs: fileTimeRange.startSec * 1000, newestMs: fileTimeRange.endSec * 1000 }
+    : spectrogramTimeWindow(
+        histSourceList ?? [],
+        effectiveOffsetSamples,
+        visibleSamples,
+        HIST_SAMPLE_SEC * 1000
+      );
   const oldestMs = timeWindow?.oldestMs ?? NaN;
   const newestMs = timeWindow?.newestMs ?? NaN;
   const ageReferenceMs = latestHistoryTimestampMs(histSourceList) ?? newestMs;
@@ -424,9 +427,10 @@ export function SpectrogramPanel({ showAxes: axesOverride, className } = {}) {
       markerNotes,
       yMinFreq,
       yMaxFreq,
-      ageReferenceMs
+      ageReferenceMs,
+      sourceMode === "file"
     );
-  }, `${orientation}:${is3d}:${spectrogramSnaps.version}:${oldestMs}:${newestMs}:${ageReferenceMs}:${sampleMs}:${yMinFreq}:${yMaxFreq}:${visibleFrequencyMarkers.length}`);
+  }, `${sourceMode}:${orientation}:${is3d}:${spectrogramSnaps.version}:${oldestMs}:${newestMs}:${ageReferenceMs}:${sampleMs}:${yMinFreq}:${yMaxFreq}:${visibleFrequencyMarkers.length}`);
   const onSpectrogramChartPointerDown = useCallback(
     (e) => {
       if (is3d && e.button === 2) {

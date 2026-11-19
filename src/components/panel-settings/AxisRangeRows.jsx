@@ -88,6 +88,7 @@ export function TimeRangeRow() {
     totalSamples,
     visibleSamples,
     effectiveOffsetSamples,
+    histSourceList,
     historyMaxWindowSec,
     setHistoryWindowSec,
     setHistoryOffsetSec,
@@ -98,6 +99,7 @@ export function TimeRangeRow() {
     visibleSamples,
     effectiveOffsetSamples,
     sampleSec: HIST_SAMPLE_SEC,
+    history: histSourceList,
   };
   const { left, right } = edgesFromViewport(viewport);
 

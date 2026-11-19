@@ -1,4 +1,5 @@
 import { rowAt } from "../lib/historyRow.js";
+import { historyTimestampAt } from "../lib/historyTimestamps.js";
 
 export const HISTORY_MIN_WINDOW_SEC = 5;
 export const HISTORY_MAX_WINDOW_SEC = 7200;
@@ -49,35 +50,63 @@ export function buildHistoryTimeAxisLabels(historyOffsetSec, windowSec) {
  */
 export function buildMediaTimeAxisLabels(startSec, endSec) {
   const span = Math.max(0, endSec - startSec);
-  const ticks = [];
-  for (let i = 0; i <= HISTORY_TIME_TICK_STEPS; i++) {
-    const sec = Math.round(startSec + (span * i) / HISTORY_TIME_TICK_STEPS);
-    if (sec >= 60) {
-      const m = Math.floor(sec / 60);
-      const s = sec % 60;
-      ticks.push(`${m}m${s ? `${s}s` : ""}`);
-    } else {
-      ticks.push(`${sec}s`);
-    }
-  }
-  return ticks;
+  return makeMediaTimeTicks((fraction) => startSec + span * fraction);
+}
+
+function makeMediaTimeTicks(timeAtFraction) {
+  return Array.from({ length: HISTORY_TIME_TICK_STEPS + 1 }, (_, i) => {
+    const sec = Math.round(timeAtFraction(i / HISTORY_TIME_TICK_STEPS));
+    if (sec < 60) return `${sec}s`;
+    const m = Math.floor(sec / 60);
+    const s = sec % 60;
+    return `${m}m${s ? `${s}s` : ""}`;
+  });
+}
+
+/** Media time at a position on a row-indexed chart, including fractional positions between rows. */
+export function fileHistoryTimeAtFractionMs(history, offsetSamples, visibleSamples, fraction) {
+  const end = (history?.length ?? 0) - 1 - offsetSamples;
+  const position = end - (1 - fraction) * Math.max(0, visibleSamples - 1);
+  if (position < 0) return 0;
+  const index = Math.floor(position);
+  const left = historyTimestampAt(history, index);
+  const right = historyTimestampAt(history, Math.ceil(position));
+  if (!Number.isFinite(left) || !Number.isFinite(right)) return undefined;
+  return left + (right - left) * (position - index);
+}
+
+export function buildFileHistoryTimeAxisLabels(history, offsetSamples, visibleSamples, sampleSec) {
+  return makeMediaTimeTicks((fraction) => {
+    const time = fileHistoryTimeAtFractionMs(history, offsetSamples, visibleSamples, fraction);
+    const nominalIndex = history.length - 1 - offsetSamples - (1 - fraction) * (visibleSamples - 1);
+    return Number.isFinite(time) ? time / 1000 : Math.max(0, nominalIndex * sampleSec);
+  });
 }
 
 /**
- * Media-time range (seconds) covered by the visible history window, derived from sample indices.
- * File-mode history is uniformly sampled from media time 0, so sample index i maps to i * sampleSec.
+ * Media-time range (seconds) covered by the visible window. Use the nominal cadence for data
+ * without timestamps.
  * @returns {{ startSec: number, endSec: number }} oldest (left) and newest (right) visible media time
  * @param {number} totalSamples
  * @param {number} effectiveOffsetSamples
  * @param {number} visibleSamples
  * @param {number} sampleSec
+ * @param {any} [history]
  */
 export function mediaTimeAxisRangeSec(
   totalSamples,
   effectiveOffsetSamples,
   visibleSamples,
-  sampleSec
+  sampleSec,
+  history
 ) {
+  if (history?.length) {
+    const start = fileHistoryTimeAtFractionMs(history, effectiveOffsetSamples, visibleSamples, 0);
+    const end = fileHistoryTimeAtFractionMs(history, effectiveOffsetSamples, visibleSamples, 1);
+    if (Number.isFinite(start) && Number.isFinite(end)) {
+      return { startSec: start / 1000, endSec: end / 1000 };
+    }
+  }
   const endSec = Math.max(0, (totalSamples - 1 - effectiveOffsetSamples) * sampleSec);
   const startSec = Math.max(0, endSec - (visibleSamples - 1) * sampleSec);
   return { startSec, endSec };

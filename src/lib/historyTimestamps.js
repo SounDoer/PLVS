@@ -1,15 +1,13 @@
-/**
- * @param {any} list
- * @param {number} index
- */
-function rowAt(list, index) {
-  if (!list || list.length <= 0) return null;
-  return typeof list.rowAt === "function" ? list.rowAt(index) : list[index];
-}
+import { rowAt } from "./historyRow.js";
 
-/** @param {any} row */
-function finiteTimestamp(row) {
-  return Number.isFinite(row?.timestampMs) ? row.timestampMs : undefined;
+/** @param {number} index */
+export function historyTimestampAt(list, index) {
+  if (!list || index < 0 || index >= list.length) return undefined;
+  const ms =
+    typeof list.timestampAt === "function"
+      ? list.timestampAt(index)
+      : rowAt(list, index)?.timestampMs;
+  return Number.isFinite(ms) ? ms : undefined;
 }
 
 /**
@@ -19,7 +17,7 @@ function finiteTimestamp(row) {
  * @returns {number | undefined}
  */
 export function firstHistoryTimestampMs(list) {
-  return finiteTimestamp(rowAt(list, 0));
+  return historyTimestampAt(list, 0);
 }
 
 /**
@@ -29,5 +27,5 @@ export function firstHistoryTimestampMs(list) {
  * @returns {number | undefined}
  */
 export function latestHistoryTimestampMs(list) {
-  return finiteTimestamp(rowAt(list, (list?.length ?? 0) - 1));
+  return historyTimestampAt(list, (list?.length ?? 0) - 1);
 }
