@@ -120,9 +120,9 @@ and their timeline are unaffected. If the Live source changes before the reset c
 the saved History Length is reported as a partial change and the replacement source is preserved.
 
 The field is global, is not captured by Presets, does not dirty them, and is unaffected by draft
-editors. A reduction requires no extra force flag, matching the GUI, but both real and dry-run
-results include `historyRetentionReduced` with the previous and target values. The top-level
-`dryRun` value distinguishes a preview from an actual truncation. A no-op performs no trimming.
+editors. A change in Live requires `--allow-measurement-restart`. A reduction also reports
+`historyRetentionReduced` with the previous and target values in both real and dry-run results.
+A dry run performs no reset. A no-op needs no confirmation.
 
 ## Dialogue Detection engine
 
@@ -134,8 +134,9 @@ setting from Live runtime `dialogueDetection.requested`, `active`, and effective
 Changing the setting while no dialogue metrics request the runtime persists the new choice without
 starting VAD or restarting measurement. Changing it while Dialogue Detection is running invokes the
 whole-measurement restart needed to keep dialogue and overall loudness time windows coherent.
-The new detector and the reset take effect together at the Live engine's measurement boundary. A real mutation in that state requires `--allow-measurement-restart`; without it the
-side-effect-free command fails with `confirmationRequired`. Dry-run needs no flag and reports both
+The new detector and the reset take effect together at the Live engine's measurement boundary.
+A real mutation in that state requires `--allow-measurement-restart`; without it the side-effect-free
+command fails with `confirmationRequired`. Dry-run needs no flag and reports both
 `effects: ["measurementRestart"]` and the required flag. A successful confirmed result reports the
 same effect and waits for backend synchronization, restart, and Settings persistence. A no-op needs
 no confirmation. The field is not captured by Presets and is unaffected by draft editors.
