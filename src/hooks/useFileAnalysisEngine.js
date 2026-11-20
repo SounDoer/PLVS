@@ -15,6 +15,7 @@ import { INITIAL_METER_AUDIO } from "./useMeterDisplay.js";
 // cadence budgets; longer files retain complete coverage at a coarser display resolution.
 export const FILE_LOUDNESS_HISTORY_MAX_SAMPLES = 4 * 60 * 60 * 10;
 export const FILE_VISUAL_HISTORY_MAX_SAMPLES = 4 * 60 * 60 * 25;
+const FILE_DISPLAY_INTERVAL_MS = 1000 / 30;
 
 /** @param {number | null | undefined} durationMs */
 export function fileHistoryCapacities(durationMs) {
@@ -60,6 +61,7 @@ export function useFileAnalysisEngine({
       if (!canStop()) return false;
       const markCancelled = () => {
         run.cancelled = true;
+        run.cancelDisplay();
         const acceptance = fileAnalysisAcceptanceRef?.current.get(run.sessionId);
         fileAnalysisAcceptanceRef?.current.delete(run.sessionId);
         acceptance?.reject(new Error("File analysis was cancelled before acceptance"));
@@ -109,7 +111,16 @@ export function useFileAnalysisEngine({
 
     let mounted = true;
     const token = `${sessionId}:${runId}`;
+    let pendingDisplayAudio = null;
+    let displayTimer = null;
+    let nextDisplayAt = -Infinity;
+    const cancelDisplay = () => {
+      if (displayTimer !== null) clearTimeout(displayTimer);
+      displayTimer = null;
+      pendingDisplayAudio = null;
+    };
     const task = {
+      cancelDisplay,
       cancelled: false,
       terminal: false,
       startPromise: null,
@@ -123,10 +134,37 @@ export function useFileAnalysisEngine({
     const attemptAudioRef = { current: { ...INITIAL_METER_AUDIO } };
     let completed = null;
     let receivedSequence = 0;
+    const canPublishDisplay = () => shouldDriveDisplay() && selectedOffsetRef.current < 0;
+    const publishDisplay = () => {
+      const audio = pendingDisplayAudio;
+      cancelDisplay();
+      if (!audio || !active() || task.terminal || !canPublishDisplay()) return;
+      nextDisplayAt = performance.now() + FILE_DISPLAY_INTERVAL_MS;
+      setAudio(audio);
+    };
+    const queueDisplay = (audio) => {
+      if (!shouldDriveDisplay()) {
+        cancelDisplay();
+        return;
+      }
+      latestAudioRef.current = audio;
+      if (selectedOffsetRef.current >= 0) {
+        cancelDisplay();
+        return;
+      }
+
+      // The full frame has already reached the history intake. Only coalesce the screen update.
+      pendingDisplayAudio = audio;
+      if (displayTimer !== null) return;
+      const delay = nextDisplayAt - performance.now();
+      if (delay <= 0) publishDisplay();
+      else displayTimer = setTimeout(publishDisplay, Math.ceil(delay));
+    };
     const publishCompletion = () => {
       if (!active() || task.terminal || !completed) return;
       if (Number.isFinite(completed.finalSequence) && receivedSequence < completed.finalSequence)
         return;
+      publishDisplay();
       task.terminal = true;
       const payload = completed;
       updateFileSession(sessionId, (current) => ({
@@ -199,6 +237,7 @@ export function useFileAnalysisEngine({
           onFileAnalysisError((payload) => {
             if (!accepts(payload)) return;
             task.terminal = true;
+            cancelDisplay();
             const acceptance = fileAnalysisAcceptanceRef?.current.get(sessionId);
             fileAnalysisAcceptanceRef?.current.delete(sessionId);
             acceptance?.reject(new Error(payload.message));
@@ -224,11 +263,7 @@ export function useFileAnalysisEngine({
           intake,
           frameRef,
           defaultSampleRateRef,
-          setAudio: (next) => {
-            if (!shouldDriveDisplay()) return;
-            latestAudioRef.current = next;
-            if (selectedOffsetRef.current < 0) setAudio(next);
-          },
+          setAudio: queueDisplay,
           latestAudioRef: attemptAudioRef,
           ackFrames: () => {},
           shouldDriveDisplay: () => true,
@@ -266,6 +301,7 @@ export function useFileAnalysisEngine({
       } catch (err) {
         if (!active() || task.terminal) return;
         task.terminal = true;
+        cancelDisplay();
         const message = errorMessage(err, "File analysis unavailable");
         updateFileSession(sessionId, (current) => ({
           ...current,
@@ -296,6 +332,7 @@ export function useFileAnalysisEngine({
     return () => {
       mounted = false;
       task.cancelled = true;
+      cancelDisplay();
       void task.probeRequest?.cancel().catch(() => {});
       if (activeRunRef.current === task) activeRunRef.current = null;
       for (const unsub of unsubs) {

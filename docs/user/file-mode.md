@@ -30,6 +30,9 @@ Cancel can stop an active decoder even while it is waiting for more data.
 The pill shows progress and **Cancel** while the current file is working, **Retry** after a
 failure, and the duration after success. **Result** returns from a selected
 time without resetting zoom or scroll.
+While File analysis runs, live meter readings update up to 30 times per second and charts advance
+with the analysis. The timeline receives every analysis checkpoint, and the final result appears
+when analysis finishes.
 
 **Cancel** also stops the initial file read for Open, Reanalyze, and Restore History. If
 cancellation fails while the file is still being read or analyzed, PLVS continues to show its progress.

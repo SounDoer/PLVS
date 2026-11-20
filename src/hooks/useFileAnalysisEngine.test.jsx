@@ -169,6 +169,7 @@ beforeEach(() => {
 });
 
 afterEach(() => {
+  vi.useRealTimers();
   vi.clearAllMocks();
   delete (/** @type {HarnessWindow} */ (window).__fileApi);
   delete (/** @type {HarnessWindow} */ (window).__selectedOffsetRef);
@@ -257,6 +258,78 @@ describe("useFileAnalysisEngine", () => {
     expect(harness.__latestAudioRef.current).toBe(audio);
     expect(harness.__setAudio).toHaveBeenCalledTimes(1);
   });
+
+  it("ingests every frame and publishes the newest reading at the display boundary", async () => {
+    const { updateFileSession } = renderHarness();
+    await waitFor(() => expect(startFileAnalysis).toHaveBeenCalled());
+
+    const options = vi.mocked(buildTauriFrameApply).mock.calls[0][0];
+    const { applyFrame } = vi.mocked(buildTauriFrameApply).mock.results[0].value;
+    vi.mocked(applyFrame).mockImplementation((frame) => {
+      options.latestAudioRef.current = frame;
+      options.setAudio(frame);
+    });
+    const { onFrame } = vi.mocked(startFileAnalysis).mock.calls[0][0];
+    const { __setAudio: setAudio, __latestAudioRef: latest } = /** @type {HarnessWindow} */ (
+      window
+    );
+    const reading = (seq) => ({ seq, peakDb: [-seq] });
+
+    vi.useFakeTimers();
+    onFrame(reading(2));
+    vi.advanceTimersByTime(10);
+    onFrame(reading(3));
+    onFrame(reading(4));
+    vi.advanceTimersByTime(23);
+    expect(setAudio.mock.calls).toEqual([[reading(2)]]);
+    expect(latest.current).toEqual(reading(4));
+    vi.advanceTimersByTime(1);
+    expect(setAudio.mock.calls).toEqual([[reading(2)], [reading(4)]]);
+
+    eventCallbacks.completed({ path: "C:/mix/final.wav", finalSequence: 6, summary: {} });
+    onFrame(reading(5));
+    expect(setAudio).toHaveBeenCalledTimes(2);
+    expect(applySessionUpdater(updateFileSession).state).toBe("analyzing");
+    onFrame(reading(6));
+
+    expect(vi.mocked(applyFrame).mock.calls.slice(1)).toEqual(
+      [2, 3, 4, 5, 6].map((seq) => [reading(seq)])
+    );
+    expect(setAudio.mock.calls).toEqual([[reading(2)], [reading(4)], [reading(6)]]);
+    expect(applySessionUpdater(updateFileSession)).toMatchObject({
+      state: "complete",
+      audio: reading(6),
+    });
+    vi.runOnlyPendingTimers();
+    expect(setAudio).toHaveBeenCalledTimes(3);
+  });
+
+  it.each(["stop", "error", "source change", "snapshot"])(
+    "discards a queued display update on %s",
+    async (action) => {
+      const shouldDriveDisplay = vi.fn(() => true);
+      renderHarness({ shouldDriveDisplay });
+      await waitFor(() => expect(startFileAnalysis).toHaveBeenCalled());
+
+      const options = vi.mocked(buildTauriFrameApply).mock.calls[0][0];
+      const harness = /** @type {HarnessWindow} */ (window);
+      const first = { peakDb: [-12] };
+      const pending = { peakDb: [-6] };
+      vi.useFakeTimers();
+      options.setAudio(first);
+      options.setAudio(pending);
+
+      if (action === "stop") await harness.__fileApi.stop();
+      if (action === "error") {
+        eventCallbacks.error({ path: "C:/mix/final.wav", message: "decode failed" });
+      }
+      if (action === "source change") shouldDriveDisplay.mockReturnValue(false);
+      if (action === "snapshot") harness.__selectedOffsetRef.current = 0;
+
+      vi.advanceTimersByTime(34);
+      expect(harness.__setAudio.mock.calls).toEqual([[first]]);
+    }
+  );
 
   it("updates progress only for the targeted session id", async () => {
     const { updateFileSession } = renderHarness({ sessionId: "session-a" });
