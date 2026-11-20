@@ -115,8 +115,9 @@ reapply document sizing, and successful mutation waits for persistence.
 
 `historyRetentionSec` accepts only the numeric enum `1800`, `3600`, `7200`, or `14400`, with `3600`
 as the default. It does not accept numeric strings, clamp, or choose a nearest option. Changing it
-does not restart measurement or clear current statistics and maxima. Increasing retention cannot
-restore history already discarded; reducing it immediately discards rows older than the new limit.
+clears the current Live measurement and restarts its clock while capture continues. File results
+and their timeline are unaffected. If the Live source changes before the reset can be applied,
+the saved History Length is reported as a partial change and the replacement source is preserved.
 
 The field is global, is not captured by Presets, does not dirty them, and is unaffected by draft
 editors. A reduction requires no extra force flag, matching the GUI, but both real and dry-run
@@ -132,8 +133,8 @@ setting from Live runtime `dialogueDetection.requested`, `active`, and effective
 
 Changing the setting while no dialogue metrics request the runtime persists the new choice without
 starting VAD or restarting measurement. Changing it while Dialogue Detection is running invokes the
-existing whole-measurement restart needed to keep dialogue and overall loudness time windows
-coherent. A real mutation in that state requires `--allow-measurement-restart`; without it the
+whole-measurement restart needed to keep dialogue and overall loudness time windows coherent.
+The new detector and the reset take effect together at the Live engine's measurement boundary. A real mutation in that state requires `--allow-measurement-restart`; without it the
 side-effect-free command fails with `confirmationRequired`. Dry-run needs no flag and reports both
 `effects: ["measurementRestart"]` and the required flag. A successful confirmed result reports the
 same effect and waits for backend synchronization, restart, and Settings persistence. A no-op needs

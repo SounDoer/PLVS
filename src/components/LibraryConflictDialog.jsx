@@ -68,7 +68,7 @@ export function LibraryConflictDialog() {
       "The saved item changed while you were deleting it. Reload the Library before trying again.";
   } else if (collection) {
     description =
-      "Another PLVS workbench changed this list first. Reload the Library to see the saved list before trying again.";
+      "Another PLVS workbench changed this list first. Reload to get its order and save your compatible edits. If an item also conflicts, you can keep your version as a copy.";
   }
   useUiSurface({
     active: conflict !== null,

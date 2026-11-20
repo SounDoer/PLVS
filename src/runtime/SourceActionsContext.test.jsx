@@ -150,14 +150,31 @@ describe("SourceActionsProvider", () => {
     }
   );
 
-  it("still clears Live readings when the detector changes", async () => {
+  it("preserves File when a delayed History Length change belongs to an earlier Live source", async () => {
     const { result } = renderHook(
-      () => ({ assembly: useMeterRuntimeAssembly(), settings: useAppSettings() }),
+      () => ({
+        actions: useSourceActions(),
+        runtime: useMeterRuntime(),
+        settings: useAppSettings(),
+      }),
       { wrapper }
     );
-    act(() => result.current.assembly.display.setAudio((audio) => ({ ...audio, integrated: -23 })));
-    await act(async () => result.current.settings.setDialogueVadEngine("silero"));
-    expect(result.current.assembly.display.audio.integrated).toBe(-Infinity);
+    const target = result.current.runtime.liveClearTarget();
+    act(() => {
+      result.current.runtime.switchSource("file");
+      result.current.runtime.beginFileAnalysis("/tmp/mix.wav", {});
+    });
+    const id = result.current.runtime.activeFileId;
+    const epoch = result.current.actions.vectorscopeResetEpoch;
+    await act(async () => {
+      await expect(
+        result.current.actions.changeHistoryRetention(7200, { target, strict: true })
+      ).rejects.toThrow("source changed");
+    });
+    expect(result.current.settings.historyRetentionSec).toBe(7200);
+    expect(result.current.runtime.activeFileId).toBe(id);
+    expect(result.current.runtime.fileSessions).toHaveLength(1);
+    expect(result.current.actions.vectorscopeResetEpoch).toBe(epoch);
   });
 
   it.each([false, true])(

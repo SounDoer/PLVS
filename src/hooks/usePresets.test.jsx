@@ -190,6 +190,44 @@ describe("usePresets", () => {
     expect(new Set(saved.map(({ id }) => id)).size).toBe(2);
   });
 
+  it("preserves Workspace and Dock layouts if an editor opens during the native apply", async () => {
+    let editorOpen = false;
+    let completeDock = () => {};
+    const applyDockPreset = vi.fn(
+      () =>
+        new Promise((resolve) => {
+          completeDock = () => resolve(false);
+        })
+    );
+    const commitDockLayout = vi.fn();
+    const onApplyError = vi.fn();
+    const { result } = renderPresetHook({
+      applyDockPreset,
+      commitDockLayout,
+      onApplyError,
+      assertSceneOperationAllowed: () => {
+        if (editorOpen) throw new Error("Open editor");
+      },
+    });
+    let id;
+    await act(async () => {
+      id = (await result.current.presets.save("Original")).id;
+    });
+    const before = result.current.workspace.state;
+    await act(async () => {
+      const snapshot = presetsStore.read().list[0];
+      const attempt = result.current.presets.applySnapshot(id, {
+        presetOverride: { ...snapshot, dock: { enabled: true, edge: "bottom" } },
+      });
+      expect(applyDockPreset).toHaveBeenCalledOnce();
+      editorOpen = true;
+      completeDock();
+      await expect(attempt).rejects.toMatchObject({ stage: "scene", message: "Open editor" });
+    });
+    expect(commitDockLayout).not.toHaveBeenCalled();
+    expect(result.current.workspace.state).toBe(before);
+  });
+
   it.each(["save", "update"])(
     "rechecks blocking editors immediately before %s writes a snapshot",
     async (action) => {

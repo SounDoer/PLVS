@@ -274,7 +274,7 @@ async function apply(ctx) {
   } catch (error) {
     settlement.clear("workspace");
     settlement.clear("presets");
-    if (isSceneOperationRefused(error)) throw error;
+    if (isSceneOperationRefused(error) && !("stage" in error)) throw error;
     const actualPresets = live().presets;
     const actualSnapshot = await actualPresets.captureSnapshot();
     const presetState = {

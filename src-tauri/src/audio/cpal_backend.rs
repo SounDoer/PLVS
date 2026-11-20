@@ -795,7 +795,15 @@ pub(crate) fn run_meter_pipeline_bridge_thread(
     }
     if let Ok(request) = meter_resets.try_recv() {
       if !request.completion.is_closed() {
-        let result = apply_meter_reset(&mut pipeline, &frame_subscribers, &request);
+        let result = apply_meter_reset(
+          &mut pipeline,
+          &frame_subscribers,
+          request.kind,
+          request.request_id,
+          &channel_selection,
+          &dialogue_gating,
+          &dialogue_vad_engine,
+        );
         let _ = request.completion.try_send(result);
       }
     }
@@ -911,7 +919,11 @@ pub(crate) fn run_meter_pipeline_bridge_thread(
 fn apply_meter_reset(
   pipeline: &mut MeterPipeline,
   subscribers: &crate::ipc::types::FrameSubscribers,
-  request: &MeterResetRequest,
+  kind: MeterResetKind,
+  request_id: u32,
+  channel_selection: &Mutex<Option<crate::dsp::channel_layouts::ChannelSelection>>,
+  dialogue_gating: &Mutex<bool>,
+  dialogue_vad_engine: &Mutex<VadEngineKind>,
 ) -> Result<(), String> {
   let subscribers = subscribers
     .lock()
@@ -919,14 +931,40 @@ fn apply_meter_reset(
   let main = subscribers.get("main").ok_or("Live meter stream closed")?;
   // This marker shares the ordered frame channel, so the WebView applies the reset after
   // all older frames and before any newer frames. It does not occupy a frame sequence number.
-  let marker = serde_json::json!({ "meterReset": request.request_id }).to_string();
-  match request.kind {
+  let publish_marker = || {
+    let marker = serde_json::json!({ "meterReset": request_id }).to_string();
+    main
+      .send(tauri::ipc::InvokeResponseBody::Json(marker))
+      .map_err(|_| "Could not publish the Live meter reset".to_string())
+  };
+  match kind {
     MeterResetKind::History => pipeline.clear_peak_and_history(),
+    MeterResetKind::Rules {
+      channel_selection: selection,
+      dialogue_gating: gating,
+      dialogue_vad_engine: engine,
+    } => {
+      let mut channel_selection = channel_selection
+        .lock()
+        .map_err(|_| "channel selection lock poisoned")?;
+      let mut dialogue_gating = dialogue_gating
+        .lock()
+        .map_err(|_| "dialogue gating lock poisoned")?;
+      let mut dialogue_vad_engine = dialogue_vad_engine
+        .lock()
+        .map_err(|_| "dialogue engine lock poisoned")?;
+      // Validate the delivery before committing the new rules. The worker cannot emit a frame
+      // between this marker and the reset, and acknowledges the command after both are complete.
+      publish_marker()?;
+      *channel_selection = selection;
+      *dialogue_gating = gating;
+      *dialogue_vad_engine = engine;
+      pipeline.clear_peak_and_history();
+      return Ok(());
+    }
     MeterResetKind::TruePeakMax => pipeline.reset_true_peak_max(),
   }
-  main
-    .send(tauri::ipc::InvokeResponseBody::Json(marker))
-    .map_err(|_| "Could not publish the Live meter reset".to_string())
+  publish_marker()
 }
 
 /// Create a zero-filled output stream on the same device as capture. Windows keeps it for the

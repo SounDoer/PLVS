@@ -1,3 +1,4 @@
+import { UI_PREFERENCES } from "../uiPreferences.js";
 import { createContext, useCallback, useContext, useMemo, useState } from "react";
 import packageInfo from "../../package.json";
 import { useWorkspaceStore } from "../workspace/WorkspaceContext.jsx";
@@ -6,7 +7,6 @@ import { ShortcutSettingsProvider, useAppSettings } from "../settings/SettingsCo
 import { useLoudnessProfile } from "../hooks/LoudnessProfileContext.jsx";
 import { useFileAnalysisReportExport } from "../hooks/useFileAnalysisReportExport.js";
 import { useSourceTransportActions } from "../hooks/useSourceTransportActions.js";
-import { useDialogueEngineRestart } from "../hooks/useDialogueEngineRestart.js";
 import { useFileImport } from "../hooks/useFileImport.js";
 import { useFileImportQueue } from "../hooks/useFileImportQueue.js";
 import { isTauri } from "../ipc/env.js";
@@ -27,7 +27,8 @@ const EMPTY_FILE_SESSION = Object.freeze({ state: "empty" });
  * @typedef {ReturnType<typeof useSourceTransportActions> & {
  *   canClear: boolean,
  *   dispatchShortcut: (actionId: string) => any,
- *   changeHistoryRetention: (value: string | number) => Promise<boolean>,
+ *   changeHistoryRetention: (value: string | number, options?: { target?: any, strict?: boolean, reset?: boolean }) => Promise<boolean>,
+ *   resetLiveDisplayControls: (target: ReturnType<ReturnType<typeof useMeterRuntime>["liveClearTarget"]>) => void,
  *   fileSession: any,
  *   dialogueGating: boolean,
  *   currentFileAnalysisSettings: () => { dialogue: {
@@ -68,8 +69,9 @@ export function SourceActionsProvider({ children }) {
     startLive,
     stopLive,
     switchSource,
-    deferLiveClear,
     clearActiveSource,
+    clearLiveForControl,
+    liveClearTarget,
     beginFileAnalysis: beginRuntimeFileAnalysis,
     reanalyzeFile,
     selectFile,
@@ -88,7 +90,7 @@ export function SourceActionsProvider({ children }) {
   } = useMeterDisplayState();
   const canClear = sourceMode === "file" ? Boolean(activeFileSession) : running || showClock;
   const settings = useAppSettings();
-  const { dialogueVadEngine, setHistoryRetentionSec } = settings;
+  const { setHistoryRetentionSec } = settings;
   const fileDialogueDetection = settings.fileDialogueDetection === true;
   const loudnessProfile = useLoudnessProfile();
 
@@ -208,25 +210,43 @@ export function SourceActionsProvider({ children }) {
     if (actionId === "toggleLiveSnapshot") return actions.toggleLiveSnapshot();
     if (actionId === "clear") return canClear ? actions.clearAll() : false;
   };
-  const changeHistoryRetention = async (value) => {
-    const changed = setHistoryRetentionSec(value);
-    if (changed && sourceMode === "live") await actions.clearAll();
-    return changed;
-  };
-  useDialogueEngineRestart(
-    dialogueVadEngine,
-    dialogueGating,
-    sourceMode === "live",
-    actions.clearAll,
-    deferLiveClear
+  const resetLiveDisplayControls = useCallback(
+    (target) => {
+      const current = liveClearTarget();
+      if (current.selection !== target.selection || current.meter !== target.meter) return;
+      setHistoryOffsetSec(0);
+      setHistoryWindowSec(UI_PREFERENCES.modules.loudness.history.defaultWindowSec);
+      setVectorscopeResetEpoch((epoch) => epoch + 1);
+      setStereoMapResetEpoch((epoch) => epoch + 1);
+    },
+    [liveClearTarget, setHistoryOffsetSec, setHistoryWindowSec]
   );
-
+  const changeHistoryRetention = async (
+    value,
+    { target = liveClearTarget(), strict = false, reset = true } = {}
+  ) => {
+    const changed = setHistoryRetentionSec(value);
+    if (!changed || !reset || target.selection.mode !== "live") return changed;
+    try {
+      await clearLiveForControl(target);
+      resetLiveDisplayControls(target);
+    } catch (error) {
+      if (strict) throw error;
+      if (liveClearTarget().selection === target.selection) {
+        raiseNotice("error", "Could not clear the Live measurement", error.message, {
+          requiresAttention: true,
+        });
+      }
+    }
+    return true;
+  };
   return (
     <SourceActionsContext.Provider
       value={{
         ...actions,
         dispatchShortcut,
         changeHistoryRetention,
+        resetLiveDisplayControls,
         canClear,
         fileImport,
         fileQueue,

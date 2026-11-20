@@ -20,8 +20,10 @@ Saved Presets, Themes and Loudness Profiles remain one shared Library, so import
 item makes it available to every workbench without automatically applying it to their active
 measurement.
 If another workbench changes a shared list before your reorder or bulk edit is saved, choose
-**Reload** to see the saved list, then make the change again. Other Workspace changes continue to
-save while the list conflict is open.
+**Reload**. PLVS restores the saved list order and saves compatible item edits. For each item that
+both workbenches changed, you can keep the committed version with **Reload** or keep your edit with
+**Save as Copy**. Repeat any reorder or bulk removal you still want after reviewing the list.
+Other Workspace changes continue to save while the conflict is open.
 
 ## Split layout
 
@@ -55,8 +57,9 @@ placement, including the display. Older Presets keep their original pixel-based 
 updated. Sharesets and other portable Presets carry the layout without window placement.
 If PLVS cannot restore a Preset's normal window placement after changing its frame, it attempts to
 restore the previously configured frame. Workspace and Dock panel layouts are applied after their
-window operations succeed. If several native window changes are needed, an earlier one may already
-have succeeded when a later one fails.
+window operations succeed. If a blocking editor opens during those operations, PLVS preserves
+your draft and both layouts. Window placement or Dock mode may already have changed. Close the
+editor before applying the Preset again.
 
 Toolbar configuration entries such as Loudness Profile, Views, and Presets remain neutral while
 closed, even when their configuration is active. Hover and an open menu use the same neutral

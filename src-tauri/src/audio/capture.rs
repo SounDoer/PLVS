@@ -233,6 +233,11 @@ impl Drop for MeasuredPcmReceiver {
 
 pub enum MeterResetKind {
   History,
+  Rules {
+    channel_selection: Option<crate::dsp::channel_layouts::ChannelSelection>,
+    dialogue_gating: bool,
+    dialogue_vad_engine: crate::dsp::speech::VadEngineKind,
+  },
   TruePeakMax,
 }
 

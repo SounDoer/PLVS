@@ -4,136 +4,93 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { useRuntimeBackendSync } from "./useRuntimeBackendSync.js";
 
 const mocks = vi.hoisted(() => ({
-  isTauri: vi.fn(() => false),
+  isTauri: vi.fn(() => true),
   setAnalysisRequests: vi.fn(),
-  setChannelRoles: vi.fn(),
-  setDialogueGating: vi.fn(),
-  setDialogueVadEngine: vi.fn(),
 }));
 
-vi.mock("../ipc/env.js", () => ({
-  isTauri: mocks.isTauri,
-}));
+vi.mock("../ipc/env.js", () => ({ isTauri: mocks.isTauri }));
+vi.mock("../ipc/commands.js", () => ({ setAnalysisRequests: mocks.setAnalysisRequests }));
 
-vi.mock("../ipc/commands.js", () => ({
-  setAnalysisRequests: mocks.setAnalysisRequests,
-  setChannelRoles: mocks.setChannelRoles,
-  setDialogueGating: mocks.setDialogueGating,
-  setDialogueVadEngine: mocks.setDialogueVadEngine,
-}));
-
-function renderSync(props = {}) {
-  const initialProps = {
+function renderSync(overrides = {}) {
+  const target = { selection: { mode: "live" }, meter: {} };
+  const props = {
     analysisRequests: { spectrum: [], vectorscope: [] },
     channelRoles: null,
-    running: false,
-    dialogueGating: false,
+    channelCount: 2,
+    running: true,
+    ready: true,
+    dialogueGating: true,
     dialogueVadEngine: "silero",
-    ...props,
+    liveClearTarget: vi.fn(() => target),
+    clearLiveForControl: vi.fn().mockResolvedValue(true),
+    resetLiveDisplayControls: vi.fn(),
+    deferLiveClear: vi.fn(),
+    raiseNotice: vi.fn(),
+    ...overrides,
   };
-  return renderHook((hookProps) => useRuntimeBackendSync(hookProps), { initialProps });
-}
-
-async function flushPromises() {
-  await Promise.resolve();
+  return {
+    ...renderHook((hookProps) => useRuntimeBackendSync(hookProps), { initialProps: props }),
+    props,
+    target,
+  };
 }
 
 describe("useRuntimeBackendSync", () => {
   beforeEach(() => {
-    mocks.isTauri.mockReset().mockReturnValue(false);
+    mocks.isTauri.mockReset().mockReturnValue(true);
     mocks.setAnalysisRequests.mockReset().mockResolvedValue(undefined);
-    mocks.setChannelRoles.mockReset().mockResolvedValue(undefined);
-    mocks.setDialogueGating.mockReset().mockResolvedValue(undefined);
-    mocks.setDialogueVadEngine.mockReset().mockResolvedValue(undefined);
   });
 
-  it("does not send backend updates outside Tauri", async () => {
-    renderSync({
-      analysisRequests: { spectrum: [{ key: "s1" }], vectorscope: [] },
-      channelRoles: [1, 1],
-      running: true,
-      dialogueGating: true,
-      dialogueVadEngine: "webrtc",
-    });
-    await flushPromises();
-
+  it("does not send analysis requests outside Tauri", () => {
+    mocks.isTauri.mockReturnValue(false);
+    renderSync();
     expect(mocks.setAnalysisRequests).not.toHaveBeenCalled();
-    expect(mocks.setChannelRoles).not.toHaveBeenCalled();
-    expect(mocks.setDialogueGating).not.toHaveBeenCalled();
-    expect(mocks.setDialogueVadEngine).not.toHaveBeenCalled();
   });
 
-  it("syncs backend values in Tauri and exposes current refs", async () => {
-    mocks.isTauri.mockReturnValue(true);
-    const analysisRequests = { spectrum: [{ key: "s1" }], vectorscope: [] };
-    const channelRoles = [1, 0.5];
-
-    const { result } = renderSync({
-      analysisRequests,
-      channelRoles,
-      running: true,
-      dialogueGating: true,
-      dialogueVadEngine: "webrtc",
-    });
-    await flushPromises();
-
-    expect(mocks.setAnalysisRequests).toHaveBeenCalledWith(analysisRequests);
-    expect(mocks.setChannelRoles).toHaveBeenCalledWith(channelRoles);
-    expect(mocks.setDialogueGating).toHaveBeenCalledWith(true);
-    expect(mocks.setDialogueVadEngine).toHaveBeenCalledWith("webrtc");
-    expect(result.current.channelRolesRef.current).toBe(channelRoles);
-    expect(result.current.dialogueGatingRef.current).toBe(true);
-    expect(result.current.dialogueVadEngineRef.current).toBe("webrtc");
-  });
-
-  it("syncs channel roles while Live is stopped so File analysis can snapshot them", async () => {
-    mocks.isTauri.mockReturnValue(true);
-    const channelRoles = ["L", "R", "C", "LFE", "Lb", "Rb"];
-
-    renderSync({ channelRoles, running: false });
-    await flushPromises();
-
-    expect(mocks.setChannelRoles).toHaveBeenCalledWith(channelRoles);
-  });
-
-  it("deduplicates analysis request syncs until a send fails", async () => {
-    mocks.isTauri.mockReturnValue(true);
+  it("sends requests before Live starts so File can use them and retries a failed send", async () => {
     const analysisRequests = { spectrum: [{ key: "s1" }], vectorscope: [] };
     mocks.setAnalysisRequests.mockRejectedValueOnce(new Error("ipc failed")).mockResolvedValue();
-
-    const { rerender } = renderSync({ analysisRequests });
-    await flushPromises();
-    rerender({
-      analysisRequests: { spectrum: [{ key: "s1" }], vectorscope: [] },
-      channelRoles: null,
-      running: false,
-      dialogueGating: false,
-      dialogueVadEngine: "silero",
-    });
-    await flushPromises();
-
+    const { props, rerender } = renderSync({ analysisRequests, running: false });
+    await Promise.resolve();
+    rerender({ ...props, analysisRequests: { ...analysisRequests } });
     expect(mocks.setAnalysisRequests).toHaveBeenCalledTimes(2);
+    expect(mocks.setAnalysisRequests).toHaveBeenLastCalledWith(analysisRequests);
+    expect(props.clearLiveForControl).not.toHaveBeenCalled();
   });
 
-  it("exposes awaited backend setters for Agent Control", async () => {
-    mocks.isTauri.mockReturnValue(true);
-    const { result } = renderSync({ running: true, channelRoles: [1, 1] });
-    await flushPromises();
-    mocks.setChannelRoles.mockClear();
-    mocks.setDialogueVadEngine.mockClear();
-
-    await result.current.setChannelRolesForControl([1, 0]);
-    await result.current.setDialogueVadEngineForControl("firered");
-
-    expect(mocks.setChannelRoles).toHaveBeenCalledWith([1, 0]);
-    expect(mocks.setDialogueVadEngine).toHaveBeenCalledWith("firered");
-    expect(result.current.channelRolesRef.current).toEqual([1, 0]);
+  it("applies combined edits at one boundary and exposes only acknowledged rules", async () => {
+    const { result, props, target, rerender } = renderSync();
+    const roles = ["L", "R"];
+    await expect(
+      result.current.applyMeasurementRules({ channelRoles: roles, dialogueVadEngine: "firered" })
+    ).resolves.toBe(true);
+    rerender({ ...props, channelRoles: roles, dialogueVadEngine: "firered" });
+    expect(props.clearLiveForControl).toHaveBeenCalledExactlyOnceWith(target, {
+      channelRoles: roles,
+      dialogueGating: true,
+      dialogueVadEngine: "firered",
+    });
+    expect(props.resetLiveDisplayControls).toHaveBeenCalledExactlyOnceWith(target);
+    expect(result.current.channelRolesRef.current).toEqual(roles);
     expect(result.current.dialogueVadEngineRef.current).toBe("firered");
 
-    mocks.setDialogueVadEngine.mockRejectedValueOnce(new Error("ipc failed"));
-    await expect(result.current.setDialogueVadEngineForControl("silero")).rejects.toThrow(
-      "ipc failed"
-    );
+    props.clearLiveForControl.mockRejectedValueOnce(new Error("ipc failed"));
+    await expect(
+      result.current.applyMeasurementRules({ dialogueVadEngine: "silero" })
+    ).rejects.toThrow("ipc failed");
     expect(result.current.dialogueVadEngineRef.current).toBe("firered");
+    expect(props.resetLiveDisplayControls).toHaveBeenCalledTimes(1);
+  });
+
+  it("does not reset a replacement source and defers a File-mode edit to Live", async () => {
+    const { result, props, target } = renderSync();
+    const pending = result.current.applyMeasurementRules({ dialogueVadEngine: "firered" }, target);
+    props.liveClearTarget.mockReturnValue({ selection: { mode: "file" }, meter: {} });
+    await expect(pending).rejects.toThrow("source changed");
+    await expect(
+      result.current.applyMeasurementRules({ dialogueVadEngine: "firered" })
+    ).resolves.toBe(false);
+    expect(props.clearLiveForControl).not.toHaveBeenCalled();
+    expect(props.deferLiveClear).toHaveBeenCalledOnce();
   });
 });

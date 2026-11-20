@@ -203,11 +203,18 @@ export function MeterRuntimeProvider({ children }) {
       display.setShowClock(transport.running);
     }
   };
-  /** @param {{ strict?: boolean }} [options] */
-  const clearLiveSource = async ({ strict = false } = {}) => {
+  const liveClearTarget = () => ({
+    selection: sourceSelectionRef.current,
+    meter: audioRef.current?.meter,
+  });
+  /** @param {{ strict?: boolean, target?: ReturnType<typeof liveClearTarget>, rules?: object }} [options] */
+  const clearLiveSource = async ({ strict = false, target, rules } = {}) => {
     const meter = audioRef.current?.meter;
     const selection = sourceSelectionRef.current;
     try {
+      if (target && (target.selection !== selection || target.meter !== meter)) {
+        throw new Error("The Live source changed before the reset.");
+      }
       if (isTauri() && (transport.lifecycle === "starting" || transport.lifecycle === "stopping")) {
         throw new Error("Wait for the Live source to finish changing.");
       }
@@ -215,12 +222,16 @@ export function MeterRuntimeProvider({ children }) {
         if (!meter || transport.lifecycle !== "running" || transport.deviceTransition) {
           throw new Error("Wait for the Live source to finish changing.");
         }
-        await meter.resetMeter("history", () => {
-          if (sourceSelectionRef.current !== selection || audioRef.current?.meter !== meter) {
-            throw new Error("The Live source changed before the reset.");
-          }
-          clearLiveDisplay();
-        });
+        await meter.resetMeter(
+          "history",
+          () => {
+            if (sourceSelectionRef.current !== selection || audioRef.current?.meter !== meter) {
+              throw new Error("The Live source changed before the reset.");
+            }
+            clearLiveDisplay();
+          },
+          rules
+        );
       } else {
         clearLiveDisplay();
       }
@@ -266,7 +277,7 @@ export function MeterRuntimeProvider({ children }) {
       throw error;
     }
   };
-  const clearLiveForControl = () => clearLiveSource({ strict: true });
+  const clearLiveForControl = (target, rules) => clearLiveSource({ strict: true, target, rules });
   const clearActiveSource = async () => {
     display.clearNotice();
     if (sourceSelectionRef.current.mode === "file") {
@@ -580,6 +591,7 @@ export function MeterRuntimeProvider({ children }) {
     deferLiveClear,
     clearActiveSource,
     clearLiveForControl,
+    liveClearTarget,
     resetLiveTruePeakMax,
     beginFileAnalysis,
     beginFileAnalysisForControl,
@@ -612,6 +624,7 @@ export function MeterRuntimeProvider({ children }) {
       deferLiveClear: forward("deferLiveClear"),
       clearActiveSource: forward("clearActiveSource"),
       clearLiveForControl: forward("clearLiveForControl"),
+      liveClearTarget: forward("liveClearTarget"),
       resetLiveTruePeakMax: forward("resetLiveTruePeakMax"),
       beginFileAnalysis: forward("beginFileAnalysis"),
       beginFileAnalysisForControl: forward("beginFileAnalysisForControl"),

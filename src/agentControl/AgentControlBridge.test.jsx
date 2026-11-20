@@ -77,6 +77,7 @@ vi.mock("../settings/SettingsContext.jsx", () => ({
 vi.mock("../runtime/MeterRuntimeContext.jsx", () => ({
   useMeterRuntime: () => ({
     sourceMode: "live",
+    liveClearTarget: () => ({ selection: { mode: "live" } }),
     liveLifecycle: transport.lifecycle,
     stopLiveForControl: transport.stop,
     restoreFileHistoryForControl: transport.restore,
@@ -134,8 +135,7 @@ vi.mock("../runtime/AnalysisSessionContext.jsx", () => ({
     derivedAnalysisRequests: { spectralWaveform: false },
     analysisRequests: { vectorscope: [] },
     fileDurationMs: undefined,
-    setChannelRolesForControl: async () => {},
-    setDialogueVadEngineForControl: async () => {},
+    applyMeasurementRules: async () => false,
   }),
 }));
 vi.mock("./settingsControl.js", () => ({

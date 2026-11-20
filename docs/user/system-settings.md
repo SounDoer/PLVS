@@ -330,8 +330,10 @@ Module findings use the final overridden colours and link to the corresponding m
 minutes. Changing it clears the current Live measurement, exits Snapshot, and starts the measurement
 clock again while capture continues. File Mode is unaffected. **Dialogue Detection** chooses the
 engine behind the [dialogue readouts](dialogue-gated-loudness.md) in Live and in File Mode when the
-File toolbar's **Dialogue Detection** button is on. Changing the engine clears the complete Live
-measurement. File analyses keep the detection settings they started with.
+File toolbar's **Dialogue Detection** button is on. When Live uses dialogue detection, changing
+the engine starts a fresh measurement with the new engine. If PLVS cannot apply the engine,
+it reports the failure in Status Notices and keeps the previous setting. File analyses keep
+the detection settings they started with.
 
 ## Channels
 

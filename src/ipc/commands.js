@@ -66,8 +66,8 @@ export async function startAudioCapture({
   };
   await invoke("audio_start", { deviceId, processId, applicationId, onFrame: onAudio });
   return Object.assign(onAudio, {
-    /** @param {"history" | "truePeakMax"} kind @param {() => void} apply */
-    async resetMeter(kind, apply) {
+    /** @param {"history" | "truePeakMax"} kind @param {() => void} apply @param {object} [rules] */
+    async resetMeter(kind, apply, rules) {
       if (closed) throw new Error("The Live source stopped before the reset.");
       if (pendingReset) throw new Error("A Live meter reset is already in progress.");
       const resetId = ++nextResetId;
@@ -79,6 +79,7 @@ export async function startAudioCapture({
           invoke(kind === "history" ? "clear_audio_history" : "reset_true_peak_max", {
             streamId: onAudio.id,
             requestId: resetId,
+            ...(rules ? { rules } : {}),
           }),
           applied,
         ]);

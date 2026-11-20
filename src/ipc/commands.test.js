@@ -154,12 +154,14 @@ describe("audio engine command seam", () => {
       onFrame: (frame) => observed.push(frame.seq),
     });
     const complete = vi.fn();
-    const reset = channel.resetMeter("history", () => observed.push("reset")).then(complete);
+    const rules = { channelRoles: ["R", "L"], dialogueGating: true, dialogueVadEngine: "silero" };
+    const reset = channel.resetMeter("history", () => observed.push("reset"), rules).then(complete);
     await Promise.resolve();
     expect(complete).not.toHaveBeenCalled();
     expect(invoke).toHaveBeenLastCalledWith("clear_audio_history", {
       streamId: channel.id,
       requestId: 1,
+      rules,
     });
 
     channel.onmessage({ seq: 7 });

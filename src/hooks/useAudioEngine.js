@@ -259,19 +259,9 @@ export function useAudioEngine({
             baseApply(f);
           };
 
-          try {
-            await setChannelRoles(channelRolesRef?.current ?? null);
-          } catch (_) {}
-
-          try {
-            await setDialogueGating(dialogueGatingRef?.current ?? false);
-          } catch (_) {}
-
-          try {
-            await setDialogueVadEngine(
-              dialogueVadEngineRef?.current ?? DEFAULT_DIALOGUE_VAD_ENGINE
-            );
-          } catch (_) {}
+          await setChannelRoles(channelRolesRef?.current ?? null);
+          await setDialogueGating(dialogueGatingRef?.current ?? false);
+          await setDialogueVadEngine(dialogueVadEngineRef?.current ?? DEFAULT_DIALOGUE_VAD_ENGINE);
 
           if (!mounted || disconnected) return;
           // Subscribed before start: a capture can fail right after `audio_start` returns, or

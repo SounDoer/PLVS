@@ -148,13 +148,32 @@ export function createMultiInstanceBackend() {
   let unreportedFailure = null;
   let pendingConflict = null;
   const collectionConflicts = new Map();
+  const itemConflicts = new Map();
   let activeConflictResolution = null;
   const committedConflictCopies = new WeakMap();
   let pendingDeleteFailure = null;
   let pendingConflictDevelopmentFixtureId = null;
   const conflictSubscribers = new Set();
 
+  function itemConflictKey(conflict) {
+    return JSON.stringify([conflict.kind, conflict.id]);
+  }
+
   function publishConflict(conflict, developmentFixtureId = null) {
+    if (conflict.document && !developmentFixtureId) {
+      const key = itemConflictKey(conflict);
+      const known = itemConflicts.get(key);
+      if (
+        known &&
+        known !== conflict &&
+        keyOrderInsensitiveSignature(known.document) ===
+          keyOrderInsensitiveSignature(conflict.document)
+      )
+        return;
+      itemConflicts.set(key, conflict);
+      if (pendingConflict && pendingConflict !== conflict && !pendingConflictDevelopmentFixtureId)
+        return;
+    }
     pendingConflict = conflict;
     if (conflict.operation !== "delete") pendingDeleteFailure = null;
     pendingConflictDevelopmentFixtureId = developmentFixtureId;
@@ -163,11 +182,16 @@ export function createMultiInstanceBackend() {
 
   function clearConflict(conflict = pendingConflict) {
     if (pendingConflict !== conflict) return;
+    if (conflict?.document && !pendingConflictDevelopmentFixtureId) {
+      const key = itemConflictKey(conflict);
+      if (itemConflicts.get(key) === conflict) itemConflicts.delete(key);
+    }
     pendingConflict = null;
     pendingDeleteFailure = null;
     pendingConflictDevelopmentFixtureId = null;
     const next = collectionConflicts.values().next().value;
-    if (next) publishConflict(next.conflict);
+    const nextConflict = next?.conflict ?? itemConflicts.values().next().value;
+    if (nextConflict) publishConflict(nextConflict);
     else for (const listener of conflictSubscribers) listener(null);
   }
 
@@ -608,6 +632,61 @@ export function createMultiInstanceBackend() {
     return activeConflictResolution;
   }
 
+  async function preserveCollectionEdits(kind, key, hydrated) {
+    const domain = key.slice("plvs:".length);
+    const previous = indexDocuments(persistedDocuments.get(kind) || []);
+    const remoteDocuments = documentsFor(key, hydrated[domain]);
+    const remote = indexDocuments(remoteDocuments);
+    const remoteRevisions = hydrated.libraryItemRevisions?.[kind] ?? {};
+    const revisions = itemRevisions.get(kind);
+    const conflicts = [];
+    let wrote = false;
+    for (const document of documentsFor(key, cache.get(key))) {
+      const { id } = document;
+      const baseline = previous.get(id);
+      const latest = remote.get(id);
+      if (keyOrderInsensitiveSignature(latest) === keyOrderInsensitiveSignature(document)) continue;
+      if (
+        baseline &&
+        keyOrderInsensitiveSignature(baseline) === keyOrderInsensitiveSignature(document)
+      )
+        continue;
+
+      if (
+        baseline &&
+        latest &&
+        Number.isSafeInteger(remoteRevisions[id]) &&
+        revisions?.get(id) === remoteRevisions[id]
+      ) {
+        try {
+          await invoke("persistence_library_update", {
+            kind,
+            id,
+            expectedRevision: remoteRevisions[id],
+            document,
+          });
+          wrote = true;
+          continue;
+        } catch (error) {
+          if (error?.reason !== "conflict") throw error;
+        }
+      }
+      // Preserve a local version when a peer independently edited, deleted, or added the item.
+      // An unsaved addition with a free ID can be created without changing anyone else's ordering.
+      if (!baseline && !latest) {
+        try {
+          await invoke("persistence_library_create", { kind, id, document });
+          wrote = true;
+          continue;
+        } catch (error) {
+          if (error?.reason !== "conflict") throw error;
+        }
+      }
+      conflicts.push({ kind, id, document: clone(document) });
+    }
+    return { hydrated: wrote ? await invoke("persistence_hydrate") : hydrated, conflicts };
+  }
+
   async function resolvePendingConflict(action, makeId) {
     if (!pendingConflict) return null;
     const conflict = pendingConflict;
@@ -616,7 +695,17 @@ export function createMultiInstanceBackend() {
     }
     const key = collectionKey(conflict.kind);
     if (activeDrain) await activeDrain;
-    const hydrated = await invoke("persistence_hydrate");
+    const generation = editGenerations.get(key);
+    let hydrated = await invoke("persistence_hydrate");
+    let preservedConflicts = [];
+    if (conflict.operation === "collection") {
+      const preserved = await preserveCollectionEdits(conflict.kind, key, hydrated);
+      hydrated = preserved.hydrated;
+      preservedConflicts = preserved.conflicts;
+    }
+    if (editGenerations.get(key) !== generation) {
+      throw new Error("Local Library changes are still arriving. Try Reload again.");
+    }
     editGenerations.set(key, (editGenerations.get(key) ?? 0) + 1);
     const hadPendingChanges = dirty.delete(key);
     if (conflict.operation !== "collection") unreportedFailure = null;
@@ -653,6 +742,9 @@ export function createMultiInstanceBackend() {
           unreportedFailure = null;
         }
         collectionConflicts.delete(conflict.kind);
+        for (const pending of preservedConflicts) {
+          itemConflicts.set(itemConflictKey(pending), pending);
+        }
       }
       clearConflict(conflict);
       if (hadPendingChanges && domainFor(key)) markDirty(key);

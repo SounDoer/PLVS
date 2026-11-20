@@ -763,14 +763,35 @@ pub fn file_analysis_stop(state: State<'_, AppState>) -> Result<(), String> {
   Ok(())
 }
 
-/// Reset the current Live measurement and its history.
+#[derive(serde::Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct LiveMeterRules {
+  channel_roles: Option<Vec<String>>,
+  dialogue_gating: bool,
+  dialogue_vad_engine: String,
+}
+
+/// Reset the current Live measurement and optionally apply new measurement rules.
 #[tauri::command]
 pub async fn clear_audio_history(
   stream_id: u32,
   request_id: u32,
+  rules: Option<LiveMeterRules>,
   state: State<'_, AppState>,
 ) -> Result<(), String> {
-  reset_live_meter(stream_id, request_id, MeterResetKind::History, &state).await
+  let kind = match rules {
+    Some(rules) => MeterResetKind::Rules {
+      channel_selection: rules
+        .channel_roles
+        .map(|roles| ChannelSelection::from_roles(roles).ok_or("invalid channel roles"))
+        .transpose()?,
+      dialogue_gating: rules.dialogue_gating,
+      dialogue_vad_engine: VadEngineKind::from_key(&rules.dialogue_vad_engine)
+        .ok_or_else(|| format!("unknown VAD engine: {}", rules.dialogue_vad_engine))?,
+    },
+    None => MeterResetKind::History,
+  };
+  reset_live_meter(stream_id, request_id, kind, &state).await
 }
 
 /// Reset only the active Live session's True Peak Max hold.

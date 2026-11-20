@@ -270,6 +270,7 @@ function AppContent() {
     sourceMode === "file" && (fileSessions.length > 0 || fileQueue.items.length > 0);
   const {
     channelLabelRuntime,
+    changeDialogueVadEngine,
     setChannelLabelToken,
     setChannelLayout,
     resetChannelLabels,
@@ -554,6 +555,7 @@ function AppContent() {
             }}
             settings={settings}
             onHistoryRetentionChange={changeHistoryRetention}
+            onDialogueVadEngineChange={changeDialogueVadEngine}
             crashReportSetting={crashReportSetting}
             crashReporting={crashReporting}
             packTransfer={packTransfer}

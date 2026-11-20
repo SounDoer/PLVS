@@ -246,7 +246,6 @@ export function AgentControlBridge() {
     fileQueue,
     clearFileCollection,
     changeHistoryRetention,
-    clearAll,
   } = useSourceActions();
   const agentControlTransport = useMemo(
     () =>
@@ -494,17 +493,16 @@ export function AgentControlBridge() {
   const {
     channelCount,
     channelLabelRuntime,
-    setChannelRolesForControl,
-    setDialogueVadEngineForControl,
+    applyMeasurementRules,
     derivedAnalysisRequests,
     analysisRequests,
     fileDurationMs,
     channelTopology,
   } = useAnalysisSession();
-  const { channelLabelOverride, channelRoles } = channelLabelRuntime;
+  const { channelLabelOverride } = channelLabelRuntime;
   const { activeBlockingEditors, getSceneOperationBlockers } = useSceneGuard();
   const { historyRetentionSec, channelLabelOverrides } = settings;
-  const { sourceMode, running, fileSessions } = meterRuntime;
+  const { sourceMode, running, fileSessions, liveClearTarget } = meterRuntime;
   const agentControlSettingsContext = useMemo(
     () => ({
       autostartReady: settings.autostartReady,
@@ -550,6 +548,11 @@ export function AgentControlBridge() {
   const applyAgentControlSettings = useCallback(
     async (next, { changed, effects }) => {
       const compensation = [];
+      let measurementReset = false;
+      const target = liveClearTarget();
+      const changesRules =
+        changed.includes("settings.dialogueVadEngine") ||
+        changed.includes("settings.channelLabels");
       try {
         if (changed.includes("settings.openAtLogin")) {
           await settings.setAutostartEnabledForControl(next.openAtLogin);
@@ -580,18 +583,18 @@ export function AgentControlBridge() {
             )
           );
         }
-        if (changed.includes("settings.dialogueVadEngine")) {
-          await setDialogueVadEngineForControl(next.dialogueVadEngine);
-          compensation.push(() =>
-            setDialogueVadEngineForControl(agentControlSettings.dialogueVadEngine)
+        if (changesRules) {
+          measurementReset = await applyMeasurementRules(
+            {
+              ...(changed.includes("settings.dialogueVadEngine")
+                ? { dialogueVadEngine: next.dialogueVadEngine }
+                : {}),
+              ...(changed.includes("settings.channelLabels")
+                ? { channelRoles: next.channelLabels.roles ?? null }
+                : {}),
+            },
+            target
           );
-        }
-        if (changed.includes("settings.channelLabels")) {
-          const nextRoles = next.channelLabels.roles ?? null;
-          if (JSON.stringify(nextRoles) !== JSON.stringify(channelRoles)) {
-            await setChannelRolesForControl(nextRoles);
-            compensation.push(() => setChannelRolesForControl(channelRoles));
-          }
         }
       } catch (error) {
         let rollbackFailed = error?.rollback === "failed";
@@ -611,9 +614,6 @@ export function AgentControlBridge() {
       }
       if (changed.includes("settings.interfaceSize")) {
         settings.setInterfaceSize(next.interfaceSize);
-      }
-      if (changed.includes("settings.historyRetentionSec")) {
-        await changeHistoryRetention(next.historyRetentionSec);
       }
       if (changed.includes("settings.dialogueVadEngine")) {
         settings.setDialogueVadEngine(next.dialogueVadEngine);
@@ -635,28 +635,30 @@ export function AgentControlBridge() {
           return updated;
         });
       }
-      // History Length already routes through its shared Live-clear operation. Other restart
-      // effects still use the general source Clear below; a combined patch must clear only once.
-      if (effects.length > 0 && !changed.includes("settings.historyRetentionSec")) {
+      if (changed.includes("settings.historyRetentionSec")) {
         try {
-          await clearAll?.();
+          await changeHistoryRetention(next.historyRetentionSec, {
+            target,
+            strict: true,
+            reset: !measurementReset,
+          });
         } catch (error) {
-          error.partial = true;
-          error.rollback = "notPossible";
-          error.changed = changed;
-          error.effects = effects;
-          throw error;
+          const failure = error instanceof Error ? error : new Error(String(error));
+          throw Object.assign(failure, {
+            partial: true,
+            rollback: "notPossible",
+            changed,
+            effects,
+          });
         }
       }
     },
     [
       agentControlSettings,
-      channelRoles,
       crashReportSetting,
       changeHistoryRetention,
-      clearAll,
-      setDialogueVadEngineForControl,
-      setChannelRolesForControl,
+      applyMeasurementRules,
+      liveClearTarget,
       settings,
     ]
   );

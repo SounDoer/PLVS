@@ -344,16 +344,25 @@ describe("multiInstanceBackend", () => {
       const [one, two] = presets.list;
       const peer = { id: "peer", name: "Added by another workbench" };
       const command = `persistence_library_${operation}`;
+      let latestTwo = two;
+      let revision = 8;
+      let twoRevision = 4;
       const send = invoke.mockImplementation(async (method, params) => {
         if (method === command && params.expectedCollectionRevision === 7) throw failure;
         if (method === "persistence_hydrate") {
           return {
-            presets: { list: [one, two, peer] },
-            libraryCollectionRevisions: { preset: 8 },
-            libraryItemRevisions: { preset: { one: 3, two: 4, peer: 1 } },
+            presets: { list: [one, latestTwo, peer] },
+            libraryCollectionRevisions: { preset: revision },
+            libraryItemRevisions: { preset: { one: 3, two: twoRevision, peer: 1 } },
           };
         }
-        if (method === "persistence_library_reorder") return 9;
+        if (method === "persistence_library_update") {
+          latestTwo = params.document;
+          twoRevision += 1;
+          revision += 1;
+          return { item: { revision: twoRevision }, collectionRevision: revision };
+        }
+        if (method === "persistence_library_reorder") return revision + 1;
       });
 
       backend.set("plvs:presets", {
@@ -383,20 +392,67 @@ describe("multiInstanceBackend", () => {
       );
       await backend.resolveLibraryConflict("reload");
       expect(backend.get("plvs:presets")).toMatchObject({
-        list: [one, two, peer],
+        list: [one, operation === "replace" ? { ...two, name: "Local edit" } : two, peer],
         activeId: "two",
       });
+      if (operation === "replace") {
+        expect(send).toHaveBeenCalledWith("persistence_library_update", {
+          kind: "preset",
+          id: "two",
+          expectedRevision: 4,
+          document: { ...two, name: "Local edit" },
+        });
+      }
       expect(observe).toHaveBeenLastCalledWith(null);
 
-      backend.set("plvs:presets", { ...backend.get("plvs:presets"), list: [two, one, peer] });
+      backend.set("plvs:presets", { ...backend.get("plvs:presets"), list: [latestTwo, one, peer] });
       await backend.flush();
       expect(send).toHaveBeenCalledWith("persistence_library_reorder", {
         kind: "preset",
         orderedIds: ["two", "one", "peer"],
-        expectedCollectionRevision: 8,
+        expectedCollectionRevision: revision,
       });
     }
   );
+
+  it("offers Save as Copy for an item edited on both sides of a collection conflict", async () => {
+    const { createMultiInstanceBackend } = await import("./multiInstanceBackend.js");
+    const backend = createMultiInstanceBackend();
+    const observe = vi.fn();
+    backend.subscribeLibraryConflicts(observe);
+    const presets = backend.get("plvs:presets");
+    const [one, two] = presets.list;
+    const draft = { ...two, name: "Local draft" };
+    const latest = { ...two, name: "Remote edit" };
+    const failure = { reason: "conflict" };
+    invoke.mockImplementation(async (method) => {
+      if (method === "persistence_library_replace") throw failure;
+      if (method === "persistence_hydrate") {
+        return {
+          presets: { list: [one, latest] },
+          libraryCollectionRevisions: { preset: 8 },
+          libraryItemRevisions: { preset: { one: 3, two: 5 } },
+        };
+      }
+      if (method === "persistence_library_create") {
+        return { item: { revision: 1 }, collectionRevision: 9 };
+      }
+    });
+
+    backend.set("plvs:presets", { ...presets, list: [draft, one] });
+    await expect(backend.flush()).rejects.toBe(failure);
+    expect(observe).toHaveBeenLastCalledWith({ kind: "preset", operation: "collection" });
+    await backend.resolveLibraryConflict("reload");
+    expect(invoke).not.toHaveBeenCalledWith("persistence_library_update", expect.anything());
+    expect(observe).toHaveBeenLastCalledWith({ kind: "preset", id: "two", document: draft });
+
+    const copy = { id: "copy", name: "Local draft Copy" };
+    await expect(
+      backend.resolveLibraryConflict("copy", { makeId: () => copy.id })
+    ).resolves.toEqual(copy);
+    expect(backend.get("plvs:presets").list).toEqual([one, latest, copy]);
+    expect(observe).toHaveBeenLastCalledWith(null);
+  });
 
   it("publishes a known-stale editor draft without first overwriting the remote item", async () => {
     const { createMultiInstanceBackend } = await import("./multiInstanceBackend.js");

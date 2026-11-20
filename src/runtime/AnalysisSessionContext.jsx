@@ -2,7 +2,6 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useRef } fr
 import { useWorkspaceStore } from "../workspace/WorkspaceContext.jsx";
 import { useSharedTimeViewport } from "../workspace/useSharedTimeViewport.js";
 import { useAppSettings } from "../settings/SettingsContext.jsx";
-import { useChannelRolesRestart } from "../hooks/useDialogueEngineRestart.js";
 import { useDock } from "../dock/DockContext.jsx";
 import { mergeDockAnalysisRequests, mergeDockRetainedKeys } from "../dock/dockAnalysisRequest.js";
 import { dockModuleIdForPanelModuleId } from "../dock/dockLayout.js";
@@ -65,19 +64,27 @@ const AnalysisSessionContext = createContext(/** @type {AnalysisSession | null} 
 export function AnalysisSessionProvider({ children }) {
   const { state: workspaceState } = useWorkspaceStore();
   const { setHistoryWindowSec, setHistoryOffsetSec } = useSharedTimeViewport();
-  const { sourceMode, deferLiveClear } = useMeterRuntime();
-  const { setSelectedOffset } = useMeterDisplayState();
+  const {
+    sourceMode,
+    running,
+    liveLifecycle,
+    clearLiveForControl,
+    liveClearTarget,
+    deferLiveClear,
+  } = useMeterRuntime();
+  const { setSelectedOffset, raiseNotice } = useMeterDisplayState();
   const { liveIntakeRef, fileConditionsRef } = useMeterRuntimeAssembly();
   const { channelCount, displayAudio } = useDisplaySnapshot();
   const autoRolesKey = JSON.stringify(displayAudio?.autoChannelRoles ?? null);
   const autoChannelRoles = useMemo(() => JSON.parse(autoRolesKey), [autoRolesKey]);
-  const { fileSession, dialogueGating, clearAll } = useSourceActions();
+  const { fileSession, dialogueGating, resetLiveDisplayControls } = useSourceActions();
   const { docked, layout: dockLayout } = useDock();
   const {
     historyRetentionSec,
     dialogueVadEngine,
     channelLabelOverrides,
     setChannelLabelOverrides,
+    setDialogueVadEngine,
   } = useAppSettings();
 
   const fileDurationMs = fileSession.summary?.durationMs ?? fileSession.metadata?.durationMs;
@@ -202,32 +209,69 @@ export function AnalysisSessionProvider({ children }) {
     liveIntakeRef.current?.setRetainedVisualKeys(retainedAnalysisKeys, historyRetentionSec * 1000);
   }, [liveIntakeRef, retainedAnalysisKeys, historyRetentionSec]);
   const { channelRoles } = channelLabelRuntime;
-  useChannelRolesRestart(channelLabelOverrides, sourceMode === "live", clearAll, deferLiveClear);
-  const {
-    channelRolesRef,
-    dialogueGatingRef,
-    dialogueVadEngineRef,
-    setChannelRolesForControl,
-    setDialogueVadEngineForControl,
-  } = useRuntimeBackendSync({
-    analysisRequests,
-    channelRoles,
-    dialogueGating,
-    dialogueVadEngine,
-  });
+  const { channelRolesRef, dialogueGatingRef, dialogueVadEngineRef, applyMeasurementRules } =
+    useRuntimeBackendSync({
+      analysisRequests,
+      channelRoles,
+      dialogueGating,
+      dialogueVadEngine,
+      running,
+      ready: liveLifecycle === "running",
+      channelCount,
+      clearLiveForControl,
+      liveClearTarget,
+      deferLiveClear,
+      resetLiveDisplayControls,
+      raiseNotice,
+    });
   const channelAutoLabels = channelLabelRuntime.channelAutoLabels;
+  const applyMeasurementEdit = useCallback(
+    async (patch, commit) => {
+      try {
+        await applyMeasurementRules(patch);
+        commit();
+        return true;
+      } catch (error) {
+        raiseNotice("error", "Could not apply the Live measurement settings", error?.message, {
+          requiresAttention: true,
+        });
+        return false;
+      }
+    },
+    [applyMeasurementRules, raiseNotice]
+  );
+
+  const changeDialogueVadEngine = useCallback(
+    (engine) =>
+      applyMeasurementEdit({ dialogueVadEngine: engine }, () => setDialogueVadEngine(engine)),
+    [applyMeasurementEdit, setDialogueVadEngine]
+  );
+
+  const commitChannelRoles = useCallback(
+    (roles) => {
+      if (JSON.stringify(roles) === JSON.stringify(channelRoles)) return;
+      return applyMeasurementEdit({ channelRoles: roles }, () =>
+        setChannelLabelOverrides((current) => {
+          const updated = { ...current };
+          if (roles) updated[channelCount] = roles;
+          else delete updated[channelCount];
+          return updated;
+        })
+      );
+    },
+    [applyMeasurementEdit, channelCount, channelRoles, setChannelLabelOverrides]
+  );
 
   const setChannelLabelToken = useCallback(
     (index, token) => {
       if (channelCount <= 0) return;
-      setChannelLabelOverrides((prev) => {
-        const base = prev[channelCount] ?? seedTokensFromLabels(channelAutoLabels);
-        const next = base.slice();
-        next[index] = token;
-        return { ...prev, [channelCount]: next };
-      });
+      const next = (
+        channelLabelOverrides[channelCount] ?? seedTokensFromLabels(channelAutoLabels)
+      ).slice();
+      next[index] = token;
+      return commitChannelRoles(next);
     },
-    [channelCount, channelAutoLabels, setChannelLabelOverrides]
+    [channelCount, channelLabelOverrides, channelAutoLabels, commitChannelRoles]
   );
 
   const setChannelLayout = useCallback(
@@ -235,25 +279,19 @@ export function AnalysisSessionProvider({ children }) {
       if (layoutId === "custom") return;
       const roles = rolesForLayout(layoutId);
       if (roles.length !== channelCount) return;
-      setChannelLabelOverrides((prev) => ({ ...prev, [channelCount]: roles }));
+      return commitChannelRoles(roles);
     },
-    [channelCount, setChannelLabelOverrides]
+    [channelCount, commitChannelRoles]
   );
 
-  const resetChannelLabels = useCallback(() => {
-    setChannelLabelOverrides((prev) => {
-      if (!(channelCount in prev)) return prev;
-      const next = { ...prev };
-      delete next[channelCount];
-      return next;
-    });
-  }, [channelCount, setChannelLabelOverrides]);
+  const resetChannelLabels = useCallback(() => commitChannelRoles(null), [commitChannelRoles]);
 
   const value = useMemo(
     () => ({
       channelCount,
       channelLabelRuntime,
       peakLabelContext,
+      changeDialogueVadEngine,
       setChannelLabelToken,
       setChannelLayout,
       resetChannelLabels,
@@ -266,13 +304,13 @@ export function AnalysisSessionProvider({ children }) {
       channelRolesRef,
       dialogueGatingRef,
       dialogueVadEngineRef,
-      setChannelRolesForControl,
-      setDialogueVadEngineForControl,
+      applyMeasurementRules,
     }),
     [
       channelCount,
       channelLabelRuntime,
       peakLabelContext,
+      changeDialogueVadEngine,
       setChannelLabelToken,
       setChannelLayout,
       resetChannelLabels,
@@ -285,8 +323,7 @@ export function AnalysisSessionProvider({ children }) {
       channelRolesRef,
       dialogueGatingRef,
       dialogueVadEngineRef,
-      setChannelRolesForControl,
-      setDialogueVadEngineForControl,
+      applyMeasurementRules,
     ]
   );
   return (

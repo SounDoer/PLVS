@@ -123,6 +123,7 @@ async function resolvePresetWindowBounds(preset) {
  *   setGlassEnabled?: (...args: any[]) => any,
  *   setDockSurfaceOpacity?: (value: number) => any,
  *   dock?: import("../workspace/types.js").DockScene,
+ *   commitDockLayout?: (dock: any) => void,
  *   applyDockPreset?: (...args: any[]) => any,
  *   applySurfaceOpacity?: (...args: any[]) => any,
  *   dockPresetUnavailableReason?: (...args: any[]) => any,
@@ -158,6 +159,7 @@ export function usePresets({
     controlsByPanelId: undefined,
   },
   applyDockPreset = async () => {},
+  commitDockLayout = () => {},
   applySurfaceOpacity = async () => false,
   // Returns the reason the preset's dock cannot be honoured, or null. A reason refuses the whole
   // apply before anything moves; a platform that simply has no dock is not one -- `applyDockPreset`
@@ -488,6 +490,15 @@ export function usePresets({
           throw presetApplyError(error, "window");
         }
       }
+      try {
+        assertSceneOperationAllowed(SCENE_OPERATIONS.presetApply);
+      } catch (error) {
+        await rollbackSurfaceOpacityShadow();
+        // Native window operations may have completed while an editor was opening.
+        throw presetApplyError(error, "scene");
+      }
+      applyLoudnessProfileSnapshot(preset);
+      if (presetDock.enabled) commitDockLayout(presetDock);
       if (applyWorkspace) {
         setView(presetWorkspaceView(preset));
       }
@@ -512,7 +523,6 @@ export function usePresets({
       }
       // Like the strip's layout, a preset that does not dock leaves the Dock's look alone.
       if (presetDock.enabled) setDockSurfaceOpacity(presetDock.surfaceOpacity);
-      applyLoudnessProfileSnapshot(preset);
       write({ activeId: id });
       return true;
     },
@@ -527,6 +537,8 @@ export function usePresets({
       setGlassEnabled,
       setDockSurfaceOpacity,
       applyDockPreset,
+      commitDockLayout,
+      assertSceneOperationAllowed,
       applySurfaceOpacity,
       surfaceOpacity,
       applyLoudnessProfileSnapshot,

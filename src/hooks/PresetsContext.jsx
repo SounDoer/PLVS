@@ -88,8 +88,6 @@ export function PresetsProvider({ children }) {
             await resizeDockHeight(presetDock.height, { persist: true, origin: "preset" });
           }
         }
-        dockLayout.setPanels(presetDock);
-        setSelectedOffset(-1);
       } else if (dockEnabled) {
         const result = await exitDockRestoringAttributes({
           reportError: false,
@@ -107,7 +105,6 @@ export function PresetsProvider({ children }) {
     },
     [
       clearNotice,
-      dockLayout,
       enterDockMode,
       dockEnabled,
       dockEdge,
@@ -119,8 +116,15 @@ export function PresetsProvider({ children }) {
       resizeDockHeight,
       setReserveSpace,
       setAboveFullScreen,
-      setSelectedOffset,
     ]
+  );
+
+  const commitDockLayout = useCallback(
+    (layout) => {
+      dockLayout.setPanels(layout);
+      setSelectedOffset(-1);
+    },
+    [dockLayout, setSelectedOffset]
   );
 
   const onPresetApplyError = useCallback(
@@ -129,7 +133,13 @@ export function PresetsProvider({ children }) {
       // difference between "it failed" and knowing what to change. Everything else is a genuine
       // failure: generic line, technical detail on hover.
       if (isSceneOperationRefused(error)) {
-        raiseNotice("error", error.message);
+        raiseNotice(
+          "error",
+          error.message,
+          "stage" in error && error.stage === "scene"
+            ? "The panel layouts were preserved. Window placement or Dock mode may already have changed."
+            : undefined
+        );
         return;
       }
       raiseNotice(
@@ -187,6 +197,7 @@ export function PresetsProvider({ children }) {
     setDockSurfaceOpacity,
     dock: presetDockState,
     applyDockPreset,
+    commitDockLayout,
     applySurfaceOpacity: syncSurfaceOpacityWindowShadow,
     dockPresetUnavailableReason: (presetDock) =>
       presetDock.enabled
