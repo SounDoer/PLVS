@@ -137,6 +137,14 @@ export class WaveformHistoryIndex {
     };
   }
 
+  release() {
+    if (!this._frozen) throw new TypeError("release requires a frozen history index");
+    this._index.release();
+    this._rawRows.release();
+    this._nanSequences.release();
+    this.beginQueryBatch();
+  }
+
   clear() {
     if (this._frozen) throw new TypeError("cannot clear a frozen WaveformHistoryIndex");
     this._index.clear();

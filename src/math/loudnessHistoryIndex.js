@@ -83,6 +83,12 @@ export class LoudnessHistoryIndex {
     return this._index.storageStats();
   }
 
+  release() {
+    if (!this._frozen) throw new TypeError("release requires a frozen history index");
+    this._index.release();
+    this.beginQueryBatch();
+  }
+
   clear() {
     if (this._frozen) throw new TypeError("cannot clear a frozen LoudnessHistoryIndex");
     this._index.clear();

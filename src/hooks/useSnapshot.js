@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useRef } from "react";
+import { useCallback, useLayoutEffect, useMemo, useRef } from "react";
 import { VISUAL_HIST_SAMPLE_SEC } from "./useLoudnessHistory.js";
 import { buildVectorscopeSvgFromPairs } from "../math/vectorscopeMath.js";
 import { buildPolarLevelMaxHoldTable, polarLevelMaxHoldAt } from "../math/vectorscopePolarMath.js";
@@ -49,6 +49,24 @@ function freezeSnapshot(intake, liveAudioFallback) {
   };
 }
 
+function releaseSnapshot(snapshot) {
+  for (const view of [
+    snapshot.loudness,
+    snapshot.audio,
+    snapshot.corr,
+    snapshot.channelMetadata,
+    snapshot.frequencyMarkerIndex,
+    snapshot.loudnessDisplayIndex,
+    snapshot.waveformHistoryIndex,
+    snapshot.visualWaveform,
+    ...Object.values(snapshot.spectrumByKey),
+    ...Object.values(snapshot.vectorscopeByKey),
+    ...Object.values(snapshot.stereoMapByKey),
+  ]) {
+    view?.release?.();
+  }
+}
+
 function resultCacheForKey(cache, key, entries) {
   let record = cache.get(key);
   if (!record || record.entries !== entries) {
@@ -68,6 +86,15 @@ export function useSnapshot({ selectedOffset, sampleSec, intake, audio }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [intake, isSnapshotSelected]
   );
+
+  const committedSnapshotRef = useRef(null);
+  useLayoutEffect(() => {
+    // React can retain old event handlers and props after a clear. Retire their backing
+    // storage when the committed view changes, after the new render has read its own view.
+    const previous = committedSnapshotRef.current;
+    if (previous && previous !== snapSource) releaseSnapshot(previous);
+    committedSnapshotRef.current = snapSource;
+  }, [snapSource]);
 
   const histSourceList = snapSource ? snapSource.loudness : intake.getLoudnessHistory();
   const loudnessDisplayIndex = snapSource

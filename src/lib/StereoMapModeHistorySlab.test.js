@@ -93,6 +93,21 @@ describe("StereoMapModeHistorySlab", () => {
     ).toBeCloseTo(0.5, 3);
   });
 
+  it("releases a frozen view without changing the live slab or another snapshot", () => {
+    const slab = new StereoMapModeHistorySlab(10, ["position"]);
+    append(slab, 1);
+    const retired = slab.freeze();
+    const kept = slab.freeze();
+
+    retired.release();
+
+    expect(retired.storageStats()).toMatchObject({ chunkCount: 0, retainedRows: 0 });
+    expect(retired.rowAt(0)).toBeUndefined();
+    expect(retired.holdAt(0)).toBeNull();
+    expect(kept.timestampAt(0)).toBe(1);
+    expect(slab.timestampAt(0)).toBe(1);
+  });
+
   it("freezes packed rows and answers Hold from incremental chunk summaries", () => {
     const slab = new StereoMapModeHistorySlab(10, ["position", "correlation"]);
     append(slab, 1);

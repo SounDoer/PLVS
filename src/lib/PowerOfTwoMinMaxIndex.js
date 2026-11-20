@@ -326,6 +326,13 @@ class FrozenPowerOfTwoMinMaxIndex extends MinMaxIndexView {
     this._version = source._version;
     this._lastQueryStats = EMPTY_QUERY_STATS;
   }
+
+  release() {
+    this._levels = [];
+    this._retainedStartSequence = this._retainedEndSequence;
+    this._lastQueryStats = EMPTY_QUERY_STATS;
+    this._bucketScratch = null;
+  }
 }
 
 export class PowerOfTwoMinMaxIndex extends MinMaxIndexView {

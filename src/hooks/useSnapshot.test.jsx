@@ -2,6 +2,7 @@
 import { describe, expect, it } from "vitest";
 import { renderHook } from "@testing-library/react";
 import { useSnapshot } from "./useSnapshot.js";
+import { FrameIntake } from "../lib/FrameIntake.js";
 import { SpectrumHistorySlab } from "../lib/SpectrumHistorySlab.js";
 import { VectorscopeHistorySlab } from "../lib/VectorscopeHistorySlab.js";
 
@@ -50,6 +51,54 @@ function countingVisualView(rows) {
 }
 
 describe("useSnapshot", () => {
+  it.each(["exit snapshot", "change source"])(
+    "releases retired views still referenced by the UI when you %s",
+    (operation) => {
+      const intake = new FrameIntake();
+      const row = {
+        timestampMs: 1000,
+        lufsMomentary: -23,
+        lufsShortTerm: -24,
+        waveformMin: [-0.5],
+        waveformMax: [0.5],
+        spectrumByKey: { spectrum: { bandCentersHz: [100], smoothDb: [-20] } },
+        stereoMapByKey: { stereo: { bandCentersHz: [100], pl: [1], pr: [0.5], c: [0.5] } },
+      };
+      intake.pushHistRow(row, 8);
+      intake.pushVisualHistRow(row, 8, 48000);
+      const props = { selectedOffset: 0, sampleSec: 0.1, intake, audio: {} };
+      const { result, rerender } = renderHook((current) => useSnapshot(current), {
+        initialProps: props,
+        reactStrictMode: true,
+      });
+      const retired = result.current;
+      const frozenSpectrum = retired.snapshotSpectrumByKey.spectrum;
+      expect(retired.histSourceList.length).toBe(1);
+      expect(retired.visualWaveformHist.length).toBe(1);
+      expect(frozenSpectrum.length).toBe(1);
+      expect(
+        retired.resolveStereoMapSnapshotForKey("stereo", "position", {
+          lowerBound: -1,
+          upperBound: 1,
+        }).missing
+      ).toBe(false);
+
+      rerender(
+        operation === "exit snapshot"
+          ? { ...props, selectedOffset: -1 }
+          : { ...props, intake: new FrameIntake() }
+      );
+
+      expect(retired.histSourceList.length).toBe(0);
+      expect(retired.visualWaveformHist.length).toBe(0);
+      expect(frozenSpectrum.storageStats().chunkCount).toBe(0);
+      expect(retired.loudnessDisplayIndex.storageStats().levels).toEqual([]);
+      expect(retired.waveformHistoryIndex.storageStats().rawRows.chunkCount).toBe(0);
+      expect(intake.getLoudnessHistory().length).toBe(1);
+      expect(intake.getVisualSpectrumHistByKey("spectrum").rowAt(0).dbList[0]).toBe(-20);
+    }
+  );
+
   it("freezes the atomic scalar bundle once per snapshot session", () => {
     let freezes = 0;
     const frozenBundle = {

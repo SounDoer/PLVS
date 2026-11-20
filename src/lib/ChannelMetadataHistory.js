@@ -86,6 +86,11 @@ class FrozenChannelMetadataHistory extends MetadataView {
     this._version = version;
   }
 
+  release() {
+    this._changes.release();
+    this._retainedStart = this._retainedEnd;
+  }
+
   get length() {
     return this._retainedEnd - this._retainedStart;
   }

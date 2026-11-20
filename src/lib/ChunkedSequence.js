@@ -135,6 +135,14 @@ export class FrozenChunkedSequence extends SequenceView {
     return chunk ? { chunk, offset: chunkOffset(sequence, this._chunkRows) } : null;
   }
 
+  release() {
+    this._chunks = [];
+    this._startSequence = this._endSequence;
+    this._sharedSealedChunks = 0;
+    this._copiedTailRows = 0;
+    this._copiedReferences = 0;
+  }
+
   storageStats() {
     return {
       retainedRows: this.length,

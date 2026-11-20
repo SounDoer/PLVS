@@ -161,6 +161,12 @@ class FrozenSparseHistoryMarkers {
     return { ...this._lastQueryStats };
   }
 
+  release() {
+    this._markers.release();
+    this._retainedStart = this._retainedEnd;
+    this._lastQueryStats = emptyQueryStats();
+  }
+
   storageStats() {
     return this._markers.storageStats();
   }

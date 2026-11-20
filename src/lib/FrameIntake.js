@@ -564,9 +564,14 @@ export class FrameIntake {
     this._channelMetadataSnap.clear();
     this._pendingFrequencyMarker = null;
     this._visualWaveformHist.clear();
-    this._visualSpectrumHistByKey = new Map();
-    this._visualVectorscopeHistByKey = new Map();
-    this._visualStereoMapHistByKey = new Map();
+    for (const histories of [
+      this._visualSpectrumHistByKey,
+      this._visualVectorscopeHistByKey,
+      this._visualStereoMapHistByKey,
+    ]) {
+      for (const history of histories.values()) history.clear();
+      histories.clear();
+    }
     this._unneededVisualKeysSince = new Map();
     this._histTimestamp = createTimestampDomain();
     this._visualTimestamp = createTimestampDomain();

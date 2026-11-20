@@ -794,13 +794,16 @@ describe("FrameIntake", () => {
     };
 
     intake.pushVisualHistRow(row, 10);
-    expect(intake.getVisualSpectrumHistByKey(key)).not.toBeNull();
-    expect(intake.getSpectrogramSnapsForKey(key).length).toBe(1);
+    const liveView = intake.getSpectrogramSnapsForKey(key);
+    const independentSnapshot = intake.snapshotVisualSpectrumByKey()[key];
+    expect(liveView.length).toBe(1);
 
     intake.reset();
 
     expect(intake.getVisualSpectrumHistByKey(key)).toBeNull();
     expect(intake.getSpectrogramSnapsForKey(key).length).toBe(0);
+    expect(liveView.length).toBe(0);
+    expect(independentSnapshot.rowAt(0).dbList[0]).toBe(-10);
   });
 
   it("stores request-keyed secondary spectrum curves in typed row views", () => {

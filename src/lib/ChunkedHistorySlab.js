@@ -229,6 +229,15 @@ export class FrozenChunkedHistory {
     };
   }
 
+  /** Retire this view without affecting any slab or other snapshot sharing its chunks. */
+  release() {
+    this._chunks = [];
+    this._startSequence = this._endSequence;
+    this._sharedSealedChunks = 0;
+    this._copiedTailRows = 0;
+    this._copiedTailBytes = 0;
+  }
+
   storageStats() {
     return {
       chunkCount: this._chunks.length,

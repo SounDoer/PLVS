@@ -146,6 +146,13 @@ depends on dock state and on the live frame shape, so using it for retention wou
 during device blips or dock changes. Apply the retained set to every intake that
 ingests frames (`ingestingIntakes`), not merely the displayed `intakeRef`.
 
+### Retired display snapshots can keep history alive
+
+Frozen display views share sealed chunks with the source history. Dropping the intake's references
+leaves those chunks reachable through old React props or callbacks. `useSnapshot` releases the retired
+views when a new snapshot or the live edge commits. Releasing a view drops its references and leaves
+the active intake and any other snapshot's data intact.
+
 ### Exact history fixtures must respect Float32
 
 History columns use Float32 storage through `FrameIntake` slabs, `RaggedFloatColumn`, and

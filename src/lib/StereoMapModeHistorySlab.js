@@ -397,6 +397,18 @@ class StereoMapModeHistoryView {
   }
 }
 
+class FrozenStereoMapModeHistory extends StereoMapModeHistoryView {
+  /** @this {FrozenStereoMapModeHistory & StereoMapModeHistoryState} */
+  release() {
+    this._chunks = [];
+    this._startSequence = this._endSequence;
+    this._bandCentersHz = new Float32Array(0);
+    this._sharedSealedChunks = 0;
+    this._copiedTailRows = 0;
+    this._copiedTailBytes = 0;
+  }
+}
+
 export class StereoMapModeHistorySlab extends StereoMapModeHistoryView {
   /**
    * @param {string[]} modes
@@ -546,7 +558,7 @@ export class StereoMapModeHistorySlab extends StereoMapModeHistoryView {
         copiedTailBytes = payloadBytes(copy);
       }
     }
-    return Object.assign(new StereoMapModeHistoryView(), {
+    return Object.assign(new FrozenStereoMapModeHistory(), {
       _chunks: chunks,
       _modes: new Set(this._modes),
       _bandCentersHz: this._bandCentersHz,
