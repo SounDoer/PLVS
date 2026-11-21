@@ -75,6 +75,8 @@ fn source_names_are_disambiguated_without_creating_user_managed_names() {
   let unnamed = RuntimeIdentity::new_for_workspace("workspace-d").unwrap();
 
   let mut registrations = Vec::new();
+  // Names follow registration order, which the registry keeps at millisecond precision and breaks
+  // ties by random instance ID. Space the registrations out so the expected order is the real one.
   for (identity, label) in [
     (&first_spotify, Some("Spotify")),
     (&vlc, Some("VLC")),
@@ -95,6 +97,7 @@ fn source_names_are_disambiguated_without_creating_user_managed_names() {
         )
         .unwrap(),
     );
+    std::thread::sleep(std::time::Duration::from_millis(5));
   }
 
   let summaries = summarize_instances(registry.list().unwrap());
