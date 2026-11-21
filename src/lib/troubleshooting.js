@@ -3,6 +3,7 @@ const topics = new Set([
   "audio-capture",
   "audio-dropped",
   "channel-layout-unknown",
+  "channel-layout-inferred",
   "file-open-analysis",
   "file-analysis-stop",
   "file-report",

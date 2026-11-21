@@ -5,7 +5,10 @@ PLVS follows your source's channel layout, with a manual choice when needed.
 ## Automatic layout detection
 
 Mono, stereo, LCR, quad, 5.0, 5.1, 7.0, and 7.1 are recognised from the channel count when native
-mappings are unavailable.
+mappings are unavailable. For three or more channels, **Status Notices** then shows **Channel
+Layout Inferred**, because the count alone cannot tell a surround feed from separate microphones.
+Inputs on macOS and Linux report no speaker layout, so a multichannel input is always inferred
+this way until you set its layout.
 
 In File mode, PLVS uses the channel layout stored in the file, such as 5.1(side), 7.1(wide) or
 7.1.4, including files with more than eight channels and files whose channels use a non-standard

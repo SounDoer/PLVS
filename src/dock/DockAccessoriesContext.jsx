@@ -36,7 +36,12 @@ import { useDock } from "./DockContext.jsx";
 import { useDockAccessoryBridge } from "./useDockAccessoryBridge.js";
 import { useDockAccessoryVisibility } from "./useDockAccessoryVisibility.js";
 import { DOCK_HEADER_HEIGHT } from "./dockSizing.js";
-import { buildAppStatusItems, statusActionTarget, statusHelpTarget } from "../lib/appStatus.js";
+import {
+  buildAppStatusItems,
+  inferredChannelLayout,
+  statusActionTarget,
+  statusHelpTarget,
+} from "../lib/appStatus.js";
 import { troubleshootingUrl } from "../lib/troubleshooting.js";
 import {
   DOCS_URL,
@@ -134,7 +139,8 @@ export function DockAccessoriesProvider({ children }) {
   const { notice, raiseNotice, clearNotice } = useMeterDisplayState();
   const { sourceTransportState, histSourceList, displayAudio } = useDisplaySnapshot();
   const historyTotalSamples = histSourceList?.length ?? 0;
-  const { channelCount, vectorscopePairOptions, spectrumChannelOptions } = useAnalysisSession();
+  const { channelCount, channelLabelRuntime, vectorscopePairOptions, spectrumChannelOptions } =
+    useAnalysisSession();
   const { canClear, clearAll, onSourceTransportAction, dispatchShortcut } = useSourceActions();
   const presets = usePresetLibrary();
   const exportProfileRef = useRef(null);
@@ -366,6 +372,12 @@ export function DockAccessoriesProvider({ children }) {
       : buildAppStatusItems({
           notice,
           layoutUnknown: channelCount > 0 && displayAudio?.loudnessLayoutKnown === false,
+          layoutInferred: inferredChannelLayout({
+            channelCount,
+            loudnessLayoutKnown: displayAudio?.loudnessLayoutKnown,
+            autoChannelRoles: displayAudio?.autoChannelRoles,
+            manualRoles: channelLabelRuntime?.channelLabelOverride,
+          }),
           autoChannelRoles: displayAudio?.autoChannelRoles,
           audioDrop: sourceMode === "live" ? liveAudioDrop : null,
           update: dockUpdate,

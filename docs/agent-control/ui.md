@@ -15,7 +15,8 @@ supported close/cancel actions, and only the state needed to navigate it safely.
 feedback text, diagnostics, DOM details, geometry, and other authored content are never returned.
 
 `status` lists the conditions behind the toolbar status entry, in the order it shows them, by
-`id` (`notice`, `configuration-restart`, `audio-drop`, `channel-layout`, `update`) and `kind`.
+`id` (`notice`, `configuration-restart`, `audio-drop`, `channel-layout`, `channel-layout-inferred`,
+`update`) and `kind`.
 Where available, entries also
 include `helpTopic`, `helpTarget`, `action`, and `actionTarget`. Notice wording and details stay
 out. A change in this list does not advance `uiGeneration`, so action IDs encode the current help

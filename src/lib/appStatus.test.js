@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { buildAppStatusItems } from "./appStatus.js";
+import { buildAppStatusItems, inferredChannelLayout } from "./appStatus.js";
 
 describe("current app status", () => {
   it("keeps independent conditions together and prioritizes interrupted measurement", () => {
@@ -45,4 +45,39 @@ it("explains partial native roles without claiming the extra tracks are unused",
   expect(item.details).toContain("Other channel roles remain unknown");
   expect(item.details).toContain("channels 1–2 only");
   expect(item.details).toContain("True Peak Max covers every channel");
+});
+
+describe("inferred channel layout", () => {
+  const eight = { channelCount: 8, loudnessLayoutKnown: true };
+
+  it("reports a surround layout chosen from the channel count alone", () => {
+    const layoutInferred = inferredChannelLayout(eight);
+    expect(layoutInferred).toEqual({ layoutId: "7.1", name: "7.1", channelCount: 8 });
+    const [item] = buildAppStatusItems({ layoutInferred });
+    expect(item).toMatchObject({
+      id: "channel-layout-inferred",
+      kind: "info",
+      text: "Channel Layout Inferred",
+      helpTopic: "channel-layout-inferred",
+      action: "settings",
+    });
+    expect(item.details).toContain("8 channels as 7.1 by count");
+  });
+
+  it("stays quiet when the source or the user supplies the roles, or for mono and stereo", () => {
+    const roles = ["L", "R", "C", "LFE", "Lb", "Rb", "Ls", "Rs"];
+    expect(inferredChannelLayout({ ...eight, autoChannelRoles: roles })).toBeNull();
+    expect(inferredChannelLayout({ ...eight, manualRoles: roles })).toBeNull();
+    expect(inferredChannelLayout({ channelCount: 2, loudnessLayoutKnown: true })).toBeNull();
+    expect(inferredChannelLayout({ channelCount: 8, loudnessLayoutKnown: false })).toBeNull();
+    expect(inferredChannelLayout({ channelCount: 12, loudnessLayoutKnown: true })).toBeNull();
+  });
+
+  it("leaves an unknown layout to the stronger unknown-layout warning", () => {
+    const items = buildAppStatusItems({
+      layoutUnknown: true,
+      layoutInferred: { name: "7.1", channelCount: 8 },
+    });
+    expect(items.map((item) => item.id)).toEqual(["channel-layout"]);
+  });
 });

@@ -229,6 +229,7 @@ export const UI_STATUS_IDS = Object.freeze([
   "configuration-restart",
   "audio-drop",
   "channel-layout",
+  "channel-layout-inferred",
   "update",
 ]);
 

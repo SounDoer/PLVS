@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { buildAppStatusItems } from "../lib/appStatus.js";
 import {
   UI_NAVIGATION_ERROR_CODES,
   UI_SETTINGS_SECTIONS,
@@ -10,6 +11,7 @@ import {
   createUiNavigationState,
   mountUiSurface,
   projectUiInspection,
+  projectUiStatus,
   unmountUiSurface,
 } from "./uiNavigationModel.js";
 
@@ -284,5 +286,25 @@ describe("UI Navigation state", () => {
     expect(Object.isFrozen(state.surfaces)).toBe(true);
     expect(Object.isFrozen(state.surfaces[0])).toBe(true);
     expect(Object.isFrozen(state.surfaces[0].target)).toBe(true);
+  });
+});
+
+describe("Status projection", () => {
+  it("reports every status condition the toolbar can show, by identity only", () => {
+    const items = buildAppStatusItems({
+      layoutInferred: { name: "7.1", channelCount: 8 },
+      audioDrop: { chunks: 1, since: 0 },
+    });
+    expect(projectUiStatus(items)).toEqual([
+      expect.objectContaining({ id: "audio-drop", kind: "warning" }),
+      {
+        id: "channel-layout-inferred",
+        kind: "info",
+        helpTopic: "channel-layout-inferred",
+        helpTarget: "status-help:channel-layout-inferred:channel-layout-inferred",
+        action: "settings",
+        actionTarget: "status-action:channel-layout-inferred:settings",
+      },
+    ]);
   });
 });
