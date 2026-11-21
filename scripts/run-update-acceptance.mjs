@@ -781,7 +781,15 @@ async function runGuidedAcceptance({
         value.result?.appVersion === newer.version && value.result?.cliVersion === newer.version,
       60_000
     );
-    const after = cliJson(cli, dataRoot, ["inspect"]);
+    // The new version can answer capabilities before its update controller has read the saved
+    // preferences and reconciled the installed package. Wait for the settings section to be
+    // available, then compare its values and the cache independently.
+    const after = await waitFor(
+      "updated app has loaded its update settings",
+      () => cliJson(cli, dataRoot, ["inspect"]),
+      (value) => value.result?.settings?.updates != null,
+      60_000
+    );
     writeJsonAtomic(path.join(runDir, "after.json"), after);
     writeJsonAtomic(path.join(runDir, "capabilities-after.json"), afterCapabilities);
     copyFileSync(attemptFile, path.join(runDir, "helper-attempt.json"));
