@@ -1,42 +1,44 @@
 {
   "schemaVersion": 1,
-  "version": "0.26.2",
-  "baselineTag": "v0.26.1",
-  "baselineRevision": "7b16706095479e2ec5bd7f9a30d4e6cbbf794e46",
-  "candidateRevision": "821e93b655011364a7260f541f5dcd8e897cade7",
-  "contentSha256": "246953865ea45c24800d42d96ead418291d46e24807b042d0337dd62e2abf554",
+  "version": "0.26.3",
+  "baselineTag": "v0.26.2",
+  "baselineRevision": "abc83e752bf9793069de0f5c2f96c6b2ecadd0bd",
+  "candidateRevision": "aa91aa3317aaf9a24797e922a86a3ab765c2db1c",
+  "contentSha256": "4b757a570e7313fc821138b74e8d78a122747932a049a4b9aae9d31055c57f77",
   "websiteSourceSha": "ba26b80053552f98162330c136e969c1246adfd1",
   "reviews": {
     "userGuide": {
       "status": "updated",
-      "rationale": "The File guide covers queue controls, track choice, progress and result selection, Statistics CSV defaults, and timeline jumps. The CLI guide describes the same queue and its commands. Troubleshooting covers the notices that expose help.",
+      "rationale": "The guide covers per-workbench placement, source changes and reconnect, channel mappings, File Mode timing and reanalysis, coordinated quit, and the new Agent Control commands. The CLI and Settings chapters describe the explicit Send action and its effect.",
       "evidence": [
-        "docs/user/file-mode.md and docs/user/cli.md compared with src/hooks/useFileImportQueue.js, src/components/FileAnalysisSummary.jsx and src/agentControl/handlers/transport.js",
-        "docs/user/troubleshooting.md compared with src/components/AppStatus.jsx and src/lib/troubleshooting.js"
+        "docs/user/workspace.md and docs/user/system-settings.md compared with the workbench restore, coordinated quit and update changes",
+        "docs/user/multichannel.md, signal-source.md, file-mode.md and troubleshooting.md compared with source_layout.rs, tap_bridge.m, file_analysis/ffmpeg/layout.rs and the frontend source and timeline changes",
+        "docs/user/cli.md compared with the running-app handlers for window, workbench, update, UI decisions, configuration and application sources"
       ]
     },
     "readme": {
-      "status": "unchanged",
-      "rationale": "The local File analysis highlight still covers the expanded workflow, and the hero still represents the Live workspace during normal capture.",
+      "status": "updated",
+      "rationale": "The README now uses the PLVS collage. Its highlights still describe the existing native capture, multichannel, local analysis, multiple workbenches and Agent Control capabilities.",
       "evidence": [
-        "README.md highlights compared with the 0.26.2 CHANGELOG and the visually inspected PLVS-Website landing hero"
+        "README.md compared with the v0.26.2 release and the 0.26.3 CHANGELOG",
+        "Visually inspected SounDoer/SounDoer assets/plvs-collage.png against the current homepage render and checked the published section names"
       ]
     },
     "website": {
       "status": "updated",
-      "rationale": "The pinned renderer builds the standalone troubleshooting page with links from the guide. The privacy review found user-invoked navigation to fixed first-party help topics and existing GitHub Releases, with no local paths, report data or diagnostics in those links. File analysis and the batch queue stay local. The website renderer changes introduce no collection, consent, recipients, providers, storage, retention or deletion changes. The current policy text and Effective date still apply.",
+      "rationale": "The current renderer builds the updated guide, policy and download links from the candidate sources. The policy now describes the explicit local Agent Control Send path for Feedback and Crash Reports and the local Feedback payload preview. This changes who can invoke those paths on the device once Agent Control is enabled. The endpoints, payload fields, diagnostic opt-in, mail provider and server retention are unchanged. The updater retains the same destinations and preference gates.",
       "evidence": [
-        "Candidate website build with exported 0.26.2 inputs passed and contained all 11 anchors from src/lib/troubleshooting.js",
-        "src/ipc/openExternal.js, src/uiNavigation/UiNavigationContext.jsx, src/hooks/useFileImportQueue.js and src-tauri/src/cli_control.rs compared with v0.26.1",
-        "Live publication.json and PLVS-Website 8ff6d4c..ba26b80 renderer and privacy diffs; docs/privacy-policy.html and docs/privacy-review.json unchanged; privacy-review.mjs check passed"
+        "Live publication.json and PLVS-Website ba26b80053552f98162330c136e969c1246adfd1 homepage copy checked against README.md and the revised guides",
+        "Exported product, policy and Catalogue inputs at aa91aa3317aaf9a24797e922a86a3ab765c2db1c. Website check passed 51 tests and built 38 HTML pages. Checked the 0.26.3 installer link and November 22 policy date in the generated pages.",
+        "Privacy sources compared from abc83e752bf9793069de0f5c2f96c6b2ecadd0bd through aa91aa3317aaf9a24797e922a86a3ab765c2db1c. See docs/privacy-review.json for the reviewed callbacks, local cache and diagnostic changes, effective date and review limits."
       ]
     },
     "screenshots": {
       "status": "unchanged",
-      "rationale": "The homepage and README show normal Live operation, Dock and other Live panels. File and Status changes occur outside those views, and the spectrogram fix releases cached source rows on clear without changing the normal render shown in the hero.",
+      "rationale": "The published images continue to depict the same normal workspace, Dock, histories, spectrum, 7.1.4 roles and rules editor. The release changes file-relative axes, recovery and source notices outside the depicted states. The current renders show small chart-edge differences while the published labels, layout and measured values still match the depicted features.",
       "evidence": [
-        "Visually inspected website/assets/landing-hero.webp and checked homepage image references and published WebP paths across PLVS-Website 8ff6d4c..ba26b80",
-        "Compared the depicted Live state with src/components/AppHeader.jsx, src/components/AppStatus.jsx and src/hooks/useSpectrogramCanvas.js changes since v0.26.1"
+        "Compared published originals at ba26b80053552f98162330c136e969c1246adfd1 with all eight images in artifacts/marketing/homepage-render-2026-11-21T15-44-14-046Z/comparison.html",
+        "The render report identifies d15719a69c7ccdd48c813917b135831456d292ea with a dirty release-preparation worktree. Changes from that revision to the candidate affect release metadata and documentation."
       ]
     }
   }
