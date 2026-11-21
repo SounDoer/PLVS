@@ -68,6 +68,7 @@ import { themeStateSignature, loudnessProfileStateSignature } from "./bridge/sig
  *   previewSelection: (...args: any[]) => any,
  *   commitSelection: (...args: any[]) => any,
  *   retrySelectionPersistence?: (deviceId: string) => Promise<unknown> | undefined,
+ *   refreshApplications?: () => Promise<unknown[]>,
  *   beginRestart: any,
  *   runtimeUnavailable: boolean,
  * }} AgentControlDevice

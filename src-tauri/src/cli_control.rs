@@ -2320,7 +2320,7 @@ fn parse_device_args(args: &[String]) -> Result<ControlCommand, String> {
   }
   if !is_device_id(device_id) {
     return Err(
-      "The device ID must be default or an exact lb-<32 lowercase hex> / cap-<32 lowercase hex> ID returned by device list."
+      "The device ID must be default or an exact lb-, cap- or app-<32 lowercase hex> ID returned by device list."
         .to_string(),
     );
   }
@@ -2393,6 +2393,7 @@ fn is_device_id(value: &str) -> bool {
   let Some(hex) = value
     .strip_prefix("lb-")
     .or_else(|| value.strip_prefix("cap-"))
+    .or_else(|| value.strip_prefix("app-"))
   else {
     return false;
   };
@@ -8162,6 +8163,23 @@ mod tests {
     assert_eq!(request.params["deviceId"], "default");
     assert_eq!(request.params["allowMeasurementRestart"], false);
     assert_eq!(request.params["dryRun"], false);
+
+    let application = parse_control_args(&args(&[
+      "device",
+      "select",
+      "app-0123456789abcdef0123456789abcdef",
+      "--expected-revision",
+      "2",
+      "--expected-generation",
+      "3",
+      "--json",
+    ]))
+    .unwrap();
+    let request = request_for_command(&application, &mut Cursor::new([])).unwrap();
+    assert_eq!(
+      request.params["deviceId"],
+      "app-0123456789abcdef0123456789abcdef"
+    );
   }
 
   #[test]
@@ -8185,6 +8203,16 @@ mod tests {
         "device",
         "select",
         "out:0",
+        "--expected-revision",
+        "1",
+        "--expected-generation",
+        "1",
+        "--json",
+      ]),
+      args(&[
+        "device",
+        "select",
+        "app-4242",
         "--expected-revision",
         "1",
         "--expected-generation",

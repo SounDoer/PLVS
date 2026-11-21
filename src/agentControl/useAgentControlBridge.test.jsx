@@ -289,6 +289,7 @@ function request(method, params = {}, id = "req-1") {
  *   previewAgentDevice?: (...args: any[]) => any,
  *   commitAgentDevice?: (...args: any[]) => any,
  *   retryAgentDevicePersistence?: (...args: any[]) => any,
+ *   refreshAgentApplications?: (...args: any[]) => any,
  *   beginAgentDeviceRestart?: (...args: any[]) => any,
  *   deviceRuntimeUnavailable?: boolean,
  *   onDeviceState?: (...args: any[]) => any,
@@ -360,6 +361,7 @@ function Harness({
   previewAgentDevice,
   commitAgentDevice,
   retryAgentDevicePersistence,
+  refreshAgentApplications,
   beginAgentDeviceRestart,
   deviceRuntimeUnavailable = false,
   onDeviceState = () => {},
@@ -601,6 +603,9 @@ function Harness({
         ? (deviceId) => commitAgentDevice(deviceId, { setDeviceState, setDeviceLiveState })
         : async (deviceId) => setDeviceState((current) => ({ ...current, requestedId: deviceId })),
       retrySelectionPersistence: retryAgentDevicePersistence,
+      refreshApplications: refreshAgentApplications
+        ? () => refreshAgentApplications({ setDeviceState })
+        : undefined,
       beginRestart: beginAgentDeviceRestart
         ? () => beginAgentDeviceRestart({ setDeviceState, setDeviceLiveState })
         : () => {
@@ -1847,6 +1852,54 @@ describe("useAgentControlBridge", () => {
         generation: 1,
         selection: { requestedId: "default", mode: "automatic", available: true },
         live: { running: false, transition: null, usingRequestedSelection: false },
+      });
+    });
+
+    it("refreshes and lists running applications, then selects one through the same owner", async () => {
+      const app = {
+        id: "app-00112233445566778899aabbccddeeff",
+        label: "QuickTime Player",
+        processId: 4808,
+        processIds: [4808],
+        windowTitle: "private-document.wav",
+      };
+      const refresh = vi.fn(async ({ setDeviceState }) => {
+        setDeviceState((current) => ({ ...current, captureApplications: [app] }));
+        return [app];
+      });
+      const preview = vi.fn(async () => ({ label: app.label, sampleRateHz: 48_000, channels: 2 }));
+      const commit = vi.fn(async (deviceId, { setDeviceState }) => {
+        setDeviceState((current) => ({ ...current, requestedId: deviceId }));
+      });
+      mount({
+        refreshAgentApplications: refresh,
+        previewAgentDevice: preview,
+        commitAgentDevice: commit,
+      });
+      await waitUntilReady();
+
+      const listed = await send(request("device.list", {}, "device-list-apps"));
+      expect(refresh).toHaveBeenCalledTimes(1);
+      expect(listed.result.applications).toEqual([
+        {
+          id: app.id,
+          label: app.label,
+          kind: "application",
+          sampleRateHz: null,
+          channelCount: null,
+        },
+      ]);
+      expect(JSON.stringify(listed.result)).not.toContain("private-document");
+      expect(JSON.stringify(listed.result)).not.toContain("4808");
+
+      const selected = await send(
+        request("device.select", { deviceId: app.id, expectedGeneration: 1 })
+      );
+      expect(commit).toHaveBeenCalledWith(app.id, expect.anything());
+      expect(selected.result.state.selection).toMatchObject({
+        requestedId: app.id,
+        available: true,
+        resolved: { id: app.id, kind: "application" },
       });
     });
 

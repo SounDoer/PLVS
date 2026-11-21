@@ -10,6 +10,18 @@ import { buildDeviceInspection, buildDeviceList, planDeviceSelection } from "./d
 import { standIn } from "../testing/standIn.js";
 const LB = "lb-0123456789abcdef0123456789abcdef";
 const CAP = "cap-fedcba9876543210fedcba9876543210";
+const APP = "app-00112233445566778899aabbccddeeff";
+
+function application(overrides = {}) {
+  return {
+    id: APP,
+    label: "QuickTime Player",
+    processId: 4808,
+    processIds: [4808, 4810],
+    windowTitle: "private-document.wav",
+    ...overrides,
+  };
+}
 
 function rows() {
   return [
@@ -77,6 +89,7 @@ describe("Device Control inventory", () => {
           channelCount: 1,
         },
       ],
+      applications: [],
       truncated: false,
     });
   });
@@ -263,4 +276,56 @@ it("restarts inventory for same-count speaker routing changes without exposing f
   expect(
     buildDeviceInspection({ ...after, requestedId: "default" }).selection.resolved.channelCount
   ).toBe(2);
+});
+
+describe("Device Control application sources", () => {
+  it("lists running applications by stable ID and label without process IDs or window titles", () => {
+    const state = { ...inventory(), captureApplications: [application()] };
+    expect(buildDeviceList(state).applications).toEqual([
+      {
+        id: APP,
+        label: "QuickTime Player",
+        kind: "application",
+        sampleRateHz: null,
+        channelCount: null,
+      },
+    ]);
+  });
+
+  it("resolves a selected running application and reports it unavailable once it exits", () => {
+    const running = { ...inventory(), requestedId: APP, captureApplications: [application()] };
+    expect(
+      buildDeviceInspection(running, { state: "running", requestedDeviceId: APP })
+    ).toMatchObject({
+      selection: {
+        requestedId: APP,
+        mode: "exact",
+        available: true,
+        resolved: { id: APP, label: "QuickTime Player", kind: "application" },
+      },
+      live: { running: true, usingRequestedSelection: true },
+    });
+    expect(
+      buildDeviceInspection({ ...running, captureApplications: [] }, { state: "stopped" }).selection
+    ).toMatchObject({ requestedId: APP, available: false, resolved: null });
+  });
+
+  it("plans application selection like an exact device and refuses one that is not running", () => {
+    const state = { ...inventory(), requestedId: "default", captureApplications: [application()] };
+    expect(
+      planDeviceSelection(state, { deviceId: APP, expectedGeneration: 1 }, { state: "running" })
+    ).toMatchObject({
+      changed: true,
+      effects: ["measurementRestart"],
+      confirmationsRequired: ["allowMeasurementRestart"],
+      plan: { from: "default", to: APP, restartLive: true },
+    });
+    expect(
+      planDeviceSelection(
+        { ...state, captureApplications: [] },
+        { deviceId: APP, expectedGeneration: 1 },
+        { state: "stopped" }
+      ).issues[0].code
+    ).toBe("deviceNotFound");
+  });
 });

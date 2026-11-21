@@ -81,6 +81,8 @@ export function buildAgentControlCapabilities(runtime, revision) {
     appVersion: String(runtime.appVersion),
     protocolVersion: 1,
     features: {
+      // Device Control lists and selects running applications beside devices.
+      ...(hasMethod("device.list") ? { device: { applications: true } } : {}),
       ...(runtime.dockCapabilities ? { dock: runtime.dockCapabilities } : {}),
       ...(hasMethod("editorDraft.describe")
         ? {

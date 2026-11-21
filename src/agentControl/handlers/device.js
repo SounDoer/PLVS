@@ -15,11 +15,20 @@ async function deviceControl(ctx) {
     );
   }
   if (request.method === "device.list") {
+    // Applications come and go without a device event, so refresh them as opening Sources does.
+    // The owner returns the refreshed list directly; React state may not have re-rendered yet.
+    let captureApplications = currentDevice.snapshot.captureApplications;
+    try {
+      const refreshed = await currentDevice.refreshApplications?.();
+      if (Array.isArray(refreshed)) captureApplications = refreshed;
+    } catch (_) {
+      // A failed refresh keeps the last observed applications, as the Sources menu does.
+    }
     return {
       requestId,
       result: {
         revision: clock.current(),
-        ...buildDeviceList(currentDevice.snapshot),
+        ...buildDeviceList({ ...currentDevice.snapshot, captureApplications }),
       },
     };
   }

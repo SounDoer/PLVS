@@ -1,3 +1,35 @@
+import {
+  MAX_PUBLIC_DEVICE_LABEL_SCALARS,
+  MAX_PUBLIC_DEVICE_ROWS,
+} from "../runtime/deviceInventory.js";
+
+const APPLICATION_ID = /^app-[0-9a-f]{32}$/;
+
+/** Public application row: stable identity and label only, never process IDs or window titles. */
+function applicationRow(application) {
+  return {
+    id: application.id,
+    label: Array.from(application.label).slice(0, MAX_PUBLIC_DEVICE_LABEL_SCALARS).join(""),
+    kind: "application",
+    sampleRateHz: null,
+    channelCount: null,
+  };
+}
+
+function runningApplications(snapshot) {
+  return (Array.isArray(snapshot.captureApplications) ? snapshot.captureApplications : []).filter(
+    (application) => typeof application?.id === "string" && APPLICATION_ID.test(application.id)
+  );
+}
+
+/** Find an exact device or running application among every source the GUI can select. */
+function findSource(snapshot, id) {
+  const device = snapshot.allDevices.find((candidate) => candidate.id === id);
+  if (device) return device;
+  const application = runningApplications(snapshot).find((candidate) => candidate.id === id);
+  return application ? applicationRow(application) : null;
+}
+
 function resolvedExact(device) {
   return device
     ? {
@@ -26,9 +58,7 @@ function resolvedAutomatic(automatic) {
 export function buildDeviceInspection(snapshot, live = {}) {
   const requestedId = snapshot.requestedId || "default";
   const automatic = requestedId === "default";
-  const device = automatic
-    ? null
-    : (snapshot.allDevices.find((candidate) => candidate.id === requestedId) ?? null);
+  const device = automatic ? null : findSource(snapshot, requestedId);
   const state = live.state ?? (live.running ? "running" : "stopped");
   const transition =
     live.transition ?? (state === "starting" || state === "stopping" ? state : null);
@@ -106,9 +136,7 @@ export function planDeviceSelection(snapshot, params, live = {}) {
   }
 
   const automatic = to === "default";
-  const target = automatic
-    ? null
-    : (snapshot.allDevices.find((device) => device.id === to) ?? null);
+  const target = automatic ? null : findSource(snapshot, to);
   if (!automatic && !target) {
     result.issues.push(issue("deviceNotFound", "$.deviceId", `Device ${to} was not found.`));
     return result;
@@ -139,6 +167,7 @@ export function planDeviceSelection(snapshot, params, live = {}) {
 
 /** Return the bounded public list shape while retaining full rows only inside the owner. */
 export function buildDeviceList(snapshot) {
+  const applications = runningApplications(snapshot);
   return {
     generation: snapshot.generation,
     observedAt: snapshot.observedAt,
@@ -155,6 +184,7 @@ export function buildDeviceList(snapshot) {
     devices: snapshot.devices.map((device) =>
       Object.fromEntries(Object.entries(device).filter(([key]) => key !== "monitorSignature"))
     ),
-    truncated: snapshot.truncated,
+    applications: applications.slice(0, MAX_PUBLIC_DEVICE_ROWS).map(applicationRow),
+    truncated: snapshot.truncated || applications.length > MAX_PUBLIC_DEVICE_ROWS,
   };
 }

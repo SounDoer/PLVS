@@ -467,7 +467,8 @@ plvs-cli device inspect --json
 plvs-cli device select <device-id|default> --expected-revision <n> --expected-generation <n> --json [--allow-measurement-restart] [--dry-run]
 ```
 
-Selection accepts only `default` or an exact ID returned by `device list`. Inventory changes use a
+Selection accepts only `default` or an exact device or application ID returned by `device list`,
+which also lists the running applications that Sources offers. Inventory changes use a
 separate generation token and do not advance the global revision. A running Live switch requires
 `--allow-measurement-restart`. See [Device Control](../agent-control/devices.md) for inventory fields,
 Automatic semantics, dry-run, persistence/restart settlement, and copyable workflows.

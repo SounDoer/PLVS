@@ -1,8 +1,9 @@
 # Device Control
 
-Device Control operates the same requested capture-device selection as the header and tray in the
-running PLVS app. It lists the current cached inventory, inspects the requested and effective
-selection, and selects one exact device or the Automatic policy. It never starts PLVS, bypasses the
+Device Control operates the same requested capture-source selection as the header and tray in the
+running PLVS app. It lists the current cached inventory and the running applications, inspects the
+requested and effective selection, and selects one exact device, one application, or the Automatic
+policy. It never starts PLVS, bypasses the
 React owner, or exposes native backend handles.
 
 ## Commands
@@ -43,6 +44,15 @@ unrelated to the removed standalone `devices` command and to capture-harness int
       "channelCount": 2
     }
   ],
+  "applications": [
+    {
+      "id": "app-00112233445566778899aabbccddeeff",
+      "label": "QuickTime Player",
+      "kind": "application",
+      "sampleRateHz": null,
+      "channelCount": null
+    }
+  ],
   "truncated": false
 }
 ```
@@ -52,6 +62,16 @@ opaque stable ID, display label, `kind`, `direction`, loopback classification, d
 and channel count. Unknown numeric capabilities are `null`. Results contain at most 256 rows and
 each label contains at most 512 Unicode scalar values; `truncated: true` means the internal
 inventory was longer.
+
+`applications` lists the running applications offered in the Sources menu's Applications group.
+`device list` refreshes them first, as opening Sources does, so an application that has just
+started or stopped is reflected. Each row carries only the stable application ID, which survives an
+application restart, and its label. Process IDs and window titles stay inside PLVS. Application
+capture follows the current default output, so its format is reported as `null` here; read the
+measured topology from `measurement inspect`. The list is empty when the platform offers no
+application capture or no application is connected to the audio system. Application changes do not
+advance the device `generation`. `truncated: true` also covers an application list longer than 256
+rows. `app.capabilities.features.device.applications` advertises this support.
 
 `default` means Automatic selection, not a physical row. Its `resolved` summary identifies the
 current system-output route when preview succeeds. Automatic remains a valid persisted policy when
@@ -88,18 +108,20 @@ null.
 `requestedId` is the durable user choice. A newly created additional workbench opens Stopped with
 Automatic selected and reports `requestedId: "default"`, `mode: "automatic"`, and
 `resolved: null`. An exact selection reports `mode: "exact"` and includes its exact ID in
-`resolved`; Automatic reports a null resolved ID because it is a policy. The Live summary says
+`resolved`; Automatic reports a null resolved ID because it is a policy. A selected application
+also reports `mode: "exact"`, with `kind: "application"` and null format fields in `resolved`. The Live summary says
 whether capture is running, whether a device restart is settling, and whether the running engine
 has acknowledged the requested selection.
 
 If an exact input or output disconnects, capture stops and `requestedId` stays selected.
-While it is missing, `available` is false and `resolved` is null. Reconnecting makes the
+While it is missing, `available` is false and `resolved` is null. A selected application that
+exits is reported the same way while Sources shows **Selected Application Unavailable**. Reconnecting makes the
 device available again. Use `transport live start` to begin a fresh measurement.
 
 ## Exact selection and concurrency
 
-`device select` accepts only the literal `default` or one exact, case-sensitive ID returned by the
-current `device list`. It never accepts a label, index, substring, legacy `out:N`/`in:N` ID, or
+`device select` accepts only the literal `default` or one exact, case-sensitive device or application
+ID returned by the current `device list`. An application must be running when it is selected. It never accepts a label, index, substring, legacy `out:N`/`in:N` ID, or
 fuzzy match. Both concurrency guards are required:
 
 - `--expected-revision` protects the durable requested selection and other controllable app state.
