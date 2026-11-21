@@ -119,7 +119,13 @@ pub fn analyze_file_track_to_summary_with_layout(
     .ok_or_else(|| "Selected audio track has no channel count".to_string())?;
 
   let ffmpeg = locate_sidecar("ffmpeg");
-  let args = build_decode_args(path, track.index, channels, sample_rate);
+  let args = build_decode_args(
+    path,
+    track.index,
+    channels,
+    track.channel_layout.as_deref(),
+    sample_rate,
+  );
   let mut command = Command::new(&ffmpeg);
   command
     .args(&args)
@@ -140,9 +146,19 @@ pub fn analyze_file_track_to_summary_with_layout(
     let _ = stderr.read_to_end(&mut sink);
   });
 
-  let mut meter = match layout_id {
-    Some(layout_id) => SummaryMeter::new_with_layout(sample_rate, channels, layout_id)?,
-    None => SummaryMeter::new(sample_rate, channels),
+  let measured_roles = match layout_id {
+    Some(layout_id) => {
+      crate::dsp::channel_layouts::roles_for_layout(layout_id).map(<[String]>::to_vec)
+    }
+    None => crate::file_analysis::ffmpeg::layout::roles_for_layout(
+      track.channel_layout.as_deref(),
+      channels,
+    ),
+  };
+  let mut meter = match (layout_id, &measured_roles) {
+    (Some(layout_id), _) => SummaryMeter::new_with_layout(sample_rate, channels, layout_id)?,
+    (None, Some(roles)) => SummaryMeter::new_with_roles(sample_rate, channels, roles)?,
+    (None, None) => SummaryMeter::new(sample_rate, channels),
   };
   meter.enable_file_locations();
   let mut pcm_chunker = SummaryPcmChunker::new(sample_rate, channels);
@@ -199,6 +215,7 @@ pub fn analyze_file_track_to_summary_with_layout(
     sample_peak_max_r_db: metrics.sample_peak_max_r_db,
     loudness_layout: metrics.loudness_layout.to_string(),
     loudness_layout_known: metrics.loudness_layout_known,
+    channel_roles: measured_roles,
     dialogue_integrated: f64::NEG_INFINITY,
     dialogue_lra: f64::NEG_INFINITY,
     dialogue_percent: 0.0,

@@ -7,6 +7,14 @@ PLVS follows your source's channel layout, with a manual choice when needed.
 Mono, stereo, LCR, quad, 5.0, 5.1, 7.0, and 7.1 are recognised from the channel count when native
 mappings are unavailable.
 
+In File mode, PLVS uses the channel layout stored in the file, such as 5.1(side), 7.1(wide) or
+7.1.4, including files with more than eight channels and files whose channels use a non-standard
+order. Channels keep their stored positions; PLVS does not remix them into a default layout. A
+layout that matches no standard layout shows **Custom**, labels each channel by its role, and
+measures loudness with that role's weight. A file without a stored layout, or one with channels
+PLVS has no role for, falls back to the channel count. A manual layout you set for that channel
+count still overrides the file.
+
 For system output monitoring, PLVS follows the selected output's configured speakers on Windows,
 macOS and Linux. Stereo produces two monitored channels; 5.1 produces six; 7.1 produces eight.
 The interface may expose more physical channels than the speaker configuration uses. PLVS extracts

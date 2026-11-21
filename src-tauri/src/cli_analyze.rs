@@ -615,6 +615,7 @@ mod tests {
       sample_peak_max_r_db: right,
       loudness_layout: "stereo".to_string(),
       loudness_layout_known: true,
+      channel_roles: None,
       dialogue_integrated: f64::NEG_INFINITY,
       dialogue_lra: f64::NEG_INFINITY,
       dialogue_percent: 0.0,

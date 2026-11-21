@@ -47,10 +47,17 @@ export const FILE_UNAVAILABLE_EXPLANATIONS = Object.freeze({
 });
 
 export function fileChannelLabels(summary, roles) {
+  // A manual selection wins; otherwise use the roles the summary was measured with, which name a
+  // file's own layout even when it is not a table layout (6.0, a custom channel order, ...).
+  const labelRoles = Array.isArray(roles)
+    ? roles
+    : Array.isArray(summary.channelRoles)
+      ? summary.channelRoles
+      : null;
   return getPeakMeterChannelLabels(summary.channelCount ?? summary.channels, {
     formatId: summary.loudnessLayoutKnown ? summary.loudnessLayout : undefined,
     resolvedLayout: "unknown",
-    overrideLabels: Array.isArray(roles) ? roleTokensToLabels(roles) : undefined,
+    overrideLabels: labelRoles ? roleTokensToLabels(labelRoles) : undefined,
   });
 }
 

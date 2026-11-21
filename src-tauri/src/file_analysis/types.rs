@@ -103,6 +103,10 @@ pub struct FileAnalysisSummaryMetrics {
   pub loudness_layout: String,
   /// False when loudness is Ch1/Ch2 stereo loudness of an unrecognized layout.
   pub loudness_layout_known: bool,
+  /// Roles the summary was measured with when they were known: a manual selection or the file's
+  /// own channel layout. Absent for a count-based or unknown layout, and in older summaries.
+  #[serde(default, skip_serializing_if = "Option::is_none")]
+  pub channel_roles: Option<Vec<String>>,
   /// Dialogue Loudness; `NEG_INFINITY` when detection was off or no dialogue was measured.
   pub dialogue_integrated: f64,
   /// PLVS Dialogue Range; `NEG_INFINITY` until one complete masked observation exists.

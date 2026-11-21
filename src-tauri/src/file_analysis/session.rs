@@ -426,7 +426,13 @@ fn analyze_file_with_process(
   let duration_ms = probe.duration_ms;
 
   let ffmpeg = locate_sidecar("ffmpeg");
-  let args = build_decode_args(path, track.index, channels, sample_rate);
+  let args = build_decode_args(
+    path,
+    track.index,
+    channels,
+    track.channel_layout.as_deref(),
+    sample_rate,
+  );
   let mut command = Command::new(&ffmpeg);
   command
     .args(&args)
@@ -462,6 +468,20 @@ fn analyze_file_with_process(
   } else {
     MeterPipeline::new_for_file_with_duration(sample_rate, channels, duration_ms)
   };
+  // The file's own layout plays the part of a Live output's speaker mapping: a manual role
+  // selection for this channel count still overrides it.
+  let file_roles = crate::file_analysis::ffmpeg::layout::roles_for_layout(
+    track.channel_layout.as_deref(),
+    channels,
+  );
+  pipeline.set_source_channel_roles(file_roles.clone());
+  // Mirrors the pipeline's precedence: a full manual selection, then the file's own layout.
+  let measured_roles = config
+    .channel_selection
+    .as_ref()
+    .filter(|selection| selection.roles.len() == usize::from(channels))
+    .map(|selection| selection.roles.clone())
+    .or(file_roles);
   let mut last_progress_emit_frames = 0_u64;
   let mut pcm_chunker = FilePcmHistoryChunker::new(sample_rate, channels);
   let mut carry: Vec<u8> = Vec::new();
@@ -556,6 +576,7 @@ fn analyze_file_with_process(
     sample_peak_max_r_db: metrics.sample_peak_max_r_db,
     loudness_layout: metrics.loudness_layout,
     loudness_layout_known: metrics.loudness_layout_known,
+    channel_roles: measured_roles,
     dialogue_integrated: metrics.dialogue_integrated,
     dialogue_lra: metrics.dialogue_lra,
     dialogue_percent: metrics.dialogue_percent,
@@ -1246,6 +1267,7 @@ mod tests {
       sample_peak_max_r_db: metrics.sample_peak_max_r_db,
       loudness_layout: metrics.loudness_layout.to_string(),
       loudness_layout_known: metrics.loudness_layout_known,
+      channel_roles: None,
       dialogue_integrated: f64::NEG_INFINITY,
       dialogue_lra: f64::NEG_INFINITY,
       dialogue_percent: 0.0,
@@ -1294,6 +1316,7 @@ mod tests {
       sample_peak_max_r_db: metrics.sample_peak_max_r_db,
       loudness_layout: metrics.loudness_layout,
       loudness_layout_known: metrics.loudness_layout_known,
+      channel_roles: None,
       dialogue_integrated: metrics.dialogue_integrated,
       dialogue_lra: metrics.dialogue_lra,
       dialogue_percent: metrics.dialogue_percent,

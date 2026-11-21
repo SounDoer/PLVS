@@ -401,6 +401,40 @@ describe("fileAnalysisReport", () => {
     expect(report.summary.loudnessLayoutKnown).toBe(true);
   });
 
+  it("labels a file's own custom layout from the roles it was measured with", () => {
+    const channelPeaks = Array.from({ length: 6 }, (_, channelIndex) => ({
+      channelIndex,
+      samplePeakMaxDb: -20,
+      truePeakMaxDbtp: -20,
+    }));
+    const session = {
+      ...COMPLETE_SESSION,
+      summary: {
+        ...COMPLETE_SESSION.summary,
+        channels: 6,
+        channelCount: 6,
+        channelPeaks,
+        loudnessLayout: "custom",
+        loudnessLayoutKnown: true,
+        channelRoles: ["L", "R", "C", "Cs", "Ls", "Rs"],
+      },
+    };
+    const labels = (report) => report.summary.channelPeaks.map((peak) => peak.label);
+    expect(
+      labels(buildFileAnalysisReport(session, { exportedAt: "2026-07-06T12:30:00.000Z" }))
+    ).toEqual(["L", "R", "C", "Cs", "Ls", "Rs"]);
+    const manual = {
+      ...session,
+      analysisSettings: {
+        ...session.analysisSettings,
+        channelRolesByCount: { 6: ["L", "R", "C", "LFE", "Ls", "Rs"] },
+      },
+    };
+    expect(
+      labels(buildFileAnalysisReport(manual, { exportedAt: "2026-07-06T12:30:00.000Z" }))
+    ).toEqual(["L", "R", "C", "LFE", "Ls", "Rs"]);
+  });
+
   it("reports null loudness layout fields for a legacy summary without them", () => {
     const report = buildFileAnalysisReport(COMPLETE_SESSION, {
       exportedAt: "2026-07-06T12:30:00.000Z",
