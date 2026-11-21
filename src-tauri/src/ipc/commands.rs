@@ -170,26 +170,25 @@ pub(crate) fn read_audio_device_preview(device_id: &str) -> Result<AudioDevicePr
     let requested_key = crate::audio::device_enum::device_id_key(&device)?;
     let (target, supported) = crate::audio::macos::capture_target(device, supported)?;
     let target_key = crate::audio::device_enum::device_id_key(&target)?;
-    let prefix = (target_key != requested_key).then(|| format!("{target_key}|"));
+    let prefix = if target_key == requested_key {
+      String::new()
+    } else {
+      format!("{target_key}|")
+    };
     (target, supported, prefix)
   } else {
-    (device, supported, None)
+    (device, supported, String::new())
   };
+  // Other platforms capture the requested output itself.
   #[cfg(not(target_os = "macos"))]
-  let signature_prefix: Option<String> = None;
+  let signature_prefix = String::new();
   let plan = crate::audio::source_layout::device_plan(&device, supported.channels(), output);
   let sample_rate_hz = supported.sample_rate();
   let channels = plan.channels();
   Ok(AudioDevicePreview {
     label,
     endpoint_id: device.id().ok().map(|id| id.to_string()),
-    monitor_signature: output.then(|| {
-      format!(
-        "{}{}",
-        signature_prefix.unwrap_or_default(),
-        plan.signature()
-      )
-    }),
+    monitor_signature: output.then(|| format!("{signature_prefix}{}", plan.signature())),
     sample_rate_hz,
     channels,
   })
