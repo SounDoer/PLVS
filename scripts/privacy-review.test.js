@@ -15,7 +15,8 @@ describe("Privacy Policy", () => {
     expect(html).toContain("When automatic checking is enabled");
     expect(html).toContain("Subscriber records remain until you request deletion");
     expect(html).toContain("Diagnostics are off by default");
-    expect(html).toContain("Nothing is sent until you select <strong>Send</strong>");
+    expect(html).toContain("Feedback is sent only by an explicit <strong>Send</strong>");
+    expect(html).toContain("Sending requires an explicit <strong>Send</strong>");
     expect(html).toContain("keeps at most the newest five local crash reports");
     expect(html).toContain("xichen@soundoer.com");
   });
