@@ -30,6 +30,10 @@ mixing them together. For example, a 16-channel interface configured as Stereo p
 with all its channels. In macOS Audio MIDI Setup, the speaker configuration named **7.1** is this
 wide layout; the standard 7.1 layout with rear surrounds is named **7.1 Rear Surround**.
 
+Speaker roles also include the top-centre positions above the front, middle and rear of the room
+(**Ctf**, **Ctm** and **Ctr**). An output or file that reports Lt/Rt matrix-encoded stereo is
+measured as left and right.
+
 On macOS, a two-channel output with unlabeled channels can use the left and right assignments
 that Core Audio provides for stereo playback, including on built-in speakers.
 

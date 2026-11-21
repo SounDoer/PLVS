@@ -7,6 +7,52 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.26.3] - 2026-11-22
+
+### Added
+
+- Saved Presets and each workbench remember the normal window's position, size and maximized
+  state. When the display, work area or scale changes, a centered window stays centered and a
+  window against an edge stays at that edge.
+- PLVS recognises 7.1 Wide (Lc/Rc) and top-centre speakers on macOS, Windows and Linux, and reads
+  Lt/Rt matrix stereo as left and right. In macOS Audio MIDI Setup, the configuration named "7.1"
+  is 7.1 Wide.
+- Status Notices show Channel Layout Inferred when a source with three or more channels reports no
+  speaker layout and PLVS chose one from the channel count.
+- Agent Control can open and quit workbenches; move, maximize and minimize windows; pin panels;
+  control update preferences and installation; answer dialogs; reset configuration; and list and
+  select application sources. It also supports editing and previewing Feedback drafts. An explicit
+  Send command can submit Feedback or a pending crash report when Agent Control is enabled.
+
+### Changed
+
+- File Mode uses the channel layout stored in the file, including layouts with more than eight
+  channels such as 7.1.4 and non-standard channel orders, and labels custom layouts by role.
+- File Mode time axes, Time Range fields and hover readouts use positions measured from the start
+  of the file.
+- Live readings update up to 30 times per second while File analysis runs.
+- A collapsed Sources group shows only the selected source's name.
+
+### Fixed
+
+- File Mode no longer remixes files whose layout is not FFmpeg's default for their channel count,
+  such as quad, LCR, 7.0, 5.1.2, 7.1.2 and 7.1 Wide, and files with a custom channel order now open.
+  Reanalyze affected files: earlier results were measured on remixed audio.
+- On macOS, a Multi-Output Device whose first device has more than two channels no longer reads up
+  to 18 dB low; PLVS measures it through that first device. An Aggregate Device now reports that it
+  cannot be measured yet.
+- When a selected input or output disconnects, PLVS stops measuring, keeps the selection and shows
+  Source Disconnected.
+- macOS built-in stereo speakers are recognised as left and right.
+- A newer update replaces an older downloaded package instead of staying hidden behind it.
+- If a saved configuration cannot restart PLVS, Status Notices show Restart Required with a
+  Restart PLVS action.
+- Resetting a maximum readout and Clear during a Live measurement wait for the audio engine and
+  report a failure instead of appearing to succeed.
+- Many reliability fixes across workbenches, shared libraries, Presets, settings, shortcuts, Dock
+  and window transitions, file probes and cancellation, and coordinated quit, so failed or
+  concurrent operations keep saved state and recover cleanly.
+
 ## [0.26.2] - 2026-11-13
 
 ### Added

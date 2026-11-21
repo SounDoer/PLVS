@@ -554,8 +554,9 @@ in the structured snapshot. Free-form log messages can still include device labe
 [Command Line](command-line.md). It is off until you enable it. When enabled, UI Navigation can
 open Settings or exact Panel Settings, begin Theme/Profile authoring, and open an unsent Feedback
 draft. Exact Close and Cancel operations use the same visible UI paths. They cannot save, send,
-confirm, or silently discard a draft; dirty cancellation leaves the real discard decision to the
-user. Real event dialogs are observable but cannot be fabricated. Temporary dialogs and editors use
+confirm, or silently discard a draft; dirty cancellation opens a separate discard decision.
+Agent Control can respond to choices in currently open dialogs. The Send choice submits Feedback
+or a pending crash report. Temporary dialogs and editors use
 a separate UI generation so automation can detect visible changes without treating them as saved
 settings changes.
 

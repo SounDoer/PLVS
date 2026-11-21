@@ -345,7 +345,9 @@ safety, and errors.
 Read `choices` in `ui inspect` before answering an open dialog with `ui decide`. Use
 `editor-draft describe feedback` to discover operations for the Feedback draft, then use
 `ui decide --choice send --dry-run` with its surface ID and the current UI tokens to preview the
-payload. Send without `--dry-run` submits Feedback from any app identity.
+payload. Send without `--dry-run` submits Feedback from any app identity. When a crash-report
+prompt is open, its Send choice submits the saved report. Issue either Send command only when
+you intend to transmit that data.
 
 Editor Draft Control operates on the in-memory document of an already open Theme or Loudness
 Profile editor:

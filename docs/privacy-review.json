@@ -1,39 +1,34 @@
 {
   "schemaVersion": 1,
-  "reviewedOn": "2026-10-16",
-  "effectiveDate": "2026-10-16",
-  "contentSha256": "4a4e7394fab142f5c8a95750b3a41ced897749c94c6eda51478be3e6a76a9374",
-  "previousEffectiveDate": "2026-09-20",
+  "reviewedOn": "2026-11-21",
+  "effectiveDate": "2026-11-22",
+  "contentSha256": "a2378e4ee00c29937e8fbf33b388f2c4daca84f92479348d654fac2d49069842",
+  "previousEffectiveDate": "2026-10-16",
   "dateDecision": "updated",
-  "changeSummary": "Add first-launch update choice, optional background downloads, local verified package retention and cancellation; correct the distinction between signed packages and unsigned manifests.",
-  "dateRationale": "This policy revision adds an opt-in automatic package request trigger and durable local package storage. October 16, 2026 identifies this new policy revision, not an unchanged-policy deployment. Reconfirm the effective date when publishing this pending feature.",
-  "scope": "Review of the update-preferences feature relative to 7670212d. Other service processing remains covered by the prior source baseline; this change introduces no additional recipient beyond GitHub release/download infrastructure.",
+  "changeSummary": "Disclose the Agent Control Send action for Feedback and pending Crash Reports, the local Feedback payload preview, and deletion of the current pending report after choosing Don’t Ask Again.",
+  "dateRationale": "November 22, 2026 is the planned 0.26.3 release date. This revision describes new local command access to existing submission paths.",
+  "scope": "Review of Feedback, Crash Reports and update behavior from v0.26.2 (abc83e75) through d15719a6 plus the 0.26.3 release documentation.",
   "evidence": [
     {
-      "source": "PLVS: src/lib/updateController.js; src/hooks/useUpdateController.js; src-tauri/src/update_runtime.rs; src-tauri/src/update_cache.rs; src-tauri/src/update_worker.rs; src/components/UpdateSurfaces.jsx",
-      "revision": "update-preferences working changes based on 7670212d",
-      "notes": "Reviewed request gates and native preference rechecks; manual requests are separate. Fresh users make no automatic request before saving a choice. Existing users retain checking only. Packages are signature and signed-version checked, kept installation-locally, replaced atomically, and removed when automatic downloading is revoked. No audio, measurements, feedback payload or PLVS user identifier is added to update requests. Helper installation uses cached bytes without a new network request."
+      "source": "PLVS: src/uiNavigation/UiNavigationContext.jsx, src/agentControl/handlers/ui.js, src/hooks/useFeedbackDraft.js, src/lib/feedback.js and docs/agent-control/ui.md",
+      "revision": "v0.26.2..d15719a6",
+      "notes": "Agent Control is opt-in. An explicit Send against the current mounted dialog invokes its existing submit action. Dry-run returns a local preview without issuing a POST. Diagnostics remain opt-in and the endpoint and payload fields are unchanged."
     },
     {
-      "source": "PLVS: src/hooks/useUpdateCheck.js; src/lib/updateCheck.js; src-tauri/src/lib.rs",
-      "revision": "c9f81cafdf9be3b25509816606292ba258f72aaa",
-      "notes": "Startup and twelve-hour coordinator checks; updater plugin excluded for preview identity. Native logging uses a 2 MB rotation threshold and KeepSome(3); pending crash enrichment requests 200 log lines."
+      "source": "PLVS: src/components/CrashReportDialog.jsx, src/lib/crashReporting.js and src-tauri/src/feedback_diagnostics.rs",
+      "revision": "v0.26.2..d15719a6",
+      "notes": "Crash reports use the existing explicit Send callback, request and endpoint. The current local report is removed after success or when dismissed with Don’t Send or Don’t Ask Again. The display-change event stays in the local application."
     },
     {
-      "source": "PLVS: src/components/FeedbackDialog.jsx; src/components/CrashReportDialog.jsx; src/lib/feedback.js; src/lib/crashReporting.js; src/lib/feedbackDiagnostics.js; src-tauri/src/feedback_diagnostics.rs; src-tauri/src/crash_report.rs",
-      "revision": "c9f81cafdf9be3b25509816606292ba258f72aaa",
-      "notes": "Feedback diagnostics default off and are included only when selected; reviewed payload submission is explicit. Crash reports remain local until submission, with combined pending/suppressed retention of five. Diagnostic journals are bounded by 100 records and 64 KiB; frontend fields are allowlisted."
+      "source": "PLVS: src-tauri/src/update_cache.rs, src-tauri/src/update_runtime.rs, src/hooks/useUpdatePreferences.js and src/agentControl/handlers/update.js",
+      "revision": "v0.26.2..d15719a6",
+      "notes": "Agent Control invokes the existing manual update and settings paths. Cache changes replace older downloads and remove rejected packages locally. The preference gates, network destinations and request data are unchanged."
     },
     {
-      "source": "PLVS: website/index.html; website/privacy/index.html",
-      "revision": "c9f81cafdf9be3b25509816606292ba258f72aaa",
-      "notes": "Homepage requests public GitHub release metadata and submits the newsletter form to list.plvs.soundoer.com. Presentation work preserves policy prose and the existing effective date."
-    },
-    {
-      "source": "soundoer-newsletter: src/subscribe.js; src/db.js; src/feedback.js; src/server.js; src/start.js; README.md; .env.example",
-      "revision": "a0cddb1e7191135d130b7b503f90ce358c714dcc",
-      "notes": "Local clean service checkout: SQLite subscriber state; unsubscribe changes status without deleting the row; feedback/crash routes validate and email rather than insert into the subscriber DB. Origin/user-agent are included in messages. Application logging is disabled and rate limiting is five requests per minute. Documentation identifies SES and the example SMTP hostname uses us-east-1."
+      "source": "PLVS-Website: live publication.json and the pinned renderer",
+      "revision": "ba26b80053552f98162330c136e969c1246adfd1",
+      "notes": "The release uses the current live site renderer. The privacy content comes from the PLVS policy source."
     }
   ],
-  "limitations": "Source review of a pending feature, not a publication approval or verification of GitHub provider retention. Confirm final feature behavior and this policy effective date before website or desktop publication. Earlier service deployment and mailbox-retention limitations still apply."
+  "limitations": "Review covers the changed desktop and website sources. The release does not change the report service, mail provider or server retention, and this review did not re-audit their deployed configuration."
 }

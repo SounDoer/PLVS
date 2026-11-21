@@ -1,6 +1,6 @@
 <main>
   <p class="eyebrow">
-    Effective <time data-policy-effective-date datetime="2026-10-16">October 16, 2026</time>
+    Effective <time data-policy-effective-date datetime="2026-11-22">November 22, 2026</time>
   </p>
   <h1>Privacy Policy</h1>
   <p class="lede">
@@ -64,15 +64,17 @@
   <section>
     <h2>Feedback</h2>
     <p>
-      Feedback is sent only when you select <strong>Send</strong>. The request contains the text you
-      wrote and, if supplied, your reply email. Diagnostics are off by default. If you select
+      Feedback is sent only by an explicit <strong>Send</strong> action in PLVS or, when Agent
+      Control is enabled, through its Send command. The request contains the text you wrote and, if
+      supplied, your reply email. Diagnostics are off by default. If you select
       <strong>Attach Diagnostics</strong>, the request also contains the PLVS version, operating
       system, processor architecture, build identity, collection time, window and Dock state, screen
       geometry and scaling, recent Dock operations, and up to 500 PLVS log lines. Structured
       snapshots exclude custom names, file paths, audio and screenshots. Diagnostic log text is
       redacted from detected absolute paths onwards; free-form messages can still contain device
       labels. Use <strong>View Diagnostics</strong> to inspect the attachment. The reviewed snapshot
-      is sent unless you refresh it or turn diagnostics off.
+      is sent unless you refresh it or turn diagnostics off. The Agent Control preview returns the
+      payload to the local caller without submitting it.
     </p>
     <p>
       Dock operation summaries are kept locally per workspace, up to 100 records and 64 KiB,
@@ -101,8 +103,10 @@
       details can contain device labels, application events, and other paths.
     </p>
     <p>
-      Nothing is sent until you select <strong>Send</strong>. After a successful send, or if you
-      select <strong>Don’t Send</strong>, that local pending report is deleted.
+      Sending requires an explicit <strong>Send</strong> action in PLVS or, when Agent Control is
+      enabled, its Send command. After a successful send, or if you select
+      <strong>Don’t Send</strong> or <strong>Don’t Ask Again</strong> in the report prompt, that
+      local pending report is deleted.
       <strong>Later</strong>
       keeps it on the device. PLVS keeps at most the newest five local crash reports across the
       prompted and suppressed queues. Its local application log rotates at 2 MB and keeps up to
