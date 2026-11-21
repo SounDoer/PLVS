@@ -88,7 +88,10 @@ Rust clear failures must propagate rather than being swallowed.
 GUI and Agent Control must use one asynchronous transport controller so a successful start means the
 engine is actually running and an error leaves an inspectable lifecycle state. A running capture that
 fails later (no callbacks for 5 s, or a worker that exits on its own) also moves LIVE to `error` with
-its reason as the last error.
+its reason as the last error. When that failure happens while `live start` is still settling, for
+example a macOS capture worker that refuses an aggregate device after the engine started, the command
+fails with `deviceStartFailed` (exit 1), the capture reason in its message, `stateCommitted: true`
+and the resulting `state.transport`, instead of waiting out the settlement timeout.
 
 ## FILE lifecycle
 

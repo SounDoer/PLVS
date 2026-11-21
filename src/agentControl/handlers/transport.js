@@ -22,7 +22,10 @@ function transportMutationMatches(method, params, execution, snapshot) {
   }
   if (method === "transport.source.file") return snapshot.source === "file";
   if (method === "transport.live.start") {
-    return snapshot.source === "live" && snapshot.live.state === "running";
+    // The engine reports running before a capture worker can still fail during its own setup
+    // (macOS refuses an aggregate device there), so `error` also settles the start. The caller
+    // turns it into a failure instead of waiting for a running state that will not come.
+    return snapshot.source === "live" && ["running", "error"].includes(snapshot.live.state);
   }
   if (method === "transport.live.stop") return snapshot.live.state === "stopped";
   if (method === "transport.file.analyze" && execution?.reused) {
@@ -360,6 +363,20 @@ async function mutate(ctx) {
     }
   }
   result.state.transport = live().transport;
+  if (request.method === "transport.live.start" && result.state.transport.live.state === "error") {
+    const message = result.state.transport.live.error?.message;
+    throw semanticFailure(
+      "deviceStartFailed",
+      "$.params",
+      message ? `LIVE capture failed to start: ${message}` : "LIVE capture failed to start.",
+      -32063,
+      {
+        stateCommitted: true,
+        revision: result.revision,
+        state: { transport: result.state.transport },
+      }
+    );
+  }
   if ("status" in result && result.status === "accepted" && execution?.sessionId) {
     Object.assign(result, {
       sessionId: execution.sessionId,

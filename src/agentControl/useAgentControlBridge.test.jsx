@@ -3666,6 +3666,52 @@ describe("useAgentControlBridge", () => {
     });
   });
 
+  it("reports a capture that fails after the engine started instead of timing out", async () => {
+    const execute = vi.fn(async (/** @type {string} */ _method, ..._rest) => ({}));
+    const view = mount({
+      agentTransport: transport,
+      controlledAgentTransport: true,
+      executeAgentTransport: execute,
+    });
+    await waitUntilReady();
+
+    const starting = request("transport.live.start", { expectedRevision: 0 }, "start-then-fail");
+    await act(async () => adapter.handler(starting));
+    expect(execute.mock.calls[0][0]).toBe("transport.live.start");
+    expect(adapter.responses.some(({ requestId }) => requestId === starting.id)).toBe(false);
+
+    const message =
+      "This output combines several devices (an aggregate device), which PLVS cannot measure yet.";
+    view.rerender(
+      <WorkspaceProvider>
+        <Harness
+          agentTransport={{
+            ...transport,
+            live: { ...transport.live, state: "error", error: { message } },
+          }}
+          controlledAgentTransport
+          executeAgentTransport={execute}
+        />
+      </WorkspaceProvider>
+    );
+    await adapterSettles(
+      () => adapter.responses.some(({ requestId }) => requestId === starting.id),
+      "the failed start"
+    );
+    const response = adapter.responses.find(({ requestId }) => requestId === starting.id);
+    expect(response.error).toMatchObject({
+      code: -32063,
+      data: {
+        reason: "deviceStartFailed",
+        details: {
+          stateCommitted: true,
+          state: { transport: { live: { state: "error", error: { message } } } },
+        },
+      },
+    });
+    expect(response.error.message).toContain(message);
+  });
+
   it("passes a File track refusal through instead of reporting an execution failure", async () => {
     const refusal = {
       reason: "fileTrackSelectionRequired",
