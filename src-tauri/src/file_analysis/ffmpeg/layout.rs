@@ -105,8 +105,8 @@ pub fn roles_for_layout(layout: Option<&str>, channels: u16) -> Option<Vec<Strin
     .map(|name| {
       let role = match *name {
         "FC" if channels == 1 => "M",
-        "FL" => "L",
-        "FR" => "R",
+        "FL" | "DL" => "L",
+        "FR" | "DR" => "R",
         "FC" => "C",
         "LFE" | "LFE2" => "LFE",
         "BL" if has_sides => "Lb",
@@ -124,6 +124,9 @@ pub fn roles_for_layout(layout: Option<&str>, channels: u16) -> Option<Vec<Strin
         "TSR" => "Rtm",
         "TBL" => "Ltr",
         "TBR" => "Rtr",
+        "TFC" => "Ctf",
+        "TC" => "Ctm",
+        "TBC" => "Ctr",
         _ => return None,
       };
       Some(role.to_string())
@@ -195,10 +198,25 @@ mod tests {
   }
 
   #[test]
+  fn top_centre_channels_a_second_lfe_and_matrix_stereo_have_roles() {
+    assert_eq!(
+      roles("7.2.3", 12).unwrap(),
+      ["L", "R", "C", "LFE", "Lb", "Rb", "Ls", "Rs", "Ltf", "Rtf", "Ctr", "LFE"]
+    );
+    assert_eq!(
+      roles("8 channels (FL+FR+FC+LFE+SL+SR+TC+TFC)", 8).unwrap(),
+      ["L", "R", "C", "LFE", "Ls", "Rs", "Ctm", "Ctf"]
+    );
+    assert_eq!(roles("downmix", 2).unwrap(), ["L", "R"]);
+  }
+
+  #[test]
   fn unsupported_channels_or_a_count_mismatch_return_none() {
-    assert_eq!(roles("7.2.3", 12), None, "TBC has no PLVS role");
-    assert_eq!(roles("22.2", 24), None);
-    assert_eq!(roles("downmix", 2), None);
+    assert_eq!(
+      roles("22.2", 24),
+      None,
+      "bottom-front channels have no PLVS role"
+    );
     assert_eq!(roles("7.1", 6), None);
     assert_eq!(roles("not a layout", 2), None);
     assert_eq!(roles("8 channels (FL+FR", 2), None);

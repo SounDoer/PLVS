@@ -22,7 +22,10 @@
     { "id": "Ltm", "label": "Ltm", "weight": 1.0 },
     { "id": "Rtm", "label": "Rtm", "weight": 1.0 },
     { "id": "Ltr", "label": "Ltr", "weight": 1.0 },
-    { "id": "Rtr", "label": "Rtr", "weight": 1.0 }
+    { "id": "Rtr", "label": "Rtr", "weight": 1.0 },
+    { "id": "Ctf", "label": "Ctf", "weight": 1.0 },
+    { "id": "Ctm", "label": "Ctm", "weight": 1.0 },
+    { "id": "Ctr", "label": "Ctr", "weight": 1.0 }
   ],
   "layouts": [
     { "id": "mono", "name": "Mono", "roles": ["M"] },

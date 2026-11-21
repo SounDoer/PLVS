@@ -215,8 +215,8 @@ pub(crate) fn apple_roles(labels: &[u32]) -> Vec<String> {
     .iter()
     .map(|label| {
       match label {
-        1 => "L",
-        2 => "R",
+        1 | 38 => "L",
+        2 | 39 => "R",
         3 => "C",
         4 | 37 | 62 => "LFE",
         5 | 10 | 55 => "Ls",
@@ -234,6 +234,9 @@ pub(crate) fn apple_roles(labels: &[u32]) -> Vec<String> {
         51 => "Rtm",
         16 | 52 => "Ltr",
         18 | 54 => "Rtr",
+        14 => "Ctf",
+        12 | 50 => "Ctm",
+        17 | 53 => "Ctr",
         42 => "M",
         _ => "generic",
       }
@@ -264,9 +267,12 @@ pub(crate) fn wave_roles(mask: u32, channels: u16) -> Option<Vec<String>> {
         6 => "Lc",
         7 => "Rc",
         8 => "Cs",
+        11 => "Ctm",
         12 => "Ltf",
+        13 => "Ctf",
         14 => "Rtf",
         15 => "Ltr",
+        16 => "Ctr",
         17 => "Rtr",
         _ => "generic",
       }
@@ -358,10 +364,13 @@ pub(crate) fn pulse_roles(positions: &[u32]) -> Vec<String> {
         6 | 11 => "Rs",
         8 => "Lc",
         9 => "Rc",
+        44 => "Ctm",
         45 => "Ltf",
         46 => "Rtf",
+        47 => "Ctf",
         48 => "Ltr",
         49 => "Rtr",
+        50 => "Ctr",
         _ => "generic",
       }
       .to_string()
@@ -519,6 +528,32 @@ mod tests {
     );
     assert!(wave_roles(0, 2).is_none());
     assert!(wave_roles(0x3f, 2).is_none());
+  }
+
+  #[test]
+  fn top_centre_and_matrix_stereo_roles_are_known_on_every_platform() {
+    // Apple: VerticalHeightCenter, TopCenterSurround, TopBackCenter, CenterTopMiddle,
+    // CenterTopRear, then LeftTotal/RightTotal.
+    assert_eq!(
+      apple_roles(&[14, 12, 17, 50, 53, 38, 39]),
+      ["Ctf", "Ctm", "Ctr", "Ctm", "Ctr", "L", "R"]
+    );
+    // WAVE: FL FR FC LFE SL SR, then TOP_CENTER, TOP_FRONT_CENTER, TOP_BACK_CENTER.
+    assert_eq!(
+      wave_roles(
+        0x1 | 0x2 | 0x4 | 0x8 | 0x200 | 0x400 | 0x800 | 0x2000 | 0x1_0000,
+        9
+      )
+      .unwrap(),
+      ["L", "R", "C", "LFE", "Ls", "Rs", "Ctm", "Ctf", "Ctr"]
+    );
+    // PulseAudio top-center, top-front-center and top-rear-center positions.
+    assert_eq!(pulse_roles(&[44, 47, 50]), ["Ctm", "Ctf", "Ctr"]);
+    assert!(
+      crate::dsp::channel_layouts::weights_for_roles(&["Ctf", "Ctm", "Ctr"].map(str::to_string))
+        == Some(vec![1.0, 1.0, 1.0]),
+      "height channels take BS.1770 weight 1.0"
+    );
   }
 
   #[test]
