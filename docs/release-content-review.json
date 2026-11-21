@@ -3,8 +3,8 @@
   "version": "0.26.3",
   "baselineTag": "v0.26.2",
   "baselineRevision": "abc83e752bf9793069de0f5c2f96c6b2ecadd0bd",
-  "candidateRevision": "aa91aa3317aaf9a24797e922a86a3ab765c2db1c",
-  "contentSha256": "4b757a570e7313fc821138b74e8d78a122747932a049a4b9aae9d31055c57f77",
+  "candidateRevision": "90416b3ebc564a722e8758c474c1bd8a36ebb5f4",
+  "contentSha256": "1086044229e038b78728f632b85b1b28be255b29344672af133fc6fa681b21ca",
   "websiteSourceSha": "ba26b80053552f98162330c136e969c1246adfd1",
   "reviews": {
     "userGuide": {
@@ -29,7 +29,7 @@
       "rationale": "The current renderer builds the updated guide, policy and download links from the candidate sources. The policy now describes the explicit local Agent Control Send path for Feedback and Crash Reports and the local Feedback payload preview. This changes who can invoke those paths on the device once Agent Control is enabled. The endpoints, payload fields, diagnostic opt-in, mail provider and server retention are unchanged. The updater retains the same destinations and preference gates.",
       "evidence": [
         "Live publication.json and PLVS-Website ba26b80053552f98162330c136e969c1246adfd1 homepage copy checked against README.md and the revised guides",
-        "Exported product, policy and Catalogue inputs at aa91aa3317aaf9a24797e922a86a3ab765c2db1c. Website check passed 51 tests and built 38 HTML pages. Checked the 0.26.3 installer link and November 22 policy date in the generated pages.",
+        "Exported product, policy and Catalogue inputs at aa91aa3317aaf9a24797e922a86a3ab765c2db1c. Website check passed 51 tests and built 38 HTML pages. Checked the 0.26.3 installer link and November 22 policy date in the generated pages. The subsequent commit only updates the policy regression test.",
         "Privacy sources compared from abc83e752bf9793069de0f5c2f96c6b2ecadd0bd through aa91aa3317aaf9a24797e922a86a3ab765c2db1c. See docs/privacy-review.json for the reviewed callbacks, local cache and diagnostic changes, effective date and review limits."
       ]
     },
