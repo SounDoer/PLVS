@@ -3,8 +3,8 @@
   "version": "0.26.3",
   "baselineTag": "v0.26.2",
   "baselineRevision": "abc83e752bf9793069de0f5c2f96c6b2ecadd0bd",
-  "candidateRevision": "7118ea8d344f5a3236a2060d159b1f7a877441f0",
-  "contentSha256": "eb53152f76d37c14c51b8d54ff0e1844add4f30def93126df2e473a3e7f0522e",
+  "candidateRevision": "31b6d54d668af413e7684084f760359c3767dbd4",
+  "contentSha256": "4523b54e2d0913facb61df7e361d3d7e46da2132c7fab73c104d1b7ae0f0697a",
   "websiteSourceSha": "ba26b80053552f98162330c136e969c1246adfd1",
   "reviews": {
     "userGuide": {
@@ -29,7 +29,7 @@
       "rationale": "The current renderer builds the updated guide, policy and download links from the candidate sources. The policy now describes the explicit local Agent Control Send path for Feedback and Crash Reports and the local Feedback payload preview. This changes who can invoke those paths on the device once Agent Control is enabled. The endpoints, payload fields, diagnostic opt-in, mail provider and server retention are unchanged. The updater retains the same destinations and preference gates.",
       "evidence": [
         "Live publication.json and PLVS-Website ba26b80053552f98162330c136e969c1246adfd1 homepage copy checked against README.md and the revised guides",
-        "Exported product, policy and Catalogue inputs at aa91aa3317aaf9a24797e922a86a3ab765c2db1c. Website check passed 51 tests and built 38 HTML pages. Checked the 0.26.3 installer link and November 22 policy date in the generated pages. The subsequent changes update the policy test and the packaged-upgrade acceptance runner.",
+        "Exported product, policy and Catalogue inputs at aa91aa3317aaf9a24797e922a86a3ab765c2db1c. Website check passed 51 tests and built 38 HTML pages. Checked the 0.26.3 installer link and November 22 policy date in the generated pages. The subsequent changes update the policy test and the packaged-upgrade acceptance runner, including its post-install observation of settings and cache reconciliation.",
         "Privacy sources compared from abc83e752bf9793069de0f5c2f96c6b2ecadd0bd through aa91aa3317aaf9a24797e922a86a3ab765c2db1c. See docs/privacy-review.json for the reviewed callbacks, local cache and diagnostic changes, effective date and review limits."
       ]
     },
