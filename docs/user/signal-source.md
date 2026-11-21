@@ -21,6 +21,12 @@ uses WASAPI loopback; on macOS it uses the native system-audio tap available on 
 On macOS, starting while the selected output is completely idle is supported; PLVS wakes the device
 silently and releases that temporary wake-up as soon as capture begins.
 
+A macOS **Multi-Output Device** is measured through the first device in its list, which carries
+the same audio at its real level. Measuring the Multi-Output Device itself would read too low
+when that first device has more than two channels. An **Aggregate Device** combines several
+devices into one wider output; PLVS cannot measure it yet and asks you to select one of the
+devices it combines.
+
 On Linux, PLVS uses the output's monitor source through PulseAudio or PipeWire's PulseAudio
 compatibility service (`pipewire-pulse`). **Automatic** follows the default output's monitor; if
 that monitor is unavailable, capture reports an error instead of switching to a microphone.

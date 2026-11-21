@@ -618,6 +618,97 @@ void macos_tap_destroy(void *opaque, void **out_pcm_userdata) {
   free(h);
 }
 
+// Output streams on the device, or -1 when the UID does not resolve. An aggregate device exposes
+// one stream per member; the device-specific tap captures only stream 0 of them.
+int macos_output_stream_count(const char *uid_utf8) {
+  if (!uid_utf8) return -1;
+  CFStringRef uid = cfstr_from_cstr(uid_utf8);
+  if (!uid) return -1;
+  AudioDeviceID device = kAudioObjectUnknown;
+  AudioObjectPropertyAddress address = {kAudioHardwarePropertyTranslateUIDToDevice,
+      kAudioObjectPropertyScopeGlobal, kAudioObjectPropertyElementMain};
+  UInt32 size = sizeof(device);
+  OSStatus status = AudioObjectGetPropertyData(kAudioObjectSystemObject, &address, sizeof(uid), &uid,
+                                               &size, &device);
+  CFRelease(uid);
+  if (status != noErr || device == kAudioObjectUnknown) return -1;
+  address.mSelector = kAudioDevicePropertyStreams;
+  address.mScope = kAudioDevicePropertyScopeOutput;
+  size = 0;
+  if (AudioObjectGetPropertyDataSize(device, &address, 0, NULL, &size) != noErr) return -1;
+  return (int)(size / sizeof(AudioStreamID));
+}
+
+// A multi-output device ("stacked" aggregate) exposes one stereo stream while the audio goes to
+// its members. Tapping it folds the first member's channels into that stream, which reads
+// 20*log10(channels / 2) dB low on a multichannel member (16 channels: -18 dB). Tapping the first
+// active member reads the real level, so capture redirects there. Writes that member's UID and
+// returns 1; returns 0 for any other device and -1 on error. Ordinary aggregate devices (not
+// stacked) return 0 and stay refused as multi-stream devices.
+int macos_multi_output_first_member_uid(const char *uid_utf8, char *out_uid, size_t out_cap) {
+  if (!uid_utf8 || !out_uid || out_cap < 2) return -1;
+  CFStringRef uid = cfstr_from_cstr(uid_utf8);
+  if (!uid) return -1;
+  AudioDeviceID device = kAudioObjectUnknown;
+  AudioObjectPropertyAddress address = {kAudioHardwarePropertyTranslateUIDToDevice,
+      kAudioObjectPropertyScopeGlobal, kAudioObjectPropertyElementMain};
+  UInt32 size = sizeof(device);
+  OSStatus status = AudioObjectGetPropertyData(kAudioObjectSystemObject, &address, sizeof(uid), &uid,
+                                               &size, &device);
+  CFRelease(uid);
+  if (status != noErr || device == kAudioObjectUnknown) return -1;
+
+  UInt32 transport = 0;
+  address.mSelector = kAudioDevicePropertyTransportType;
+  size = sizeof(transport);
+  if (AudioObjectGetPropertyData(device, &address, 0, NULL, &size, &transport) != noErr ||
+      transport != kAudioDeviceTransportTypeAggregate) {
+    return 0;
+  }
+
+  CFDictionaryRef composition = NULL;
+  address.mSelector = kAudioAggregateDevicePropertyComposition;
+  size = sizeof(composition);
+  if (AudioObjectGetPropertyData(device, &address, 0, NULL, &size, &composition) != noErr ||
+      !composition) {
+    return -1;
+  }
+  int stacked = 0;
+  CFTypeRef stackedValue = CFDictionaryGetValue(composition, CFSTR(kAudioAggregateDeviceIsStackedKey));
+  // Audio MIDI Setup stores the flag as a CFBoolean; accept a CFNumber as well.
+  if (stackedValue && CFGetTypeID(stackedValue) == CFBooleanGetTypeID()) {
+    stacked = CFBooleanGetValue((CFBooleanRef)stackedValue) ? 1 : 0;
+  } else if (stackedValue && CFGetTypeID(stackedValue) == CFNumberGetTypeID()) {
+    CFNumberGetValue((CFNumberRef)stackedValue, kCFNumberIntType, &stacked);
+  }
+  CFRelease(composition);
+  if (!stacked) return 0;
+
+  address.mSelector = kAudioAggregateDevicePropertyActiveSubDeviceList;
+  size = 0;
+  if (AudioObjectGetPropertyDataSize(device, &address, 0, NULL, &size) != noErr ||
+      size < sizeof(AudioObjectID)) {
+    return -1;
+  }
+  AudioObjectID *members = malloc(size);
+  if (!members) return -1;
+  if (AudioObjectGetPropertyData(device, &address, 0, NULL, &size, members) != noErr) {
+    free(members);
+    return -1;
+  }
+  AudioObjectID first = members[0];
+  free(members);
+
+  CFStringRef memberUid = NULL;
+  if (get_cf_string_property(first, kAudioDevicePropertyDeviceUID, &memberUid) != noErr ||
+      !memberUid) {
+    return -1;
+  }
+  int copied = copy_cfstring_utf8(memberUid, out_uid, out_cap);
+  CFRelease(memberUid);
+  return copied == 0 ? 1 : -1;
+}
+
 // Read-only speaker metadata for the same first stream the device-specific tap captures.
 // Device layouts index all output channels, so reject multi-stream devices rather than
 // applying device-wide indices to a stream-local PCM buffer.

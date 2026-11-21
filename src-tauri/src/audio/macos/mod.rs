@@ -39,6 +39,12 @@ unsafe extern "C" {
     out_cap: usize,
   ) -> c_int;
   fn macos_default_output_uid(out_uid: *mut c_char, out_cap: usize) -> c_int;
+  fn macos_output_stream_count(uid_utf8: *const c_char) -> c_int;
+  fn macos_multi_output_first_member_uid(
+    uid_utf8: *const c_char,
+    out_uid: *mut c_char,
+    out_cap: usize,
+  ) -> c_int;
   fn macos_tap_create(
     device_uid_utf8: *const c_char,
     stream_index: isize,
@@ -74,6 +80,58 @@ fn uid_for_default_output() -> Result<String, String> {
   Ok(String::from_utf8_lossy(&buf[..n]).into_owned())
 }
 
+fn output_stream_count(uid: &str) -> Option<u32> {
+  let cuid = CString::new(uid).ok()?;
+  let count = unsafe { macos_output_stream_count(cuid.as_ptr()) };
+  u32::try_from(count).ok()
+}
+
+/// The first active member of a multi-output device, or `None` for any other output.
+fn multi_output_first_member(uid: &str) -> Option<String> {
+  let cuid = CString::new(uid).ok()?;
+  let mut buf = vec![0u8; 512];
+  let st = unsafe {
+    macos_multi_output_first_member_uid(cuid.as_ptr(), buf.as_mut_ptr().cast(), buf.len())
+  };
+  if st != 1 {
+    return None;
+  }
+  let n = buf.iter().position(|&b| b == 0).unwrap_or(buf.len());
+  Some(String::from_utf8_lossy(&buf[..n]).into_owned())
+}
+
+/// The output PLVS actually taps for `device`. A multi-output device is captured through its first
+/// active member: tapping the multi-output device folds that member's channels into a stereo stream
+/// and reads low (see `macos_multi_output_first_member_uid`). Inventory, preview and capture all
+/// resolve through here so they agree on the channel count and speaker mapping.
+pub(crate) fn capture_target(
+  device: cpal::Device,
+  config: cpal::SupportedStreamConfig,
+) -> Result<(cpal::Device, cpal::SupportedStreamConfig), String> {
+  let Some(uid) = device_id_key(&device)
+    .ok()
+    .and_then(|key| uid_for_output_name(&key))
+  else {
+    return Ok((device, config));
+  };
+  let Some(member) = multi_output_first_member(&uid) else {
+    log::debug!("macOS capture target output={uid} is not a multi-output device");
+    return Ok((device, config));
+  };
+  for (_idx, candidate, candidate_config) in collect_outputs()? {
+    let candidate_uid = device_id_key(&candidate)
+      .ok()
+      .and_then(|key| uid_for_output_name(&key));
+    if candidate_uid.as_deref() == Some(member.as_str()) {
+      log::info!("macOS multi-output output={uid} captures its first member={member}");
+      return Ok((candidate, candidate_config));
+    }
+  }
+  Err(format!(
+    "The first device of this Multi-Output Device ({member}) is not available. Reconnect it or select another output."
+  ))
+}
+
 pub(crate) fn device_layout(
   device: &cpal::Device,
   channels: u16,
@@ -103,7 +161,19 @@ fn list_loopback_rows_macos() -> Result<Vec<DeviceInfo>, String> {
     let label = device_list_label(&device)?;
     let core_uid = uid_for_output_name(&key);
     let id = device_id::alloc_loopback_id(&key, &mut used_lb);
-    let plan = super::source_layout::device_plan(&device, cfg.channels(), true);
+    // A multi-output row keeps its own identity and label but reports what capture measures.
+    let Ok((target, cfg)) = capture_target(device, cfg) else {
+      continue;
+    };
+    let plan = super::source_layout::device_plan(&target, cfg.channels(), true);
+    // Name the captured member in the signature, so a change of first member restarts capture
+    // even when both members map the same speakers.
+    let target_key = device_id_key(&target)?;
+    let signature = if target_key == key {
+      plan.signature()
+    } else {
+      format!("{target_key}|{}", plan.signature())
+    };
     out.push(DeviceInfo {
       id,
       label,
@@ -111,7 +181,7 @@ fn list_loopback_rows_macos() -> Result<Vec<DeviceInfo>, String> {
       is_loopback: true,
       default_sample_rate: cfg.sample_rate(),
       channels: plan.channels(),
-      monitor_signature: Some(plan.signature()),
+      monitor_signature: Some(signature),
       core_audio_output_uid: core_uid,
     });
   }
@@ -134,6 +204,7 @@ fn resolved_tap_output(
   device: cpal::Device,
   config: cpal::SupportedStreamConfig,
 ) -> Result<ResolvedTapOutput, String> {
+  let (device, config) = capture_target(device, config)?;
   let key = device_id_key(&device)?;
   let uid = uid_for_output_name(&key).ok_or_else(|| {
     format!("no Core Audio UID for output device \"{key}\" (macOS 14.2+ tap requires a UID)")
@@ -149,6 +220,9 @@ fn resolve_tap_output(device_id: &str) -> Result<ResolvedTapOutput, String> {
   if device_id.is_empty() || device_id == "default" {
     let uid = uid_for_default_output()?;
     let (device, config) = resolve_default_output()?;
+    if multi_output_first_member(&uid).is_some() {
+      return resolved_tap_output(device, config);
+    }
     return Ok(ResolvedTapOutput {
       uid,
       device,
@@ -231,6 +305,12 @@ fn run_macos_tap_worker(args: MacosTapWorkerArgs) -> Result<(), CaptureWorkerErr
   let consumer_delivery = delivery.clone();
   let dropped_for_thread = dropped_chunks.clone();
   let native_layout = layout_for_uid(&uid, channels);
+  // The tap captures stream 0 only, so an aggregate device's other members would be missing.
+  if output_stream_count(&uid).is_some_and(|streams| streams > 1) {
+    return Err(CaptureWorkerError::SystemSpeakerLayout(
+      "This output combines several devices (an aggregate device), which PLVS cannot measure yet. Select one of the devices it combines.".into(),
+    ));
+  }
   super::source_layout::MonitoringPlan::require_system_scope(channels, native_layout.clone())
     .map_err(CaptureWorkerError::SystemSpeakerLayout)?;
   let bridge = std::thread::spawn(move || {

@@ -163,13 +163,33 @@ pub(crate) fn read_audio_device_preview(device_id: &str) -> Result<AudioDevicePr
     || device_id == "default"
     || crate::audio::device_id::is_stable_loopback_id(device_id)
     || crate::audio::device_id::parse_legacy_output_index(device_id).is_some();
+  // A macOS multi-output device is measured through its first member; preview what capture uses,
+  // and name that member in the signature so a change of first member restarts capture.
+  #[cfg(target_os = "macos")]
+  let (device, supported, signature_prefix) = if output {
+    let requested_key = crate::audio::device_enum::device_id_key(&device)?;
+    let (target, supported) = crate::audio::macos::capture_target(device, supported)?;
+    let target_key = crate::audio::device_enum::device_id_key(&target)?;
+    let prefix = (target_key != requested_key).then(|| format!("{target_key}|"));
+    (target, supported, prefix)
+  } else {
+    (device, supported, None)
+  };
+  #[cfg(not(target_os = "macos"))]
+  let signature_prefix: Option<String> = None;
   let plan = crate::audio::source_layout::device_plan(&device, supported.channels(), output);
   let sample_rate_hz = supported.sample_rate();
   let channels = plan.channels();
   Ok(AudioDevicePreview {
     label,
     endpoint_id: device.id().ok().map(|id| id.to_string()),
-    monitor_signature: output.then(|| plan.signature()),
+    monitor_signature: output.then(|| {
+      format!(
+        "{}{}",
+        signature_prefix.unwrap_or_default(),
+        plan.signature()
+      )
+    }),
     sample_rate_hz,
     channels,
   })

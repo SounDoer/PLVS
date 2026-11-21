@@ -16,7 +16,9 @@ start monitoring that output.
   your speakers. If the error started after a spatial sound change, try turning
   spatial sound off and selecting the output again.
 - **macOS:** In **Audio MIDI Setup**, select the output and open **Configure Speakers**.
-  Check that each speaker is assigned to the physical output you use.
+  Check that each speaker is assigned to the physical output you use. If Status says the output
+  combines several devices, it is an Aggregate Device: select one of the devices it combines
+  instead.
 - **Linux:** In your system sound settings, select the output and check its
   profile. Choose a profile that matches the connected speakers.
 
