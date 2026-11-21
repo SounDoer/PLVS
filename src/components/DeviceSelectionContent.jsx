@@ -51,12 +51,12 @@ function AudioDeviceOption({ device, selected, onSelect }) {
 function selectedDeviceSummary(devices, selectedId) {
   const selected = devices.find((device) => device.id === selectedId);
   if (!selected) return null;
-  return `${formatAudioDeviceLabel(selected.label).primary} Selected`;
+  return formatAudioDeviceLabel(selected.label).primary;
 }
 
 function selectedApplicationSummary(applications, selectedId) {
   const selected = applications.find((application) => application.id === selectedId);
-  return selected ? `${selected.label} Selected` : null;
+  return selected ? selected.label : null;
 }
 
 function SourceSection({ id, group, label, count, open, onOpenChange, selectedSummary, children }) {
@@ -98,6 +98,7 @@ function SourceSection({ id, group, label, count, open, onOpenChange, selectedSu
           {selectedSummary ? (
             <span className="mt-0 block truncate text-[length:var(--ui-fs-caption)] text-muted-foreground">
               {selectedSummary}
+              <span className="sr-only">, selected</span>
             </span>
           ) : null}
         </span>

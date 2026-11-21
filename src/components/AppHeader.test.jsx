@@ -241,7 +241,9 @@ describe("AppHeader", () => {
 
     const applications = screen.getByRole("button", { name: /^Applications/ });
     expect(applications.getAttribute("aria-expanded")).toBe("false");
-    expect(screen.getByText("VLC Selected")).toBeTruthy();
+    expect(applications.textContent).toContain("VLC");
+    expect(applications.textContent).not.toContain("VLC Selected");
+    expect(applications.textContent).toContain(", selected");
     expect(screen.queryByRole("button", { name: "VLC application audio" })).toBeNull();
     fireEvent.click(applications);
     expect(screen.getByRole("button", { name: "VLC application audio" })).toBeTruthy();
