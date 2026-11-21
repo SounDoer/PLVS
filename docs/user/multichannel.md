@@ -14,6 +14,11 @@ only the assigned speaker channels and places recognised layouts in standard cha
 mixing them together. For example, a 16-channel interface configured as Stereo produces **L** and
 **R**, even when the system assigns those speakers to device channels 3 and 4.
 
+7.1 Wide places one extra front speaker between each of left and right and the centre (**Lc** and
+**Rc**) instead of rear surrounds. PLVS recognises it from the system mapping and measures its loudness
+with all its channels. In macOS Audio MIDI Setup, the speaker configuration named **7.1** is this
+wide layout; the standard 7.1 layout with rear surrounds is named **7.1 Rear Surround**.
+
 On macOS, a two-channel output with unlabeled channels can use the left and right assignments
 that Core Audio provides for stereo playback, including on built-in speakers.
 

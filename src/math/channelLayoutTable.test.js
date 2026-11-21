@@ -33,6 +33,7 @@ describe("channelLayoutTable", () => {
       ["5.1", 6],
       ["7.0", 7],
       ["7.1", 8],
+      ["7.1-wide", 8],
       ["5.1.2", 8],
       ["5.1.4", 10],
       ["7.1.2", 10],
@@ -48,8 +49,8 @@ describe("channelLayoutTable", () => {
     expect(layoutIdForRoles(roles)).toBe(null);
   });
 
-  it("offers both 8-channel layouts for 8 channels", () => {
-    expect(layoutsForChannelCount(8).map((l) => l.id)).toEqual(["7.1", "5.1.2"]);
+  it("offers every 8-channel layout for 8 channels, standard 7.1 first", () => {
+    expect(layoutsForChannelCount(8).map((l) => l.id)).toEqual(["7.1", "7.1-wide", "5.1.2"]);
     expect(layoutsForChannelCount(9)).toEqual([]);
   });
 
@@ -60,7 +61,7 @@ describe("channelLayoutTable", () => {
 
   it("includes the roles the immersive layouts need", () => {
     const ids = CHANNEL_ROLES.map((r) => r.id);
-    for (const id of ["Lw", "Rw", "Ltm", "Rtm"]) {
+    for (const id of ["Lw", "Rw", "Lc", "Rc", "Ltm", "Rtm"]) {
       expect(ids).toContain(id);
     }
   });
@@ -72,7 +73,7 @@ describe("channelLayoutTable", () => {
       layout.roles[0] = "x";
     }).toThrow();
     // A later call must be unaffected by the (failed) mutation attempt above.
-    expect(layoutsForChannelCount(8).map((l) => l.id)).toEqual(["7.1", "5.1.2"]);
+    expect(layoutsForChannelCount(8).map((l) => l.id)).toEqual(["7.1", "7.1-wide", "5.1.2"]);
   });
 
   it("auto-detects by count only up to 8 channels", () => {

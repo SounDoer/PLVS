@@ -221,6 +221,8 @@ pub(crate) fn apple_roles(labels: &[u32]) -> Vec<String> {
         4 | 37 | 62 => "LFE",
         5 | 10 | 55 => "Ls",
         6 | 11 | 56 => "Rs",
+        7 => "Lc",
+        8 => "Rc",
         9 | 44 => "Cs",
         33 | 63 => "Lb",
         34 | 64 => "Rb",
@@ -259,6 +261,8 @@ pub(crate) fn wave_roles(mask: u32, channels: u16) -> Option<Vec<String>> {
         5 if side_surrounds => "Rb",
         4 | 9 => "Ls",
         5 | 10 => "Rs",
+        6 => "Lc",
+        7 => "Rc",
         8 => "Cs",
         12 => "Ltf",
         14 => "Rtf",
@@ -352,6 +356,8 @@ pub(crate) fn pulse_roles(positions: &[u32]) -> Vec<String> {
         6 if has_sides => "Rb",
         5 | 10 => "Ls",
         6 | 11 => "Rs",
+        8 => "Lc",
+        9 => "Rc",
         45 => "Ltf",
         46 => "Rtf",
         48 => "Ltr",
@@ -513,5 +519,39 @@ mod tests {
     );
     assert!(wave_roles(0, 2).is_none());
     assert!(wave_roles(0x3f, 2).is_none());
+  }
+
+  #[test]
+  fn wide_seven_one_is_a_known_layout_on_every_platform_and_its_centre_counts() {
+    const WIDE: [&str; 8] = ["L", "R", "C", "LFE", "Ls", "Rs", "Lc", "Rc"];
+    // Audio MIDI Setup's "7.1" on a 16-channel interface, as read from the device in run M0.
+    let mut labels = vec![1, 2, 3, 4, 5, 6, 7, 8];
+    labels.resize(16, u32::MAX);
+    let plan = MonitoringPlan::require_system_scope(16, Some(apple_layout(&labels, true))).unwrap();
+    assert_eq!(plan.roles.as_deref().unwrap(), WIDE);
+    assert_eq!(plan.indices, [0, 1, 2, 3, 4, 5, 6, 7]);
+    // KSAUDIO_SPEAKER_7POINT1: the legacy wide mask, whose back pair is the only surround pair.
+    assert_eq!(wave_roles(0xff, 8).unwrap(), WIDE);
+    // PulseAudio front-left/right-of-center are positions 8 and 9.
+    assert_eq!(pulse_roles(&[1, 2, 3, 7, 5, 6, 8, 9]), WIDE);
+
+    let roles: Vec<String> = WIDE.iter().map(|role| role.to_string()).collect();
+    let mut meter =
+      crate::dsp::summary_meter::SummaryMeter::new_with_roles(48_000, 8, &roles).unwrap();
+    let mut centre_only = Vec::with_capacity(48_000 * 3 * 8);
+    for n in 0..48_000 * 3 {
+      let sample = 0.1 * (2.0 * std::f32::consts::PI * 997.0 * n as f32 / 48_000.0).sin();
+      centre_only.extend_from_slice(&[0.0, 0.0, sample, 0.0, 0.0, 0.0, 0.0, 0.0]);
+    }
+    meter.push_interleaved(&centre_only);
+    let metrics = meter.finish();
+    assert_eq!(
+      (metrics.loudness_layout, metrics.loudness_layout_known),
+      ("7.1-wide", true)
+    );
+    assert!(
+      metrics.integrated_lufs.is_finite(),
+      "a centre-only programme must be measured instead of falling back to Ch1/Ch2"
+    );
   }
 }

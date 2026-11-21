@@ -67,7 +67,7 @@ Measurement Control never creates a Vectorscope request.
 `levels.truePeak.maxDbtp` is the maximum True Peak across every channel. `leftDbtp` and `rightDbtp`
 report Ch1 and Ch2 only, whatever the channel count.
 
-`loudnessLayout` is one of `mono`, `stereo`, `lcr`, `quad`, `5.0`, `5.1`, `7.0`, `7.1`, `5.1.2`,
+`loudnessLayout` is one of `mono`, `stereo`, `lcr`, `quad`, `5.0`, `5.1`, `7.0`, `7.1`, `7.1-wide`, `5.1.2`,
 `5.1.4`, `7.1.2`, `7.1.4`, `9.1.6`, `custom`, or `unknown`. `custom` means the active role list
 matches no named layout. Standard layouts use WAVE / ffmpeg channel order and ITU-R BS.1770-5
 weights. When `loudnessLayoutKnown` is false, loudness is the stereo loudness of Ch1/Ch2. Check

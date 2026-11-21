@@ -15,6 +15,8 @@
     { "id": "Cs", "label": "Cs", "weight": 1.0 },
     { "id": "Lw", "label": "Lw", "weight": 1.4125375446227544 },
     { "id": "Rw", "label": "Rw", "weight": 1.4125375446227544 },
+    { "id": "Lc", "label": "Lc", "weight": 1.0 },
+    { "id": "Rc", "label": "Rc", "weight": 1.0 },
     { "id": "Ltf", "label": "Ltf", "weight": 1.0 },
     { "id": "Rtf", "label": "Rtf", "weight": 1.0 },
     { "id": "Ltm", "label": "Ltm", "weight": 1.0 },
@@ -31,6 +33,11 @@
     { "id": "5.1", "name": "5.1", "roles": ["L", "R", "C", "LFE", "Ls", "Rs"] },
     { "id": "7.0", "name": "7.0", "roles": ["L", "R", "C", "Lb", "Rb", "Ls", "Rs"] },
     { "id": "7.1", "name": "7.1", "roles": ["L", "R", "C", "LFE", "Lb", "Rb", "Ls", "Rs"] },
+    {
+      "id": "7.1-wide",
+      "name": "7.1 Wide",
+      "roles": ["L", "R", "C", "LFE", "Ls", "Rs", "Lc", "Rc"]
+    },
     { "id": "5.1.2", "name": "5.1.2", "roles": ["L", "R", "C", "LFE", "Ls", "Rs", "Ltf", "Rtf"] },
     {
       "id": "5.1.4",

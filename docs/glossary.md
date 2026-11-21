@@ -154,4 +154,5 @@ Compact surfaces abbreviate readings. The abbreviation always maps to exactly on
 ## Kept in English
 
 PLVS, Dock, every [panel name](#panels) and [reading](#readings), Sharesets, Agent Control, `plvs-cli`, LUFS, LU, dBFS, dBTP,
-FFT, RTA, L/R, M/S, LFE, EBU R 128, ITU-R BS.1770, ATSC A/85, Silero VAD, FireRedVAD, Lissajous.
+FFT, RTA, L/R, M/S, LFE, channel layout names such as 5.1 and 7.1 Wide, speaker role labels such as
+Ls and Lc, EBU R 128, ITU-R BS.1770, ATSC A/85, Silero VAD, FireRedVAD, Lissajous.
