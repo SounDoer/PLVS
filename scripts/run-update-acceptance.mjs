@@ -177,6 +177,17 @@ function developmentUpdateAction(cli, dataRoot, action, ui, options = {}) {
   return cliJson(cli, dataRoot, args);
 }
 
+async function waitForReadyUpdate(cli, dataRoot, version) {
+  // Agent Control can answer before the updater has hydrated its cached package. The on-disk
+  // attempt record can also be ready before React has received the result of update_status.
+  await waitFor(
+    `running app recognizes cached update ${version}`,
+    () => cliJson(cli, dataRoot, ["update", "inspect"]),
+    (value) => value.result?.readyVersion === version,
+    60_000
+  );
+}
+
 async function openUpdateDetails(cli, dataRoot) {
   let ui = await waitFor(
     "update UI inspection",
@@ -200,6 +211,32 @@ async function openUpdateDetails(cli, dataRoot) {
 async function confirmVisibleUpdate(cli, dataRoot) {
   const { ui, surface } = await openUpdateDetails(cli, dataRoot);
   developmentUpdateAction(cli, dataRoot, "confirm", ui, { surfaceId: surface.surfaceId });
+}
+
+function screenshotUpdateDetails(cli, dataRoot, surfaceId, output, label) {
+  return waitFor(
+    label,
+    () => {
+      const { result } = cliJson(cli, dataRoot, ["ui", "inspect"]);
+      if (findUpdateSurface(result)?.surfaceId !== surfaceId) {
+        throw new Error("The update details surface changed before capture");
+      }
+      return cliJson(cli, dataRoot, [
+        "visual",
+        "screenshot",
+        "--target",
+        result.window?.form === "dock" ? "dock-update" : "main",
+        "--expected-revision",
+        String(result.revision),
+        "--expected-ui-generation",
+        String(result.uiGeneration),
+        "--out",
+        output,
+      ]);
+    },
+    (value) => value.result?.artifact?.mediaType === "image/png",
+    30_000
+  );
 }
 
 async function waitFor(label, inspect, accept, timeout = CHECKPOINT_TIMEOUT_MS) {
@@ -643,23 +680,15 @@ async function runGuidedAcceptance({
       (value) => value.result?.appVersion === older.version,
       60_000
     );
-    const revision = cliJson(cli, dataRoot, ["inspect"]).result.revision;
+    await waitForReadyUpdate(cli, dataRoot, newer.version);
+    const { surface: offlineSurface } = await openUpdateDetails(cli, dataRoot);
     try {
-      await waitFor(
-        "offline update-details screenshot",
-        () =>
-          cliJson(cli, dataRoot, [
-            "visual",
-            "screenshot",
-            "--target",
-            "dock-update",
-            "--expected-revision",
-            String(revision),
-            "--out",
-            path.join(runDir, "update-details.png"),
-          ]),
-        (value) => value.result?.artifact?.mediaType === "image/png",
-        30_000
+      await screenshotUpdateDetails(
+        cli,
+        dataRoot,
+        offlineSurface.surfaceId,
+        path.join(runDir, "update-details.png"),
+        "offline update-details screenshot"
       );
     } catch (error) {
       console.warn(`Update-details screenshot was unavailable: ${error.message}`);
@@ -705,27 +734,14 @@ async function runGuidedAcceptance({
     // A failed attempt for the same cached version deliberately suppresses the automatic
     // startup dialog. Open the retained ready package through Agent Control to verify the real
     // recovery details and retry path without clicking the UI.
-    const { ui: interruptedUi, surface: interruptedSurface } = await openUpdateDetails(
+    await waitForReadyUpdate(cli, dataRoot, newer.version);
+    const { surface: interruptedSurface } = await openUpdateDetails(cli, dataRoot);
+    const interruptedScreenshot = await screenshotUpdateDetails(
       cli,
-      dataRoot
-    );
-    const interruptedScreenshot = await waitFor(
-      "interrupted helper screenshot",
-      () =>
-        cliJson(cli, dataRoot, [
-          "visual",
-          "screenshot",
-          "--target",
-          interruptedUi.result.window?.form === "dock" ? "dock-update" : "main",
-          "--expected-revision",
-          String(interruptedUi.result.revision),
-          "--expected-ui-generation",
-          String(interruptedUi.result.uiGeneration),
-          "--out",
-          path.join(runDir, "helper-interrupted.png"),
-        ]),
-      (value) => value.result?.artifact?.mediaType === "image/png",
-      30_000
+      dataRoot,
+      interruptedSurface.surfaceId,
+      path.join(runDir, "helper-interrupted.png"),
+      "interrupted helper screenshot"
     );
     cliJson(cli, dataRoot, [
       "ui",
