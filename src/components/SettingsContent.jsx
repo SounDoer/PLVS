@@ -440,7 +440,14 @@ export function SettingsContent({
   const settlePendingSection = useCallback(() => {
     const pending = pendingSectionRef.current;
     if (!pending) return;
-    if (focusSection(pending.section)) {
+    const node = sectionNodesRef.current.get(pending.section);
+    // The Settings sheet can already be mounted while its CSS entrance animation still puts
+    // the control targets outside the WebView viewport.
+    const sheet = node?.closest('[data-slot="sheet-content"]');
+    const sliding = sheet
+      ?.getAnimations?.()
+      .some((animation) => animation.pending || animation.playState === "running");
+    if (node && !sliding && focusSection(pending.section)) {
       pendingSectionRef.current = null;
       queueMicrotask(pending.resolve);
       return;

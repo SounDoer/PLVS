@@ -59,6 +59,22 @@ describe("UI targets", () => {
     });
   });
 
+  it("reports the values and labels of an open named Select's options", () => {
+    document.body.innerHTML = `
+      <button data-ui-target="setting:appearance.interfaceSize" aria-expanded="true" aria-controls="sizes"></button>
+      <div role="listbox" id="sizes">
+        <div role="option" data-select-value="default" data-state="checked">Default</div>
+        <div role="option" data-select-value="large" data-disabled>Large</div>
+      </div>`;
+    rect(document.querySelector("button"), 10, 10);
+    expect(listUiTargets()[0].options).toEqual([
+      { value: "default", label: "Default", selected: true, disabled: false },
+      { value: "large", label: "Large", selected: false, disabled: true },
+    ]);
+    document.querySelector("button").setAttribute("aria-expanded", "false");
+    expect(listUiTargets()[0].options).toBeUndefined();
+  });
+
   it("locates a target in viewport pixels and tells hidden from unknown", () => {
     document.body.innerHTML = `<button data-ui-target="toolbar:views"></button><button data-ui-target="toolbar:clear"></button>`;
     rect(document.querySelector('[data-ui-target="toolbar:views"]'), 650.256, 8, 28, 28);

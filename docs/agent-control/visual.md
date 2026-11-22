@@ -83,7 +83,7 @@ restores a minimized main window and orders it above other windows without activ
 Windows, and a raise with focus-on-map disabled on Linux. A window that is already drawing keeps
 its place; on Windows that includes a minimized window, because WebView2 captures it in place.
 A window hidden with `window hide` or the Tray's Hide stays hidden, because that is a
-deliberate choice; call `window show` first. A docked strip is left to the Dock lifecycle; on macOS
+deliberate choice. Capture reports `windowHidden`; call `window show` first. A docked strip is left to the Dock lifecycle; on macOS
 its Space-aware reveal applies.
 A window manager may decline the raise. Under Wayland a client can neither raise its window nor
 restore it from minimized, so there PLVS must already be visible; capture otherwise fails as
@@ -91,8 +91,9 @@ restore it from minimized, so there PLVS must already be visible; capture otherw
 into view.
 
 A recording of `main` or `workspace` captures the native window, which yields no pictures while
-it is minimized on any platform, so `recording start` first restores a minimized window without
-raising it or taking focus (Wayland does not allow this), then settles as above. Once recording, PLVS never moves the window: if
+it is minimized on any platform. `recording start` restores the window without taking focus
+where the platform supports it. On macOS it orders the window forward once deminiaturization
+finishes so WebKit can draw before recording begins. Once recording, PLVS never moves the window: if
 the user covers, minimizes, or hides it, the recording repeats the last picture. Each such span is
 logged in the recording's `events` as `renderStalled` and ends with `renderResumed` when PLVS draws
 again, with `elapsedMs` on the recording clock, so an agent can tell a frozen span from a still

@@ -11,6 +11,14 @@ function isDifferentPublishedMeasurement(live, afterGeneration, afterSequence) {
   return live.generation !== afterGeneration || sequence !== (afterSequence ?? null);
 }
 
+function displayedMeasurementSource(transport) {
+  const offsetSec = transport?.snapshot?.offsetSec ?? null;
+  if (transport?.source === "file") {
+    return { kind: "file", sessionId: transport.files?.activeId ?? null, offsetSec };
+  }
+  return offsetSec === null ? { kind: "live" } : { kind: "snapshot", offsetSec };
+}
+
 /**
  * @param {import("../bridge/types.js").BridgeContext} ctx
  * @param {any} [liveOverride]
@@ -77,7 +85,10 @@ async function inspect(ctx) {
   const { requestId } = ctx;
   return {
     requestId,
-    result: buildMeasurementOrFail(ctx),
+    result: {
+      ...buildMeasurementOrFail(ctx),
+      displaySource: displayedMeasurementSource(ctx.live().transport),
+    },
   };
 }
 
@@ -132,6 +143,7 @@ async function spectrum(ctx) {
         sessionGeneration: live.generation,
         hasLiveSample: Boolean(live.record),
         readout: readout.read(),
+        fileSessionId: ctx.live().transport?.files?.activeId ?? null,
       }),
     };
   } catch (error) {

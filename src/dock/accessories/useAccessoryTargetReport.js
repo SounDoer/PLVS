@@ -3,7 +3,11 @@ import { listUiTargets, locateUiTarget } from "../../uiNavigation/uiTargets.js";
 
 /** Every named pointer target in this accessory window, in its own CSS pixels. */
 export function readAccessoryTargets(root = globalThis.document) {
-  return listUiTargets(root).map(({ id }) => ({ id, rect: locateUiTarget(id, root).rect }));
+  return listUiTargets(root).map(({ id, options }) => ({
+    id,
+    rect: locateUiTarget(id, root).rect,
+    ...(options && { options }),
+  }));
 }
 
 /**

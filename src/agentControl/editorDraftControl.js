@@ -36,11 +36,18 @@ const PROFILE_OPERATIONS = Object.freeze([
   "removeRule",
   "reorderRules",
 ]);
-const FEEDBACK_FIELDS = {
-  setContent: { field: "content", type: "string" },
-  setEmail: { field: "email", type: "string" },
-  setAttachDiagnostics: { field: "attachDiagnostics", type: "boolean" },
-};
+const SIMPLE_EDITOR_FIELDS = Object.assign(Object.create(null), {
+  feedback: {
+    setContent: { field: "content", type: "string" },
+    setEmail: { field: "email", type: "string" },
+    setAttachDiagnostics: { field: "attachDiagnostics", type: "boolean" },
+  },
+  welcome: {
+    setAutoCheck: { field: "autoCheck", type: "boolean" },
+    setAutoDownload: { field: "autoDownload", type: "boolean" },
+    setAskToSendCrashReports: { field: "askToSendCrashReports", type: "boolean" },
+  },
+});
 const MAX_PATCH_OPERATIONS = 64;
 const SIMPLE_PALETTE_KEYS = Object.freeze({
   status: STATUS_COLOR_KEYS,
@@ -147,7 +154,8 @@ function conflictingTarget(claimed, target) {
 }
 
 function operationTargets(kind, operation) {
-  if (kind === "feedback") return [operation.op].filter((op) => Object.hasOwn(FEEDBACK_FIELDS, op));
+  const fields = SIMPLE_EDITOR_FIELDS[kind];
+  if (fields) return Object.hasOwn(fields, operation.op) ? [operation.op] : [];
   if (kind === "theme") {
     switch (operation.op) {
       case "setName":
@@ -214,14 +222,15 @@ function detectOperationConflicts(kind, operations, issues) {
 }
 
 export function describeEditorDraft(kind) {
-  if (kind === "feedback") {
+  const fields = SIMPLE_EDITOR_FIELDS[kind];
+  if (fields) {
     return {
       kind,
       save: false,
       history: { undo: false, redo: false },
-      operations: Object.keys(FEEDBACK_FIELDS),
+      operations: Object.keys(fields),
       operationSchemas: Object.fromEntries(
-        Object.entries(FEEDBACK_FIELDS).map(([op, { field, type }]) => [
+        Object.entries(fields).map(([op, { field, type }]) => [
           op,
           operationSchema(op, { [field]: { type } }),
         ])
@@ -494,13 +503,11 @@ function applyProfileOperation(document, operation, index, issues) {
   }
 }
 
-function applyFeedbackOperation(document, operation, index, issues) {
+function applySimpleEditorOperation(fields, document, operation, index, issues) {
   const path = `$.operations[${index}]`;
-  const definition = Object.hasOwn(FEEDBACK_FIELDS, operation.op)
-    ? FEEDBACK_FIELDS[operation.op]
-    : null;
+  const definition = Object.hasOwn(fields, operation.op) ? fields[operation.op] : null;
   if (!definition) {
-    issues.push(issue("invalidOperation", `${path}.op`, "Unknown Feedback operation."));
+    issues.push(issue("invalidOperation", `${path}.op`, "Unknown operation for this editor."));
     return document;
   }
   const { field, type } = definition;
@@ -539,6 +546,7 @@ export function planEditorDraftPatch(kind, currentDocument, input) {
   }
   if (issues.length > 0) return { document: currentDocument, changed: false, issues };
 
+  const fields = SIMPLE_EDITOR_FIELDS[kind];
   let next = structuredClone(currentDocument);
   input.operations.forEach((operation, index) => {
     if (!plainObject(operation)) {
@@ -552,16 +560,35 @@ export function planEditorDraftPatch(kind, currentDocument, input) {
         ? applyThemeOperation(next, operation, index, issues)
         : kind === "loudnessProfile"
           ? applyProfileOperation(next, operation, index, issues)
-          : kind === "feedback"
-            ? applyFeedbackOperation(next, operation, index, issues)
+          : fields
+            ? applySimpleEditorOperation(fields, next, operation, index, issues)
             : next;
   });
-  if (!["theme", "loudnessProfile", "feedback"].includes(kind)) {
+  if (!fields && !["theme", "loudnessProfile"].includes(kind)) {
     issues.push(issue("invalidEditorKind", "$.kind", "Unknown editor draft kind."));
   }
   if (issues.length > 0) return { document: currentDocument, changed: false, issues };
 
-  if (kind === "feedback") {
+  if (kind === "welcome" && next.autoDownload) {
+    const explicitDownload = input.operations.some(
+      (operation) => operation.op === "setAutoDownload"
+    );
+    if (explicitDownload && (!next.autoCheck || !next.autoDownloadAvailable)) {
+      return {
+        document: currentDocument,
+        changed: false,
+        issues: [
+          issue(
+            "invalidValue",
+            "$.operations",
+            "Auto Download requires platform support and Auto Check."
+          ),
+        ],
+      };
+    }
+    if (!next.autoCheck) next.autoDownload = false;
+  }
+  if (fields) {
     return {
       document: next,
       changed: JSON.stringify(next) !== JSON.stringify(currentDocument),

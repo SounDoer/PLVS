@@ -15,6 +15,10 @@ import { useDockUpdateWindow } from "../dock/useDockUpdateWindow.js";
 import { useDockAccessories } from "../dock/DockAccessoriesContext.jsx";
 import { useUiSurface } from "../uiNavigation/UiNavigationContext.jsx";
 import { useDevelopmentEventFixtureAdapter } from "../dev/DevelopmentEventFixturesContext.jsx";
+import {
+  EditorDraftRegistryError,
+  useEditorDraftSurface,
+} from "../agentControl/EditorDraftContext.jsx";
 import { INTERFACE_SIZE_OPTIONS } from "../preferences/interfaceSize.js";
 
 const DEFAULT_SETUP_DRAFT = Object.freeze({ autoCheck: true, autoDownload: false });
@@ -25,8 +29,30 @@ export function UpdateSurfaces({ currentVersion }) {
   const { docked, dockEdge, dockSuspended, exitDockRestoringAttributes } = useDock();
   const coordinator = useCoordinatorRole();
   const { setUpdateGeometry } = useDockAccessories();
-  const [draft, setDraft] = useState(DEFAULT_SETUP_DRAFT);
-  const [askToSendCrashReports, setAskToSendCrashReports] = useState(crashReportSetting.enabled);
+  const [setupDraft, setSetupDraft] = useState(() => ({
+    ...DEFAULT_SETUP_DRAFT,
+    askToSendCrashReports: crashReportSetting.enabled,
+    generation: 0,
+  }));
+  const { autoCheck, autoDownload, askToSendCrashReports, generation } = setupDraft;
+  const draft = { autoCheck, autoDownload };
+  const dirty =
+    autoCheck !== DEFAULT_SETUP_DRAFT.autoCheck ||
+    autoDownload !== DEFAULT_SETUP_DRAFT.autoDownload ||
+    askToSendCrashReports !== crashReportSetting.enabled;
+  function updateSetupDraft(patch) {
+    setSetupDraft((previous) => {
+      const next = { ...previous, ...patch };
+      if (!next.autoCheck) next.autoDownload = false;
+      return next.autoCheck === previous.autoCheck &&
+        next.autoDownload === previous.autoDownload &&
+        next.askToSendCrashReports === previous.askToSendCrashReports
+        ? previous
+        : { ...next, generation: previous.generation + 1 };
+    });
+  }
+  const setAskToSendCrashReports = (enabled) =>
+    updateSetupDraft({ askToSendCrashReports: enabled });
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState(null);
   // A development fixture shows the first-run dialog without clearing the persisted choice.
@@ -108,17 +134,13 @@ export function UpdateSurfaces({ currentVersion }) {
         setAskToSendCrashReports(payload.value);
       if (type === "update-preferences-change") {
         const patch = payload.patch;
-        if (typeof patch?.autoCheck === "boolean")
-          setDraft((previous) => ({
-            ...previous,
-            autoCheck: patch.autoCheck,
-            ...(!patch.autoCheck ? { autoDownload: false } : {}),
-          }));
-        if (typeof patch?.autoDownload === "boolean" && updates.installationSupported)
-          setDraft((previous) => ({
-            ...previous,
-            autoDownload: previous.autoCheck && patch.autoDownload,
-          }));
+        updateSetupDraft({
+          ...(typeof patch?.autoCheck === "boolean" && { autoCheck: patch.autoCheck }),
+          ...(typeof patch?.autoDownload === "boolean" &&
+            updates.installationSupported && {
+              autoDownload: patch.autoDownload,
+            }),
+        });
       }
       if (type === "update-preferences-save") void save();
     },
@@ -130,10 +152,10 @@ export function UpdateSurfaces({ currentVersion }) {
       void exitDockRestoringAttributes();
     }
   }, [docked, payload.key, dockWindow.error, exitDockRestoringAttributes]);
-  useUiSurface({
+  const setupSurfaceId = useUiSurface({
     active: setup,
     choices: [
-      { id: "save", label: "Save", run: save },
+      { id: "save", label: "Continue", run: save },
       ...(!firstRunSetup
         ? [{ id: "cancel", label: "Cancel", run: () => setSetupFixtureId(null) }]
         : []),
@@ -146,8 +168,33 @@ export function UpdateSurfaces({ currentVersion }) {
     dismissible: !firstRunSetup && !busy,
     supportedActions: firstRunSetup || busy ? [] : ["cancel"],
     target: { phase: "preferences" },
+    generationKey: generation,
+    dirty,
     onCancel: () => {
       if (!firstRunSetup && !busy) setSetupFixtureId(null);
+    },
+  });
+  useEditorDraftSurface({
+    active: setup,
+    kind: "welcome",
+    surfaceId: setupSurfaceId,
+    controller: {
+      inspectDraft: () => ({
+        document: {
+          ...draft,
+          askToSendCrashReports,
+          autoDownloadAvailable: updates.installationSupported,
+        },
+        draftGeneration: generation,
+        dirty,
+        canUndo: false,
+        canRedo: false,
+      }),
+      commitDraftDocument: ({ autoCheck, autoDownload, askToSendCrashReports }) => {
+        if (busy) throw new EditorDraftRegistryError("draftActionUnavailable", { action: "patch" });
+        updateSetupDraft({ autoCheck, autoDownload, askToSendCrashReports });
+        return true;
+      },
     },
   });
   useUiSurface({
@@ -201,8 +248,10 @@ export function UpdateSurfaces({ currentVersion }) {
   });
   useDevelopmentEventFixtureAdapter("update-preferences.pending", {
     establish: (id) => {
-      setDraft(DEFAULT_SETUP_DRAFT);
-      setAskToSendCrashReports(crashReportSetting.enabled);
+      updateSetupDraft({
+        ...DEFAULT_SETUP_DRAFT,
+        askToSendCrashReports: crashReportSetting.enabled,
+      });
       setError(null);
       setSetupFixtureId(id);
     },
@@ -234,7 +283,7 @@ export function UpdateSurfaces({ currentVersion }) {
             onAppearanceChange={changeAppearance}
             onInterfaceSizeChange={changeInterfaceSize}
             onCrashReportChange={setAskToSendCrashReports}
-            onChange={(patch) => setDraft((previous) => ({ ...previous, ...patch }))}
+            onChange={updateSetupDraft}
             onSave={() => void save()}
             installationSupported={updates.installationSupported}
             installationUnavailableReason={updates.installationUnavailableReason}

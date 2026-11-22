@@ -754,19 +754,25 @@ export function AgentControlBridge() {
     () => ({
       platformCapabilities,
       getRuntime: () => visualRuntimeRef.current,
-      settle: (target, options) =>
-        ["dockHeader", "dockEditor", "dockUpdate", "dockSettings"].includes(target.kind)
-          ? settleDockAccessory(target, visualRuntimeRef.current, options)
-          : visualCaptureSurfaces.settle(target, {
-              ...options,
-              reveal: windowVisibleRef.current === false ? null : () => revealVisualWindow(),
-            }),
-      // Window capture receives no pictures from a minimized window on any platform, even where
-      // the WebView keeps drawing. Restore it before a recording starts, without raising it.
+      settle: (target, options) => {
+        if (["dockHeader", "dockEditor", "dockUpdate", "dockSettings"].includes(target.kind)) {
+          return settleDockAccessory(target, visualRuntimeRef.current, options);
+        }
+        if (windowVisibleRef.current === false) throw { reason: "windowHidden" };
+        return visualCaptureSurfaces.settle(target, {
+          ...options,
+          reveal: options.revealRequested ? null : () => revealVisualWindow(),
+        });
+      },
       prepareRecording: async () => {
-        if (windowVisibleRef.current === false) return;
+        if (windowVisibleRef.current === false) return false;
         const geometry = await readWindowGeometry().catch(() => null);
-        if (geometry?.minimized === true) await revealVisualWindow({ raise: false });
+        if (geometry?.minimized !== true) return false;
+        // On macOS, raising during deminiaturization can leave WebKit hidden. Ask AppKit to
+        // restore and raise as one operation, then leave it to the native completion observer.
+        const revealRequested = platformCapabilities?.platform === "macos";
+        await revealVisualWindow({ raise: revealRequested });
+        return revealRequested;
       },
       watchRecordingRender: (recordingId) =>
         watchRecordingRender({

@@ -115,3 +115,13 @@ export function uiTargetBinding(id) {
   }
   return null;
 }
+
+/** Commands that open the same surface as a named toolbar button. */
+export function uiTargetNavigation(id) {
+  const [kind, menu, extra] = id.split(":");
+  if (kind !== "toolbar" || extra !== undefined) return null;
+  if (["sources", "loudness-profile", "panels", "views", "presets", "status"].includes(menu)) {
+    return { command: "ui show toolbar-menu", args: ["--menu", menu] };
+  }
+  return null;
+}

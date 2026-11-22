@@ -41,6 +41,29 @@ describe("semantic editor draft control", () => {
     });
   });
 
+  it("validates Welcome preferences atomically and clears Auto Download with Auto Check", () => {
+    const current = {
+      autoCheck: true,
+      autoDownload: true,
+      autoDownloadAvailable: true,
+      askToSendCrashReports: true,
+    };
+    const operations = [
+      { op: "setAutoCheck", autoCheck: false },
+      { op: "setAskToSendCrashReports", askToSendCrashReports: false },
+    ];
+    expect(planEditorDraftPatch("welcome", current, { operations })).toMatchObject({
+      document: { autoCheck: false, autoDownload: false, askToSendCrashReports: false },
+      changed: true,
+      issues: [],
+    });
+    expect(
+      planEditorDraftPatch("welcome", current, {
+        operations: [...operations, { op: "setAutoDownload", autoDownload: true }],
+      })
+    ).toMatchObject({ document: current, changed: false, issues: [expect.anything()] });
+  });
+
   it("plans one atomic Theme transaction from closed semantic operations", () => {
     const current = makeCustomThemeV2FromBase(
       BUILTIN_THEMES_V2["plvs-dark"],

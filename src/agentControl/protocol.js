@@ -178,8 +178,11 @@ export function normalizeAgentControlRequest(input) {
       input.method === "editorDraft.describe" ? new Set(["kind"]) : new Set(["kind", "surfaceId"]);
     const field = unknownField(input.params, allowed);
     if (field) return invalidParams(`$.params.${field}`, `Unknown parameter: ${field}.`);
-    if (!["theme", "loudness-profile", "feedback"].includes(input.params.kind)) {
-      return invalidParams("$.params.kind", "kind must be theme, loudness-profile or feedback.");
+    if (!["theme", "loudness-profile", "feedback", "welcome"].includes(input.params.kind)) {
+      return invalidParams(
+        "$.params.kind",
+        "kind must be theme, loudness-profile, feedback or welcome."
+      );
     }
     if (
       input.method === "editorDraft.inspect" &&
@@ -227,7 +230,7 @@ export function normalizeAgentControlRequest(input) {
     if (field) return invalidParams(`$.params.${field}`, `Unknown parameter: ${field}.`);
     if (
       !["theme", "loudness-profile"].includes(input.params.kind) &&
-      !(input.method === "editorDraft.patch" && input.params.kind === "feedback")
+      !(input.method === "editorDraft.patch" && ["feedback", "welcome"].includes(input.params.kind))
     ) {
       return invalidParams("$.params.kind", "kind must be theme or loudness-profile.");
     }

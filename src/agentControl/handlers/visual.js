@@ -184,12 +184,13 @@ async function startRecording(ctx) {
   const controller = new AbortController();
   visual.captures.set(requestId, controller);
   try {
-    if (!dockTarget) await visualControl.prepareRecording?.();
+    const revealRequested = !dockTarget && (await visualControl.prepareRecording?.()) === true;
     const settled = region(
       await visualControl.settle(surfaceTarget, {
         expectedRevision: request.params.expectedRevision,
         getRevision: () => clock.current(),
         signal: controller.signal,
+        revealRequested,
       }),
       ctx.live().dock?.edge
     );

@@ -742,7 +742,10 @@ fn parse_editor_draft_args(args: &[String]) -> Result<ControlCommand, String> {
     _ => None,
   };
   if let Some((action, kind, surface_id)) = read {
-    if !matches!(kind.as_str(), "theme" | "loudness-profile" | "feedback") {
+    if !matches!(
+      kind.as_str(),
+      "theme" | "loudness-profile" | "feedback" | "welcome"
+    ) {
       return Err("Editor draft kind is unavailable for this command.".to_string());
     }
     if surface_id
@@ -834,7 +837,7 @@ fn parse_editor_draft_args(args: &[String]) -> Result<ControlCommand, String> {
   }
   let kind = positionals.remove(0);
   if !(matches!(kind.as_str(), "theme" | "loudness-profile")
-    || (kind == "feedback" && action == "patch"))
+    || (matches!(kind.as_str(), "feedback" | "welcome") && action == "patch"))
   {
     return Err("Editor draft kind is unavailable for this command.".to_string());
   }
@@ -7136,7 +7139,7 @@ mod tests {
       "section" => "appearance".to_string(),
       "sources|loudness-profile|panels|views|presets|status" => "presets".to_string(),
       "surface-id" => format!("ui-{}", "a".repeat(16)),
-      "theme|loudness-profile|feedback" => "theme".to_string(),
+      "theme|loudness-profile|feedback|welcome" => "theme".to_string(),
       "theme|loudness-profile" => "theme".to_string(),
       "create|edit|customize|duplicate" | "create|edit" => "create".to_string(),
       "id" => "stats".to_string(),
@@ -10307,7 +10310,7 @@ mod tests {
   fn visual_parser_enforces_panel_output_json_and_closed_options() {
     let help = family_help_text("visual");
     assert!(help.contains("plvs-cli visual describe <--json|--format text>"));
-    assert!(help.contains("plvs-cli visual screenshot [--target"));
+    assert!(help.contains("plvs-cli visual screenshot <--target"));
     assert!(help_text().contains("dock-header|dock-editor"));
 
     for invalid in [

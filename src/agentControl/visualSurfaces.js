@@ -256,6 +256,7 @@ function nextAnimationFrame(windowObject, signal) {
  *   windowLabel?: string,
  *   reveal?: (() => unknown) | null,
  *   revealGraceMs?: number,
+ *   revealRequested?: boolean,
  * }} options
  */
 export async function settleVisualSurface({
@@ -272,6 +273,7 @@ export async function settleVisualSurface({
   windowLabel = "main",
   reveal = null,
   revealGraceMs = VISUAL_REVEAL_GRACE_MS,
+  revealRequested = false,
 }) {
   const controller = new AbortController();
   const cancel = () => controller.abort();
@@ -279,7 +281,7 @@ export async function settleVisualSurface({
   let stage = "fonts";
   let frames = 0;
   let canvas = null;
-  let revealed = false;
+  let revealed = revealRequested;
   let timeout;
   // Frames stop while the window cannot be seen. Reveal it once, never taking keyboard focus.
   const requestReveal = () => {

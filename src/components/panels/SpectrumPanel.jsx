@@ -757,6 +757,7 @@ export function SpectrumPanel({ showAxes: axesOverride, className } = {}) {
     moduleId: "spectrum",
     read: () => ({
       displaySource: sourceMode === "file" ? "file" : isSnapshot ? "snapshot" : "live",
+      offsetSec: isSnapshot ? selectedOffset : null,
       frame: {
         sequence: displayAudio?.frameSequence ?? null,
         elapsedMs: displayAudio?.frameElapsedMs ?? null,

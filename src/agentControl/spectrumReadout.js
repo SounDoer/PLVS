@@ -24,8 +24,7 @@ const ENGINE_GRID_POINTS_PER_OCTAVE = 96;
 export const SPECTRUM_READOUT_UNAVAILABLE_REASONS = Object.freeze([
   "noSample",
   "notReady",
-  "snapshotSelected",
-  "fileSource",
+  "historyUnavailable",
   "belowSignalFloor",
 ]);
 
@@ -142,6 +141,7 @@ function sourceState(value) {
  *   sessionGeneration?: number,
  *   hasLiveSample: boolean,
  *   readout: any,
+ *   fileSessionId?: string | null,
  * }} input
  */
 export function buildSpectrumReadout({
@@ -153,6 +153,7 @@ export function buildSpectrumReadout({
   sessionGeneration = 0,
   hasLiveSample,
   readout,
+  fileSessionId = null,
 }) {
   const observed = Number.isFinite(observedAtMs) ? observedAtMs : Date.now();
   const state = sourceState(liveState);
@@ -163,21 +164,31 @@ export function buildSpectrumReadout({
   const maxMode = readout?.display?.maxMode ?? "off";
   const hasCurve = centers.length > 0 && curve.length === centers.length;
 
+  const liveFrame = readout?.displaySource !== "snapshot" && readout?.displaySource !== "file";
+  const offsetSec = readout?.offsetSec ?? null;
+  const displaySource = liveFrame
+    ? { kind: "live" }
+    : readout.displaySource === "file"
+      ? { kind: "file", sessionId: fileSessionId, offsetSec }
+      : { kind: "snapshot", offsetSec };
+
   let unavailable = null;
-  if (readout?.displaySource === "snapshot") unavailable = "snapshotSelected";
-  else if (readout?.displaySource === "file") unavailable = "fileSource";
-  else if (!hasLiveSample) unavailable = "noSample";
-  else if (!hasCurve) unavailable = "notReady";
+  if (liveFrame && !hasLiveSample) unavailable = "noSample";
+  else if (!hasCurve) unavailable = liveFrame ? "notReady" : "historyUnavailable";
 
   const receivedAtMs =
-    unavailable === null && Number.isFinite(frame.receivedAtMs) ? frame.receivedAtMs : null;
+    liveFrame && unavailable === null && Number.isFinite(frame.receivedAtMs)
+      ? frame.receivedAtMs
+      : null;
   const ageMs = receivedAtMs === null ? null : Math.max(0, observed - receivedAtMs);
   const freshness =
     unavailable !== null
       ? "unavailable"
-      : state === "running" && ageMs !== null && ageMs <= MEASUREMENT_FRESHNESS_THRESHOLD_MS
-        ? "fresh"
-        : "stale";
+      : !liveFrame
+        ? "historical"
+        : state === "running" && ageMs !== null && ageMs <= MEASUREMENT_FRESHNESS_THRESHOLD_MS
+          ? "fresh"
+          : "stale";
 
   const bands = [];
   const peaks = [];
@@ -212,7 +223,6 @@ export function buildSpectrumReadout({
     }
   }
 
-  const liveFrame = readout?.displaySource === "live";
   const sequence = liveFrame && Number.isSafeInteger(frame.sequence) ? frame.sequence : null;
 
   return {
@@ -221,6 +231,7 @@ export function buildSpectrumReadout({
     observedAt: new Date(observed).toISOString(),
     panelId,
     source: { kind: "live", state, sessionGeneration },
+    displaySource,
     sample: {
       sequence,
       elapsedMs: sequence !== null && Number.isFinite(frame.elapsedMs) ? frame.elapsedMs : null,

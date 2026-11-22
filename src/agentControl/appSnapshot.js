@@ -88,7 +88,7 @@ export function buildAgentControlCapabilities(runtime, revision) {
       ...(hasMethod("editorDraft.describe")
         ? {
             editorDraft: {
-              kinds: ["theme", "loudness-profile", "feedback"],
+              kinds: ["theme", "loudness-profile", "feedback", "welcome"],
               describe: true,
               inspect: hasMethod("editorDraft.inspect"),
               patch: hasMethod("editorDraft.patch"),
@@ -182,6 +182,7 @@ export function buildAgentControlCapabilities(runtime, revision) {
         ? {
             measurementSpectrum: {
               modules: ["spectrum"],
+              displaySources: ["live", "snapshot", "file"],
               resolutions: Object.keys(SPECTRUM_READOUT_RESOLUTIONS),
               maximumPeaksPerCurve: SPECTRUM_READOUT_PEAK_COUNT,
             },

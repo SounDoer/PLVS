@@ -12,7 +12,9 @@ clears a measurement, opens a panel, or activates Vectorscope or Dialogue analys
 
 ## Scope
 
-V1 is LIVE-only. The inspection result does not expose File measurements, history, raw waveform
+Measurement inspection reads Live capture. Its `displaySource` reports the displayed source
+independently as `live`, `snapshot` with an offset, or `file` with an active session ID and offset.
+The aggregate inspection omits File measurements, history, raw waveform
 points, Spectrum or Spectrogram bands, Vectorscope paths, or Stereo Map bands; Spectrum bands are
 read per panel through [`measurement spectrum`](#spectrum-readout). Waiting for a
 different published sample is provided separately by [Measurement Wait](measurement-wait.md).
@@ -123,16 +125,18 @@ curve as `dbB`, named in `display.curves`. When Max is Decay or Hold the row add
 `maxDbB`): the engine's decaying peak or the held maximum, whichever fill the panel shows. A level
 below -120 dB, the lowest the level axis can show, is null.
 
-Identity and freshness follow `measurement inspect`: `source.sessionGeneration` with
-`sample.sequence`, here the native frame the panel drew, which can trail `measurement inspect` by a
-frame. `unavailable` is null or one reason, and no bands or peaks are returned unless it is null or
+The `displaySource` identifies the curve as `live`, `snapshot` (selected Live history),
+or `file` (active File session). For a selected historical curve, `offsetSec` is the offset
+back from the history edge and freshness is `historical`. A File edge without a selection
+has a null offset. History has no Live frame sequence or age. For Live curves,
+`source.sessionGeneration` and `sample.sequence` identify the drawn native frame, which may
+trail `measurement inspect` by a frame. `unavailable` is null or one reason, and no bands or peaks are returned unless it is null or
 `belowSignalFloor`:
 
 ```text
 noSample          no LIVE sample since launch or the last clear
 notReady          the panel has no curve for its request yet
-snapshotSelected  the panel shows a history Snapshot, not LIVE
-fileSource        the panel shows the File source
+historyUnavailable  the selected history or File position has no curve for this request
 belowSignalFloor  every band is below -120 dB
 ```
 

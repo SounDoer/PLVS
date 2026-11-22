@@ -88,7 +88,10 @@ describe("Visual recording lifecycle", () => {
     const order = [];
     const stopWatch = vi.fn();
     Object.assign(visual, {
-      prepareRecording: vi.fn(async () => order.push("prepare")),
+      prepareRecording: vi.fn(async () => {
+        order.push("prepare");
+        return true;
+      }),
       watchRecordingRender: vi.fn(() => stopWatch),
     });
     visual.settle.mockImplementationOnce(async () => {
@@ -102,6 +105,10 @@ describe("Visual recording lifecycle", () => {
     visual.inspectRecording.mockResolvedValue({ recordingId: "first", state: "completed" });
     await start();
     expect(order).toEqual(["prepare", "settle"]);
+    expect(visual.settle).toHaveBeenCalledWith(
+      { kind: "main" },
+      expect.objectContaining({ revealRequested: true })
+    );
     expect(visual.watchRecordingRender).toHaveBeenCalledWith("first");
 
     await vi.advanceTimersByTimeAsync(250);

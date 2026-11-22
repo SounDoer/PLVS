@@ -2,7 +2,7 @@ import {
   createContext,
   useCallback,
   useContext,
-  useEffect,
+  useLayoutEffect,
   useMemo,
   useRef,
   useState,
@@ -124,7 +124,7 @@ export function useBlockingEditors() {
 export function useBlockingEditor(id, active, dockTransferable = false) {
   const registry = useContext(BlockingEditorsContext);
   const registerBlockingEditor = registry?.registerBlockingEditor;
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (!active || !registerBlockingEditor) return undefined;
     return registerBlockingEditor(id, dockTransferable);
   }, [active, id, dockTransferable, registerBlockingEditor]);

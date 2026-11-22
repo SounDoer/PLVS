@@ -1,6 +1,6 @@
 import { semanticFailure } from "../bridge/failures.js";
 import { isUiTargetId, listUiTargets, resolveUiTarget } from "../../uiNavigation/uiTargets.js";
-import { uiTargetBinding } from "../uiTargetBindings.js";
+import { uiTargetBinding, uiTargetNavigation } from "../uiTargetBindings.js";
 
 /** @param {import("../bridge/types.js").BridgeContext} ctx */
 async function inspect(ctx) {
@@ -23,11 +23,14 @@ async function inspect(ctx) {
 /** @param {import("../bridge/types.js").BridgeContext} ctx */
 async function targets(ctx) {
   const { requestId, clock, live } = ctx;
-  const accessory = (live().pointerControl?.accessoryTargets?.() ?? []).map(({ id, surface }) => ({
-    id,
-    kind: id.split(":")[0],
-    surface,
-  }));
+  const accessory = (live().pointerControl?.accessoryTargets?.() ?? []).map(
+    ({ id, surface, options }) => ({
+      id,
+      kind: id.split(":")[0],
+      surface,
+      ...(options && { options }),
+    })
+  );
   return {
     requestId,
     result: {
@@ -37,7 +40,8 @@ async function targets(ctx) {
         ...accessory,
       ].map((target) => {
         const binding = uiTargetBinding(target.id);
-        return binding ? { ...target, binding } : target;
+        const navigation = uiTargetNavigation(target.id);
+        return { ...target, ...(binding && { binding }), ...(navigation && { navigation }) };
       }),
     },
   };
@@ -149,13 +153,20 @@ async function navigate(ctx) {
     };
   } catch (error) {
     if (typeof error?.reason !== "string") throw error;
+    const navigation =
+      request.method === "ui.action" && error.reason === "uiActionUnavailable"
+        ? uiTargetNavigation(request.params.target)
+        : null;
     throw semanticFailure(
       error.reason,
       error.reason === "uiGenerationConflict" ? "$.params.expectedUiGeneration" : "$.params",
-      error.message,
+      navigation
+        ? `Use ${navigation.command} ${navigation.args.join(" ")} to open this menu.`
+        : error.message,
       error.reason === "revisionConflict" ? -32004 : -32042,
       {
         ...error.details,
+        ...(navigation && { navigation }),
         currentRevision: clock.current(),
         currentUiGeneration: uiNavigation.inspectUi().uiGeneration,
       }

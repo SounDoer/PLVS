@@ -162,7 +162,8 @@ paths, options, policies, and top-level wire parameters. The current families ar
 This is the layout value returned by `inspect` when the Workspace is empty.
 
 `workspace reset` and `dock layout reset` are the Reset Layout actions of the Panels menu and the
-Dock Panels editor.
+Dock Panels editor. The Workspace reset preview includes the default panel controls, pins,
+panel axes, and shared axis ranges.
 
 ## Shell Completion
 
@@ -237,11 +238,11 @@ The two resets and Slow Trace reproduce chart clicks and press-and-hold on a pan
 [Measurement Control](../agent-control/measurements.md#chart-gesture-resets).
 
 `measurement spectrum` returns the band levels behind one Spectrum panel's curve, read from what
-that panel last drew, with its Max curve and its most prominent peaks; see
+that panel last drew in Live, Live history, or File mode, with its Max curve and most prominent peaks. See
 [Measurement Control](../agent-control/measurements.md#spectrum-readout).
 
-These commands never start capture or optional analysis and do not expose File results, history,
-or raw visual data beyond the Spectrum readout. See
+The aggregate reads and waits measure Live capture. Use the `displaySource` field of
+`measurement inspect` to see what is on screen. Use `transport file report` for whole-file results. See
 [Measurement Control](../agent-control/measurements.md) for freshness, null reasons, profile
 evaluation, and revision behavior, and
 [Measurement Wait](../agent-control/measurement-wait.md) for identity waits, bounded predicates, hold
@@ -351,20 +352,22 @@ decisions are inspectable but cannot be fabricated. See [UI Navigation](../agent
 two-token concurrency, Panel behavior in normal/Fullscreen/Dock forms, multi-workbench selection,
 safety, and errors.
 
-Read `choices` in `ui inspect` before answering an open dialog with `ui decide`. Use
+Use `ui targets` to find a toolbar menu's `navigation` command and an open Select's read-only
+`options`. Read `choices` in `ui inspect` before answering an open dialog with `ui decide`. Use
 `editor-draft describe feedback` to discover operations for the Feedback draft, then use
 `ui decide --choice send --dry-run` with its surface ID and the current UI tokens to preview the
 payload. Send without `--dry-run` submits Feedback from any app identity. When a crash-report
 prompt is open, its Send choice submits the saved report. Issue either Send command only when
 you intend to transmit that data.
 
-Editor Draft Control operates on the in-memory document of an already open Theme or Loudness
-Profile editor:
+Editor Draft Control operates on an open Theme, Loudness Profile, Feedback, or Welcome draft.
+For Welcome, use the `update` surface with phase `preferences`. Inspect and patch the draft, then
+use `ui decide --choice save` with fresh tokens to press Continue.
 
 ```powershell
-plvs-cli editor-draft describe <theme|loudness-profile> --json
-plvs-cli editor-draft inspect <theme|loudness-profile> <surface-id> --json
-plvs-cli editor-draft patch <theme|loudness-profile> <surface-id> <file|-> --expected-revision <n> --expected-ui-generation <n> --expected-draft-generation <n> --json
+plvs-cli editor-draft describe <theme|loudness-profile|feedback|welcome> --json
+plvs-cli editor-draft inspect <theme|loudness-profile|feedback|welcome> <surface-id> --json
+plvs-cli editor-draft patch <theme|loudness-profile|feedback|welcome> <surface-id> <file|-> --expected-revision <n> --expected-ui-generation <n> --expected-draft-generation <n> --json
 plvs-cli editor-draft undo theme <surface-id> --expected-revision <n> --expected-ui-generation <n> --expected-draft-generation <n> --json
 plvs-cli editor-draft redo theme <surface-id> --expected-revision <n> --expected-ui-generation <n> --expected-draft-generation <n> --json
 plvs-cli editor-draft discard <theme|loudness-profile> <surface-id> --decision-surface-id <surface-id> --expected-revision <n> --expected-ui-generation <n> --expected-draft-generation <n> --json
@@ -393,7 +396,7 @@ Dock accessory screenshots capture the complete visible client area, including w
 constrains the editor's size.
 Agent Control never takes keyboard focus from the app you are using. When PLVS is covered, or
 minimized on macOS, a screenshot raises it into view without activating it; a recording restores a
-minimized window wherever the system allows it (not under Wayland). A hidden window stays hidden until `window show`. If you cover
+minimized window wherever the system allows it (not under Wayland). A hidden window reports `windowHidden` until `window show`. If you cover
 or minimize PLVS during a main-window or workspace recording, PLVS leaves the window in place.
 The recording repeats the last frame until new frames arrive. The agent can find the pause and
 recovery in the recording's `renderStalled` and `renderResumed` events. See
@@ -404,7 +407,7 @@ desktop visible behind transparent surfaces:
 
 ```powershell
 plvs-cli visual describe --json
-plvs-cli visual screenshot --target <main|workspace|panel|dock-header|dock-editor|dock-update|dock-settings> [--panel-id <id>] [--expected-revision <n>] [--expected-ui-generation <n>] --out <file.png> --json
+plvs-cli visual screenshot <--target <main|workspace|panel|dock-header|dock-editor|dock-update|dock-settings> | --target-id <target-id>> [--panel-id <id>] [--expected-revision <n>] [--expected-ui-generation <n>] --out <file.png> --json
 plvs-cli visual recording start --target <main|workspace|dock> [--audio <none|measured-source>] [--cursor <none|visible>] [--indicator <visible|hidden>] [--fps <15|30|60>] [--max-duration-seconds <1..1800>] [--expected-revision <n>] --json
 plvs-cli visual recording inspect <recording-id> --json
 plvs-cli visual recording wait <recording-id> [--timeout-ms <100..300000>] [--out <file.mp4>] --json

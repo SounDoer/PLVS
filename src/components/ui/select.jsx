@@ -146,6 +146,7 @@ const SelectItem = React.forwardRef(({ className, children, ...props }, ref) => 
   <SelectPrimitive.Item
     ref={ref}
     data-slot="select-item"
+    data-select-value={props.value}
     className={cn(
       "hover:bg-ui-hover data-[highlighted]:bg-ui-hover focus:bg-ui-hover relative flex w-full cursor-default select-none items-center rounded-xs min-h-[var(--ui-shell-h)] py-1 pr-8 pl-2 text-[length:var(--ui-fs-control)] outline-none data-[disabled]:pointer-events-none data-[disabled]:opacity-50",
       className

@@ -231,7 +231,9 @@ it and the field it changes, because target names follow the stored control keys
 public fields. A Panel Settings row reports `{ command: "panel update", panelId, path }`, a linked
 range row `{ command: "axis panel update", panelId, axis }`, and a Settings row
 `{ command: "settings update", path }`. For example `panel-control:spectrum:spectrumGrid` is
-`panel update spectrum` with `{ "grid": ... }`. Buttons, tabs and actions have no binding.
+`panel update spectrum` with `{ "grid": ... }`. Buttons, tabs and actions have no binding. Supported toolbar menu buttons carry
+`navigation { command, args }` pointing to their opening command. Open named Select controls
+expose read-only `options` with value, label, selection, and disabled state.
 
 In File mode, `toolbar:dialogue-detection` identifies the Dialogue Detection switch. Set its value
 through [Settings Control](settings.md#file-dialogue-detection). When present, the summary's

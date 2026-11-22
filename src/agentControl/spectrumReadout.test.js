@@ -133,10 +133,34 @@ describe("spectrum readout", () => {
     expect(build({}, { observedAtMs: 1_000_000 + 2001 }).sample.freshness).toBe("stale");
   });
 
-  it("returns no numbers for a snapshot, a File source, no sample, or no curve yet", () => {
+  it.each(["file", "snapshot"])("reads the drawn %s curve without a live sample", (kind) => {
+    const result = build(
+      { displaySource: kind, offsetSec: 2 },
+      { hasLiveSample: false, fileSessionId: "selected-file" }
+    );
+    expect(result).toMatchObject({
+      displaySource: {
+        kind,
+        offsetSec: 2,
+        ...(kind === "file" && { sessionId: "selected-file" }),
+      },
+      sample: {
+        sequence: null,
+        elapsedMs: null,
+        receivedAt: null,
+        ageMs: null,
+        freshness: "historical",
+      },
+      unavailable: null,
+    });
+    expect(result.bands).toHaveLength(31);
+    expect(result.bands.every((band) => band.db === -40)).toBe(true);
+  });
+
+  it("reports missing history or unavailable Live frames", () => {
     const cases = [
-      { result: build({ displaySource: "snapshot" }), reason: "snapshotSelected" },
-      { result: build({ displaySource: "file" }), reason: "fileSource" },
+      { result: build({ displaySource: "snapshot", centers: null }), reason: "historyUnavailable" },
+      { result: build({ displaySource: "file", centers: null }), reason: "historyUnavailable" },
       { result: build({}, { hasLiveSample: false }), reason: "noSample" },
       { result: build({ centers: null, curveDb: null }), reason: "notReady" },
     ];

@@ -83,7 +83,23 @@ export function listUiTargets(root = globalThis.document) {
     if (seen.has(id) || !visibleRect(element)) continue;
     seen.add(id);
     const state = targetState(element);
-    targets.push({ id, kind: id.split(":")[0], ...(state && { state }) });
+    const listboxId = state?.expanded === true ? element.getAttribute("aria-controls") : null;
+    const listbox = listboxId ? element.ownerDocument.getElementById(listboxId) : null;
+    const options =
+      listbox?.getAttribute("role") === "listbox"
+        ? Array.from(listbox.querySelectorAll('[role="option"][data-select-value]'), (option) => ({
+            value: option.getAttribute("data-select-value"),
+            label: option.textContent.trim(),
+            selected: option.getAttribute("data-state") === "checked",
+            disabled: option.hasAttribute("data-disabled"),
+          }))
+        : null;
+    targets.push({
+      id,
+      kind: id.split(":")[0],
+      ...(state && { state }),
+      ...(options?.length && { options }),
+    });
   }
   return targets;
 }

@@ -1,11 +1,11 @@
 # Editor Draft Control
 
 Editor Draft Control safely inspects and changes the in-memory document owned by a currently open
-Theme Editor, Loudness Profile Editor, or Feedback dialog. It is an authoring-session API: Patch, Undo, Redo, and Discard never Save a document, change the selected library
+Theme Editor, Loudness Profile Editor, Feedback dialog, or Welcome dialog. It is an authoring-session API: Patch, Undo, Redo, and Discard never Save a document, change the selected library
 item, dirty a Preset, or write persistence. Explicit Save commits the exact draft through its existing
 editor owner, including the GUI's selection and Preset effects.
 
-Use `editor-draft describe <theme|loudness-profile|feedback>` to discover the closed operation vocabulary.
+Use `editor-draft describe <theme|loudness-profile|feedback|welcome>` to discover the closed operation vocabulary.
 The Theme description is derived from the Core keys, palette presets, and editor-visible Theme Role
 Registry entries. The Profile description is derived from ruleable metrics and their display
 precision. Arbitrary object paths, React state, DOM selectors, clicks, and keystrokes are not
@@ -46,6 +46,18 @@ same operation supplies a replacement, matching the visible editor.
 
 Theme exposes Undo and Redo because the visible Theme Editor owns history. Loudness Profile does
 not; attempting those actions returns `draftActionUnavailable`.
+
+## Welcome preferences
+
+Find the open `update` surface with phase `preferences` in `ui inspect`. Use its exact
+surface ID with `editor-draft inspect welcome` and `editor-draft patch welcome`.
+The draft owns Auto Check, Auto Download, and Crash Report Prompt. Turning off Auto Check
+also turns off Auto Download. Enabling Auto Download requires Auto Check and platform
+installation support, reported by `autoDownloadAvailable`.
+
+Continue uses the existing `ui decide --choice save` action. Use the revision and UI generation
+from the latest draft response, because a draft edit changes the visible dialog generation.
+Appearance and Interface Size are live settings and have their own command families.
 
 ## Cancel and exact discard
 

@@ -186,11 +186,12 @@ describe("agent-control app snapshots", () => {
       features: {
         measurementSpectrum: {
           modules: ["spectrum"],
+          displaySources: ["live", "snapshot", "file"],
           resolutions: ["octave", "third", "sixth", "twelfth", "full"],
           maximumPeaksPerCurve: 5,
         },
         editorDraft: {
-          kinds: ["theme", "loudness-profile", "feedback"],
+          kinds: ["theme", "loudness-profile", "feedback", "welcome"],
           describe: true,
           inspect: true,
           patch: true,

@@ -2,6 +2,8 @@ import {
   compileWorkspaceLayout,
   serializeWorkspaceLayout,
 } from "../../workspace/workspaceLayout.js";
+import { buildAgentControlPanelSnapshot } from "../appSnapshot.js";
+import { buildAxisInspection } from "../axisControl.js";
 import { semanticFailure } from "../bridge/failures.js";
 import { workspaceMatches } from "../bridge/signatures.js";
 import { awaitWorkspacePersistence } from "../bridge/settlement.js";
@@ -76,7 +78,13 @@ async function applyLayout(ctx) {
  */
 async function reset(ctx) {
   const { request, requestId, clock, settlement, flush } = ctx;
-  const { workspace, resetWorkspace, waitForWorkspacePersistenceEnqueue } = ctx.snap;
+  const {
+    workspace,
+    resetWorkspace,
+    waitForWorkspacePersistenceEnqueue,
+    hasLoudnessReference,
+    analysisContext,
+  } = ctx.snap;
   const currentRevision = clock.current();
   if (request.params.expectedRevision !== currentRevision) {
     throw semanticFailure(
@@ -91,7 +99,20 @@ async function reset(ctx) {
     revision: currentRevision,
     dryRun: request.params.dryRun === true,
     changed,
-    state: { workspace: { layout: serializeWorkspaceLayout(DEFAULT_WORKSPACE_STATE) } },
+    state: {
+      workspace: {
+        layout: serializeWorkspaceLayout(DEFAULT_WORKSPACE_STATE),
+        panels: DEFAULT_WORKSPACE_STATE.panelOrder.map((panelId) =>
+          buildAgentControlPanelSnapshot({
+            workspace: DEFAULT_WORKSPACE_STATE,
+            panelId,
+            hasLoudnessReference,
+            analysisContext,
+          })
+        ),
+        sharedAxes: buildAxisInspection(DEFAULT_WORKSPACE_STATE).shared,
+      },
+    },
   };
   if (request.params.dryRun === true || !changed) return { requestId, result };
 

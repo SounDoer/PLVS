@@ -1199,7 +1199,7 @@ None.
 
 ## `measurement.spectrum`
 
-Read the band levels behind a Spectrum panel's curve.
+Read the band levels behind a Spectrum panel's Live, Snapshot, or File curve.
 
 - CLI path: `measurement spectrum`
 - Execution: `runningApp`; operation: `query`
@@ -1508,7 +1508,7 @@ plvs-cli workspace apply <file|-> --json --expected-revision <n> [--dry-run]
 
 ## `workspace.reset`
 
-Reset the Workspace layout as the Panels menu's Reset Layout does.
+Restore the default Workspace layout, panel settings, and shared axis ranges.
 
 - CLI path: `workspace reset`
 - Execution: `runningApp`; operation: `mutation`
@@ -3935,7 +3935,7 @@ Capture a PLVS surface screenshot.
 - Schema references: `visual.target`, `agentControl.revision`
 
 ```text
-plvs-cli visual screenshot [--target <main|workspace|panel|dock-header|dock-editor|dock-update|dock-settings> | --target-id <target-id>] [--panel-id <panel-id>] [--expected-revision <n>] [--expected-ui-generation <n>] --out <file> --json
+plvs-cli visual screenshot <--target <main|workspace|panel|dock-header|dock-editor|dock-update|dock-settings> | --target-id <target-id>> [--panel-id <panel-id>] [--expected-revision <n>] [--expected-ui-generation <n>] --out <file> --json
 ```
 
 ### Positionals
@@ -4078,14 +4078,14 @@ Describe the closed semantic operations supported by an editor draft kind.
 - Wire method: `editorDraft.describe`
 
 ```text
-plvs-cli editor-draft describe <theme|loudness-profile|feedback> --json
+plvs-cli editor-draft describe <theme|loudness-profile|feedback|welcome> --json
 ```
 
 ### Positionals
 
 | Name | Maps to | Required | Value |
 | --- | --- | --- | --- |
-| `kind` | local only | yes | string; one of "theme", "loudness-profile", "feedback" |
+| `kind` | local only | yes | string; one of "theme", "loudness-profile", "feedback", "welcome" |
 
 ### Options
 
@@ -4103,14 +4103,14 @@ Inspect the exact currently mounted editor draft and concurrency tokens.
 - Wire method: `editorDraft.inspect`
 
 ```text
-plvs-cli editor-draft inspect <theme|loudness-profile|feedback> <surface-id> --json
+plvs-cli editor-draft inspect <theme|loudness-profile|feedback|welcome> <surface-id> --json
 ```
 
 ### Positionals
 
 | Name | Maps to | Required | Value |
 | --- | --- | --- | --- |
-| `kind` | local only | yes | string; one of "theme", "loudness-profile", "feedback" |
+| `kind` | local only | yes | string; one of "theme", "loudness-profile", "feedback", "welcome" |
 | `surface-id` | `surfaceId` | yes | string |
 
 ### Options
@@ -4130,14 +4130,14 @@ Apply one closed atomic semantic transaction to the exact mounted draft.
 - Schema references: `editorDraft.patch`, `agentControl.revision`, `agentControl.uiGeneration`, `editorDraft.generation`
 
 ```text
-plvs-cli editor-draft patch <theme|loudness-profile|feedback> <surface-id> <file|-> --expected-revision <n> --expected-ui-generation <n> --expected-draft-generation <n> --json
+plvs-cli editor-draft patch <theme|loudness-profile|feedback|welcome> <surface-id> <file|-> --expected-revision <n> --expected-ui-generation <n> --expected-draft-generation <n> --json
 ```
 
 ### Positionals
 
 | Name | Maps to | Required | Value |
 | --- | --- | --- | --- |
-| `kind` | local only | yes | string; one of "theme", "loudness-profile", "feedback" |
+| `kind` | local only | yes | string; one of "theme", "loudness-profile", "feedback", "welcome" |
 | `surface-id` | `surfaceId` | yes | string |
 | `file` | `patch` | yes | string |
 

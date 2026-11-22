@@ -44,9 +44,13 @@ export function UiNavigationProvider({
   const targetsRef = useRef(new Map());
   const statusRef = useRef([]);
   const actionQueueRef = useRef(Promise.resolve());
-  const { activeBlockingEditors } = useBlockingEditors();
+  const { activeBlockingEditors, getSceneOperationBlockers } = useBlockingEditors();
   const activeBlockingEditorsRef = useRef(activeBlockingEditors);
   activeBlockingEditorsRef.current = activeBlockingEditors;
+  const readBlockingEditors = useCallback(
+    () => getSceneOperationBlockers?.() ?? activeBlockingEditorsRef.current,
+    [getSceneOperationBlockers]
+  );
   const boot = globalThis.window?.__PLVS_INITIAL_STATE__ ?? {};
   const commitState = useCallback((reduce) => {
     const next = reduce(stateRef.current);
@@ -404,7 +408,7 @@ export function UiNavigationProvider({
             surfaceId: obstructingSurface.surfaceId,
           });
         }
-        const blockers = activeBlockingEditorsRef.current;
+        const blockers = readBlockingEditors();
         const isMatchingBlockingEditor =
           blockers.length === 1 &&
           blockers[0] === controller.blockingEditorId &&
@@ -448,7 +452,7 @@ export function UiNavigationProvider({
           surface,
         };
       }),
-    [commitState, enqueueAction, getRevision, waitForSurface, waitForTarget]
+    [commitState, enqueueAction, getRevision, readBlockingEditors, waitForSurface, waitForTarget]
   );
   const showSettings = useCallback(
     ({ section, expectedRevision, expectedUiGeneration }) =>
@@ -681,10 +685,10 @@ export function UiNavigationProvider({
           displayName: environment.displayName,
         },
         window: { form: environment.windowForm, visible: environment.windowVisible },
-        activeBlockingEditors: activeBlockingEditorsRef.current,
+        activeBlockingEditors: readBlockingEditors(),
         status: statusRef.current,
       }),
-    [boot.instanceId, boot.workspaceId, environment]
+    [boot.instanceId, boot.workspaceId, environment, readBlockingEditors]
   );
   const updateEnvironment = useCallback((next) => {
     setEnvironment((current) => {

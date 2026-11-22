@@ -40,7 +40,22 @@ describe("workspace reset", () => {
     const { ctx, state } = context({ expectedRevision: 0, dryRun: true }, changedWorkspace);
     const response = await workspaceLayoutHandlers["workspace.reset"].run(ctx);
 
-    expect(response.result).toMatchObject({ dryRun: true, changed: true });
+    expect(response.result).toMatchObject({
+      dryRun: true,
+      changed: true,
+      state: {
+        workspace: {
+          panels: expect.arrayContaining([
+            expect.objectContaining({
+              id: "levelMeter",
+              pinned: false,
+              controls: expect.any(Object),
+            }),
+          ]),
+          sharedAxes: { frequency: expect.any(Object), time: expect.any(Object) },
+        },
+      },
+    });
     expect(state.resetWorkspace).not.toHaveBeenCalled();
   });
 
