@@ -28,6 +28,8 @@ use serde_json::{json, Map, Value};
 use crate::cli_control::{call_wire_method, read_staged_artifact};
 use crate::cli_manifest::{command_manifest, CommandEntry};
 
+mod files;
+
 /// One wait call never exceeds this. Measured 2026-11: Claude's chat bridge stops a tool call at
 /// 80 s and sends no progress token; Codex allowed 240 s. 45 s leaves margin for the request
 /// itself on the strictest host, and the agent calls again on `stillWaiting`.
@@ -168,6 +170,19 @@ fn command_input_schema(command_help: &str) -> Arc<JsonObject> {
       "params": {
         "type": "object",
         "description": "The command's wire parameters exactly as plvs_describe reports them."
+      },
+      "files": {
+        "type": "object",
+        "additionalProperties": { "type": "string" },
+        "description": "Read a JSON document parameter from a local file instead of `params`: map \
+  one of the command's `fileFields` (plvs_describe) to an absolute path, e.g. \
+  {\"pack\": \"~/Downloads/Studio.plvstheme\"}."
+      },
+      "saveTo": {
+        "type": "string",
+        "description": "Save an exported document, report, Statistics CSV or recording to this \
+  absolute path or folder, or \"downloads\". Exports and reports are otherwise returned inline; \
+  CSV and recordings are always saved, to Downloads by default. The result gives the path as `out`."
       },
       "instance": instance_property()
     }
@@ -347,6 +362,7 @@ fn describe(arguments: &JsonObject) -> CallToolResult {
         "expectedRevision": entry.expected_revision,
         "dryRun": entry.dry_run,
         "params": entry.wire_params,
+        "fileFields": files::document_fields(entry),
         "note": "A `schemaRef` names a shape the app describes at runtime; use the family's \
 describe query (for example panel.describe or settings.describe) to read it."
       } }),
@@ -480,15 +496,69 @@ async fn run_command(
     Ok(params) => params,
     Err(error) => return usage_error(error),
   };
+  let home = match files::home_dir() {
+    Ok(home) => home,
+    Err(error) => return usage_error(error),
+  };
+  if let Err(error) = files::apply_files(entry, arguments, &mut params, &home)
+    .and_then(|()| files::normalize_audio_paths(entry, &mut params, &home))
+  {
+    return usage_error(error);
+  }
+  let save_to = string_arg(arguments, "saveTo");
   let instance = string_arg(arguments, "instance");
   let method = entry.wire_method.clone().unwrap_or_default();
 
-  if kind != ToolKind::Wait {
-    return report_result(&call_blocking(method, params, instance).await);
+  let report = if kind == ToolKind::Wait {
+    let waited = cap_wait(&mut params, WAIT_SEGMENT_MS);
+    let report = with_progress(context, call_blocking(method, params, instance)).await;
+    segment_outcome(report, waited)
+  } else {
+    call_blocking(method, params, instance).await
+  };
+  let id = entry.id.clone();
+  let finished = tokio::task::spawn_blocking(move || {
+    let mut report = report;
+    save_outputs(&id, &mut report, save_to.as_deref(), &home).map(|()| report)
+  })
+  .await;
+  match finished {
+    Ok(Ok(report)) => report_result(&report),
+    Ok(Err(error)) => report_result(&internal_error(error)),
+    Err(error) => report_result(&internal_error(error.to_string())),
   }
-  let waited = cap_wait(&mut params, WAIT_SEGMENT_MS);
-  let report = with_progress(context, call_blocking(method, params, instance)).await;
-  report_result(&segment_outcome(report, waited))
+}
+
+/// Text outputs stay in the chat unless `saveTo` asks for a file; Statistics CSV and recordings
+/// are always written locally because they do not belong in a conversation.
+fn save_outputs(
+  id: &str,
+  report: &mut Value,
+  save_to: Option<&str>,
+  home: &std::path::Path,
+) -> Result<(), String> {
+  if !report_ok(report) {
+    return Ok(());
+  }
+  if matches!(id, "visual.recording.wait" | "visual.recording.stop") {
+    if report.pointer("/result/recording/artifact").is_none() {
+      return Ok(());
+    }
+    if let Some(path) = files::destination(save_to, true, "PLVS Recording", "mp4", home)? {
+      files::save_recording(report, &path)?;
+    }
+    return Ok(());
+  }
+  let Some(spec) = report
+    .get("result")
+    .and_then(|result| files::output_spec(id, result))
+  else {
+    return Ok(());
+  };
+  match files::destination(save_to, spec.always, spec.name, spec.extension, home)? {
+    Some(path) => files::save_document(report, spec, &path),
+    None => Ok(()),
+  }
 }
 
 async fn screenshot(arguments: &JsonObject) -> CallToolResult {

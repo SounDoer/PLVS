@@ -181,6 +181,12 @@ chat app can ask before every risky one. Tool parameters are each command's wire
 `schema get`; revisions, dry runs, refusals and errors behave exactly as on the CLI. A wait returns
 `stillWaiting` after at most 45 seconds and is called again. Screenshots come back as images.
 
+A chat has no working directory, so every path given to the MCP server must be absolute; a leading
+`~` is expanded. A JSON document parameter (a patch, pack or configuration) can be read from a local
+file through the tool's `files` argument instead of being written inline. Exports and File reports
+are returned in the chat unless `saveTo` names a file, a folder or `downloads`; Statistics CSV and
+recordings are always saved, to the Downloads folder by default, and only their path is returned.
+
 ## Shell Completion
 
 `completion` works offline and prints a script generated from the same checked command manifest as

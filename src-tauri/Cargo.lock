@@ -3729,6 +3729,7 @@ dependencies = [
  "cpal",
  "criterion",
  "crossbeam-queue",
+ "dirs 6.0.0",
  "firered-vad",
  "fs4",
  "futures",
