@@ -146,6 +146,30 @@ function IconButton({ children, className, ...props }) {
   );
 }
 
+const SETTINGS_FIRST_SECTION = UI_SETTINGS_SECTIONS[0];
+
+/**
+ * The Settings section on screen: the last one whose top has reached the top of the scroll area,
+ * or, at the end of the scroll range, the last one whose top is visible.
+ *
+ * @param {Element} scroller
+ * @param {Map<string, Element>} nodes
+ */
+export function visibleSettingsSection(scroller, nodes) {
+  const view = scroller.getBoundingClientRect();
+  const atEnd =
+    scroller.scrollTop > 0 &&
+    scroller.scrollHeight - scroller.scrollTop - scroller.clientHeight <= 1;
+  let current = null;
+  for (const section of UI_SETTINGS_SECTIONS) {
+    const node = nodes.get(section);
+    if (!node) continue;
+    const top = node.getBoundingClientRect().top;
+    if (current === null || top <= view.top + 8 || (atEnd && top < view.bottom)) current = section;
+  }
+  return current;
+}
+
 /**
  * @param {{
  *   Frame: import("react").ComponentType<any>,
@@ -225,6 +249,7 @@ function IconButton({ children, className, ...props }) {
  *   onOpenQuickTour?: () => void,
  * }} props
  */
+
 export function SettingsContent({
   Frame,
   settingsOpen,
@@ -312,7 +337,7 @@ export function SettingsContent({
   const closingIntentRef = useRef(false);
   const sectionNodesRef = useRef(new Map());
   const pendingSectionRef = useRef(null);
-  const [activeSection, setActiveSection] = useState("behavior");
+  const [activeSection, setActiveSection] = useState(SETTINGS_FIRST_SECTION);
   // Single-choice controls the pointer can reach and `ui show dropdown` can open.
   const closeBehaviorDropdown = useDropdownNavigation("setting:behavior.closeBehavior");
   const interfaceSizeDropdown = useDropdownNavigation("setting:appearance.interfaceSize");
@@ -395,10 +420,15 @@ export function SettingsContent({
     releaseSectionAnchorRef.current = release;
   }, []);
   useEffect(() => () => releaseSectionAnchorRef.current(), []);
+  // `ui inspect` reports the section on screen. A requested section is reported as requested even
+  // where the scroll range ends before it reaches the top; after the user scrolls, the report
+  // follows what they see. Content remounts at the top whenever Settings opens again.
+  const userScrolledRef = useRef(false);
   const focusSection = useCallback(
     (section) => {
       const node = sectionNodesRef.current.get(section);
       if (!node) return false;
+      userScrolledRef.current = false;
       node.scrollIntoView({ block: "start" });
       node.focus({ preventScroll: true });
       anchorSection(node);
@@ -438,6 +468,39 @@ export function SettingsContent({
       setSheetBodyVisible(false);
     }
   }, [settingsOpen]);
+
+  useEffect(() => {
+    if (!settingsOpen || !sheetBodyVisible) {
+      userScrolledRef.current = false;
+      if (!settingsOpen) setActiveSection(SETTINGS_FIRST_SECTION);
+      return undefined;
+    }
+    // Listen on the document: the scroll area mounts with the Sheet or window body, after this
+    // effect may already have run.
+    const scrollerOf = (target) =>
+      target instanceof Element ? target.closest("[data-settings-scroll]") : null;
+    const inputs = ["wheel", "pointerdown", "keydown", "touchstart"];
+    const markUserScroll = (event) => {
+      if (scrollerOf(event.target)) userScrolledRef.current = true;
+    };
+    let frame = 0;
+    const follow = (event) => {
+      const scroller = scrollerOf(event.target);
+      if (!scroller || scroller !== event.target || !userScrolledRef.current || frame) return;
+      frame = requestAnimationFrame(() => {
+        frame = 0;
+        const section = visibleSettingsSection(scroller, sectionNodesRef.current);
+        if (section) setActiveSection(section);
+      });
+    };
+    for (const input of inputs) document.addEventListener(input, markUserScroll, true);
+    document.addEventListener("scroll", follow, true);
+    return () => {
+      cancelAnimationFrame(frame);
+      for (const input of inputs) document.removeEventListener(input, markUserScroll, true);
+      document.removeEventListener("scroll", follow, true);
+    };
+  }, [settingsOpen, sheetBodyVisible]);
 
   useLayoutEffect(() => {
     if (settingsOpen && sheetBodyVisible) settlePendingSection();

@@ -199,6 +199,73 @@ describe("SettingsPanel", () => {
     });
   });
 
+  it("reports the section the user scrolled to, and the first section after reopening", async () => {
+    /** @type {any} */
+    let navigation;
+    /** @type {any} */
+    let openSettings;
+    function Harness() {
+      const [settingsOpen, setSettingsOpen] = useState(false);
+      navigation = useUiNavigation();
+      openSettings = setSettingsOpen;
+      return (
+        <SettingsPanel
+          {...BASE_PROPS}
+          settingsOpen={settingsOpen}
+          setSettingsOpen={setSettingsOpen}
+        />
+      );
+    }
+    render(
+      <BlockingEditorsProvider>
+        <UiNavigationProvider getRevision={() => 7}>
+          <Harness />
+        </UiNavigationProvider>
+      </BlockingEditorsProvider>
+    );
+    let pending;
+    await act(async () => {
+      pending = navigation.showSettings({
+        section: "appearance",
+        expectedRevision: 7,
+        expectedUiGeneration: 0,
+      });
+      await Promise.resolve();
+    });
+    await pending;
+    const settingsSection = () =>
+      navigation.inspectUi().surfaces.find((surface) => surface.kind === "settings")?.target
+        .section;
+    expect(settingsSection()).toBe("appearance");
+
+    // Analysis is the last section whose top has reached the top of the scroll area.
+    const tops = { behavior: -400, shortcuts: -300, appearance: -200, analysis: -10 };
+    for (const node of document.querySelectorAll("[data-settings-section-id]")) {
+      const id = node.getAttribute("data-settings-section-id");
+      node.getBoundingClientRect = () => /** @type {DOMRect} */ ({ top: tops[id] ?? 300 });
+    }
+    const scroller = document.querySelector("[data-settings-scroll]");
+    scroller.getBoundingClientRect = () => /** @type {DOMRect} */ ({ top: 0, bottom: 500 });
+
+    // A scroll the user did not cause, such as a requested section settling, changes nothing.
+    await act(async () => {
+      fireEvent.scroll(scroller);
+      await new Promise((resolve) => requestAnimationFrame(resolve));
+    });
+    expect(settingsSection()).toBe("appearance");
+
+    await act(async () => {
+      fireEvent.wheel(scroller);
+      fireEvent.scroll(scroller);
+      await new Promise((resolve) => requestAnimationFrame(resolve));
+    });
+    expect(settingsSection()).toBe("analysis");
+
+    act(() => openSettings(false));
+    act(() => openSettings(true));
+    await waitFor(() => expect(settingsSection()).toBe("behavior"));
+  });
+
   it("refuses an unavailable Agent Control section before opening Settings", async () => {
     /** @type {any} */
     let navigation;

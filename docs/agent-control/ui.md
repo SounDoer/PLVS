@@ -144,6 +144,10 @@ Repeating an exact settled target is idempotent. The command may reassert best-e
 but returns `changed: false` and advances neither token. Selecting another Settings section or
 Panel is a real presentation change and advances `uiGeneration` once.
 
+The `settings` surface's `section` is the section on screen. It stays the requested section until
+the user scrolls Settings; it then follows the section whose top has reached the top of the scroll
+area, advancing `uiGeneration` when that changes. Settings opens again at `behavior`.
+
 An existing blocking editor is never discarded to satisfy navigation. A matching target may be a
 no-op; otherwise the request fails without closing or replacing the editor. Event-driven or nested
 decision surfaces likewise remain authoritative and can block navigation. The Quick Tour card is
