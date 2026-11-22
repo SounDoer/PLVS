@@ -245,7 +245,8 @@ loudnessProfile.list. Changes nothing.",
       ToolKind::Wait,
       "Wait for a change: app.wait, measurement.wait, measurement.waitUntil, transport.file.wait \
 or visual.recording.wait. Each call waits at most 45 seconds; `stillWaiting` means call again \
-with the same arguments.",
+with the same arguments. A measurement.waitUntil `holdMs` can be at most 45000 and restarts in \
+each call.",
       command_input_schema("Wait command ID."),
     ),
     tool(
@@ -448,6 +449,24 @@ async fn with_progress<F: std::future::Future<Output = Value>>(
   value
 }
 
+/// A `measurement.waitUntil` hold must fit inside one call: the app refuses a hold longer than the
+/// call's timeout, and a hold that is still running when a segment ends starts again in the next
+/// call. A hold that fits still matches, at most one hold later than an unsegmented wait.
+fn check_hold(params: &Value, segment_ms: u64) -> Result<(), String> {
+  let hold = params
+    .pointer("/predicate/holdMs")
+    .and_then(Value::as_u64)
+    .unwrap_or(0);
+  if hold > segment_ms {
+    return Err(format!(
+      "Through MCP a waitUntil hold can be at most {segment_ms} ms, because each call waits at most \
+that long and a hold restarts in the next call. Use a shorter holdMs, or confirm a longer stretch \
+by checking measurement.inspect again afterwards."
+    ));
+  }
+  Ok(())
+}
+
 /// Caps one wait call at `segment_ms` and returns the timeout actually sent.
 fn cap_wait(params: &mut Value, segment_ms: u64) -> u64 {
   let requested = params
@@ -509,6 +528,9 @@ async fn run_command(
   let instance = string_arg(arguments, "instance");
   let method = entry.wire_method.clone().unwrap_or_default();
 
+  if let Err(error) = check_hold(&params, WAIT_SEGMENT_MS) {
+    return usage_error(error);
+  }
   let report = if kind == ToolKind::Wait {
     let waited = cap_wait(&mut params, WAIT_SEGMENT_MS);
     let report = with_progress(context, call_blocking(method, params, instance)).await;
@@ -743,6 +765,17 @@ mod tests {
         tool.name
       );
     }
+  }
+
+  #[test]
+  fn a_hold_must_fit_in_one_segment() {
+    let fits = json!({ "predicate": { "kind": "signalAbsent", "holdMs": 45000 } });
+    assert!(check_hold(&fits, WAIT_SEGMENT_MS).is_ok());
+    let too_long = json!({ "predicate": { "kind": "signalAbsent", "holdMs": 60000 } });
+    assert!(check_hold(&too_long, WAIT_SEGMENT_MS)
+      .unwrap_err()
+      .contains("45000"));
+    assert!(check_hold(&json!({ "afterRevision": 1 }), WAIT_SEGMENT_MS).is_ok());
   }
 
   #[test]

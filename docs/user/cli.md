@@ -179,7 +179,8 @@ path with the argument `mcp` as a local (stdio) server. It offers eight tools â€
 inspect, describe, query, wait, screenshot, and separate tools for ordinary and risky changes, so a
 chat app can ask before every risky one. Tool parameters are each command's wire parameters from
 `schema get`; revisions, dry runs, refusals and errors behave exactly as on the CLI. A wait returns
-`stillWaiting` after at most 45 seconds and is called again. Screenshots come back as images.
+`stillWaiting` after at most 45 seconds and is called again, so a `measurement wait-until` hold can
+be at most 45 seconds through MCP and restarts in each call. Screenshots come back as images.
 
 A chat has no working directory, so every path given to the MCP server must be absolute; a leading
 `~` is expanded. A JSON document parameter (a patch, pack or configuration) can be read from a local
