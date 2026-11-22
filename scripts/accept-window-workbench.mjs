@@ -1,6 +1,8 @@
 import assert from "node:assert/strict";
 import { spawn, spawnSync } from "node:child_process";
 import process from "node:process";
+import { setTimeout as delay } from "node:timers/promises";
+import { assertRecordingPixels } from "./accept-recording-pixels.mjs";
 
 function revisionToken(revision) {
   return ["--expected-revision", String(revision)];
@@ -87,11 +89,26 @@ async function withOccluder(run) {
   }
 }
 
-export async function runWindowContract({ invoke, until, restart, steps, screenshotPath }) {
+export async function runWindowContract({
+  invoke,
+  until,
+  restart,
+  steps,
+  screenshotPath,
+  windowEvidence = {},
+}) {
   const inspect = () => invoke(["window", "inspect"]);
   const initial = inspect();
   const capabilities = invoke(["capabilities"]);
   const canMinimize = capabilities.features.window.minimize === true;
+  const visual = invoke(["visual", "describe"]);
+  windowEvidence.backend =
+    process.platform === "linux" ? (canMinimize ? "x11-compatible" : "wayland") : process.platform;
+  windowEvidence.recording = visual.recording.available ? "notRun" : "unavailable";
+  windowEvidence.minimizedScreenshot = canMinimize ? "notRun" : "unsupported";
+  windowEvidence.minimizedRecording = !canMinimize ? "unsupported" : windowEvidence.recording;
+  if (!visual.recording.available)
+    windowEvidence.recordingReason = visual.recording.unavailable?.reason;
   assert.equal(capabilities.methods.includes("window.minimize"), canMinimize);
   assert.equal(initial.form, "normal");
   assert.equal(initial.visible, true);
@@ -192,10 +209,10 @@ export async function runWindowContract({ invoke, until, restart, steps, screens
     assert.equal(action(name).changed, true);
     observe(expected);
     assert.equal(action(name).changed, false);
-    if (name === "minimize" && screenshotPath && process.platform !== "linux") {
+    if (name === "minimize" && screenshotPath && visual.screenshot.available) {
       // Capture reveals a window only when its WebView cannot draw (docs/agent-control/visual.md).
       // WebKit stops drawing a minimized window; WebView2's CapturePreview still renders it.
-      const restores = process.platform === "darwin";
+      const restores = process.platform !== "win32";
       const capture = invoke(["visual", "screenshot", "--target", "main", "--out", screenshotPath]);
       assert.ok(capture.artifact.width > 0 && capture.artifact.height > 0);
       observe({ visible: true, minimized: !restores });
@@ -204,13 +221,74 @@ export async function runWindowContract({ invoke, until, restart, steps, screens
           ? "verify a screenshot restores a minimized window without window show"
           : "verify a minimized window is captured in place"
       );
-      if (restores) {
-        action("minimize");
-        observe(expected);
+      windowEvidence.minimizedScreenshot = "passed";
+      if (visual.recording.available) {
+        const delays = process.platform === "darwin" ? [0, 200, 800] : [0];
+        for (const [index, waitMs] of delays.entries()) {
+          if (!inspect().minimized) action("minimize");
+          observe(expected);
+          await delay(waitMs);
+          const started = invoke([
+            "visual",
+            "recording",
+            "start",
+            "--target",
+            "main",
+            "--audio",
+            "none",
+            "--max-duration-seconds",
+            "2",
+          ]);
+          const recordingPath = screenshotPath.replace(/\.png$/, `-recording-${index + 1}.mp4`);
+          const finished = invoke([
+            "visual",
+            "recording",
+            "wait",
+            started.recording.recordingId,
+            "--timeout-ms",
+            "30000",
+            "--out",
+            recordingPath,
+          ]);
+          assert.equal(finished.recording.state, "completed");
+          assert.ok(finished.recording.capturedFrames > 0);
+          assert.ok(
+            !finished.recording.events.some(({ kind }) => kind === "renderStalled"),
+            "The recording of a restored window stalled."
+          );
+          observe({ visible: true, minimized: false });
+          if (process.platform === "win32") {
+            await assertRecordingPixels(recordingPath, { fps: finished.recording.video.fps });
+          }
+        }
+        windowEvidence.minimizedRecording = "passed";
+        steps.push(
+          `verify a recording restores a minimized window and records pictures (${delays.length} starts)`
+        );
       }
-      // Window capture gets no pictures from a minimized window on any platform, so a recording
-      // restores it first, without raising it, and must then record live pictures.
-      const started = invoke([
+    }
+    if (name === "minimize") {
+      action("show");
+      await until(() => !observe({ visible: true }).minimized, "restoring the minimized window");
+    }
+  }
+  action("maximize", [], inspect().revision, { expectedError: "windowHidden" });
+  if (screenshotPath && visual.screenshot.available) {
+    invoke(
+      [
+        "visual",
+        "screenshot",
+        "--target",
+        "main",
+        "--out",
+        screenshotPath.replace(/\.png$/, "-hidden.png"),
+      ],
+      { expectedError: "windowHidden" }
+    );
+  }
+  if (visual.recording.available) {
+    invoke(
+      [
         "visual",
         "recording",
         "start",
@@ -220,40 +298,18 @@ export async function runWindowContract({ invoke, until, restart, steps, screens
         "none",
         "--max-duration-seconds",
         "2",
-      ]);
-      const finished = invoke([
-        "visual",
-        "recording",
-        "wait",
-        started.recording.recordingId,
-        "--timeout-ms",
-        "30000",
-        "--out",
-        screenshotPath.replace(/\.png$/, "-recording.mp4"),
-      ]);
-      assert.equal(finished.recording.state, "completed");
-      assert.ok(finished.recording.capturedFrames > 0);
-      assert.ok(
-        !finished.recording.events.some(({ kind }) => kind === "renderStalled"),
-        "The recording of a restored window stalled."
-      );
-      observe({ visible: true, minimized: false });
-      steps.push("verify a recording restores a minimized window and records live pictures");
-    } else if (name === "minimize" && screenshotPath) {
-      steps.push("skip minimized capture: Wayland gives a client no way to restore its window");
-    }
-    if (name === "minimize") {
-      action("show");
-      await until(() => !observe({ visible: true }).minimized, "restoring the minimized window");
-    }
+      ],
+      { expectedError: "windowHidden" }
+    );
   }
-  action("maximize", [], inspect().revision, { expectedError: "windowHidden" });
+  observe({ visible: false });
+  steps.push("verify hidden capture refuses with windowHidden");
   assert.equal(action("show").changed, true);
   observe({ visible: true, minimized: canMinimize ? false : null });
   assert.equal(action("show").changed, false);
   steps.push("verify maximize, restore, hide, and show");
 
-  if (screenshotPath && process.platform === "win32") {
+  if (screenshotPath && process.platform === "win32" && visual.recording.available) {
     for (const target of ["main", "workspace"]) {
       const { recording } = invoke([
         "visual",
@@ -273,6 +329,9 @@ export async function runWindowContract({ invoke, until, restart, steps, screens
         return current;
       };
       const event = (kind) => until(() => active().events.find((item) => item.kind === kind), kind);
+      let resumed;
+      let finished;
+      const recordingPath = screenshotPath.replace(/\.png$/, `-${target}-resume.mp4`);
       try {
         await until(() => active().capturedFrames >= 30, "recording a second of video");
         action("minimize");
@@ -281,7 +340,7 @@ export async function runWindowContract({ invoke, until, restart, steps, screens
         observe({ visible: true, minimized: true });
         action("show");
         observe({ visible: true, minimized: false });
-        const resumed = await event("renderResumed");
+        resumed = await event("renderResumed");
         assert.ok(resumed.elapsedMs > stalled.elapsedMs);
         const framesAtResume = active().capturedFrames;
         await until(
@@ -289,22 +348,26 @@ export async function runWindowContract({ invoke, until, restart, steps, screens
           "recording after restore"
         );
       } finally {
-        const finished = invoke([
-          "visual",
-          "recording",
-          "stop",
-          recordingId,
-          "--out",
-          screenshotPath.replace(/\.png$/, `-${target}-resume.mp4`),
-        ]);
+        finished = invoke(["visual", "recording", "stop", recordingId, "--out", recordingPath]);
         assert.equal(
           finished.recording.state,
           "completed",
           JSON.stringify(finished.recording.events)
         );
       }
-      steps.push(`verify ${target} recording survives minimize and logs stall and resume`);
+      const startedAt = finished.recording.events.find(
+        ({ kind }) => kind === "recording"
+      ).elapsedMs;
+      await assertRecordingPixels(recordingPath, {
+        fps: finished.recording.video.fps,
+        afterSeconds: (resumed.elapsedMs - startedAt) / 1000,
+      });
+      steps.push(
+        `verify ${target} recording survives minimize, logs stall and resume, and decodes pictures`
+      );
     }
+  }
+  if (screenshotPath && process.platform === "win32") {
     await withOccluder(async (occluder) => {
       const before = foregroundProcess();
       const capture = invoke([
@@ -323,6 +386,33 @@ export async function runWindowContract({ invoke, until, restart, steps, screens
           : "verify a fully covered window is captured without moving keyboard focus (cover not foreground)"
       );
     });
+  }
+  if (screenshotPath && visual.recording.available) {
+    const { recording } = invoke([
+      "visual",
+      "recording",
+      "start",
+      "--target",
+      "main",
+      "--audio",
+      "none",
+      "--max-duration-seconds",
+      "2",
+    ]);
+    const { recording: finished } = invoke([
+      "visual",
+      "recording",
+      "wait",
+      recording.recordingId,
+      "--timeout-ms",
+      "30000",
+      "--out",
+      screenshotPath.replace(/\.png$/, "-visible.mp4"),
+    ]);
+    assert.equal(finished.state, "completed");
+    assert.ok(finished.capturedFrames > 0);
+    windowEvidence.recording = "passed";
+    steps.push("verify recording after showing the window");
   }
 }
 

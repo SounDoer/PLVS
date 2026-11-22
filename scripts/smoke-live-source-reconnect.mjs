@@ -11,6 +11,7 @@ import { runIsolatedAgentControl } from "./accept-isolated-agent-control.mjs";
 import { writeJsonAtomic } from "./acceptance-evidence.mjs";
 import {
   ROOT,
+  SIGNAL,
   RigError,
   resolveLinuxCaptureRoute,
   resolveMacRenderDevice,
@@ -26,6 +27,7 @@ export const LIVE_SOURCE_RECONNECT = "live-source-reconnect";
 const CHECKS = [
   "test-endpoint-ready",
   "exact-source-measures",
+  "live-history-spectrum",
   "disconnected-and-stopped",
   "start-while-disconnected-refused",
   "reconnected-and-still-stopped",
@@ -169,6 +171,28 @@ async function exercise({ invoke, until, disconnect, reconnect, captureDevice, p
   await measureTone(-1, "the original rig tone");
   assert.equal(transport().live.resolvedDeviceId, id);
   pass("exact-source-measures");
+
+  await until(() => measure().sample.elapsedMs >= 1500, "enough Live history for a snapshot");
+  const snapshot = (action, args = []) =>
+    invoke([
+      "transport",
+      "snapshot",
+      action,
+      ...args,
+      "--expected-revision",
+      String(transport().revision),
+    ]);
+  snapshot("select", ["--offset-sec", "0.5"]);
+  try {
+    const spectrum = invoke(["measurement", "spectrum", "--panel-id", "spectrum"]);
+    assert.deepEqual(spectrum.displaySource, { kind: "snapshot", offsetSec: 0.5 });
+    assert.equal(spectrum.sample.freshness, "historical");
+    assert.ok(spectrum.bands.length > 0);
+    assert.ok(spectrum.peaks.some(({ frequencyHz }) => Math.abs(frequencyHz - SIGNAL.freqHz) < 12));
+    pass("live-history-spectrum");
+  } finally {
+    snapshot("clear");
+  }
 
   await disconnect();
   await until(() => {

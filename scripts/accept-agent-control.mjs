@@ -38,6 +38,7 @@ export const ISOLATED_SCENARIOS = [
   "desktop",
   "file-dialogue-restart",
   "configuration-relaunch",
+  "welcome-relaunch",
   "window-platform-contract",
   "workbench-platform-contract",
   LIVE_SOURCE_RECONNECT,
@@ -181,6 +182,10 @@ async function runDialogDecisions(run) {
     async () => {
       const shown = await run(["ui", "show", "feedback", ...uiTokens(initial), "--json"]);
       id = shown.surface.surfaceId;
+      assert.ok(
+        shown.ui.activeBlockingEditors.includes("feedback"),
+        "Feedback open reply omitted its blocker."
+      );
       const ui = await run(["ui", "inspect", "--json"]);
       const decisions = ui.surfaces.find(({ surfaceId }) => surfaceId === id).choices;
       assert.equal(decisions.find(({ id }) => id === "send")?.disabled, true);
@@ -208,6 +213,11 @@ async function runDialogDecisions(run) {
         { allowFailure: true }
       );
       assert.equal(reset.envelope.error?.code, "editorActive");
+      const cancelled = await run(["ui", "cancel", id, ...uiTokens(stillOpen), "--json"]);
+      assert.ok(
+        !cancelled.ui.activeBlockingEditors.includes("feedback"),
+        "Feedback cancel reply retained its blocker."
+      );
       return ["Verified disabled and stale dialog choices, the blocking editor guard, and Cancel."];
     },
     async () => {

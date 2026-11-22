@@ -154,6 +154,33 @@ export function summarizeScenario(scenario, sourceSha, exitCode, trace, desktop)
     status: passed ? "passed" : "failed",
     exitCode,
     ...(!passed && validTrace && trace.failure ? { diagnostic: publicDiagnostic(trace) } : {}),
+    ...(scenario === "window-platform-contract" && validTrace && trace.window
+      ? {
+          window: {
+            backend: ["win32", "darwin", "x11-compatible", "wayland"].includes(trace.window.backend)
+              ? trace.window.backend
+              : "unknown",
+            recording: ["passed", "unavailable"].includes(trace.window.recording)
+              ? trace.window.recording
+              : "notRun",
+            ...Object.fromEntries(
+              ["minimizedScreenshot", "minimizedRecording"].map((key) => [
+                key,
+                ["passed", "unsupported", "unavailable"].includes(trace.window[key])
+                  ? trace.window[key]
+                  : "notRun",
+              ])
+            ),
+            ...([
+              "recordingEncoderUnavailable",
+              "screenCapturePermissionRequired",
+              "visualUnavailable",
+            ].includes(trace.window.recordingReason) && {
+              recordingReason: trace.window.recordingReason,
+            }),
+          },
+        }
+      : {}),
     ...(scenario === "desktop" && validDesktop
       ? { checks: desktop.scenarios.map(({ id, status }) => ({ id, status })) }
       : {}),

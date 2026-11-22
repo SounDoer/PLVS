@@ -22,6 +22,9 @@ const REQUIRED_METHODS = [
   "app.inspect",
   "ui.inspect",
   "ui.show.settings",
+  "ui.locate",
+  "ui.show.dropdown",
+  "ui.targets",
   "ui.close",
   "visual.screenshot",
   "visual.recording.start",
@@ -216,6 +219,7 @@ export async function runAgentControlSmoke({
   let selectedInstance = null;
   let activeRecordingId = null;
   let activeUiSurface = null;
+  let activeDropdown = null;
   let capabilities = null;
   let revision = null;
   let legacyReport = null;
@@ -294,14 +298,54 @@ export async function runAgentControlSmoke({
       kind: "settings",
       target: { section: "appearance" },
     });
+    const control = "setting:appearance.interfaceSize";
+    const located = run("locate Interface Size immediately", [
+      "ui",
+      "locate",
+      "--target",
+      control,
+      "--json",
+    ]);
+    if (located.result.visible !== true) {
+      throw new Error("Interface Size is outside the viewport after Settings reported success.");
+    }
+    const dropdown = run("show Interface Size dropdown", [
+      "ui",
+      "show",
+      "dropdown",
+      "--control",
+      control,
+      "--expected-revision",
+      String(shown.result.revision),
+      "--expected-ui-generation",
+      String(shown.result.uiGeneration),
+      "--json",
+    ]);
+    activeDropdown = dropdown.result.surface;
+    const targets = run("read Interface Size options", ["ui", "targets", "--json"]);
+    const options = targets.result.targets.find(({ id }) => id === control)?.options ?? [];
+    if (options.length < 2 || options.filter(({ selected }) => selected).length !== 1) {
+      throw new Error("Interface Size did not expose its options and one selected value.");
+    }
+    const closedDropdown = run("close Interface Size dropdown", [
+      "ui",
+      "close",
+      dropdown.result.surface.surfaceId,
+      "--expected-revision",
+      String(dropdown.result.revision),
+      "--expected-ui-generation",
+      String(dropdown.result.uiGeneration),
+      "--json",
+    ]);
+    activeDropdown = null;
     pass("settings-navigation");
 
     begin("screenshot");
     const described = run("visual describe", ["visual", "describe", "--json"]);
     const screenshotAvailable = described.result?.screenshot?.available === true;
     const recordingAvailable = described.result?.recording?.available === true;
-    let navigationRevision = shown.result.revision;
-    let navigationGeneration = shown.result.uiGeneration;
+    let navigationRevision = closedDropdown.result.revision;
+    let navigationGeneration = closedDropdown.result.uiGeneration;
     let screenshotPath = null;
     let screenshotCheck = null;
     let screenshotMetadata = null;
@@ -475,15 +519,18 @@ export async function runAgentControlSmoke({
       });
       currentScenario = null;
     }
-    if (activeUiSurface) {
+    for (const surface of [activeDropdown, activeUiSurface]) {
+      if (!surface) continue;
       try {
         const current = run("ui inspect cleanup", ["ui", "inspect", "--json"]);
+        if (!current.result.surfaces.some(({ surfaceId }) => surfaceId === surface.surfaceId))
+          continue;
         const cleaned = run(
           "ui close cleanup",
           [
             "ui",
             "close",
-            activeUiSurface.surfaceId,
+            surface.surfaceId,
             "--expected-revision",
             String(current.result.revision),
             "--expected-ui-generation",
@@ -493,8 +540,7 @@ export async function runAgentControlSmoke({
           { allowFailure: true }
         );
         if (!cleaned) throw new Error("Settings cleanup command failed.");
-        activeUiSurface = null;
-        cleanupObservations.push("Closed the Settings surface created by this smoke.");
+        cleanupObservations.push(`Closed the ${surface.kind} surface created by this smoke.`);
       } catch (cleanupError) {
         cleanupStatus = "failed";
         cleanupObservations.push(`Settings cleanup failed: ${cleanupError.message}`);

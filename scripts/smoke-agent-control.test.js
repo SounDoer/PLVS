@@ -89,6 +89,9 @@ describe("desktop smoke orchestration", () => {
       "app.inspect",
       "ui.inspect",
       "ui.show.settings",
+      "ui.locate",
+      "ui.show.dropdown",
+      "ui.targets",
       "ui.close",
       "visual.screenshot",
       "visual.recording.start",
@@ -124,6 +127,28 @@ describe("desktop smoke orchestration", () => {
           break;
         case "ui show settings":
           result = { revision: 4, uiGeneration: 1, changed: showChanged, surface };
+          break;
+        case "locate Interface Size immediately":
+          result = { visible: true };
+          break;
+        case "show Interface Size dropdown":
+          result = { revision: 4, uiGeneration: 2, surface: { surfaceId: "owned-dropdown" } };
+          break;
+        case "read Interface Size options":
+          result = {
+            targets: [
+              {
+                id: "setting:appearance.interfaceSize",
+                options: [
+                  { value: "default", selected: true },
+                  { value: "large", selected: false },
+                ],
+              },
+            ],
+          };
+          break;
+        case "close Interface Size dropdown":
+          result = { revision: 4, uiGeneration: 3 };
           break;
         case "ui close":
           result = {};
@@ -338,6 +363,9 @@ describe("desktop smoke orchestration", () => {
         "app.inspect",
         "ui.inspect",
         "ui.show.settings",
+        "ui.locate",
+        "ui.show.dropdown",
+        "ui.targets",
         "ui.close",
         "visual.describe",
       ],

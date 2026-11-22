@@ -334,6 +334,13 @@ slopes are diagnostic because retained history grows during its configured windo
 The soak exits as a rig failure if the renderer becomes hidden or animation frames stop for more
 than five seconds, rather than treating background-throttled time as valid visible evidence.
 
+Agent Control Acceptance runs on the desktop rigs against an exact commit reachable from
+`main`. It includes a fresh Welcome profile, File and Live-history Spectrum readings, immediate
+UI navigation and dialog acknowledgment checks, and window recording. The window summary
+reports the Linux backend and whether a visible recording and minimized capture ran. Native
+Wayland reports minimized capture as unsupported. Windows uses the rig's VLC to decode the
+recording and checks for visible pixels before and after a minimize/restore cycle.
+
 Update, Dock, capture, Agent Control and desktop-performance acceptance results can be indexed in
 one local report without rerunning their scenarios:
 

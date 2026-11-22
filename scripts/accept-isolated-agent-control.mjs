@@ -5,6 +5,7 @@ import { mkdir, mkdtemp, readFile, readdir, rm, writeFile } from "node:fs/promis
 import { tmpdir } from "node:os";
 import { basename, dirname, join, resolve } from "node:path";
 import { setTimeout as delay } from "node:timers/promises";
+import { createStereoFixtureWav } from "./theme-gallery-lib.mjs";
 import { hostPlatform, writeJsonAtomic } from "./acceptance-evidence.mjs";
 import { APP_DATA_ROOT_ARG, MAIN_DEV_PORT, portIsFree } from "./dev-worktree.mjs";
 
@@ -228,6 +229,67 @@ export async function runIsolatedAgentControl({
     evidence.steps.push("verify import relaunched and restored the exported setting");
   }
 
+  async function welcomeRelaunch() {
+    const setup = await until(() => {
+      const ui = invoke(["ui", "inspect"]);
+      const surface = ui.surfaces.find(
+        ({ kind, target }) => kind === "update" && target.phase === "preferences"
+      );
+      return surface && { ui, surface };
+    }, "the real first-run Welcome dialog");
+    const id = setup.surface.surfaceId;
+    const draft = invoke(["editor-draft", "inspect", "welcome", id]);
+    assert.equal(draft.document.autoCheck, true);
+    const patch = join(profile, "welcome.json");
+    await writeFile(
+      patch,
+      JSON.stringify({ operations: [{ op: "setAutoCheck", autoCheck: false }] })
+    );
+    const tokens = ({ revision, uiGeneration }) => [
+      "--expected-revision",
+      String(revision),
+      "--expected-ui-generation",
+      String(uiGeneration),
+    ];
+    const applied = invoke([
+      "editor-draft",
+      "patch",
+      "welcome",
+      id,
+      patch,
+      ...tokens(draft),
+      "--expected-draft-generation",
+      String(draft.draftGeneration),
+    ]);
+    assert.equal(applied.changed, true);
+    assert.deepEqual(invoke(["editor-draft", "inspect", "welcome", id]).document, applied.document);
+    assert.equal(applied.document.autoCheck, false);
+    invoke(["ui", "decide", "--surface-id", id, "--choice", "save", ...tokens(applied)]);
+    await until(() => {
+      const ui = invoke(["ui", "inspect"]);
+      return !ui.surfaces.some(({ surfaceId }) => surfaceId === id);
+    }, "Welcome Continue");
+    const saved = invoke(["settings", "inspect"]);
+    assert.equal(saved.settings.updates.autoCheck, false);
+    evidence.steps.push("patch the Welcome draft, read it back, and press Continue");
+
+    const previous = instance;
+    invoke(["workbench", "quit-all", "--expected-revision", String(saved.revision)]);
+    await until(() => instances().length === 0, "Welcome workbench shutdown");
+    await stop(app);
+    app = null;
+    evidence.secondInstance = await start(previous);
+    assert.equal(invoke(["settings", "inspect"]).settings.updates.autoCheck, false);
+    assert.ok(
+      !invoke(["ui", "inspect"]).surfaces.some(
+        ({ kind, target }) => kind === "update" && target.phase === "preferences"
+      )
+    );
+    evidence.steps.push(
+      "verify the Welcome selection persisted and no new Welcome dialog appeared"
+    );
+  }
+
   function checkToolbar(pressed, screenshot) {
     // Raise the test window so a background macOS WebView can render the screenshot.
     const window = invoke(["window", "inspect"]);
@@ -288,6 +350,47 @@ export async function runIsolatedAgentControl({
     return { run, report: invoke(["transport", "file", "report", run.sessionId]).report };
   }
 
+  async function fileSpectrum() {
+    const path = join(profile, "spectrum-stereo.wav");
+    await writeFile(
+      path,
+      createStereoFixtureWav({ durationSeconds: 6, sampleRate: 48000, channels: 2 })
+    );
+    const { run } = runFile("analyze", path);
+    for (const offsetSec of [2, 4]) {
+      const transport = invoke(["transport", "inspect"]);
+      invoke([
+        "transport",
+        "snapshot",
+        "select",
+        "--offset-sec",
+        String(offsetSec),
+        "--expected-revision",
+        String(transport.revision),
+      ]);
+      const spectrum = invoke([
+        "measurement",
+        "spectrum",
+        "--panel-id",
+        "spectrum",
+        "--resolution",
+        "full",
+      ]);
+      const source = { kind: "file", sessionId: run.sessionId, offsetSec };
+      assert.deepEqual(spectrum.displaySource, source);
+      assert.deepEqual(invoke(["measurement", "inspect"]).displaySource, source);
+      assert.equal(spectrum.sample.freshness, "historical");
+      assert.ok(spectrum.bands.length > 0);
+      for (const expected of [220, 330]) {
+        assert.ok(
+          spectrum.peaks.some(({ frequencyHz }) => Math.abs(frequencyHz - expected) < 5),
+          `The selected File curve omitted the ${expected} Hz fixture tone.`
+        );
+      }
+    }
+    evidence.steps.push("read expected Spectrum peaks and File identity at two historical offsets");
+  }
+
   async function fileDialogueRestart() {
     const sample = join(root, "fixtures", "dialogue-benchmark", "sources", "1320-122617-0000.flac");
     const baseline = runFile("analyze", sample);
@@ -334,13 +437,15 @@ export async function runIsolatedAgentControl({
   let failure;
   try {
     await mkdir(dataRoot);
-    await writeJsonAtomic(join(dataRoot, "plvs-settings.json"), {
-      agentControlEnabled: true,
-      "plvs:settings": {
-        closeAction: "quit",
-        updatePreferences: { choiceMade: true, autoCheck: false, autoDownload: false },
-      },
-    });
+    if (scenario !== "welcome-relaunch") {
+      await writeJsonAtomic(join(dataRoot, "plvs-settings.json"), {
+        agentControlEnabled: true,
+        "plvs:settings": {
+          closeAction: "quit",
+          updatePreferences: { choiceMade: true, autoCheck: false, autoDownload: false },
+        },
+      });
+    }
     const frontend = `http://localhost:${MAIN_DEV_PORT}/@fs/${join(root, "src", "App.jsx").replaceAll("\\", "/")}`;
     if (await portIsFree(MAIN_DEV_PORT)) {
       vite = launch(
@@ -374,12 +479,14 @@ export async function runIsolatedAgentControl({
       runDesktop({ instanceId: instance, env });
       evidence.steps.push("verify the desktop acceptance suite");
     } else if (scenario === "configuration-relaunch") await configurationRelaunch();
+    else if (scenario === "welcome-relaunch") await welcomeRelaunch();
     else if (scenario === "window-platform-contract") {
       await runWindowContract({
         invoke,
         until,
         steps: evidence.steps,
         screenshotPath: join(outDir, "window-minimized.png"),
+        windowEvidence: (evidence.window = {}),
         restart: async () => {
           const previous = instance;
           await stop(app);
@@ -397,7 +504,10 @@ export async function runIsolatedAgentControl({
       });
     else if (scenario === "live-source-reconnect") {
       await runLiveReconnect({ invoke, until });
-    } else await fileDialogueRestart();
+    } else {
+      await fileDialogueRestart();
+      await fileSpectrum();
+    }
   } catch (error) {
     failure = error;
     evidence.failure = {
@@ -430,7 +540,12 @@ export async function runIsolatedAgentControl({
     }
   } finally {
     let cleanupFailed = false;
-    if (app && ["configuration-relaunch", "workbench-platform-contract"].includes(scenario)) {
+    if (
+      app &&
+      ["configuration-relaunch", "workbench-platform-contract", "welcome-relaunch"].includes(
+        scenario
+      )
+    ) {
       try {
         if (restartingFrom) await discover(restartingFrom);
         const registered = instances();

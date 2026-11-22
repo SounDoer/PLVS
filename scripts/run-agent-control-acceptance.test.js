@@ -50,6 +50,30 @@ describe("Agent Control workflow summary", () => {
     ).toBe("passed");
   });
 
+  it("distinguishes a native Wayland skip from a successful visible recording", () => {
+    const window = {
+      backend: "wayland",
+      recording: "passed",
+      minimizedScreenshot: "unsupported",
+      minimizedRecording: "unsupported",
+      localDisplayName: "private display",
+    };
+    expect(
+      summarizeScenario(
+        "window-platform-contract",
+        sourceSha,
+        0,
+        { ...trace, scenario: "window-platform-contract", window },
+        null
+      ).window
+    ).toEqual({
+      backend: "wayland",
+      recording: "passed",
+      minimizedScreenshot: "unsupported",
+      minimizedRecording: "unsupported",
+    });
+  });
+
   it("projects only command IDs, codes and counts around a failure before cleanup", () => {
     const failed = {
       ...trace,
