@@ -1805,6 +1805,10 @@
       "license": "Apache-2.0 AND ISC",
       "noticeSha256": "d11955c9e79e9cda95dabe905d7a2de8f65befc65525213341cce4cb3c2c83e4"
     },
+    "rust:rmcp@3.9.0": {
+      "license": "Apache-2.0",
+      "noticeSha256": "b30a5c582feffc8e00b143e6ec069305e7fc3b536de1f201e5c47a1db5e8e82e"
+    },
     "rust:rubato@5.1.0": {
       "license": "MIT OR Apache-2.0",
       "noticeSha256": "74f23b5edd51e77b6e1711f8bbc1bf219bc3faedf763fb2e56092842a4258dab"
@@ -1873,6 +1877,10 @@
       "license": "MIT",
       "noticeSha256": "909b864ac01beb05aa77a48193a0e6cd28c1f287cdc9428e3ad0328b38f4f92f"
     },
+    "rust:schemars_derive@1.2.2": {
+      "license": "MIT",
+      "noticeSha256": "909b864ac01beb05aa77a48193a0e6cd28c1f287cdc9428e3ad0328b38f4f92f"
+    },
     "rust:scopeguard@1.2.0": {
       "license": "MIT OR Apache-2.0",
       "noticeSha256": "5203fe6888ef3fcd23439a3b2501060973d398872950fd3357084d2d2256c849"
@@ -1902,6 +1910,10 @@
       "noticeSha256": "af5501f23edf2f4d1050173b49e8fccae0e1c5255a5be09cb5b12a2d60dbafef"
     },
     "rust:serde_derive_internals@0.29.1": {
+      "license": "MIT OR Apache-2.0",
+      "noticeSha256": "af5501f23edf2f4d1050173b49e8fccae0e1c5255a5be09cb5b12a2d60dbafef"
+    },
+    "rust:serde_derive_internals@0.30.0": {
       "license": "MIT OR Apache-2.0",
       "noticeSha256": "af5501f23edf2f4d1050173b49e8fccae0e1c5255a5be09cb5b12a2d60dbafef"
     },

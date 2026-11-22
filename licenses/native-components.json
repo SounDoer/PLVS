@@ -45,7 +45,7 @@
   "inputs": [
     {
       "path": "src-tauri/Cargo.toml",
-      "sha256": "57d722e1b92dc4da5a0827614d042b52620c225282fb9eee929f81f783ecaf36"
+      "sha256": "5b59f79be19e4f25a8ac9ecc9d46524efbcdb30c00d60727364f10ee5e1b579b"
     },
     {
       "path": "scripts/fetch-ffmpeg-sidecar.mjs",
