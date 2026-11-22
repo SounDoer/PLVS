@@ -9,8 +9,13 @@ const CATEGORY_LABELS = {
   loudness: "Loudness Profiles",
 };
 
-/** @param {{ category: "themes" | "presets" | "loudness", children?: import("react").ReactNode, onOpen?: typeof openExternalUrl }} props */
-export function SharesetsBrowseButton({ category, children = "Browse", onOpen = openExternalUrl }) {
+/** @param {{ category: "themes" | "presets" | "loudness", children?: import("react").ReactNode, onOpen?: typeof openExternalUrl, uiTarget?: string }} props */
+export function SharesetsBrowseButton({
+  category,
+  children = "Browse",
+  onOpen = openExternalUrl,
+  uiTarget,
+}) {
   const label = `Browse ${CATEGORY_LABELS[category]} on Sharesets`;
   return (
     <HoverTip tip={label}>
@@ -18,6 +23,7 @@ export function SharesetsBrowseButton({ category, children = "Browse", onOpen = 
         variant="ghost"
         className="text-foreground"
         aria-label={label.toLowerCase()}
+        data-ui-target={uiTarget}
         onClick={() => onOpen(`${SHARESETS_URL}${category}/`)}
       >
         {children}

@@ -7,6 +7,7 @@ import { BUILTIN_THEMES_V2 } from "../theme/builtinThemesV2.js";
 import { BlockingEditorsProvider } from "../hooks/BlockingEditorsContext.jsx";
 import { UiNavigationProvider, useUiNavigation } from "../uiNavigation/UiNavigationContext.jsx";
 import { DEFAULT_KEYBOARD_SHORTCUTS } from "../data/keyboardShortcutActions.js";
+import { SETTINGS_SURFACE_CONTROLS } from "../agentControl/settingsSurfaceCatalog.js";
 
 const CUSTOM_THEME = {
   ...structuredClone(BUILTIN_THEMES_V2["plvs-dark"]),
@@ -154,6 +155,30 @@ describe("SettingsPanel", () => {
       "agent-control",
       "about",
     ]);
+  });
+
+  it("names every Settings control in the catalogue as a pointer target", () => {
+    render(
+      <SettingsPanel
+        {...BASE_PROPS}
+        appearance="fixed"
+        fixedThemeSelectValue="plvs-dark"
+        channelCount={2}
+        channelLabelTokens={["L", "R"]}
+        appVersion="0.23.4"
+        hasUpdate
+        latestVersion="0.23.5"
+        updatePreferences={{ autoCheck: true, autoDownload: false }}
+        agentControlStatus={{ supported: true, cliInstalled: true, enabled: false }}
+      />
+    );
+    // Shortcut rows are targeted per action, channel roles per channel, and the File controls live
+    // in the File toolbar rather than in Settings.
+    const elsewhere = new Set(["channels.role", "file.dialogueDetection", "file.summaryMetrics"]);
+    const missing = SETTINGS_SURFACE_CONTROLS.map(({ id }) => id)
+      .filter((id) => !id.startsWith("shortcuts.") && !elsewhere.has(id))
+      .filter((id) => !document.querySelector(`[data-ui-target="setting:${id}"]`));
+    expect(missing).toEqual([]);
   });
 
   it("opens, scrolls, and focuses a requested semantic section", async () => {

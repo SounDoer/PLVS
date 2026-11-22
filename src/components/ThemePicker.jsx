@@ -100,6 +100,7 @@ function ThemeRow({ theme, selected, onSelect, actions }) {
  *   onDelete: (...args: any[]) => any,
  *   onCreate: (...args: any[]) => any,
  *   disabled?: boolean,
+ *   uiTarget?: string,
  * }} props
  */
 export function ThemePicker({
@@ -113,6 +114,7 @@ export function ThemePicker({
   onDelete,
   onCreate,
   disabled = false,
+  uiTarget,
 }) {
   const [open, setOpen] = useState(false);
   const confirmingDeleteRef = useRef(false);
@@ -134,6 +136,7 @@ export function ThemePicker({
           type="button"
           aria-label="Theme"
           data-control-field="true"
+          data-ui-target={uiTarget}
           disabled={disabled}
           className="flex h-[var(--ui-control-h)] items-center gap-2 rounded-md border border-transparent bg-transparent py-0 pr-0 pl-2 text-[length:var(--ui-fs-control)] hover:bg-ui-hover disabled:opacity-50"
         >

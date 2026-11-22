@@ -774,10 +774,15 @@ export function SettingsContent({
                   onDelete={deleteCustomTheme}
                   onCreate={createCustomTheme}
                   disabled={themeControlsDisabled}
+                  uiTarget="setting:appearance.theme"
                 />
               </div>
               <SettingsRow label="">
-                <SharesetsBrowseButton category="themes" onOpen={openExternalUrl}>
+                <SharesetsBrowseButton
+                  category="themes"
+                  onOpen={openExternalUrl}
+                  uiTarget="setting:appearance.browseThemes"
+                >
                   Browse Themes
                 </SharesetsBrowseButton>
               </SettingsRow>
@@ -876,6 +881,7 @@ export function SettingsContent({
             {channelCount > 0 ? (
               <ResetAction
                 label="Reset channel labels"
+                data-ui-target="setting:channels.resetLabels"
                 isDefault={!channelLabelHasOverride}
                 onReset={resetChannelLabels}
                 confirmLabel="Confirm reset channel labels"
@@ -1089,6 +1095,7 @@ export function SettingsContent({
               onChange={setUpdatePreferences}
               installationSupported={updateInstallationSupported}
               installationUnavailableReason={updateInstallationUnavailableReason}
+              uiTargets
             />
           ) : null}
           <SettingsRow
@@ -1153,6 +1160,7 @@ export function SettingsContent({
                 <LinkButton
                   className={FOOTER_LINK_CLASS}
                   disabled={updateCheckDisabled}
+                  data-ui-target="setting:about.checkForUpdates"
                   onClick={onCheckForUpdate}
                 >
                   Check
@@ -1162,6 +1170,7 @@ export function SettingsContent({
                     <span className="h-3 shrink-0 border-l border-border" aria-hidden="true" />
                     <LinkButton
                       className={cn(FOOTER_LINK_CLASS, "text-primary hover:text-primary")}
+                      data-ui-target="setting:about.installUpdate"
                       onClick={onInstallUpdate}
                     >
                       Update
@@ -1175,6 +1184,7 @@ export function SettingsContent({
               >
                 <LinkButton
                   className={FOOTER_LINK_CLASS}
+                  data-ui-target="setting:about.sharesets"
                   onClick={() => openExternalUrl(SHARESETS_URL)}
                 >
                   Sharesets
@@ -1182,12 +1192,17 @@ export function SettingsContent({
                 </LinkButton>
                 <LinkButton
                   className={cn(FOOTER_LINK_CLASS, hasUpdate && "text-primary hover:text-primary")}
+                  data-ui-target="setting:about.releases"
                   onClick={() => openExternalUrl(effectiveReleaseUrl)}
                 >
                   Releases
                   <ExternalLink className="size-[1em]" />
                 </LinkButton>
-                <LinkButton className={FOOTER_LINK_CLASS} onClick={() => openExternalUrl(DOCS_URL)}>
+                <LinkButton
+                  className={FOOTER_LINK_CLASS}
+                  data-ui-target="setting:about.documentation"
+                  onClick={() => openExternalUrl(DOCS_URL)}
+                >
                   Docs
                   <ExternalLink className="size-[1em]" />
                 </LinkButton>
@@ -1196,7 +1211,11 @@ export function SettingsContent({
                     Quick Tour
                   </LinkButton>
                 ) : null}
-                <LinkButton className={FOOTER_LINK_CLASS} onClick={onOpenFeedback}>
+                <LinkButton
+                  className={FOOTER_LINK_CLASS}
+                  data-ui-target="setting:about.feedback"
+                  onClick={onOpenFeedback}
+                >
                   Feedback
                 </LinkButton>
               </div>

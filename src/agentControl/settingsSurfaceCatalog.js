@@ -23,7 +23,6 @@ export const SETTINGS_SURFACE_CONTROLS = Object.freeze([
   { id: "analysis.dialogueVadEngine", owner: "settings", field: "dialogueVadEngine" },
   { id: "file.dialogueDetection", owner: "settings", field: "fileDialogueDetection" },
   { id: "file.summaryMetrics", owner: "settings", field: "fileSummaryMetrics" },
-  { id: "analysis.dialogueVadDocumentation", owner: "external" },
   { id: "channels.resetLabels", owner: "settings", field: "channelLabels" },
   { id: "channels.layout", owner: "settings", field: "channelLabels" },
   { id: "channels.role", owner: "settings", field: "channelLabels", repeated: true },

@@ -16,6 +16,7 @@ export function UpdatePreferencesControls({
   installationSupported = false,
   installationUnavailableReason = null,
   disabled = false,
+  uiTargets = false,
 }) {
   const downloadHelp = !installationSupported
     ? (installationUnavailableReason ??
@@ -31,6 +32,7 @@ export function UpdatePreferencesControls({
           className={COMPACT_SWITCH_CLASS}
           thumbClassName={COMPACT_SWITCH_THUMB_CLASS}
           aria-label="automatically check for updates"
+          data-ui-target={uiTargets ? "setting:updates.autoCheck" : undefined}
           checked={preferences.autoCheck}
           disabled={disabled}
           onCheckedChange={(autoCheck) =>
@@ -62,6 +64,7 @@ export function UpdatePreferencesControls({
           className={COMPACT_SWITCH_CLASS}
           thumbClassName={COMPACT_SWITCH_THUMB_CLASS}
           aria-label="automatically download updates"
+          data-ui-target={uiTargets ? "setting:updates.autoDownload" : undefined}
           checked={preferences.autoDownload}
           disabled={disabled || !preferences.autoCheck || !installationSupported}
           onCheckedChange={(autoDownload) => onChange({ autoDownload })}
@@ -76,6 +79,7 @@ export function UpdatePreferencesSettings({
   onChange,
   installationSupported,
   installationUnavailableReason = null,
+  uiTargets = false,
 }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState(null);
@@ -99,6 +103,7 @@ export function UpdatePreferencesSettings({
         installationSupported={installationSupported}
         installationUnavailableReason={installationUnavailableReason}
         disabled={busy}
+        uiTargets={uiTargets}
       />
       {error ? (
         <p role="alert" className="text-destructive">
