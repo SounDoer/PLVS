@@ -1,4 +1,6 @@
 import assert from "node:assert/strict";
+import { spawn, spawnSync } from "node:child_process";
+import process from "node:process";
 
 function revisionToken(revision) {
   return ["--expected-revision", String(revision)];
@@ -10,6 +12,78 @@ function assertNear(actual, expected) {
       Math.abs(actual?.[axis] - value) <= 1,
       `Expected ${axis}=${value}, got ${actual?.[axis]}.`
     );
+  }
+}
+
+// Windows only: the process that owns the foreground window, i.e. where keyboard input goes.
+const FOREGROUND_PROCESS = `Add-Type @"
+using System;
+using System.Runtime.InteropServices;
+public static class PlvsForeground {
+  [DllImport("user32.dll")] public static extern IntPtr GetForegroundWindow();
+  [DllImport("user32.dll")] public static extern uint GetWindowThreadProcessId(IntPtr window, out uint process);
+}
+"@
+$process = 0
+[void][PlvsForeground]::GetWindowThreadProcessId([PlvsForeground]::GetForegroundWindow(), [ref]$process)
+$process`;
+
+function foregroundProcess() {
+  const result = spawnSync(
+    "powershell.exe",
+    ["-NoProfile", "-NonInteractive", "-Command", FOREGROUND_PROCESS],
+    {
+      encoding: "utf8",
+    }
+  );
+  assert.equal(result.status, 0, result.stderr);
+  return Number(result.stdout.trim());
+}
+
+// An opaque, activated window over every display stands in for the user's foreground app.
+const OCCLUDER = `Add-Type -AssemblyName System.Windows.Forms
+$form = New-Object System.Windows.Forms.Form
+$form.FormBorderStyle = 'None'
+$form.BackColor = 'Black'
+$form.ShowInTaskbar = $false
+$form.StartPosition = 'Manual'
+$form.Bounds = [System.Windows.Forms.SystemInformation]::VirtualScreen
+$form.Add_Shown({ $form.Activate(); [Console]::Out.WriteLine('ready'); [Console]::Out.Flush() })
+$timer = New-Object System.Windows.Forms.Timer
+$timer.Interval = 60000
+$timer.Add_Tick({ $form.Close() })
+$timer.Start()
+[System.Windows.Forms.Application]::Run($form)`;
+
+async function withOccluder(run) {
+  const child = spawn(
+    "powershell.exe",
+    ["-NoProfile", "-NonInteractive", "-STA", "-Command", OCCLUDER],
+    {
+      stdio: ["ignore", "pipe", "inherit"],
+    }
+  );
+  try {
+    await new Promise((resolve, reject) => {
+      const timer = setTimeout(
+        () => reject(new Error("The occluding window did not open.")),
+        30_000
+      );
+      child.stdout.on("data", (chunk) => {
+        if (!String(chunk).includes("ready")) return;
+        clearTimeout(timer);
+        resolve();
+      });
+      child.on("exit", (code) => {
+        clearTimeout(timer);
+        reject(new Error(`The occluding window exited early (${code}).`));
+      });
+    });
+    // Give WebView2's native occlusion tracking time to mark PLVS as covered.
+    await new Promise((resolve) => setTimeout(resolve, 1_000));
+    return await run(child.pid);
+  } finally {
+    child.kill();
   }
 }
 
@@ -147,6 +221,27 @@ export async function runWindowContract({ invoke, until, restart, steps, screens
   observe({ visible: true, minimized: canMinimize ? false : null });
   assert.equal(action("show").changed, false);
   steps.push("verify maximize, restore, hide, and show");
+
+  if (screenshotPath && process.platform === "win32") {
+    await withOccluder(async (occluder) => {
+      const before = foregroundProcess();
+      const capture = invoke([
+        "visual",
+        "screenshot",
+        "--target",
+        "main",
+        "--out",
+        screenshotPath.replace(/\.png$/, "-covered.png"),
+      ]);
+      assert.ok(capture.artifact.width > 0 && capture.artifact.height > 0);
+      assert.equal(foregroundProcess(), before, "Capture moved keyboard focus to another window.");
+      steps.push(
+        before === occluder
+          ? "verify a fully covered window is captured while the covering app keeps keyboard focus"
+          : "verify a fully covered window is captured without moving keyboard focus (cover not foreground)"
+      );
+    });
+  }
 }
 
 export async function runWorkbenchContract({ invoke, instances, until, steps, firstInstance }) {
