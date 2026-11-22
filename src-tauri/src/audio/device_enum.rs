@@ -22,6 +22,33 @@ pub(crate) fn is_name_heuristic_loopback(name: &str) -> bool {
     || n.contains("立体声混音")
 }
 
+/// Name of the private aggregate device PLVS creates for a macOS process tap
+/// (`native/macos/tap_bridge.m`). A private aggregate stays visible to the process that created it,
+/// so PLVS would otherwise list its own capture plumbing as a selectable source.
+#[cfg(target_os = "macos")]
+const MACOS_TAP_AGGREGATE_NAME: &str = "PLVSTapAggregate";
+
+/// Whether an enumerated device is PLVS's own capture plumbing rather than a user source.
+#[cfg(not(target_os = "linux"))]
+pub(crate) fn is_internal_capture_device(name: &str) -> bool {
+  #[cfg(target_os = "macos")]
+  {
+    name.trim() == MACOS_TAP_AGGREGATE_NAME
+  }
+  #[cfg(not(target_os = "macos"))]
+  {
+    let _ = name;
+    false
+  }
+}
+
+#[cfg(not(target_os = "linux"))]
+fn is_internal_device(device: &cpal::Device) -> bool {
+  device_id_key(device)
+    .map(|name| is_internal_capture_device(&name))
+    .unwrap_or(false)
+}
+
 /// Check if a device id refers to a loopback capture (system output monitor).
 /// Loopback devices need a silence stream on Windows to keep the audio engine active.
 #[cfg(target_os = "windows")]
@@ -84,6 +111,9 @@ pub(crate) fn collect_outputs(
     .map_err(|e| e.to_string())?
     .enumerate()
   {
+    if is_internal_device(&device) {
+      continue;
+    }
     if let Ok(cfg) = device.default_output_config() {
       rows.push((idx, device, cfg));
     }
@@ -102,6 +132,9 @@ pub(crate) fn collect_inputs(
   let host = cpal::default_host();
   let mut rows = Vec::new();
   for (idx, device) in host.input_devices().map_err(|e| e.to_string())?.enumerate() {
+    if is_internal_device(&device) {
+      continue;
+    }
     if let Ok(cfg) = device.default_input_config() {
       rows.push((idx, device, cfg));
     }
@@ -536,5 +569,20 @@ mod substring_tests {
     assert!(super::looks_like_device_id("out:0"));
     assert!(super::looks_like_device_id("in:2"));
     assert!(!super::looks_like_device_id("CABLE Output"));
+  }
+}
+
+#[cfg(all(test, not(target_os = "linux")))]
+mod tests {
+  use super::is_internal_capture_device;
+
+  #[test]
+  fn hides_only_the_private_tap_aggregate() {
+    assert_eq!(
+      is_internal_capture_device("PLVSTapAggregate"),
+      cfg!(target_os = "macos")
+    );
+    assert!(!is_internal_capture_device("BlackHole 2ch"));
+    assert!(!is_internal_capture_device("PLVSTapAggregate Pro"));
   }
 }
