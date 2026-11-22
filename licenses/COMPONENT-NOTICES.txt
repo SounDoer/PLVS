@@ -2713,9 +2713,9 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 
 ========================================================================
-npm:lucide-react@1.73.0
+npm:lucide-react@1.77.0
 Declared license: ISC
-Source: https://registry.npmjs.org/lucide-react/-/lucide-react-1.73.0.tgz
+Source: https://registry.npmjs.org/lucide-react/-/lucide-react-1.77.0.tgz
 
 --- LICENSE ---
 ISC License
@@ -47986,9 +47986,9 @@ THIS SOFTWARE.
 
 
 ========================================================================
-rust:libloading@0.9.0
+rust:libloading@0.9.1
 Declared license: ISC
-Source: https://crates.io/api/v1/crates/libloading/0.9.0/download
+Source: https://crates.io/api/v1/crates/libloading/0.9.1/download
 
 --- LICENSE ---
 Copyright © 2015, Simonas Kazlauskas
@@ -68424,9 +68424,9 @@ SOFTWARE.
 
 
 ========================================================================
-rust:rubato@5.0.1
+rust:rubato@5.1.0
 Declared license: MIT OR Apache-2.0
-Source: https://crates.io/api/v1/crates/rubato/5.0.1/download
+Source: https://crates.io/api/v1/crates/rubato/5.1.0/download
 
 --- LICENSE-APACHE ---
                                  Apache License
