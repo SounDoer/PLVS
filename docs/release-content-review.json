@@ -1,44 +1,45 @@
 {
   "schemaVersion": 1,
-  "version": "0.26.3",
-  "baselineTag": "v0.26.2",
-  "baselineRevision": "abc83e752bf9793069de0f5c2f96c6b2ecadd0bd",
-  "candidateRevision": "31b6d54d668af413e7684084f760359c3767dbd4",
-  "contentSha256": "4523b54e2d0913facb61df7e361d3d7e46da2132c7fab73c104d1b7ae0f0697a",
+  "version": "0.26.4",
+  "baselineTag": "v0.26.3",
+  "baselineRevision": "9f13ae5bbcee1bfc51c886e56b4c3278187d01b3",
+  "candidateRevision": "5a53640a18e81da286bc7d247cbced33cc52e6b3",
+  "contentSha256": "3390b5e4f3958d49e2b0dc1e02f9602586f448c096e93fd9ab98273a4703cbf2",
   "websiteSourceSha": "ba26b80053552f98162330c136e969c1246adfd1",
   "reviews": {
     "userGuide": {
       "status": "updated",
-      "rationale": "The guide covers per-workbench placement, source changes and reconnect, channel mappings, File Mode timing and reanalysis, coordinated quit, and the new Agent Control commands. The CLI and Settings chapters describe the explicit Send action and its effect.",
+      "rationale": "The Guide explains Live measurement continuation, selected-track analysis, PCM support and codec errors, macOS CLI discovery, and the new Agent Control operations and recording behavior.",
       "evidence": [
-        "docs/user/workspace.md and docs/user/system-settings.md compared with the workbench restore, coordinated quit and update changes",
-        "docs/user/multichannel.md, signal-source.md, file-mode.md and troubleshooting.md compared with source_layout.rs, tap_bridge.m, file_analysis/ffmpeg/layout.rs and the frontend source and timeline changes",
-        "docs/user/cli.md compared with the running-app handlers for window, workbench, update, UI decisions, configuration and application sources"
+        "Compared docs/user/workspace.md with useAudioEngine.js, engine/meter_pipeline.rs and the Live state changes.",
+        "Compared docs/user/file-mode.md with the ffprobe, FFmpeg decoder and File session changes, and the enabled decoders in scripts/build-ffmpeg-sidecars.sh.",
+        "Compared docs/user/cli.md, command-line.md and system-settings.md with cli_path.rs, the Agent Control command manifest and the measurement, Welcome, UI navigation and visual handlers."
       ]
     },
     "readme": {
-      "status": "updated",
-      "rationale": "The README now uses the PLVS collage. Its highlights still describe the existing native capture, multichannel, local analysis, multiple workbenches and Agent Control capabilities.",
+      "status": "unchanged",
+      "rationale": "The existing highlights cover native capture, local File analysis, Live history, Dock, multi-workbench operation and control through the bundled CLI. The new options use those same workflows, and the supported platform and download summaries remain accurate.",
       "evidence": [
-        "README.md compared with the v0.26.2 release and the 0.26.3 CHANGELOG",
-        "Visually inspected SounDoer/SounDoer assets/plvs-collage.png against the current homepage render and checked the published section names"
+        "Compared README.md from the candidate with CHANGELOG.md for 0.26.4, the updated user Guide and the release asset names.",
+        "Compared the home screen and Dock shown in the README collage with the candidate's hero and Dock renders."
       ]
     },
     "website": {
       "status": "updated",
-      "rationale": "The current renderer builds the updated guide, policy and download links from the candidate sources. The policy now describes the explicit local Agent Control Send path for Feedback and Crash Reports and the local Feedback payload preview. This changes who can invoke those paths on the device once Agent Control is enabled. The endpoints, payload fields, diagnostic opt-in, mail provider and server retention are unchanged. The updater retains the same destinations and preference gates.",
+      "rationale": "The existing homepage describes the shipping product. The release inputs advance the rendered Guide and download links. The privacy policy and its November 22, 2026 effective date remain applicable. Welcome draft control exposes existing update and crash-prompt preferences over the enabled local Agent Control connection. Continue applies the existing preferences, and report submission still requires explicit Send. No new collection, payloads, recipients, retention or deletion behavior was found.",
       "evidence": [
-        "Live publication.json and PLVS-Website ba26b80053552f98162330c136e969c1246adfd1 homepage copy checked against README.md and the revised guides",
-        "Exported product, policy and Catalogue inputs at aa91aa3317aaf9a24797e922a86a3ab765c2db1c. Website check passed 51 tests and built 38 HTML pages. Checked the 0.26.3 installer link and November 22 policy date in the generated pages. The subsequent changes update the policy test and the packaged-upgrade acceptance runner, including its post-install observation of settings and cache reconciliation.",
-        "Privacy sources compared from abc83e752bf9793069de0f5c2f96c6b2ecadd0bd through aa91aa3317aaf9a24797e922a86a3ab765c2db1c. See docs/privacy-review.json for the reviewed callbacks, local cache and diagnostic changes, effective date and review limits."
+        "Checked live publication.json and the homepage at PLVS-Website ba26b80053552f98162330c136e969c1246adfd1 against the release changes.",
+        "Exported the product, policy and Catalogue inputs at 5a53640a18e81da286bc7d247cbced33cc52e6b3 and ran the website check. All 51 tests passed, 38 HTML pages built, and the homepage lists the four 0.26.4 downloads.",
+        "Privacy review covered v0.26.3 (9f13ae5bbcee1bfc51c886e56b4c3278187d01b3) through 5a53640a18e81da286bc7d247cbced33cc52e6b3. Compared UpdateSurfaces.jsx, editorDraftControl.js and the existing settingsControl.js preference fields. The new Welcome command changes a local draft until Continue saves it through the existing callbacks. Update requests still use the same GitHub feed and preference gates. The FFmpeg workflow now keeps sidecar releases out of GitHub Latest.",
+        "Checked the same range for changes to feedback, crash-report and newsletter service code and configuration. Visual recording now emits local render-state events alongside existing recording metadata. The local measurement, File analysis and recording paths add no remote destination. The rendered privacy policy retains the reviewed date."
       ]
     },
     "screenshots": {
       "status": "unchanged",
-      "rationale": "The published images continue to depict the same normal workspace, Dock, histories, spectrum, 7.1.4 roles and rules editor. The release changes file-relative axes, recovery and source notices outside the depicted states. The current renders show small chart-edge differences while the published labels, layout and measured values still match the depicted features.",
+      "rationale": "The published images still show the layouts, control labels and readings for the featured states. The two Dock images and rules editor are pixel-identical. Each of the five other renders differs by at most 161 pixels, with no visible change to the depicted features.",
       "evidence": [
-        "Compared published originals at ba26b80053552f98162330c136e969c1246adfd1 with all eight images in artifacts/marketing/homepage-render-2026-11-21T15-44-14-046Z/comparison.html",
-        "The render report identifies d15719a69c7ccdd48c813917b135831456d292ea with a dirty release-preparation worktree. Changes from that revision to the candidate affect release metadata, documentation and acceptance checks."
+        "Rendered all eight homepage recipes from clean 7528e95f477eae089023844fa621fcdeec36229c and compared decoded pixels against the published originals at PLVS-Website ba26b80053552f98162330c136e969c1246adfd1. The report is artifacts/marketing/homepage-render-2026-11-22T15-12-42-500Z/report.json.",
+        "Visually inspected the published and candidate render pairs and difference images. Changes after the rendered revision are version metadata and documentation."
       ]
     }
   }
