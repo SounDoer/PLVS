@@ -307,6 +307,20 @@ describe("Immutable Release promotion", () => {
   });
 });
 
+describe("FFmpeg Sidecar Release", () => {
+  it("keeps sidecar publication from replacing the stable updater feed", () => {
+    const workflow = parse(
+      readFileSync(join(cwd(), ".github", "workflows", "build-ffmpeg-sidecars.yml"), "utf8")
+    );
+    const publishStep = workflow.jobs.publish.steps.find((step) =>
+      step.run?.includes('gh release edit "$RELEASE_TAG"')
+    );
+    expect(publishStep?.run).toMatch(
+      /^gh release edit "\$RELEASE_TAG" --draft=false --latest=false$/m
+    );
+  });
+});
+
 describe("Immutable Preview Build", () => {
   it("builds all three platforms by default and keeps single-platform choices", () => {
     expect(previewBuildWorkflow).toContain("default: all");

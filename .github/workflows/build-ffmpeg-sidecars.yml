@@ -218,7 +218,8 @@ jobs:
             --notes "Trimmed LGPL-2.1-or-later FFmpeg/FFprobe sidecars and complete corresponding source for PLVS. This is a tooling asset release, not a PLVS product release."
           gh release upload "$RELEASE_TAG" \
             assembled/ffmpeg-* assembled/ffprobe-* "ffmpeg-${FFMPEG_VERSION}-plvs-source.zip"
-          gh release edit "$RELEASE_TAG" --draft=false
+          # Installed PLVS clients resolve their update manifest through the Latest release.
+          gh release edit "$RELEASE_TAG" --draft=false --latest=false
           for attempt in {1..12}; do
             immutable=$(gh api "repos/${GITHUB_REPOSITORY}/releases/tags/${RELEASE_TAG}" --jq .immutable)
             [[ "$immutable" == true ]] && exit 0

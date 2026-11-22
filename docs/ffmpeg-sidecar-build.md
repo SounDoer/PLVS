@@ -41,6 +41,9 @@ publication workflow. It downloads FFmpeg 7.1.5 from upstream and verifies SHA-2
 `de668509caf9e35e3cd162473441fdb29538c6d96ed080292b3cf9e6fc5d558f`, then invokes the shared
 `scripts/build-ffmpeg-sidecars.sh` recipe on every target.
 
+The workflow publishes the immutable sidecar release with `--latest=false` so the GitHub Latest
+release continues to serve the stable desktop updater manifest.
+
 The recipe starts with `--disable-everything`, disables GPL/nonfree components, autodetection,
 networking, video-related libraries, all encoders/muxers/filters, and x86 assembly. It then enables
 only:
