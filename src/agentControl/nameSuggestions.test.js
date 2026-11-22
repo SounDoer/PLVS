@@ -45,6 +45,6 @@ describe("name suggestions", () => {
     expect(issue.message).toBe(
       'settings update takes the fields inside "settings" directly: remove the "settings" wrapper that inspection shows around them.'
     );
-    expect(issue.suggestions).toBeUndefined();
+    expect(issue).not.toHaveProperty("suggestions");
   });
 });
