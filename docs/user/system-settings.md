@@ -562,6 +562,15 @@ or a pending crash report. Temporary dialogs and editors use
 a separate UI generation so automation can detect visible changes without treating them as saved
 settings changes.
 
+While Agent Control is on, two copyable blocks appear under the switch:
+
+- **MCP Setup** is the entry a desktop chat app or agent needs to use PLVS through MCP: this
+  installation's `plvs-cli` path with the argument `mcp`. Copy it into the app's MCP server
+  settings; see [Chat Apps](chat-apps.md). The line under it shows "Not used yet", or which chat
+  app last used PLVS and when. PLVS keeps that only in memory until it quits.
+- **Prompt Starter** is a first message that tells an agent to inspect PLVS before it acts. It works
+  for terminal agents using `plvs-cli` and for chat apps using the MCP tools.
+
 ## Licenses
 
 Every package includes a `licenses` folder containing the third-party notices, the complete PLVS

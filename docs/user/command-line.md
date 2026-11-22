@@ -3,7 +3,8 @@
 Installed Windows, macOS, and Linux builds include `plvs-cli` for diagnosing
 the installation and for inspecting or changing the state of an already-running PLVS app. It is
 not a headless replacement for the desktop app. The full command set is in the
-[CLI Reference](cli.md).
+[CLI Reference](cli.md). To let a desktop chat app control PLVS instead, see
+[Chat Apps](chat-apps.md).
 
 ## Where it is
 

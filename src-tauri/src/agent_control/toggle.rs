@@ -69,6 +69,9 @@ pub struct AgentControlStatus {
   pub cli_installed: bool,
   pub on_path: bool,
   pub message: String,
+  /// The `mcpServers` registration Settings offers to copy: this installation's absolute
+  /// `plvs-cli` path and `args: ["mcp"]`. `None` when the CLI is not installed.
+  pub mcp_setup: Option<String>,
 }
 
 /// The last endpoint start failure. A launch-time failure is otherwise only a log line, which
@@ -113,6 +116,7 @@ fn compose_status(
     cli_installed,
     on_path: false,
     message: message.to_string(),
+    mcp_setup: None,
   }
 }
 
@@ -169,6 +173,18 @@ fn current_status(app: &AppHandle) -> Result<AgentControlStatus, String> {
     app.state::<StartFailure>().get(),
   );
   status.on_path = path_status.on_path;
+  if status.cli_installed {
+    // An isolated test profile (the dev app in a worktree, release-package smoke) needs the CLI
+    // pointed at the same profile, or the chat app would reach a different PLVS.
+    let args: Vec<String> = std::env::args().collect();
+    let identity_root = crate::test_app_data_root(&args)
+      .ok()
+      .flatten()
+      .map(|root| root.join("multi-instance"));
+    status.mcp_setup = path_status.cli_path.as_deref().map(|cli_path| {
+      crate::cli_mcp::mcp_setup_json(cli_path, env!("PLVS_APP_ID"), identity_root.as_deref())
+    });
+  }
   Ok(status)
 }
 

@@ -12,6 +12,7 @@ const UNAVAILABLE = Object.freeze({
   cliInstalled: false,
   onPath: false,
   message: "Agent Control is unavailable.",
+  mcpSetup: null,
 });
 
 export function useAgentControlSettings({ settingsOpen }) {
@@ -63,6 +64,7 @@ export function useAgentControlSettings({ settingsOpen }) {
           startError: agentControlStatus?.startError ?? null,
           cliInstalled: agentControlStatus?.cliInstalled ?? false,
           onPath: agentControlStatus?.onPath ?? false,
+          mcpSetup: agentControlStatus?.mcpSetup ?? null,
           message: "Agent Control could not be changed.",
         });
       } finally {

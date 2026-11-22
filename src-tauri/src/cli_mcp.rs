@@ -146,6 +146,30 @@ fn server_name(app_id: &str) -> &'static str {
   }
 }
 
+/// The generic registration a user copies from Settings into any chat app: the de-facto standard
+/// `mcpServers` form with this installation's absolute CLI path. An absolute path, not the `PATH`
+/// link, because chat apps launched from the desktop often lack the shell's `PATH`. Laid out by
+/// hand in the conventional `command`, `args`, `env` order (serde would sort the keys); every
+/// value still goes through serde so Windows backslashes and quotes are escaped correctly.
+pub(crate) fn mcp_setup_json(
+  cli_path: &str,
+  app_id: &str,
+  identity_root: Option<&std::path::Path>,
+) -> String {
+  let quote = |value: &str| serde_json::to_string(value).unwrap_or_default();
+  let env = identity_root.map_or_else(String::new, |root| {
+    format!(
+      ",\n      \"env\": {{ \"PLVS_TEST_IDENTITY_ROOT\": {} }}",
+      quote(&root.to_string_lossy())
+    )
+  });
+  format!(
+    "{{\n  \"mcpServers\": {{\n    {}: {{\n      \"command\": {},\n      \"args\": [\"mcp\"]{env}\n    }}\n  }}\n}}",
+    quote(server_name(app_id)),
+    quote(cli_path),
+  )
+}
+
 fn schema(value: Value) -> Arc<JsonObject> {
   match value {
     Value::Object(map) => Arc::new(map),
@@ -861,6 +885,33 @@ mod tests {
     assert_eq!(server_name("com.soundoer.plvs"), "plvs");
     assert_eq!(server_name("com.soundoer.plvs.preview"), "plvs-preview");
     assert_eq!(server_name("com.soundoer.plvs.dev"), "plvs-dev");
+  }
+
+  #[test]
+  fn setup_json_names_this_installation_and_escapes_windows_paths() {
+    let stable = mcp_setup_json(
+      "C:\\Users\\A B\\AppData\\Local\\PLVS\\plvs-cli.exe",
+      "com.soundoer.plvs",
+      None,
+    );
+    let parsed: Value = serde_json::from_str(&stable).unwrap();
+    assert_eq!(
+      parsed,
+      json!({ "mcpServers": { "plvs": {
+        "command": "C:\\Users\\A B\\AppData\\Local\\PLVS\\plvs-cli.exe",
+        "args": ["mcp"]
+      } } })
+    );
+    let dev = mcp_setup_json(
+      "/w/target/plvs-cli",
+      "com.soundoer.plvs.dev",
+      Some(std::path::Path::new("/w/.dev-data/multi-instance")),
+    );
+    let parsed: Value = serde_json::from_str(&dev).unwrap();
+    assert_eq!(
+      parsed["mcpServers"]["plvs-dev"]["env"]["PLVS_TEST_IDENTITY_ROOT"],
+      json!("/w/.dev-data/multi-instance")
+    );
   }
 
   #[test]

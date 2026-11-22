@@ -8,6 +8,7 @@ import { BlockingEditorsProvider } from "../hooks/BlockingEditorsContext.jsx";
 import { UiNavigationProvider, useUiNavigation } from "../uiNavigation/UiNavigationContext.jsx";
 import { DEFAULT_KEYBOARD_SHORTCUTS } from "../data/keyboardShortcutActions.js";
 import { SETTINGS_SURFACE_CONTROLS } from "../agentControl/settingsSurfaceCatalog.js";
+import { recordMcpUsage, resetMcpUsage } from "../agentControl/mcpUsage.js";
 
 const CUSTOM_THEME = {
   ...structuredClone(BUILTIN_THEMES_V2["plvs-dark"]),
@@ -596,9 +597,66 @@ describe("SettingsPanel", () => {
     expect(
       screen.getByRole("textbox", { name: "copy agent control prompt starter text" }).textContent
     ).toBe(
-      "Use PLVS’s built-in Agent Control CLI (`plvs-cli`). First inspect the available capabilities and current app state, then help me..."
+      "Use PLVS’s built-in Agent Control: the PLVS MCP tools if they are connected, otherwise the `plvs-cli` command. First inspect the available capabilities and current app state, then help me..."
     );
     expect(screen.getByRole("button", { name: "copy agent control prompt starter" })).toBeTruthy();
+  });
+
+  it("shows MCP Setup above the Prompt Starter, with the last chat app that used it", () => {
+    resetMcpUsage();
+    const mcpSetup = JSON.stringify(
+      {
+        mcpServers: {
+          plvs: { command: "/Applications/PLVS.app/Contents/MacOS/plvs-cli", args: ["mcp"] },
+        },
+      },
+      null,
+      2
+    );
+    const status = {
+      supported: true,
+      enabled: false,
+      cliInstalled: true,
+      mcpSetup,
+      message: "Agent Control is ready.",
+    };
+    const { rerender } = render(<SettingsPanel {...BASE_PROPS} agentControlStatus={status} />);
+    expect(screen.queryByText("MCP Setup")).toBeNull();
+
+    rerender(
+      <SettingsPanel
+        {...BASE_PROPS}
+        agentControlStatus={{ ...status, enabled: true, listening: true }}
+      />
+    );
+    expect(screen.getByRole("textbox", { name: "copy mcp setup text" }).textContent).toBe(mcpSetup);
+    expect(screen.getByText("Not used yet")).toBeTruthy();
+    const labels = screen
+      .getAllByText(/^(MCP Setup|Prompt Starter)$/)
+      .map((node) => node.textContent);
+    expect(labels).toEqual(["MCP Setup", "Prompt Starter"]);
+
+    act(() => recordMcpUsage("Claude"));
+    expect(screen.getByText("Last used by Claude just now")).toBeTruthy();
+    resetMcpUsage();
+  });
+
+  it("omits MCP Setup when the CLI is not installed", () => {
+    render(
+      <SettingsPanel
+        {...BASE_PROPS}
+        agentControlStatus={{
+          supported: true,
+          enabled: true,
+          listening: true,
+          cliInstalled: true,
+          mcpSetup: null,
+          message: "Agent Control is ready.",
+        }}
+      />
+    );
+    expect(screen.queryByText("MCP Setup")).toBeNull();
+    expect(screen.getByText("Prompt Starter")).toBeTruthy();
   });
 
   it("confirms in a modal before resetting, and says what will be lost", () => {

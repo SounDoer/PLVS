@@ -121,7 +121,7 @@ fn runtime_log_file_name() -> String {
 
 const TEST_APP_DATA_ROOT_ARG: &str = "--plvs-test-app-data-root";
 
-fn test_app_data_root(args: &[String]) -> Result<Option<PathBuf>, String> {
+pub(crate) fn test_app_data_root(args: &[String]) -> Result<Option<PathBuf>, String> {
   let value = args
     .windows(2)
     .find(|pair| pair[0] == TEST_APP_DATA_ROOT_ARG)

@@ -27,6 +27,7 @@ import { ThemePicker } from "./ThemePicker.jsx";
 import { SharesetsBrowseButton } from "./SharesetsBrowseButton.jsx";
 import { DOCS_URL, RELEASES_INDEX_URL, SHARESETS_URL } from "../ipc/openExternal.js";
 import { CopyableTextBlock } from "./CopyableTextBlock.jsx";
+import { McpUsageStatus } from "./McpUsageStatus.jsx";
 import { UpdatePreferencesSettings } from "./UpdatePreferencesControls.jsx";
 import {
   DIALOGUE_VAD_ENGINE_OPTIONS,
@@ -38,8 +39,9 @@ import { useUiNavigationTarget, useUiSurface } from "@/uiNavigation/UiNavigation
 import { UI_SETTINGS_SECTIONS, createUiNavigationError } from "@/uiNavigation/uiNavigationModel.js";
 import { useDropdownNavigation } from "@/uiNavigation/useDropdownNavigation.js";
 import { IconAction } from "@/components/ui/icon-action";
+// Serves terminal agents (plvs-cli) and chat apps (the PLVS MCP tools) alike.
 const AGENT_CONTROL_PROMPT_STARTER =
-  "Use PLVS’s built-in Agent Control CLI (`plvs-cli`). First inspect the available capabilities and current app state, then help me...";
+  "Use PLVS’s built-in Agent Control: the PLVS MCP tools if they are connected, otherwise the `plvs-cli` command. First inspect the available capabilities and current app state, then help me...";
 
 const BODY_CLASS = "flex flex-col gap-[var(--ui-drawer-gap)] text-[length:var(--ui-fs-control)]";
 
@@ -379,6 +381,7 @@ export function SettingsContent({
   // Without this line the two disagree in silence.
   const agentControlSilent = agentControlEnabled && !agentControlStatus?.listening;
   const agentControlStartError = agentControlStatus?.startError ?? "";
+  const agentControlMcpSetup = agentControlStatus?.mcpSetup ?? "";
   const selectedDialogueVadEngine = dialogueVadEngineOption(dialogueVadEngine);
   const channelLayouts = layoutsForChannelCount(channelCount);
   const selectedStandardLayout = channelLayouts.find((layout) => layout.id === selectedLayoutId);
@@ -1095,6 +1098,13 @@ export function SettingsContent({
                   {agentControlStartError
                     ? `Enabled, but not listening: ${agentControlStartError}`
                     : "Enabled, but not listening."}
+                </div>
+              ) : null}
+              {agentControlEnabled && agentControlMcpSetup ? (
+                <div className="flex flex-col gap-1 px-2">
+                  <span className={ROW_LABEL_CLASS}>MCP Setup</span>
+                  <CopyableTextBlock value={agentControlMcpSetup} ariaLabel="copy mcp setup" />
+                  <McpUsageStatus />
                 </div>
               ) : null}
               {agentControlEnabled ? (
