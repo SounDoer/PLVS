@@ -19,6 +19,10 @@ import { isUiTargetId } from "../uiNavigation/uiTargets.js";
 const SOURCE_GROUPS = Object.freeze(["output", "input", "applications"]);
 import { POINTER_DURATION_MAX_MS } from "./handlers/pointer.js";
 import { HOLD_SLOW_MAX_MS } from "./handlers/gestures.js";
+import {
+  SPECTRUM_READOUT_DEFAULT_RESOLUTION,
+  SPECTRUM_READOUT_RESOLUTIONS,
+} from "./spectrumReadout.js";
 import { TOOLBAR_MENUS, UI_SETTINGS_SECTIONS } from "../uiNavigation/uiNavigationModel.js";
 
 const REQUEST_FIELDS = new Set(["jsonrpc", "id", "method", "params"]);
@@ -428,6 +432,32 @@ export function normalizeAgentControlRequest(input) {
           [name]: value,
           expectedRevision: input.params.expectedRevision,
           expectedUiGeneration: input.params.expectedUiGeneration,
+        },
+      },
+    };
+  }
+
+  if (input.method === "measurement.spectrum") {
+    const field = unknownField(input.params, new Set(["panelId", "resolution"]));
+    if (field) return invalidParams(`$.params.${field}`, `Unknown parameter: ${field}.`);
+    if (typeof input.params.panelId !== "string" || input.params.panelId.trim() === "") {
+      return invalidParams("$.params.panelId", "panelId must be a non-empty string.");
+    }
+    const { resolution } = input.params;
+    if (resolution !== undefined && !Object.hasOwn(SPECTRUM_READOUT_RESOLUTIONS, resolution)) {
+      return invalidParams(
+        "$.params.resolution",
+        `resolution must be one of ${Object.keys(SPECTRUM_READOUT_RESOLUTIONS).join(", ")}.`
+      );
+    }
+    return {
+      ok: true,
+      request: {
+        id: input.id,
+        method: input.method,
+        params: {
+          panelId: input.params.panelId,
+          resolution: resolution ?? SPECTRUM_READOUT_DEFAULT_RESOLUTION,
         },
       },
     };

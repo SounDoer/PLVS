@@ -1,3 +1,4 @@
+import { SPECTRUM_READOUT_PEAK_COUNT, SPECTRUM_READOUT_RESOLUTIONS } from "./spectrumReadout.js";
 import { getPanelControls } from "../workspace/panelControlInstances.js";
 import { resolvePanelDisplayName } from "../workspace/panelInstances.js";
 import { readPublicPanelAnalysis } from "./panelAnalysis.js";
@@ -174,6 +175,15 @@ export function buildAgentControlCapabilities(runtime, revision) {
               resetHold: true,
               resetTruePeakMax: hasMethod("measurement.resetTruePeakMax"),
               holdSlow: hasMethod("panel.holdSlow") ? { maximumDurationMs: 10000 } : false,
+            },
+          }
+        : {}),
+      ...(hasMethod("measurement.spectrum")
+        ? {
+            measurementSpectrum: {
+              modules: ["spectrum"],
+              resolutions: Object.keys(SPECTRUM_READOUT_RESOLUTIONS),
+              maximumPeaksPerCurve: SPECTRUM_READOUT_PEAK_COUNT,
             },
           }
         : {}),

@@ -74,6 +74,7 @@ describe("agent-control app snapshots", () => {
         "pointer.move",
         "measurement.describe",
         "measurement.inspect",
+        "measurement.spectrum",
         "measurement.wait",
         "measurement.waitUntil",
         "measurement.resetHold",
@@ -183,6 +184,11 @@ describe("agent-control app snapshots", () => {
         "editorDraft.discard",
       ],
       features: {
+        measurementSpectrum: {
+          modules: ["spectrum"],
+          resolutions: ["octave", "third", "sixth", "twelfth", "full"],
+          maximumPeaksPerCurve: 5,
+        },
         editorDraft: {
           kinds: ["theme", "loudness-profile", "feedback"],
           describe: true,

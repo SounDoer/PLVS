@@ -65,6 +65,9 @@ export function reduceMeterAudioFrame(previous, frame) {
       typeof frame.loudnessLayoutKnown === "boolean"
         ? frame.loudnessLayoutKnown
         : (previous.loudnessLayoutKnown ?? true),
+    // Which native frame the panels are drawing, so a panel readout can name its sample.
+    frameSequence: Number.isSafeInteger(frame.seq) ? frame.seq : null,
+    frameElapsedMs: Number.isFinite(frame.timestampMs) ? frame.timestampMs : null,
   };
 }
 
@@ -184,6 +187,7 @@ export function buildTauriFrameApply({
     if (!shouldDriveDisplay()) return;
 
     const next = reduceMeterAudioFrame(latestAudioRef.current, f);
+    next.frameReceivedAtMs = Date.now();
     latestAudioRef.current = next;
     onReducedFrame?.(f, next);
     if (!shouldPublishDisplay()) return;

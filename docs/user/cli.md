@@ -219,6 +219,7 @@ Measurement Control reads the latest unscrumbed LIVE semantic sample:
 ```powershell
 plvs-cli measurement describe --json
 plvs-cli measurement inspect --json
+plvs-cli measurement spectrum --panel-id <id> [--resolution <octave|third|sixth|twelfth|full>] --json
 plvs-cli measurement wait --after-generation <n> [--after-sequence <n>] [--timeout-ms <n>] --json
 plvs-cli measurement wait-until <file|-> [--timeout-ms <n>] --json
 plvs-cli measurement reset-hold --panel-id <id> --expected-revision <n> --json
@@ -235,9 +236,14 @@ zoom, pan or scrub as motion; see [Axis Control](../agent-control/axes.md#paced-
 The two resets and Slow Trace reproduce chart clicks and press-and-hold on a panel; see
 [Measurement Control](../agent-control/measurements.md#chart-gesture-resets).
 
+`measurement spectrum` returns the band levels behind one Spectrum panel's curve, read from what
+that panel last drew, with its Max curve and its most prominent peaks; see
+[Measurement Control](../agent-control/measurements.md#spectrum-readout).
+
 These commands never start capture or optional analysis and do not expose File results, history,
-or raw visual data. See [Measurement Control](../agent-control/measurements.md) for freshness, null
-reasons, profile evaluation, and revision behavior, and
+or raw visual data beyond the Spectrum readout. See
+[Measurement Control](../agent-control/measurements.md) for freshness, null reasons, profile
+evaluation, and revision behavior, and
 [Measurement Wait](../agent-control/measurement-wait.md) for identity waits, bounded predicates, hold
 durations, and timeout semantics.
 

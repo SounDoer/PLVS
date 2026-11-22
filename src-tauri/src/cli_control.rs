@@ -215,6 +215,10 @@ pub enum ControlCommand {
   MeasurementRead {
     method: String,
   },
+  MeasurementSpectrum {
+    panel_id: String,
+    resolution: Option<String>,
+  },
   MeasurementWait {
     after_generation: u64,
     after_sequence: Option<u64>,
@@ -2102,6 +2106,57 @@ fn parse_panel_gesture_args(method: &str, options: &[String]) -> Result<ControlC
   })
 }
 
+const SPECTRUM_RESOLUTIONS: [&str; 5] = ["octave", "third", "sixth", "twelfth", "full"];
+
+fn parse_measurement_spectrum_args(options: &[String]) -> Result<ControlCommand, String> {
+  let mut panel_id = None;
+  let mut resolution = None;
+  let mut json = false;
+  let mut index = 0;
+  while index < options.len() {
+    match options[index].as_str() {
+      "--json" if !json => {
+        json = true;
+        index += 1;
+      }
+      "--panel-id" if panel_id.is_none() => {
+        panel_id = Some(
+          options
+            .get(index + 1)
+            .filter(|value| !value.trim().is_empty())
+            .ok_or_else(|| "Missing value for --panel-id.".to_string())?
+            .clone(),
+        );
+        index += 2;
+      }
+      "--resolution" if resolution.is_none() => {
+        resolution = Some(
+          options
+            .get(index + 1)
+            .filter(|value| SPECTRUM_RESOLUTIONS.contains(&value.as_str()))
+            .ok_or_else(|| {
+              format!(
+                "The --resolution value must be one of {}.",
+                SPECTRUM_RESOLUTIONS.join(", ")
+              )
+            })?
+            .clone(),
+        );
+        index += 2;
+      }
+      value => return Err(format!("Unknown or duplicate option: {value}")),
+    }
+  }
+  if !json {
+    return Err("The measurement spectrum command requires --json or --format text.".to_string());
+  }
+  Ok(ControlCommand::MeasurementSpectrum {
+    panel_id: panel_id
+      .ok_or_else(|| "The measurement spectrum command requires --panel-id.".to_string())?,
+    resolution,
+  })
+}
+
 fn parse_measurement_args(args: &[String]) -> Result<ControlCommand, String> {
   if args.iter().any(|argument| is_help(argument)) {
     return Ok(ControlCommand::FamilyHelp("measurement".to_string()));
@@ -2111,6 +2166,7 @@ fn parse_measurement_args(args: &[String]) -> Result<ControlCommand, String> {
     Some("reset-true-peak-max") => {
       return parse_panel_gesture_args("measurement.resetTruePeakMax", &args[1..])
     }
+    Some("spectrum") => return parse_measurement_spectrum_args(&args[1..]),
     _ => {}
   }
   if let [action, flag] = args {
@@ -4290,6 +4346,7 @@ fn command_name(command: &ControlCommand) -> String {
     ControlCommand::DevUpdateConfirm { .. } => "dev.update.confirm".to_string(),
     ControlCommand::DevUpdateQuit { .. } => "dev.update.quit".to_string(),
     ControlCommand::MeasurementRead { method } => method.clone(),
+    ControlCommand::MeasurementSpectrum { .. } => "measurement.spectrum".to_string(),
     ControlCommand::MeasurementWait { .. } => "measurement.wait".to_string(),
     ControlCommand::MeasurementWaitUntil { .. } => "measurement.waitUntil".to_string(),
     ControlCommand::ViewRead { method } | ControlCommand::ViewMutation { method, .. } => {
@@ -4557,6 +4614,16 @@ fn request_for_command<R: Read>(
       });
       if let Some((name, value)) = field {
         params[name.as_str()] = Value::String(value.clone());
+      }
+      params
+    }
+    ControlCommand::MeasurementSpectrum {
+      panel_id,
+      resolution,
+    } => {
+      let mut params = serde_json::json!({ "panelId": panel_id });
+      if let Some(resolution) = resolution {
+        params["resolution"] = Value::String(resolution.clone());
       }
       params
     }
@@ -7255,10 +7322,104 @@ mod tests {
   }
 
   #[test]
+  fn parses_measurement_spectrum_and_sends_only_the_given_resolution() {
+    let default = parse_control_args(&args(&[
+      "measurement",
+      "spectrum",
+      "--panel-id",
+      "p1",
+      "--json",
+    ]))
+    .unwrap();
+    assert_eq!(
+      default,
+      ControlCommand::MeasurementSpectrum {
+        panel_id: "p1".to_string(),
+        resolution: None,
+      }
+    );
+    let request = request_for_command(&default, &mut Cursor::new(Vec::<u8>::new())).unwrap();
+    assert_eq!(request.method, "measurement.spectrum");
+    assert_eq!(request.params, serde_json::json!({ "panelId": "p1" }));
+
+    let full = parse_control_args(&args(&[
+      "measurement",
+      "spectrum",
+      "--resolution",
+      "full",
+      "--panel-id",
+      "p1",
+      "--json",
+    ]))
+    .unwrap();
+    let request = request_for_command(&full, &mut Cursor::new(Vec::<u8>::new())).unwrap();
+    assert_eq!(
+      request.params,
+      serde_json::json!({ "panelId": "p1", "resolution": "full" })
+    );
+
+    assert_eq!(
+      parse_control_args(&args(&[
+        "measurement",
+        "spectrum",
+        "--panel-id",
+        "p1",
+        "--format",
+        "text",
+      ])),
+      Ok(ControlCommand::Text(Box::new(
+        ControlCommand::MeasurementSpectrum {
+          panel_id: "p1".to_string(),
+          resolution: None,
+        }
+      )))
+    );
+
+    for invalid in [
+      args(&["measurement", "spectrum", "--json"]),
+      args(&["measurement", "spectrum", "--panel-id", "p1"]),
+      args(&["measurement", "spectrum", "--panel-id", "", "--json"]),
+      args(&[
+        "measurement",
+        "spectrum",
+        "--panel-id",
+        "p1",
+        "--resolution",
+        "half",
+        "--json",
+      ]),
+      args(&[
+        "measurement",
+        "spectrum",
+        "--panel-id",
+        "p1",
+        "--expected-revision",
+        "1",
+        "--json",
+      ]),
+      args(&[
+        "measurement",
+        "spectrum",
+        "--panel-id",
+        "p1",
+        "--panel-id",
+        "p2",
+        "--json",
+      ]),
+    ] {
+      assert!(
+        parse_control_args(&invalid).is_err(),
+        "accepted {invalid:?}"
+      );
+    }
+  }
+
+  #[test]
   fn measurement_help_and_requests_use_the_public_wire_methods() {
     let help = family_help_text("measurement");
     assert!(help.contains("plvs-cli measurement describe <--json|--format text>"));
     assert!(help.contains("plvs-cli measurement inspect <--json|--format text>"));
+    assert!(help.contains("plvs-cli measurement spectrum --panel-id <id>"));
     assert!(help.contains("plvs-cli measurement wait --after-generation <n>"));
     assert!(help.contains("plvs-cli measurement wait-until <file|->"));
 

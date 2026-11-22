@@ -8,6 +8,7 @@ import {
   PanelInstanceProvider,
 } from "../../workspace/AudioDataContext.jsx";
 import { SpectrumPanel } from "./SpectrumPanel.jsx";
+import { UiSurfaceRegistryProvider } from "../../uiNavigation/UiNavigationContext.jsx";
 import { spectrumRequestKeyFromControls } from "../../analysis/analysisRequests.js";
 import { buildSpectrumSvgFromBandsAndDb } from "../../math/spectrumMath.js";
 import { DEFAULT_PANEL_CONTROLS } from "../../lib/panelControls.js";
@@ -410,6 +411,62 @@ describe("SpectrumPanel", () => {
     expect(tiltedMid).toBeCloseTo(flatMid, 5);
     expect(tiltedLow).toBeGreaterThan(flatLow);
     expect(tiltedHigh).toBeLessThan(flatHigh);
+  });
+
+  it("hands Agent Control the curve it draws, tilted, with its Max curve and frame", () => {
+    const targets = new Map();
+    const registry = {
+      registerUiTarget: (key, ref) => {
+        targets.set(key, ref);
+        return () => targets.delete(key);
+      },
+    };
+    const result = liveResult({
+      bandCentersHz: [20, 1000, 20000],
+      smoothDb: [-40, -40, -40],
+      peakDb: [-30, -30, -30],
+    });
+    const tree = (selectedOffset) => (
+      <UiSurfaceRegistryProvider registry={registry}>
+        <FrameDataProvider
+          value={{
+            displayAudio: {
+              spectrumResultsByKey: { [LIVE_KEY]: result },
+              frameSequence: 12,
+              frameElapsedMs: 400,
+              frameReceivedAtMs: 1000,
+            },
+          }}
+        >
+          <HistoryDataProvider value={{ selectedOffset, sourceMode: "live" }}>
+            <PanelInstanceProvider
+              value={{
+                panelId: "panel-1",
+                panelControls: { spectrumTiltDbPerOctave: 3, spectrumMaxMode: "decay" },
+              }}
+            >
+              <SpectrumPanel />
+            </PanelInstanceProvider>
+          </HistoryDataProvider>
+        </FrameDataProvider>
+      </UiSurfaceRegistryProvider>
+    );
+    const view = render(tree(-1));
+
+    const readout = targets.get("panelReadout:panel-1").current.read();
+    expect(readout).toMatchObject({
+      displaySource: "live",
+      frame: { sequence: 12, elapsedMs: 400, receivedAtMs: 1000 },
+      centers: [20, 1000, 20000],
+      display: { tiltDbPerOctave: 3, maxMode: "decay", view: "combined", slowTrace: false },
+    });
+    // 1 kHz is the tilt pivot; 20 Hz is about 5.6 octaves below it.
+    expect(readout.curveDb[1]).toBeCloseTo(-40, 5);
+    expect(readout.curveDb[0]).toBeLessThan(-55);
+    expect(readout.maxDb[1]).toBeCloseTo(-30, 5);
+
+    view.rerender(tree(3));
+    expect(targets.get("panelReadout:panel-1").current.read().displaySource).toBe("snapshot");
   });
 
   it("keeps one request key across tilt values", () => {

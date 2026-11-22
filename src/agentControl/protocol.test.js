@@ -60,6 +60,30 @@ describe("normalizeAgentControlRequest", () => {
     });
   });
 
+  it("validates measurement spectrum and fills in the default resolution", () => {
+    expect(
+      normalizeAgentControlRequest(request("measurement.spectrum", { panelId: "panel-1" }))
+    ).toEqual({
+      ok: true,
+      request: {
+        id: "req-1",
+        method: "measurement.spectrum",
+        params: { panelId: "panel-1", resolution: "third" },
+      },
+    });
+    for (const [params, path] of [
+      [{}, "$.params.panelId"],
+      [{ panelId: " " }, "$.params.panelId"],
+      [{ panelId: "panel-1", resolution: "half" }, "$.params.resolution"],
+      [{ panelId: "panel-1", expectedRevision: 1 }, "$.params.expectedRevision"],
+    ]) {
+      expect(normalizeAgentControlRequest(request("measurement.spectrum", params))).toMatchObject({
+        ok: false,
+        error: { path },
+      });
+    }
+  });
+
   describe("editor draft requests", () => {
     it.each(["theme", "loudness-profile"])(
       "validates exact Save tokens for %s and rejects implicit actions",

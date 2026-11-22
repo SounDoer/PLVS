@@ -41,6 +41,7 @@ const groups = [
       "ui.locate",
       "measurement.describe",
       "measurement.inspect",
+      "measurement.spectrum",
       "view.describe",
       "view.inspect",
       "module.list",

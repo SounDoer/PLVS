@@ -51,6 +51,7 @@ import {
 import { beginPanelCpuSample, finishPanelCpuSample } from "../../dev/panelCpuProfiler.js";
 import { useEffectiveChannelControls } from "./useEffectiveChannelControls.js";
 import { usePanelGestures } from "../../uiNavigation/usePanelGestures.js";
+import { usePanelReadout } from "../../uiNavigation/usePanelReadout.js";
 
 // Shared by the axis rails and the plot area, which edit the same two ranges. The y rail resets to
 // -96 rather than to absMin -- a default, not a bound, so it stays out of this.
@@ -126,6 +127,7 @@ export function SpectrumPanel({ showAxes: axesOverride, className } = {}) {
     setSelectedOffset,
     captureCurrentSnapshot,
     fileDisplayIntake = null,
+    sourceMode,
   } = useHistoryData();
   const { panelControls, onPanelControlsChange } = usePanelInstanceData();
   const normalizedPanelControls = useMemo(
@@ -139,10 +141,15 @@ export function SpectrumPanel({ showAxes: axesOverride, className } = {}) {
   const maxHoldEnabled = spectrumMaxMode === "hold";
   const spectrumPeakLabels = normalizedPanelControls.spectrumPeakLabels;
   // Two overlaid curves name their channel in the hover readout; colour alone is not a label.
+  const effectiveSpectrumChannel = normalizePanelControls(effectivePanelControls).spectrumChannel;
+  const spectrumChannelLabels = getPeakMeterChannelLabels(
+    channelCount >= 2 ? channelCount : 2,
+    peakLabelContext || {}
+  );
   const hoverLegend = spectrumViewLegend(
     normalizedPanelControls.spectrumView,
-    normalizePanelControls(effectivePanelControls).spectrumChannel,
-    getPeakMeterChannelLabels(channelCount >= 2 ? channelCount : 2, peakLabelContext || {})
+    effectiveSpectrumChannel,
+    spectrumChannelLabels
   );
   const gradientId = useId().replaceAll(":", "");
   const fillIds = {
@@ -742,6 +749,50 @@ export function SpectrumPanel({ showAxes: axesOverride, className } = {}) {
   }, [isSnapshot, snapResolved, snapshotPanelSpectrumData, tiltDbPerOctave]);
   const maxHoldDb = isSnapshot ? snapshotMaxHold?.dbList : maxHoldRef.current;
   const maxHoldDbB = isSnapshot ? snapshotMaxHold?.dbListB : maxHoldRefB.current;
+  // Agent Control reads the curve this render draws: the same channels, view, tilt, Speed, Slow
+  // Trace and Max mode, and never a second analysis request.
+  const readoutMaxDb = maxHoldEnabled ? maxHoldDb : panelSpectrumPeakDb;
+  const readoutMaxDbB = maxHoldEnabled ? maxHoldDbB : panelSpectrumPeakDbB;
+  usePanelReadout({
+    moduleId: "spectrum",
+    read: () => ({
+      displaySource: sourceMode === "file" ? "file" : isSnapshot ? "snapshot" : "live",
+      frame: {
+        sequence: displayAudio?.frameSequence ?? null,
+        elapsedMs: displayAudio?.frameElapsedMs ?? null,
+        receivedAtMs: displayAudio?.frameReceivedAtMs ?? null,
+      },
+      centers: panelSpectrumData?.bands?.map((band) => band.fCenter) ?? null,
+      curveDb: panelSpectrumData?.dbList ?? null,
+      curveDbB: panelSpectrumData?.dbListB?.length ? panelSpectrumData.dbListB : null,
+      maxDb: spectrumMaxMode === "off" ? null : (readoutMaxDb ?? null),
+      maxDbB: spectrumMaxMode === "off" ? null : (readoutMaxDbB ?? null),
+      display: {
+        channel: { ...effectiveSpectrumChannel },
+        view:
+          effectiveSpectrumChannel.type === "pair" ? normalizedPanelControls.spectrumView : null,
+        curves: (
+          hoverLegend ?? [
+            {
+              token: "primary",
+              label:
+                effectiveSpectrumChannel.type === "single"
+                  ? (spectrumChannelLabels[effectiveSpectrumChannel.ch] ??
+                    `Ch ${effectiveSpectrumChannel.ch + 1}`)
+                  : "Combined",
+            },
+          ]
+        ).map(({ token, label }) => ({ id: token, label })),
+        tiltDbPerOctave,
+        speedPercent: normalizedPanelControls.spectrumSpeedPercent,
+        octaveSmoothing: normalizedPanelControls.spectrumOctaveSmoothing,
+        maxMode: spectrumMaxMode,
+        slowTrace: holdSmoothingActive && !isSnapshot,
+        frequencyRangeHz: [spectrumRange.minHz, spectrumRange.maxHz],
+        levelRangeDb: [spectrumRange.yMinDb, spectrumRange.yMaxDb],
+      },
+    }),
+  });
   // Unwrapped once per frame rather than inside each of the six path builds below: the band
   // objects exist for the hover readout and the peak labels, the path builder wants the bare
   // frequencies, and the conversion is the same one every time.

@@ -48,6 +48,7 @@ Manifest version `1`. Entries are shown in stable presentation order.
 | `pointer.move` | `pointer move` | runningApp / action | required | no | none |
 | `measurement.describe` | `measurement describe` | runningApp / query | none | no | none |
 | `measurement.inspect` | `measurement inspect` | runningApp / query | none | no | none |
+| `measurement.spectrum` | `measurement spectrum` | runningApp / query | none | no | none |
 | `measurement.wait` | `measurement wait` | runningApp / wait | none | no | none |
 | `measurement.waitUntil` | `measurement wait-until` | runningApp / wait | none | no | none |
 | `measurement.resetHold` | `measurement reset-hold` | runningApp / action | required | no | none |
@@ -1193,6 +1194,32 @@ None.
 
 | Name | Maps to | Required | Value |
 | --- | --- | --- | --- |
+| `--json` | local only | no | boolean |
+| `--format` | local only | no | string; one of "text" |
+
+## `measurement.spectrum`
+
+Read the band levels behind a Spectrum panel's curve.
+
+- CLI path: `measurement spectrum`
+- Execution: `runningApp`; operation: `query`
+- JSON: `optional`; expected revision: `none`; dry-run: `false`; output file: `none`
+- Wire method: `measurement.spectrum`
+
+```text
+plvs-cli measurement spectrum --panel-id <id> [--resolution <octave|third|sixth|twelfth|full>] <--json|--format text>
+```
+
+### Positionals
+
+None.
+
+### Options
+
+| Name | Maps to | Required | Value |
+| --- | --- | --- | --- |
+| `--panel-id` | `panelId` | yes | string |
+| `--resolution` | `resolution` | no | string; one of "octave", "third", "sixth", "twelfth", "full"; default "third" |
 | `--json` | local only | no | boolean |
 | `--format` | local only | no | string; one of "text" |
 

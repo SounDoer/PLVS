@@ -610,6 +610,10 @@ export function UiNavigationProvider({
     (panelId) => targetsRef.current.get(`panelGestures:${panelId}`)?.current ?? null,
     []
   );
+  const getPanelReadout = useCallback(
+    (panelId) => targetsRef.current.get(`panelReadout:${panelId}`)?.current ?? null,
+    []
+  );
   /**
    * The Pin button a panel shows now. While Fullscreen is shown that is the overlay's, which only
    * unpins the shown panel; every other panel has none.
@@ -705,6 +709,7 @@ export function UiNavigationProvider({
       showDockToolbar,
       stepQuickTour,
       getPanelGestures,
+      getPanelReadout,
       getPanelPin,
       showPanelHelp,
       showPanelFullscreen,
@@ -731,6 +736,7 @@ export function UiNavigationProvider({
       showDockToolbar,
       stepQuickTour,
       getPanelGestures,
+      getPanelReadout,
       getPanelPin,
       showPanelHelp,
       showPanelFullscreen,

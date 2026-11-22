@@ -330,6 +330,15 @@ export async function runReadContract(run) {
   }
   for (const panel of app.workspace?.panels ?? []) {
     await run(["panel", "describe", panel.id, "--json"]);
+    if (panel.moduleId !== "spectrum") continue;
+    // A Spectrum in an inactive tab is not rendered and has nothing to read.
+    const spectrum = await run(
+      ["measurement", "spectrum", "--panel-id", panel.id, "--resolution", "octave", "--json"],
+      { allowFailure: true }
+    );
+    if (spectrum?.failed && spectrum.envelope?.error?.code !== "panelNotFound") {
+      throw new Error(`measurement spectrum failed for ${panel.id}.`);
+    }
   }
   for (const family of ["preset", "theme", "loudness-profile"]) {
     const listed = await run([family, "list", "--json"]);

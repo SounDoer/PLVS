@@ -1648,6 +1648,71 @@
       }
     },
     {
+      "id": "measurement.spectrum",
+      "family": "measurement",
+      "path": ["measurement", "spectrum"],
+      "usage": "plvs-cli measurement spectrum --panel-id <id> [--resolution <octave|third|sixth|twelfth|full>] <--json|--format text>",
+      "summary": "Read the band levels behind a Spectrum panel's curve.",
+      "execution": "runningApp",
+      "operation": "query",
+      "wireMethod": "measurement.spectrum",
+      "json": "optional",
+      "expectedRevision": "none",
+      "dryRun": false,
+      "outputFile": "none",
+      "positionals": [],
+      "options": [
+        {
+          "name": "--panel-id",
+          "mapsTo": "panelId",
+          "required": true,
+          "value": {
+            "type": "string"
+          }
+        },
+        {
+          "name": "--resolution",
+          "required": false,
+          "value": {
+            "type": "string",
+            "enum": ["octave", "third", "sixth", "twelfth", "full"],
+            "default": "third"
+          },
+          "mapsTo": "resolution"
+        },
+        {
+          "name": "--json",
+          "required": false,
+          "value": {
+            "type": "boolean"
+          }
+        },
+        {
+          "name": "--format",
+          "required": false,
+          "value": {
+            "type": "string",
+            "enum": ["text"]
+          }
+        }
+      ],
+      "wireParams": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["panelId"],
+        "properties": {
+          "panelId": {
+            "type": "string"
+          },
+          "resolution": {
+            "type": "string",
+            "enum": ["octave", "third", "sixth", "twelfth", "full"],
+            "default": "third"
+          }
+        }
+      }
+    },
+    {
       "id": "measurement.wait",
       "family": "measurement",
       "path": ["measurement", "wait"],

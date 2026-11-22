@@ -2,6 +2,7 @@ import { describeActiveLoudnessProfile } from "../../lib/activeLoudnessProfile.j
 
 import { buildMeasurementDescription, buildMeasurementInspection } from "../measurementControl.js";
 import { measurementPredicateMatches } from "../measurementPredicates.js";
+import { buildSpectrumReadout, SPECTRUM_READOUT_DEFAULT_RESOLUTION } from "../spectrumReadout.js";
 import { semanticFailure, WAIT_CANCELLED } from "../bridge/failures.js";
 
 function isDifferentPublishedMeasurement(live, afterGeneration, afterSequence) {
@@ -78,6 +79,69 @@ async function inspect(ctx) {
     requestId,
     result: buildMeasurementOrFail(ctx),
   };
+}
+
+/**
+ * The numbers behind one Spectrum panel's curve, read from that panel's last render.
+ *
+ * @param {import("../bridge/types.js").BridgeContext} ctx
+ */
+async function spectrum(ctx) {
+  const { request, requestId, clock } = ctx;
+  const { panelId } = request.params;
+  const moduleId = ctx.live().workspace?.panelsById?.[panelId]?.moduleId;
+  if (!moduleId) {
+    throw semanticFailure(
+      "panelNotFound",
+      "$.params.panelId",
+      `Panel ${panelId} does not exist.`,
+      -32010,
+      { panelId }
+    );
+  }
+  if (moduleId !== "spectrum") {
+    throw semanticFailure(
+      "controlUnavailable",
+      "$.params.panelId",
+      `Panel ${panelId} is a ${moduleId} panel; measurement spectrum reads Spectrum panels.`,
+      -32012,
+      { panelId, moduleId }
+    );
+  }
+  const readout = ctx.live().uiNavigation?.getPanelReadout?.(panelId);
+  if (typeof readout?.read !== "function") {
+    throw semanticFailure(
+      "panelNotFound",
+      "$.params.panelId",
+      `Panel ${panelId} is not currently rendered.`,
+      -32010,
+      { panelId }
+    );
+  }
+  const currentMeasurement = ctx.live().measurementContext;
+  const live = currentMeasurement.getLiveMeasurement?.() ?? { generation: 0, record: null };
+  try {
+    return {
+      requestId,
+      result: buildSpectrumReadout({
+        revision: clock.current(),
+        observedAtMs: Date.now(),
+        panelId,
+        resolution: request.params.resolution ?? SPECTRUM_READOUT_DEFAULT_RESOLUTION,
+        liveState: currentMeasurement.liveState,
+        sessionGeneration: live.generation,
+        hasLiveSample: Boolean(live.record),
+        readout: readout.read(),
+      }),
+    };
+  } catch (error) {
+    throw semanticFailure(
+      "measurementSnapshotFailed",
+      "$",
+      `The Spectrum readout could not be formed: ${error?.message || String(error)}`,
+      -32072
+    );
+  }
 }
 
 /** @param {import("../bridge/types.js").BridgeContext} ctx */
@@ -295,6 +359,7 @@ async function waitUntil(ctx) {
 export const measurementHandlers = {
   "measurement.describe": { run: describe, lane: "direct" },
   "measurement.inspect": { run: inspect, lane: "direct" },
+  "measurement.spectrum": { run: spectrum, lane: "direct" },
   "measurement.wait": { run: wait, lane: "direct" },
   "measurement.waitUntil": { run: waitUntil, lane: "direct" },
 };
