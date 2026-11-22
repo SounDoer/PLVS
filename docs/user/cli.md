@@ -394,8 +394,9 @@ constrains the editor's size.
 Agent Control never takes keyboard focus from the app you are using. When PLVS is covered, or
 minimized on macOS, a screenshot raises it into view without activating it; a recording restores a
 minimized window wherever the system allows it (not under Wayland). A hidden window stays hidden until `window show`. If you cover
-or minimize PLVS during a recording, PLVS leaves it there and the agent sees that span as
-`renderStalled` in the recording's events. See
+or minimize PLVS during a main-window or workspace recording, PLVS leaves the window in place.
+The recording repeats the last frame until new frames arrive. The agent can find the pause and
+recovery in the recording's `renderStalled` and `renderResumed` events. See
 [Background windows](../agent-control/visual.md#background-windows).
 Screenshots and recording are available on Windows, macOS, and Linux. The recording-only `dock`
 target is available on Windows and macOS and includes the strip, toolbar, open editor, and any

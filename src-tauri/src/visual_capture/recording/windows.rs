@@ -54,7 +54,7 @@ mod windows_backend {
   use windows_sys::Win32::Graphics::Gdi::{
     ClientToScreen, GetMonitorInfoW, MonitorFromWindow, MONITORINFO, MONITOR_DEFAULTTONEAREST,
   };
-  use windows_sys::Win32::UI::WindowsAndMessaging::{GetClientRect, GetWindowRect};
+  use windows_sys::Win32::UI::WindowsAndMessaging::{GetClientRect, GetWindowRect, IsIconic};
 
   use super::super::super::artifacts::{ArtifactStore, PendingArtifact};
   use super::super::super::platform::{calculate_pixel_crop, CssRect, CssViewport, PixelCrop};
@@ -717,17 +717,25 @@ mod windows_backend {
       frame: &mut Frame,
       _capture_control: InternalCaptureControl,
     ) -> Result<(), Self::Error> {
-      let captured_ns = self.clock.captured_ns(frame)?;
       let geometry = *self
         .geometry
         .lock()
         .map_err(|_| "recording geometry lock poisoned")?;
       let crop = match self.monitor {
-        Some(monitor) => {
-          screen_region_crop(self.hwnd, monitor, frame.width(), frame.height(), geometry)?
-        }
+        Some(monitor) => Some(screen_region_crop(
+          self.hwnd,
+          monitor,
+          frame.width(),
+          frame.height(),
+          geometry,
+        )?),
         None => window_client_crop(self.hwnd, frame.width(), frame.height(), geometry)?,
       };
+      let Some(crop) = crop else {
+        // The encoder keeps the last picture on the recording timeline until a usable frame arrives.
+        return Ok(());
+      };
+      let captured_ns = self.clock.captured_ns(frame)?;
       composite_frame(
         frame,
         crop,
@@ -1027,8 +1035,11 @@ mod windows_backend {
     frame_width: u32,
     frame_height: u32,
     geometry: RecordingGeometry,
-  ) -> Result<PixelCrop, Box<dyn Error + Send + Sync>> {
+  ) -> Result<Option<PixelCrop>, Box<dyn Error + Send + Sync>> {
     let hwnd = hwnd as windows_sys::Win32::Foundation::HWND;
+    if unsafe { IsIconic(hwnd) } != 0 {
+      return Ok(None);
+    }
     let mut window = SysRect::default();
     let mut client = SysRect::default();
     let mut client_origin = POINT::default();
@@ -1057,6 +1068,7 @@ mod windows_backend {
       client,
       geometry,
     )
+    .map_err(Into::into)
   }
 
   /// Locates the client area in a window capture frame from screen rectangles: the frame covers the
@@ -1069,7 +1081,7 @@ mod windows_backend {
     client_origin: POINT,
     client: SysRect,
     geometry: RecordingGeometry,
-  ) -> Result<PixelCrop, Box<dyn Error + Send + Sync>> {
+  ) -> Result<Option<PixelCrop>, super::super::super::platform::CaptureError> {
     let visible = visible.unwrap_or(window);
     let visible_width = f64::from(visible.right - visible.left);
     let visible_height = f64::from(visible.bottom - visible.top);
@@ -1077,7 +1089,8 @@ mod windows_backend {
     let client_height = f64::from(client.bottom - client.top);
     if visible_width <= 0.0 || visible_height <= 0.0 || client_width <= 0.0 || client_height <= 0.0
     {
-      return Err("The PLVS client area is empty.".into());
+      // A minimize or restore can change the bounds while the capture callback is reading them.
+      return Ok(None);
     }
     pixel_crop_for_client(
       frame_width,
@@ -1091,7 +1104,7 @@ mod windows_backend {
       ),
       geometry,
     )
-    .map_err(Into::into)
+    .map(Some)
   }
 
   /// A screen region given in CSS pixels of the main client area, which may extend beyond it (the
@@ -1414,12 +1427,12 @@ mod windows_backend {
       .unwrap();
       assert_eq!(
         crop,
-        PixelCrop {
+        Some(PixelCrop {
           x: 1,
           y: 38,
           width: 1600,
           height: 1000
-        }
+        })
       );
       // Maximized: the window rectangle overhangs the monitor; the visible bounds do not.
       let crop = client_crop_in_window_capture(
@@ -1445,12 +1458,12 @@ mod windows_backend {
       .unwrap();
       assert_eq!(
         crop,
-        PixelCrop {
+        Some(PixelCrop {
           x: 0,
           y: 29,
           width: 2560,
           height: 1351
-        }
+        })
       );
     }
 

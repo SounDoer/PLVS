@@ -254,6 +254,57 @@ export async function runWindowContract({ invoke, until, restart, steps, screens
   steps.push("verify maximize, restore, hide, and show");
 
   if (screenshotPath && process.platform === "win32") {
+    for (const target of ["main", "workspace"]) {
+      const { recording } = invoke([
+        "visual",
+        "recording",
+        "start",
+        "--target",
+        target,
+        "--audio",
+        "none",
+        "--max-duration-seconds",
+        "20",
+      ]);
+      const { recordingId } = recording;
+      const active = () => {
+        const current = invoke(["visual", "recording", "inspect", recordingId]).recording;
+        assert.equal(current.state, "recording", JSON.stringify(current.events));
+        return current;
+      };
+      const event = (kind) => until(() => active().events.find((item) => item.kind === kind), kind);
+      try {
+        await until(() => active().capturedFrames >= 30, "recording a second of video");
+        action("minimize");
+        observe({ visible: true, minimized: true });
+        const stalled = await event("renderStalled");
+        observe({ visible: true, minimized: true });
+        action("show");
+        observe({ visible: true, minimized: false });
+        const resumed = await event("renderResumed");
+        assert.ok(resumed.elapsedMs > stalled.elapsedMs);
+        const framesAtResume = active().capturedFrames;
+        await until(
+          () => active().capturedFrames >= framesAtResume + 15,
+          "recording after restore"
+        );
+      } finally {
+        const finished = invoke([
+          "visual",
+          "recording",
+          "stop",
+          recordingId,
+          "--out",
+          screenshotPath.replace(/\.png$/, `-${target}-resume.mp4`),
+        ]);
+        assert.equal(
+          finished.recording.state,
+          "completed",
+          JSON.stringify(finished.recording.events)
+        );
+      }
+      steps.push(`verify ${target} recording survives minimize and logs stall and resume`);
+    }
     await withOccluder(async (occluder) => {
       const before = foregroundProcess();
       const capture = invoke([
