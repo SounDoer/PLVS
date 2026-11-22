@@ -208,7 +208,7 @@ function withPanelSuggestions(semantic, request, snap) {
 function withUiTargetSuggestions(semantic, request, live) {
   const target = request?.params?.target ?? request?.params?.control;
   if (semantic?.reason !== "uiTargetNotFound" || typeof target !== "string") return semantic;
-  let mounted = [];
+  let mounted;
   try {
     mounted = [
       ...listUiTargets().map(({ id }) => id),
