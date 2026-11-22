@@ -177,35 +177,44 @@ pub fn agent_control_status(app: AppHandle) -> Result<AgentControlStatus, String
   current_status(&app)
 }
 
+/// Async so a macOS administrator prompt for the `PATH` link (`cli_path`) waits off the main thread
+/// instead of freezing the window behind it.
 #[tauri::command]
-pub fn set_agent_control_enabled(
+pub async fn set_agent_control_enabled(
   app: AppHandle,
   enabled: bool,
 ) -> Result<AgentControlStatus, String> {
-  let before = current_status(&app)?;
+  tauri::async_runtime::spawn_blocking(move || set_enabled(&app, enabled))
+    .await
+    .map_err(|error| format!("Agent Control toggle stopped: {error}"))?
+}
+
+fn set_enabled(app: &AppHandle, enabled: bool) -> Result<AgentControlStatus, String> {
+  let before = current_status(app)?;
   if !before.supported || !before.cli_installed {
     return Ok(before);
   }
 
-  // The flag is written only after the endpoint matches it. Windows PATH setup is a convenience
-  // that may lag behind a failed registry write; Unix platforms only refresh installation status.
+  // The flag is written only after the endpoint matches it. PATH setup is a convenience that may
+  // lag behind: a failed Windows registry write, or a macOS link the user declined to authorise.
+  // Linux only refreshes installation status.
   // Persisting last prevents a later launch from reopening an endpoint the user just closed.
   if enabled {
     let _ = crate::cli_path::set_cli_path_enabled(true)?;
-    start_endpoint(&app)?;
-    persist_enabled(&app, true)?;
+    start_endpoint(app)?;
+    persist_enabled(app, true)?;
   } else {
     if app
       .state::<crate::coordinator::CoordinatorRole>()
       .is_coordinator()
     {
-      stop_endpoint(&app);
+      stop_endpoint(app);
     }
-    persist_enabled(&app, false)?;
+    persist_enabled(app, false)?;
     let _ = crate::cli_path::set_cli_path_enabled(false)?;
   }
 
-  current_status(&app)
+  current_status(app)
 }
 
 /// Start at launch, where the window is already up and a failure must not abort the app.

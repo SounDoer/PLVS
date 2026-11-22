@@ -76,7 +76,7 @@ Ubuntu Preview:
 /usr/bin/plvs-preview-cli
 ```
 
-When PATH setup is enabled from Settings on Windows, a fresh terminal can run:
+When Agent Control is enabled in Settings on Windows or macOS, a fresh terminal can run:
 
 ```powershell
 plvs-cli --help
@@ -84,8 +84,11 @@ plvs-cli --help
 
 Portable builds may require the executable's full path.
 
-PLVS does not edit shell startup files or install symlinks on macOS or Linux. Full-path invocation
-always works; adding a development or bundled CLI to `PATH` is an optional user-owned setup step.
+On Windows, Agent Control adds the install folder to the user `PATH`. On macOS it links the bundled
+CLI as `/usr/local/bin/plvs-cli` (`plvs-preview-cli` for Preview) after an administrator prompt,
+and never replaces a file of that name that another installation owns; turning Agent Control off
+removes only its own link. PLVS does not edit shell startup files. Full-path invocation always
+works, and the dev identity installs no link.
 The Ubuntu stable package installs `plvs-cli` directly in `/usr/bin`; the Preview package installs
 `plvs-preview-cli` there so that both packages can be installed side by side.
 

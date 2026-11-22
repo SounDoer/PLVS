@@ -551,7 +551,9 @@ in the structured snapshot. Free-form log messages can still include device labe
 ## Agent Control
 
 **Agent Control** lets `plvs-cli` inspect and change the running app; see
-[Command Line](command-line.md). It is off until you enable it. When enabled, UI Navigation can
+[Command Line](command-line.md). It is off until you enable it. Enabling it also makes `plvs-cli`
+available by name in a new terminal: on Windows through your user `PATH`, on macOS through a link
+in `/usr/local/bin` that asks for an administrator password. When enabled, UI Navigation can
 open Settings or exact Panel Settings, begin Theme/Profile authoring, and open an unsent Feedback
 draft. Exact Close and Cancel operations use the same visible UI paths. They cannot save, send,
 confirm, or silently discard a draft; dirty cancellation opens a separate discard decision.
