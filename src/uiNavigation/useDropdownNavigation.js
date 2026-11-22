@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useUiNavigationTarget, useUiSurface } from "./UiNavigationContext.jsx";
+import { ignoresUnfocusedClose } from "./navigationHold.js";
 
 /**
  * Names one single-choice dropdown so the pointer can travel to it and `ui show dropdown` can open
@@ -30,7 +31,15 @@ export function useDropdownNavigation(control, owned = {}) {
     onClose: () => onOpenChange(false),
   });
   return {
-    rootProps: { open, onOpenChange },
+    rootProps: {
+      open,
+      // Radix Select closes itself on window blur; a dropdown Agent Control opened stays while the
+      // agent's own app takes focus back (see navigationHold.js).
+      onOpenChange: (next) => {
+        if (!next && ignoresUnfocusedClose()) return;
+        onOpenChange(next);
+      },
+    },
     triggerProps: named ? { "data-ui-target": control } : {},
   };
 }

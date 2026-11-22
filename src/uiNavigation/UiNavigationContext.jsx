@@ -10,6 +10,7 @@ import {
 } from "react";
 import { useBlockingEditors } from "../hooks/BlockingEditorsContext.jsx";
 import { useUiSurfaceScopeActive } from "./uiSurfaceScope.jsx";
+import { holdNavigationSurfaces } from "./navigationHold.js";
 import {
   createUiNavigationState,
   createUiNavigationError,
@@ -417,6 +418,7 @@ export function UiNavigationProvider({
           }
           throw createUiNavigationError("uiConflict", { kind });
         }
+        holdNavigationSurfaces();
         if (kind === "panelSettings") {
           if (typeof controller.prepare !== "function") {
             throw createUiNavigationError("surfaceUnavailable", { kind });

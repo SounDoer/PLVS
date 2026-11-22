@@ -66,6 +66,12 @@ click outside does. `panel-help` is available for the rendered tab of a normal o
 A hover preview of the gesture reference, opened by the pointer resting on the question mark, is
 the same surface.
 
+Popovers, toolbar menus and dropdowns normally close when the PLVS window loses focus, as native
+menus close when the user switches apps. `show` brings PLVS forward, and focus then returns to the
+agent's own terminal or app, so a surface `show` opened ignores that window blur: it stays until
+`ui close`, Escape, or a click elsewhere in PLVS closes it. The user's first pointer or key input
+in the window restores the normal behaviour.
+
 `panel-fullscreen` accepts the rendered tab of a Workspace panel; a tab behind another tab in its
 slot, or any panel in Dock, is `surfaceUnavailable`. The result is a `panelFullscreen` surface with
 target `{ panelId }`. Fullscreen is transient presentation, like the button: it advances

@@ -5,6 +5,7 @@ import { cn } from "@/lib/utils";
 import { POPOVER_SURFACE_CLASS } from "./surfaceStyles.js";
 import { LAYER_FLOATING } from "./layers.js";
 import { UiSurfaceScope } from "../../uiNavigation/uiSurfaceScope.jsx";
+import { navigationSurfacesHeld } from "../../uiNavigation/navigationHold.js";
 
 /** @param {{ open?: boolean, defaultOpen?: boolean, onOpenChange?: (...args: any[]) => any, [key: string]: any }} props */
 function Popover({ open: controlledOpen, defaultOpen = false, onOpenChange, ...props }) {
@@ -22,7 +23,10 @@ function Popover({ open: controlledOpen, defaultOpen = false, onOpenChange, ...p
   React.useEffect(() => {
     if (!open) return undefined;
 
-    const closeOnWindowBlur = () => setOpen(false);
+    // A popover Agent Control opened stays while the agent's own app takes focus back.
+    const closeOnWindowBlur = () => {
+      if (!navigationSurfacesHeld()) setOpen(false);
+    };
     window.addEventListener("blur", closeOnWindowBlur);
     return () => window.removeEventListener("blur", closeOnWindowBlur);
   }, [open, setOpen]);

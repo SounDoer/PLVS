@@ -1,12 +1,13 @@
 /** @vitest-environment jsdom */
 
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { useState } from "react";
 import { act, render, renderHook } from "@testing-library/react";
 import { BlockingEditorsProvider } from "../hooks/BlockingEditorsContext.jsx";
 import { UiNavigationProvider, useUiNavigation, useUiSurface } from "./UiNavigationContext.jsx";
 import { useDropdownNavigation } from "./useDropdownNavigation.js";
 import { UiSurfaceScope } from "./uiSurfaceScope.jsx";
+import { resetNavigationHold } from "./navigationHold.js";
 
 function wrapper({ children }) {
   return (
@@ -17,6 +18,51 @@ function wrapper({ children }) {
 }
 
 describe("named dropdowns", () => {
+  afterEach(() => {
+    resetNavigationHold();
+    vi.restoreAllMocks();
+  });
+
+  it("stays open when the agent's app takes focus back, and closes on the user's own input", async () => {
+    const { result } = renderHook(
+      () => ({
+        dropdown: useDropdownNavigation("setting:appearance.interfaceSize"),
+        navigation: useUiNavigation(),
+      }),
+      { wrapper }
+    );
+    /** @type {any} */
+    let pending;
+    await act(async () => {
+      pending = result.current.navigation.showDropdown({
+        control: "setting:appearance.interfaceSize",
+        expectedRevision: 2,
+        expectedUiGeneration: 0,
+      });
+      await Promise.resolve();
+    });
+    await pending;
+    const hasFocus = vi.spyOn(document, "hasFocus").mockReturnValue(false);
+
+    // Radix Select asks to close on window blur.
+    act(() => result.current.dropdown.rootProps.onOpenChange(false));
+    expect(result.current.dropdown.rootProps.open).toBe(true);
+
+    // Escape or a click elsewhere in PLVS arrives with the window focused.
+    hasFocus.mockReturnValue(true);
+    act(() => result.current.dropdown.rootProps.onOpenChange(false));
+    expect(result.current.dropdown.rootProps.open).toBe(false);
+
+    // Once the user has used the window, switching apps closes a dropdown again.
+    act(() => result.current.dropdown.rootProps.onOpenChange(true));
+    act(() => {
+      document.dispatchEvent(new Event("pointerdown"));
+    });
+    hasFocus.mockReturnValue(false);
+    act(() => result.current.dropdown.rootProps.onOpenChange(false));
+    expect(result.current.dropdown.rootProps.open).toBe(false);
+  });
+
   it("names the trigger and opens and closes through the owner's open state", async () => {
     const { result } = renderHook(
       () => ({
