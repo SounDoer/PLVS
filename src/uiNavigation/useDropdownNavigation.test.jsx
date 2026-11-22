@@ -1,10 +1,12 @@
 /** @vitest-environment jsdom */
 
 import { describe, expect, it } from "vitest";
-import { act, renderHook } from "@testing-library/react";
+import { useState } from "react";
+import { act, render, renderHook } from "@testing-library/react";
 import { BlockingEditorsProvider } from "../hooks/BlockingEditorsContext.jsx";
-import { UiNavigationProvider, useUiNavigation } from "./UiNavigationContext.jsx";
+import { UiNavigationProvider, useUiNavigation, useUiSurface } from "./UiNavigationContext.jsx";
 import { useDropdownNavigation } from "./useDropdownNavigation.js";
+import { UiSurfaceScope } from "./uiSurfaceScope.jsx";
 
 function wrapper({ children }) {
   return (
@@ -54,6 +56,64 @@ describe("named dropdowns", () => {
     });
     await pending;
     expect(result.current.dropdown.rootProps.open).toBe(false);
+  });
+
+  it("closes with its parent while the parent's content is still animating out", async () => {
+    /** @type {any} */
+    const seen = {};
+    function Dropdown() {
+      seen.dropdown = useDropdownNavigation("panel-control:spectrum:spectrumMaxMode");
+      return null;
+    }
+    function Menu() {
+      const [open, setOpen] = useState(true);
+      seen.navigation = useUiNavigation();
+      useUiSurface({
+        active: open,
+        kind: "panelSettings",
+        origin: "navigable",
+        dismissible: true,
+        supportedActions: ["close"],
+        target: { panelId: "spectrum" },
+        onClose: () => setOpen(false),
+      });
+      // Like a closing popover, the content stays mounted; only the scope reports the close.
+      return (
+        <UiSurfaceScope active={open}>
+          <Dropdown />
+        </UiSurfaceScope>
+      );
+    }
+    render(<Menu />, { wrapper });
+
+    /** @type {any} */
+    let pending;
+    await act(async () => {
+      pending = seen.navigation.showDropdown({
+        control: "panel-control:spectrum:spectrumMaxMode",
+        expectedRevision: 2,
+        expectedUiGeneration: seen.navigation.inspectUi().uiGeneration,
+      });
+      await Promise.resolve();
+    });
+    await pending;
+    const kinds = () => seen.navigation.inspectUi().surfaces.map((surface) => surface.kind);
+    expect(kinds()).toEqual(["panelSettings", "dropdown"]);
+
+    const parent = seen.navigation
+      .inspectUi()
+      .surfaces.find((surface) => surface.kind === "panelSettings");
+    await act(async () => {
+      pending = seen.navigation.closeSurface({
+        surfaceId: parent.surfaceId,
+        expectedRevision: 2,
+        expectedUiGeneration: seen.navigation.inspectUi().uiGeneration,
+      });
+      await Promise.resolve();
+    });
+    await pending;
+    expect(seen.dropdown.rootProps.open).toBe(true);
+    expect(kinds()).toEqual([]);
   });
 
   it("refuses an unnamed dropdown", async () => {

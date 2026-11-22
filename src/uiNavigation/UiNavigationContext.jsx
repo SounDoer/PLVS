@@ -9,6 +9,7 @@ import {
   useState,
 } from "react";
 import { useBlockingEditors } from "../hooks/BlockingEditorsContext.jsx";
+import { useUiSurfaceScopeActive } from "./uiSurfaceScope.jsx";
 import {
   createUiNavigationState,
   createUiNavigationError,
@@ -777,6 +778,9 @@ export function useUiSurface({
   ...descriptor
 }) {
   const registry = useContext(UiSurfaceRegistryContext);
+  // A surface inside a closing popover or dialog closes with it, even while still mounted.
+  const scopeActive = useUiSurfaceScopeActive();
+  active = active && scopeActive;
   const surfaceIdRef = useRef(null);
   const lifetimeKeyRef = useRef(lifetimeKey);
   const wasActiveRef = useRef(false);

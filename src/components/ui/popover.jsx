@@ -4,6 +4,7 @@ import * as PopoverPrimitive from "@radix-ui/react-popover";
 import { cn } from "@/lib/utils";
 import { POPOVER_SURFACE_CLASS } from "./surfaceStyles.js";
 import { LAYER_FLOATING } from "./layers.js";
+import { UiSurfaceScope } from "../../uiNavigation/uiSurfaceScope.jsx";
 
 /** @param {{ open?: boolean, defaultOpen?: boolean, onOpenChange?: (...args: any[]) => any, [key: string]: any }} props */
 function Popover({ open: controlledOpen, defaultOpen = false, onOpenChange, ...props }) {
@@ -27,7 +28,9 @@ function Popover({ open: controlledOpen, defaultOpen = false, onOpenChange, ...p
   }, [open, setOpen]);
 
   return (
-    <PopoverPrimitive.Root data-slot="popover" open={open} onOpenChange={setOpen} {...props} />
+    <UiSurfaceScope active={open}>
+      <PopoverPrimitive.Root data-slot="popover" open={open} onOpenChange={setOpen} {...props} />
+    </UiSurfaceScope>
   );
 }
 

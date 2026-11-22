@@ -6,9 +6,15 @@ import { X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { MODAL_SURFACE_BASE_CLASS, SCRIM_CLASS } from "./surfaceStyles.js";
 import { LAYER_FLOATING } from "./layers.js";
+import { UiSurfaceScope } from "../../uiNavigation/uiSurfaceScope.jsx";
 
+/** Content of a closing sheet stays mounted while it animates out; see `UiSurfaceScope`. */
 function Sheet(props) {
-  return <SheetPrimitive.Root data-slot="sheet" {...props} />;
+  return (
+    <UiSurfaceScope active={props.open !== false}>
+      <SheetPrimitive.Root data-slot="sheet" {...props} />
+    </UiSurfaceScope>
+  );
 }
 
 function SheetTrigger(props) {

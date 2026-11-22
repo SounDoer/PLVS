@@ -5,8 +5,16 @@ import { useModalBackdropElement } from "../../hooks/FloatingPanelHostContext.js
 import { cn } from "@/lib/utils";
 import { LAYER_FLOATING } from "./layers.js";
 import { MODAL_SURFACE_CLASS, SCRIM_CLASS } from "./surfaceStyles.js";
+import { UiSurfaceScope } from "../../uiNavigation/uiSurfaceScope.jsx";
 
-const Dialog = DialogPrimitive.Root;
+/** Content of a closing dialog stays mounted while it animates out; see `UiSurfaceScope`. */
+function Dialog(props) {
+  return (
+    <UiSurfaceScope active={props.open !== false}>
+      <DialogPrimitive.Root {...props} />
+    </UiSurfaceScope>
+  );
+}
 
 const DIALOG_WIDTH_CLASS = {
   sm: "w-[min(var(--ui-surface-compact-w),calc(100vw-2rem))]",
