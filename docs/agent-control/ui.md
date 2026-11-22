@@ -214,6 +214,13 @@ native or ARIA state. Fields are `pressed`, `expanded`, `selected`, `checked`, a
 Values are booleans, with `"mixed"` also possible for `pressed` and `checked`. For example,
 `toolbar:dialogue-detection` reports the pressed state of the rendered File toolbar button.
 
+A target whose value an Agent Control mutation owns carries `binding`: the `command` that changes
+it and the field it changes, because target names follow the stored control keys rather than the
+public fields. A Panel Settings row reports `{ command: "panel update", panelId, path }`, a linked
+range row `{ command: "axis panel update", panelId, axis }`, and a Settings row
+`{ command: "settings update", path }`. For example `panel-control:spectrum:spectrumGrid` is
+`panel update spectrum` with `{ "grid": ... }`. Buttons, tabs and actions have no binding.
+
 In File mode, `toolbar:dialogue-detection` identifies the Dialogue Detection switch. Set its value
 through [Settings Control](settings.md#file-dialogue-detection). When present, the summary's
 `file-summary:details` and `file-summary:warning` targets also accept

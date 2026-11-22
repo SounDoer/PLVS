@@ -1,5 +1,6 @@
 import { semanticFailure } from "../bridge/failures.js";
 import { isUiTargetId, listUiTargets, resolveUiTarget } from "../../uiNavigation/uiTargets.js";
+import { uiTargetBinding } from "../uiTargetBindings.js";
 
 /** @param {import("../bridge/types.js").BridgeContext} ctx */
 async function inspect(ctx) {
@@ -31,7 +32,13 @@ async function targets(ctx) {
     requestId,
     result: {
       revision: clock.current(),
-      targets: [...listUiTargets().map((target) => ({ ...target, surface: "main" })), ...accessory],
+      targets: [
+        ...listUiTargets().map((target) => ({ ...target, surface: "main" })),
+        ...accessory,
+      ].map((target) => {
+        const binding = uiTargetBinding(target.id);
+        return binding ? { ...target, binding } : target;
+      }),
     },
   };
 }
