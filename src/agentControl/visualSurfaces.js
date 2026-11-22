@@ -134,6 +134,31 @@ export function resolveVisualSurface({
   };
 }
 
+const OCCLUSION_GRID = 4;
+
+/**
+ * How much of a Panel or named target something else is drawn over, such as a menu, popover or
+ * dialog left open above it, sampled on a grid of points. The screenshot captures those pixels as
+ * they are; this lets the result say so. Elements that ignore the pointer, such as tooltips, are not
+ * seen.
+ */
+export function coveredPercentOf(surface, documentObject) {
+  const { target, element, rect } = surface;
+  if (target.kind !== "panel" && target.kind !== "named") return 0;
+  if (typeof documentObject?.elementFromPoint !== "function") return 0;
+  if (!(rect.width > 0 && rect.height > 0)) return 0;
+  let covered = 0;
+  for (let row = 0; row < OCCLUSION_GRID; row += 1) {
+    for (let column = 0; column < OCCLUSION_GRID; column += 1) {
+      const x = rect.x + ((column + 0.5) * rect.width) / OCCLUSION_GRID;
+      const y = rect.y + ((row + 0.5) * rect.height) / OCCLUSION_GRID;
+      const hit = documentObject.elementFromPoint(x, y);
+      if (hit && hit !== element && !element.contains(hit)) covered += 1;
+    }
+  }
+  return Math.round((covered * 100) / (OCCLUSION_GRID * OCCLUSION_GRID));
+}
+
 function sameRect(left, right) {
   return (
     left.x === right.x &&
@@ -313,6 +338,7 @@ export async function settleVisualSurface({
             details: { expectedUiGeneration, currentUiGeneration: uiGeneration },
           });
         }
+        const coveredPercent = coveredPercentOf(surface, documentObject);
         return {
           target: surface.target,
           windowLabel: surface.windowLabel,
@@ -321,6 +347,7 @@ export async function settleVisualSurface({
           devicePixelRatio: surface.devicePixelRatio,
           revision,
           uiGeneration,
+          ...(coveredPercent > 0 ? { coveredPercent } : {}),
         };
       }
       previous = settled ? surface : null;

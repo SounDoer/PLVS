@@ -38,7 +38,12 @@ artifact. `recording.unavailable` is `null` while recording is available; otherw
   Linux does not advertise it and refuses it with `targetUnavailable`.
 
 Capture preserves actual rendered pixels. Open menus, PLVS-rendered cursors, hover state, selection
-hints, and overlays remain visible when they intersect the target. The recording indicator is
+hints, and overlays remain visible when they intersect the target. When something drawn over a
+`panel` or `named` target covers part of it, the screenshot result carries a `targetOccluded`
+warning with the `coveredPercent` of the target and the `openSurfaces` (`surfaceId`, `kind`) that
+`ui inspect` reports, so a caller that wanted the bare panel can close them and capture again.
+Coverage is sampled on a grid; elements that ignore the pointer, such as tooltips, are not counted.
+The recording indicator is
 visible by default and can be hidden for an individual recording with `--indicator hidden`. There
 is no general clean-UI mode. Target bounds settle across the font and paint barrier before capture, and
 screenshot metadata reports the actual output width and height after device/WebView scaling.

@@ -2,6 +2,7 @@
 
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
+  coveredPercentOf,
   resolveVisualSurface,
   settleVisualSurface,
   subscribeVisualSurfaceResize,
@@ -128,6 +129,28 @@ describe("visual surface resolution", () => {
       ok: false,
       error: expect.objectContaining({ reason: "targetUnavailable" }),
     });
+  });
+});
+
+describe("visual target occlusion", () => {
+  it("reports the share of a Panel that another element is drawn over", () => {
+    const panel = document.createElement("div");
+    const inside = document.createElement("canvas");
+    panel.append(inside);
+    const menu = document.createElement("div");
+    // A menu over the right half of a 400 x 200 Panel.
+    const documentObject = {
+      elementFromPoint: (x) => (x >= 200 ? menu : inside),
+    };
+    const surface = {
+      target: { kind: "panel", panelId: "spectrum" },
+      element: panel,
+      rect: { x: 0, y: 0, width: 400, height: 200 },
+    };
+    expect(coveredPercentOf(surface, documentObject)).toBe(50);
+    expect(coveredPercentOf(surface, { elementFromPoint: () => inside })).toBe(0);
+    expect(coveredPercentOf({ ...surface, target: { kind: "main" } }, documentObject)).toBe(0);
+    expect(coveredPercentOf(surface, {})).toBe(0);
   });
 });
 

@@ -122,6 +122,19 @@ async function screenshot(ctx) {
         },
         artifact,
         target: request.params.target,
+        ...(settled.coveredPercent > 0
+          ? {
+              warnings: [
+                {
+                  code: "targetOccluded",
+                  coveredPercent: settled.coveredPercent,
+                  openSurfaces: (uiNavigation?.inspectUi?.().surfaces ?? []).map(
+                    ({ surfaceId, kind }) => ({ surfaceId, kind })
+                  ),
+                },
+              ],
+            }
+          : {}),
       },
     };
   } catch (error) {
