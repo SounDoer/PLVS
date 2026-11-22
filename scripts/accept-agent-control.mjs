@@ -23,6 +23,7 @@ import { runIsolatedAgentControl } from "./accept-isolated-agent-control.mjs";
 import { withCaptureRig } from "./capture-rig.mjs";
 import { LIVE_SOURCE_RECONNECT, runLiveSourceReconnect } from "./smoke-live-source-reconnect.mjs";
 import { AGENT_CONTROL_ACCEPTANCE_SCENARIOS } from "./agent-control-acceptance-catalog.mjs";
+import { runMcpContract } from "./mcp-acceptance.mjs";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
 const REQUIRED_SCENARIOS = [
@@ -33,6 +34,7 @@ const REQUIRED_SCENARIOS = [
   "dock-platform-contract",
   "dialog-decisions",
   "revision-wait",
+  "mcp-adapter",
 ];
 export const ISOLATED_SCENARIOS = [
   "desktop",
@@ -537,6 +539,7 @@ export async function runAgentControlAcceptance({
         invoker.asyncOutcome([...args, "--instance", selectedInstance])
       )
     );
+    pass("mcp-adapter", await runMcpContract({ executable, instanceId: selectedInstance }));
   } catch (error) {
     failure = error;
     const completedIds = new Set(completed.map(({ id }) => id));

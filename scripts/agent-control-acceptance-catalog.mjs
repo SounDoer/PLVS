@@ -12,7 +12,7 @@ const groups = [
   {
     scenario: "offline-contract",
     disposition: "offline",
-    commands: ["instances.list", "doctor", "schema.list", "schema.get", "completion", "mcp"],
+    commands: ["instances.list", "doctor", "schema.list", "schema.get", "completion"],
   },
   {
     scenario: "base-smoke",
@@ -246,6 +246,11 @@ const groups = [
     scenario: "revision-wait",
     disposition: "roundTrip",
     commands: ["app.wait"],
+  },
+  {
+    scenario: "mcp-adapter",
+    disposition: "roundTrip",
+    commands: ["mcp"],
   },
   {
     scenario: "update-check",
