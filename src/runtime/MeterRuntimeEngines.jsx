@@ -35,6 +35,7 @@ export function MeterRuntimeEngines({
     filePath: validRunRequest?.filePath ?? "",
     runId: validRunRequest?.runId ?? 0,
     settings: validRunRequest?.analysisSettings,
+    requestInputs: validRunRequest?.requestInputs,
     probe: validRunRequest?.probe,
     audioRef,
     defaultSampleRateRef,

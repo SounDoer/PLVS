@@ -1,5 +1,6 @@
 use serde::Deserialize;
 
+use super::layout::roles_for_layout;
 use crate::file_analysis::types::{FileAnalysisMediaProbeResult, FileAudioTrackMetadata};
 
 #[derive(Deserialize)]
@@ -81,6 +82,9 @@ pub fn parse_ffprobe_media_json(
       title: audio.tags.as_ref().and_then(|tags| tags.title.clone()),
       default_track: audio.disposition.as_ref().is_some_and(|d| d.default != 0),
       channel_layout: audio.channel_layout.clone(),
+      channel_roles: audio
+        .channels
+        .and_then(|channels| roles_for_layout(audio.channel_layout.as_deref(), channels)),
       bits_per_sample: audio
         .bits_per_raw_sample
         .as_ref()
@@ -190,6 +194,14 @@ mod tests {
     assert_eq!(track.bits_per_sample, Some(24));
     assert_eq!(track.sample_format.as_deref(), Some("s32"));
     assert_eq!(track.channel_layout.as_deref(), Some("5.1(side)"));
+    assert_eq!(
+      track.channel_roles,
+      Some(
+        ["L", "R", "C", "LFE", "Ls", "Rs"]
+          .map(String::from)
+          .to_vec()
+      )
+    );
     assert_eq!(media.audio_tracks[1].channel_layout, None);
     assert_eq!(media.audio_tracks[1].bits_per_sample, None);
   }

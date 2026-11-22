@@ -22,7 +22,10 @@ const runtime = {
       fileName: "mix.wav",
       state: "complete",
       progress: 1,
-      metadata: { durationMs: 1000 },
+      metadata: {
+        durationMs: 1000,
+        selectedTrack: { index: 0, channels: 2, channelRoles: ["L", "R"] },
+      },
       summary: { integratedLufs: -23 },
       createdAt: 10,
       analyzedAt: 20,
@@ -92,7 +95,10 @@ describe("Transport Control", () => {
             progress: 1,
             runId: 0,
             runOutcome: null,
-            probe: { durationMs: 1000 },
+            probe: {
+              durationMs: 1000,
+              selectedTrack: { index: 0, channels: 2, channelRoles: ["L", "R"] },
+            },
             summary: { integratedLufs: -23 },
             createdAt: 10,
             analyzedAt: 20,

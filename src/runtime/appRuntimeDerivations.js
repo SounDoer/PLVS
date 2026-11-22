@@ -1,6 +1,14 @@
 import { roleTokensToLabels, seedTokensFromLabels } from "../math/channelRoles.js";
 import { layoutIdForRoles, standardLayoutIdForCount } from "../math/channelLayoutTable.js";
 import { getPeakMeterChannelLabels } from "../math/peakMeterChannelLabels.js";
+import { buildSpectrumChannelOptions } from "../math/spectrumChannelOptions.js";
+import { deriveAnalysisRequests } from "../analysis/analysisRequests.js";
+import {
+  effectiveWorkspaceState,
+  resolveEffectiveChannelControls,
+} from "../analysis/effectiveChannels.js";
+import { mergeDockAnalysisRequests } from "../dock/dockAnalysisRequest.js";
+import { dockModuleIdForPanelModuleId } from "../dock/dockLayout.js";
 
 /// Every request-family array and every request field here is required by `AnalysisRequests` in
 /// src-tauri/src/ipc/types.rs, which declares no serde defaults. A missing field fails
@@ -29,6 +37,47 @@ export function deriveBackendAnalysisRequests(requests) {
       octaveSmoothing: request.octaveSmoothing,
     })),
     spectralWaveform: requests.spectralWaveform === true,
+  };
+}
+
+export function deriveSpectrumChannelOptions(channelCount, peakLabelContext) {
+  const count = channelCount >= 2 ? channelCount : 2;
+  return buildSpectrumChannelOptions(count, getPeakMeterChannelLabels(count, peakLabelContext));
+}
+
+export function resolveDockAnalysisPanels(panels, topology) {
+  return panels.map((panel) => {
+    const { controls, unavailable } = resolveEffectiveChannelControls(
+      dockModuleIdForPanelModuleId(panel.moduleId) ?? panel.moduleId,
+      panel.controls,
+      topology
+    );
+    return unavailable ? { ...panel, controls } : panel;
+  });
+}
+
+export function resolveFileAnalysisSettings(settings, requestInputs, selectedTrack) {
+  // Restore History and callers with an explicit request list use the original settings.
+  if (!requestInputs) return settings;
+  const { workspaceState, dockPanels } = requestInputs;
+  const channelCount = selectedTrack?.channels ?? 0;
+  const { peakLabelContext } = deriveChannelLabelRuntime({
+    channelCount,
+    channelLabelOverrides: settings.channelRolesByCount ?? {},
+    autoChannelRoles: selectedTrack?.channelRoles,
+  });
+  const topology = {
+    channelCount,
+    peakLabelContext,
+    spectrumChannelOptions: deriveSpectrumChannelOptions(channelCount, peakLabelContext),
+  };
+  const derived = deriveAnalysisRequests(effectiveWorkspaceState(workspaceState, topology), {
+    channelCount,
+  });
+  const dock = dockPanels ? resolveDockAnalysisPanels(dockPanels, topology) : false;
+  return {
+    ...settings,
+    requests: deriveBackendAnalysisRequests(mergeDockAnalysisRequests(derived, dock)),
   };
 }
 

@@ -7,6 +7,9 @@ Inspect a local audio file offline, using the same meter panels as live monitori
 In File Mode, drag an audio file or a video with an audio track over the window. Release it when
 **Drop File to Analyze** appears. You can also choose **Open** in the transport pill.
 PLVS analyzes files locally using bundled ffprobe and FFmpeg.
+Panels with a channel or channel pair selection use the selected audio track's channel layout
+from the first analysis. If the track lacks the chosen channels, the panel uses its available
+fallback and keeps the original selection for other files.
 If you leave File Mode while choosing a file, the pending selection is discarded.
 
 When a file contains multiple audio tracks, choose one in **Select Audio Track**, then choose

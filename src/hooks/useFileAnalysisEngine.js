@@ -9,6 +9,7 @@ import {
 import { isTauri } from "../ipc/env.js";
 import { buildTauriFrameApply } from "../lib/tauriFrameApply.js";
 import { INITIAL_METER_AUDIO } from "./useMeterDisplay.js";
+import { resolveFileAnalysisSettings } from "../runtime/appRuntimeDerivations.js";
 
 // File display history is independent of the Live History Length preference. The native worker
 // adapts checkpoint cadence to keep the whole known duration inside these fixed four-hour-at-base-
@@ -39,6 +40,7 @@ export function useFileAnalysisEngine({
   filePath,
   runId,
   settings,
+  requestInputs = null,
   probe = null,
   audioRef,
   defaultSampleRateRef,
@@ -202,6 +204,11 @@ export function useFileAnalysisEngine({
           (await task.probeRequest.result.finally(() => task.probeCancellation?.catch(() => {})));
         task.probeRequest = null;
         if (!active()) return;
+        const runSettings = resolveFileAnalysisSettings(
+          settings,
+          requestInputs,
+          metadata.selectedTrack
+        );
         defaultSampleRateRef.current = metadata.selectedTrack?.sampleRateHz || 48000;
         updateFileSession(sessionId, (current) => ({
           ...current,
@@ -209,7 +216,10 @@ export function useFileAnalysisEngine({
           path: filePath,
           fileName: metadata.fileName,
           metadata: current.successfulResult ? current.metadata : metadata,
-          attempt: current.attempt ? { ...current.attempt, metadata } : current.attempt,
+          analysisSettings: current.successfulResult ? current.analysisSettings : runSettings,
+          attempt: current.attempt
+            ? { ...current.attempt, metadata, analysisSettings: runSettings }
+            : current.attempt,
           progress: 0,
           error: undefined,
           dialogueDetectionError: undefined,
@@ -283,7 +293,7 @@ export function useFileAnalysisEngine({
           path: filePath,
           probe: metadata,
           runId: token,
-          settings,
+          settings: runSettings,
           onFrame: (frame) => {
             if (!active() || task.terminal) return;
             applyFrame(frame);

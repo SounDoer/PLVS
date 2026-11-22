@@ -83,6 +83,8 @@ import { buildTauriFrameApply } from "../lib/tauriFrameApply.js";
  *   selectedOffset?: number,
  *   fileAnalysisAcceptanceRef?: { current: any },
  *   settings?: any,
+ *   requestInputs?: any,
+ *   probe?: any,
  * }} props
  */
 function Harness({
@@ -99,6 +101,8 @@ function Harness({
   selectedOffset = -1,
   fileAnalysisAcceptanceRef = { current: new Map() },
   settings = { dialogue: { enabled: true, engine: "firered" } },
+  requestInputs = null,
+  probe = null,
 }) {
   const audioRef = useRef(null);
   const selectedOffsetRef = useRef(selectedOffset);
@@ -130,6 +134,8 @@ function Harness({
       shouldDriveDisplay,
       fileAnalysisAcceptanceRef,
       settings,
+      requestInputs,
+      probe,
     })
   );
 
@@ -216,6 +222,64 @@ describe("useFileAnalysisEngine", () => {
         onFrame: expect.any(Function),
       })
     );
+  });
+
+  it.each([
+    [1, null],
+    [2, { first: 0, second: 1 }],
+    [6, { first: 4, second: 5 }],
+  ])("uses the selected %s-channel track to build the File requests", async (channels, pair) => {
+    const controls = {
+      spectrum: { spectrumChannel: { type: "single", ch: 2 } },
+      spectrogram: { spectrumChannel: { type: "pair", x: 4, y: 5 } },
+      vectorscope: { vectorscopePair: { x: 4, y: 5 } },
+      "stereo-map": { stereoMapPair: { x: 4, y: 5 } },
+      waveform: { waveformFrequencyColor: true },
+    };
+    const tabs = Object.keys(controls);
+    const { updateFileSession } = renderHarness({
+      requestInputs: {
+        workspaceState: {
+          tree: { type: "leaf", tabs, activeTab: tabs[0] },
+          panelOrder: tabs,
+          panelsById: Object.fromEntries(tabs.map((id) => [id, { id, moduleId: id }])),
+          panelControlsById: controls,
+        },
+      },
+      probe: {
+        fileName: "final.wav",
+        audioTracks: [
+          { index: 0, channels: 1 },
+          { index: 1, channels },
+        ],
+        selectedTrack: { index: 1, channels },
+      },
+    });
+    await waitFor(() => expect(startFileAnalysis).toHaveBeenCalledTimes(1));
+    const { settings } = vi.mocked(startFileAnalysis).mock.calls[0][0];
+    const surround = channels === 6;
+    expect(settings.requests.spectrum.map(({ channel }) => channel)).toEqual(
+      surround
+        ? [controls.spectrum.spectrumChannel, controls.spectrogram.spectrumChannel]
+        : [{ type: "pair", x: 0, y: 1 }]
+    );
+    expect(settings.requests.vectorscope).toEqual([
+      expect.objectContaining({ x: surround ? 4 : 0, y: surround ? 5 : 1 }),
+    ]);
+    expect(settings.requests.stereoMap.map((request) => request.pair)).toEqual(pair ? [pair] : []);
+    expect(settings.requests.spectralWaveform).toBe(true);
+
+    const previousSettings = { requests: { stereoMap: [] } };
+    expect(
+      applySessionUpdater(updateFileSession, {
+        successfulResult: { analysisSettings: previousSettings },
+        analysisSettings: previousSettings,
+        attempt: {},
+      })
+    ).toMatchObject({
+      analysisSettings: previousSettings,
+      attempt: { analysisSettings: settings },
+    });
   });
 
   it("acknowledges a control run only after the native engine accepts it", async () => {

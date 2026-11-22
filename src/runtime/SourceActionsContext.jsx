@@ -79,7 +79,7 @@ export function SourceActionsProvider({ children }) {
     clearFiles,
     stopFileAnalysis,
   } = useMeterRuntime();
-  const { liveIntakeRef, fileConditionsRef } = useMeterRuntimeAssembly();
+  const { liveIntakeRef, fileRequestInputsRef } = useMeterRuntimeAssembly();
   const {
     selectedOffset,
     setSelectedOffset,
@@ -100,7 +100,7 @@ export function SourceActionsProvider({ children }) {
   const { dialogueGating } = useMemo(() => deriveDialogueRuntime(workspaceState), [workspaceState]);
   const currentFileAnalysisSettings = useCallback(
     () => ({
-      ...(fileConditionsRef.current ? { requests: fileConditionsRef.current } : {}),
+      requestInputs: fileRequestInputsRef.current,
       channelRolesByCount: settings.channelLabelOverrides,
       dialogue: {
         enabled: fileDialogueDetection,
@@ -113,7 +113,7 @@ export function SourceActionsProvider({ children }) {
       fileDialogueDetection,
       settings.dialogueVadEngine,
       settings.channelLabelOverrides,
-      fileConditionsRef,
+      fileRequestInputsRef,
     ]
   );
   const { exportFileAnalysisReport, copyFileAnalysisReportMarkdown } = useFileAnalysisReportExport({

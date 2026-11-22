@@ -100,6 +100,8 @@ Each public summary contains immutable session ID, absolute path, file name, lif
 state, progress, public probe metadata, summary, timestamps, decoded frames, history availability,
 compact error, and the analysis-setting snapshot used for that run. Intake buffers and other
 implementation objects are never exposed.
+Probe audio tracks include `channelRoles` in stream order when PLVS can resolve the reported
+layout. File analysis resolves panel channel selections against the selected track before it starts.
 When a successful result exists, `resultId` identifies it in statistics CSV exports. It stays the
 same while a replacement is in progress and when browsing history is restored.
 

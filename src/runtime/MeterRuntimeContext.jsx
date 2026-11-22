@@ -77,7 +77,7 @@ export function MeterRuntimeProvider({ children }) {
   const pendingFileStopRef = useRef(null);
   const clearingFilesRef = useRef(null);
   const fileAnalysisAcceptanceRef = useRef(new Map());
-  const fileConditionsRef = useRef(null);
+  const fileRequestInputsRef = useRef(null);
   const taskSessionRef = useRef(null);
   const liveClearPendingRef = useRef(false);
   const activeFileIdRef = useRef(null);
@@ -697,7 +697,7 @@ export function MeterRuntimeProvider({ children }) {
     defaultSampleRateRef,
     stopFileAnalysisRef,
     fileAnalysisAcceptanceRef,
-    fileConditionsRef,
+    fileRequestInputsRef,
   };
 
   const displayState = useMemo(

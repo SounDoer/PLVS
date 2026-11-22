@@ -35,6 +35,8 @@ pub struct FileAudioTrackMetadata {
   #[serde(default, skip_serializing_if = "Option::is_none")]
   pub channel_layout: Option<String>,
   #[serde(default, skip_serializing_if = "Option::is_none")]
+  pub channel_roles: Option<Vec<String>>,
+  #[serde(default, skip_serializing_if = "Option::is_none")]
   pub bits_per_sample: Option<u32>,
   #[serde(default, skip_serializing_if = "Option::is_none")]
   pub sample_format: Option<String>,

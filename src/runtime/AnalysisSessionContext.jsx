@@ -1,27 +1,31 @@
-import { createContext, useCallback, useContext, useEffect, useMemo, useRef } from "react";
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+} from "react";
 import { useWorkspaceStore } from "../workspace/WorkspaceContext.jsx";
 import { useSharedTimeViewport } from "../workspace/useSharedTimeViewport.js";
 import { useAppSettings } from "../settings/SettingsContext.jsx";
 import { useDock } from "../dock/DockContext.jsx";
 import { mergeDockAnalysisRequests, mergeDockRetainedKeys } from "../dock/dockAnalysisRequest.js";
-import { dockModuleIdForPanelModuleId } from "../dock/dockLayout.js";
 import {
   deriveAnalysisRequests,
   deriveRetainedAnalysisKeys,
   unionRetainedAnalysisKeys,
 } from "../analysis/analysisRequests.js";
-import {
-  effectiveWorkspaceState,
-  resolveEffectiveChannelControls,
-} from "../analysis/effectiveChannels.js";
+import { effectiveWorkspaceState } from "../analysis/effectiveChannels.js";
 import { buildVectorscopePairOptions } from "../math/vectorscopePairMath.js";
-import { buildSpectrumChannelOptions } from "../math/spectrumChannelOptions.js";
-import { getPeakMeterChannelLabels } from "../math/peakMeterChannelLabels.js";
 import { seedTokensFromLabels } from "../math/channelRoles.js";
 import { rolesForLayout } from "../math/channelLayoutTable.js";
 import {
   deriveBackendAnalysisRequests,
   deriveChannelLabelRuntime,
+  deriveSpectrumChannelOptions,
+  resolveDockAnalysisPanels,
 } from "./appRuntimeDerivations.js";
 import {
   useMeterDisplayState,
@@ -73,7 +77,7 @@ export function AnalysisSessionProvider({ children }) {
     deferLiveClear,
   } = useMeterRuntime();
   const { setSelectedOffset, raiseNotice } = useMeterDisplayState();
-  const { liveIntakeRef, fileConditionsRef } = useMeterRuntimeAssembly();
+  const { liveIntakeRef, fileRequestInputsRef } = useMeterRuntimeAssembly();
   const { channelCount, displayAudio } = useDisplaySnapshot();
   const autoRolesKey = JSON.stringify(displayAudio?.autoChannelRoles ?? null);
   const autoChannelRoles = useMemo(() => JSON.parse(autoRolesKey), [autoRolesKey]);
@@ -127,11 +131,10 @@ export function AnalysisSessionProvider({ children }) {
     return buildVectorscopePairOptions(n, peakLabelContext);
   }, [channelCount, peakLabelContext]);
 
-  const spectrumChannelOptions = useMemo(() => {
-    const n = channelCount >= 2 ? channelCount : 2;
-    const labels = getPeakMeterChannelLabels(n, peakLabelContext);
-    return buildSpectrumChannelOptions(n, labels);
-  }, [channelCount, peakLabelContext]);
+  const spectrumChannelOptions = useMemo(
+    () => deriveSpectrumChannelOptions(channelCount, peakLabelContext),
+    [channelCount, peakLabelContext]
+  );
 
   // What the current source offers. Panels keep their requested channels; requests and history
   // keys use the effective ones resolved against this, so a narrower source never rewrites a panel.
@@ -154,15 +157,7 @@ export function AnalysisSessionProvider({ children }) {
     [dockLayout.panels, dockLayout.controlsByPanelId]
   );
   const effectiveDockPanelInstances = useMemo(
-    () =>
-      dockPanelInstances.map((panel) => {
-        const { controls, unavailable } = resolveEffectiveChannelControls(
-          dockModuleIdForPanelModuleId(panel.moduleId) ?? panel.moduleId,
-          panel.controls,
-          channelTopology
-        );
-        return unavailable ? { ...panel, controls } : panel;
-      }),
+    () => resolveDockAnalysisPanels(dockPanelInstances, channelTopology),
     [dockPanelInstances, channelTopology]
   );
   const derivedAnalysisRequests = useMemo(
@@ -177,9 +172,12 @@ export function AnalysisSessionProvider({ children }) {
     () => deriveBackendAnalysisRequests(derivedAnalysisRequests),
     [derivedAnalysisRequests]
   );
-  useEffect(() => {
-    fileConditionsRef.current = analysisRequests;
-  }, [fileConditionsRef, analysisRequests]);
+  useLayoutEffect(() => {
+    fileRequestInputsRef.current = {
+      workspaceState,
+      dockPanels: docked ? dockPanelInstances : null,
+    };
+  }, [fileRequestInputsRef, workspaceState, docked, dockPanelInstances]);
   // Which histories survive is a different question from what Rust computes, so this is derived
   // from the open panels rather than from `analysisRequests` -- and deliberately without `docked`,
   // because AppShell renders the strip or the panels and whichever is hidden comes back intact.
