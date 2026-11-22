@@ -13,7 +13,7 @@ import { homedir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
-const TAG = "ffmpeg-sidecar-7.1.5-r1";
+const TAG = "ffmpeg-sidecar-7.1.5-r2";
 const REPO = "SounDoer/PLVS";
 const BASE = `https://github.com/${REPO}/releases/download/${TAG}`;
 
@@ -22,31 +22,31 @@ const ASSETS = {
   win32: [
     {
       name: "ffmpeg-x86_64-pc-windows-msvc.exe",
-      sha256: "3838d8d993aae815e6997d382251f2e8f46f9bfcadc7372897be9cb4d7e5587e",
+      sha256: "a04aa4999e61082383e0203f45b9b8cafb2e01baba6ca0cb70235718908499fc",
     },
     {
       name: "ffprobe-x86_64-pc-windows-msvc.exe",
-      sha256: "66d1a28dd3c47493c1e1a398f6fa7a06f801e51a00a205e8f2828b528e9300df",
+      sha256: "b3e3ce7de4eb33cba0caaea85b10b269bb68d0fb72863fb2b40f9f3eb3636623",
     },
   ],
   darwin: [
     {
       name: "ffmpeg-aarch64-apple-darwin",
-      sha256: "0228de86396bea71a1fe28c61e816832b766f6f7cca7e49321f424a21536da89",
+      sha256: "3cc9c94ab5a7a5065b1e07a4a3d9e2644f392acc289cb505914ed7a4efcb8c63",
     },
     {
       name: "ffprobe-aarch64-apple-darwin",
-      sha256: "c660df55e4d3b444eae7bce3db245c8e6df7c9d41d855161be077bfd15d44f5d",
+      sha256: "7afc063ca222cbe1457c8a031225e4a3bac123524ffac735825b749ae4a8c430",
     },
   ],
   linux: [
     {
       name: "ffmpeg-x86_64-unknown-linux-gnu",
-      sha256: "cc9c0c7de5452d1c4e9344aeab252aa80ffc7eb2651466ee3a56a8cdce1e6daa",
+      sha256: "215d79534ba277e1589b36f8ce4af4af1e4561fc36c4482c6b72338e78072570",
     },
     {
       name: "ffprobe-x86_64-unknown-linux-gnu",
-      sha256: "8c8fdc15d2d26538d02972887abab1b0bf4f75994480a10bf6a958c02f7ed33d",
+      sha256: "46e0b687894579f379da78e9eec048ca39f9d3053738f5c8aa293909d402ee88",
     },
   ],
 };

@@ -37,7 +37,7 @@ files are in `licenses/license-texts/Inter-OFL-1.1.txt` and
 
 PLVS distributes `ffmpeg` and `ffprobe` from **FFmpeg 7.1.5** as separate
 executables for File mode. The binaries are fetched from the PLVS
-[`ffmpeg-sidecar-7.1.5-r1`](https://github.com/SounDoer/PLVS/releases/tag/ffmpeg-sidecar-7.1.5-r1)
+[`ffmpeg-sidecar-7.1.5-r2`](https://github.com/SounDoer/PLVS/releases/tag/ffmpeg-sidecar-7.1.5-r2)
 release and are checksum-pinned by
 [`scripts/fetch-ffmpeg-sidecar.mjs`](https://github.com/SounDoer/PLVS/blob/main/scripts/fetch-ffmpeg-sidecar.mjs).
 
@@ -45,7 +45,7 @@ release and are checksum-pinned by
   `--disable-gpl --disable-nonfree`; a complete copy is in
   `licenses/license-texts/LGPL-2.1-or-later.txt`.
 - **Corresponding source and build scripts:**
-  <https://github.com/SounDoer/PLVS/releases/download/ffmpeg-sidecar-7.1.5-r1/ffmpeg-7.1.5-plvs-source.zip>.
+  <https://github.com/SounDoer/PLVS/releases/download/ffmpeg-sidecar-7.1.5-r2/ffmpeg-7.1.5-plvs-source.zip>.
   This contains the unmodified FFmpeg 7.1.5 source archive, shared recipe, platform configuration,
   toolchain and dependency evidence, and exact distributed binary hashes.
 - **Build parameters:** the shared trimmed configuration is recorded in

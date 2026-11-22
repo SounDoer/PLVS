@@ -1,9 +1,9 @@
 {
   "version": "7.1.5",
   "release": {
-    "tag": "ffmpeg-sidecar-7.1.5-r1",
-    "workflowCommit": "f632a34434fd505cc2120f0a4eddbcb65eb8f36a",
-    "workflowRun": "https://github.com/SounDoer/PLVS/actions/runs/39138700291"
+    "tag": "ffmpeg-sidecar-7.1.5-r2",
+    "workflowCommit": "e8d0cfda36b7e6ea7e8b717ec84c60f2dbef5f43",
+    "workflowRun": "https://github.com/SounDoer/PLVS/actions/runs/44988024570"
   },
   "source": {
     "url": "https://ffmpeg.org/releases/ffmpeg-7.1.5.tar.xz",
@@ -12,7 +12,7 @@
   },
   "recipe": {
     "path": "scripts/build-ffmpeg-sidecars.sh",
-    "sha256": "77fd0b5f71d938ffac9ab8ccb7fc1e71a4ea66ecde2fb7b88016e2ee08be8f35"
+    "sha256": "0d800345d1067d97f09306f56dd3828b132f042051e1429c021ae0b2a4d97d89"
   },
   "windows": {
     "toolchain": {
@@ -21,15 +21,15 @@
       "sha256": "d5dbafc4a170e762ca6143151ec918fb9e2c72736fb14cd704abebc6bdd5276a"
     },
     "binaries": {
-      "ffmpeg-x86_64-pc-windows-msvc.exe": "3838d8d993aae815e6997d382251f2e8f46f9bfcadc7372897be9cb4d7e5587e",
-      "ffprobe-x86_64-pc-windows-msvc.exe": "66d1a28dd3c47493c1e1a398f6fa7a06f801e51a00a205e8f2828b528e9300df"
+      "ffmpeg-x86_64-pc-windows-msvc.exe": "a04aa4999e61082383e0203f45b9b8cafb2e01baba6ca0cb70235718908499fc",
+      "ffprobe-x86_64-pc-windows-msvc.exe": "b3e3ce7de4eb33cba0caaea85b10b269bb68d0fb72863fb2b40f9f3eb3636623"
     }
   },
   "macos": {
     "toolchain": "Apple clang 21.0.0; deployment target 14.2",
     "binaries": {
-      "ffmpeg-aarch64-apple-darwin": "0228de86396bea71a1fe28c61e816832b766f6f7cca7e49321f424a21536da89",
-      "ffprobe-aarch64-apple-darwin": "c660df55e4d3b444eae7bce3db245c8e6df7c9d41d855161be077bfd15d44f5d"
+      "ffmpeg-aarch64-apple-darwin": "3cc9c94ab5a7a5065b1e07a4a3d9e2644f392acc289cb505914ed7a4efcb8c63",
+      "ffprobe-aarch64-apple-darwin": "7afc063ca222cbe1457c8a031225e4a3bac123524ffac735825b749ae4a8c430"
     }
   },
   "linux": {
@@ -37,12 +37,12 @@
     "toolchain": "GCC 13.3.0",
     "allowedDynamicLibraries": ["libc.so.6", "libm.so.6"],
     "binaries": {
-      "ffmpeg-x86_64-unknown-linux-gnu": "cc9c0c7de5452d1c4e9344aeab252aa80ffc7eb2651466ee3a56a8cdce1e6daa",
-      "ffprobe-x86_64-unknown-linux-gnu": "8c8fdc15d2d26538d02972887abab1b0bf4f75994480a10bf6a958c02f7ed33d"
+      "ffmpeg-x86_64-unknown-linux-gnu": "215d79534ba277e1589b36f8ce4af4af1e4561fc36c4482c6b72338e78072570",
+      "ffprobe-x86_64-unknown-linux-gnu": "46e0b687894579f379da78e9eec048ca39f9d3053738f5c8aa293909d402ee88"
     }
   },
   "correspondingSource": {
-    "url": "https://github.com/SounDoer/PLVS/releases/download/ffmpeg-sidecar-7.1.5-r1/ffmpeg-7.1.5-plvs-source.zip",
-    "sha256": "ca6c075bbc70eff2826836735a9f4f67804655fff8689820281f387c7b09a629"
+    "url": "https://github.com/SounDoer/PLVS/releases/download/ffmpeg-sidecar-7.1.5-r2/ffmpeg-7.1.5-plvs-source.zip",
+    "sha256": "c182a67db603453fcee4248ed3aa7449b037ea980e12c3f8e624956a7c774065"
   }
 }

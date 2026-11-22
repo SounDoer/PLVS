@@ -49,15 +49,15 @@
     },
     {
       "path": "scripts/fetch-ffmpeg-sidecar.mjs",
-      "sha256": "8f6443255bc03cab380dd815a601cfbc5c7a19a79b56768d63b5445b24683dfd"
+      "sha256": "9263e6e6418a3f15b3b0a5e6dbcd762c93794e15871868e5eeaa908169ce3138"
     },
     {
       "path": "scripts/build-ffmpeg-sidecars.sh",
-      "sha256": "77fd0b5f71d938ffac9ab8ccb7fc1e71a4ea66ecde2fb7b88016e2ee08be8f35"
+      "sha256": "0d800345d1067d97f09306f56dd3828b132f042051e1429c021ae0b2a4d97d89"
     },
     {
       "path": "licenses/ffmpeg-builds.json",
-      "sha256": "c422aedb8d0a4fe66de6baa39f16a9fe792d0c0f891b8d02f8be2b3a7e2d1b07"
+      "sha256": "ebb7e00b69d92b1c644876672d013ebd7baea04366069ddf6f81d1faddd7df0f"
     },
     {
       "path": "src-tauri/vendor/voice_activity_detector/Cargo.toml",
@@ -175,8 +175,8 @@
   "sources": [
     {
       "name": "FFmpeg 7.1.5 source and platform build records",
-      "url": "https://github.com/SounDoer/PLVS/releases/download/ffmpeg-sidecar-7.1.5-r1/ffmpeg-7.1.5-plvs-source.zip",
-      "sha256": "ca6c075bbc70eff2826836735a9f4f67804655fff8689820281f387c7b09a629"
+      "url": "https://github.com/SounDoer/PLVS/releases/download/ffmpeg-sidecar-7.1.5-r2/ffmpeg-7.1.5-plvs-source.zip",
+      "sha256": "c182a67db603453fcee4248ed3aa7449b037ea980e12c3f8e624956a7c774065"
     }
   ],
   "rustVersion": "1.99.1",

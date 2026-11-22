@@ -13,7 +13,7 @@ npm run ffmpeg:fetch
 ```
 
 The pinned set is FFmpeg 7.1.5 under the dedicated
-[`ffmpeg-sidecar-7.1.5-r1`](https://github.com/SounDoer/PLVS/releases/tag/ffmpeg-sidecar-7.1.5-r1)
+[`ffmpeg-sidecar-7.1.5-r2`](https://github.com/SounDoer/PLVS/releases/tag/ffmpeg-sidecar-7.1.5-r2)
 release. Its source ZIP contains the unmodified upstream source archive, exact shared recipe,
 per-platform configuration and toolchain evidence, dependency reports, and binary hashes.
 

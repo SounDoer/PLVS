@@ -7593,5 +7593,5 @@ Original notice: https://raw.githubusercontent.com/tauri-apps/nsis-tauri-utils/1
 
 
 Corresponding source: FFmpeg 7.1.5 source and platform build records
-https://github.com/SounDoer/PLVS/releases/download/ffmpeg-sidecar-7.1.5-r1/ffmpeg-7.1.5-plvs-source.zip
-SHA-256: ca6c075bbc70eff2826836735a9f4f67804655fff8689820281f387c7b09a629
+https://github.com/SounDoer/PLVS/releases/download/ffmpeg-sidecar-7.1.5-r2/ffmpeg-7.1.5-plvs-source.zip
+SHA-256: c182a67db603453fcee4248ed3aa7449b037ea980e12c3f8e624956a7c774065

@@ -59,8 +59,8 @@ describe("FFmpeg sidecar cache", () => {
     const cacheDirectory = join(root, "cache");
     const bytes = Buffer.from("reviewed sidecar");
     const asset = { name: "ffmpeg-test", sha256: sha256(bytes) };
-    const cached = join(cacheDirectory, "ffmpeg-sidecar-7.1.5-r1", asset.name);
-    await mkdir(join(cacheDirectory, "ffmpeg-sidecar-7.1.5-r1"), { recursive: true });
+    const cached = join(cacheDirectory, "ffmpeg-sidecar-7.1.5-r2", asset.name);
+    await mkdir(join(cacheDirectory, "ffmpeg-sidecar-7.1.5-r2"), { recursive: true });
     writeFileSync(cached, bytes);
     const fetchImpl = vi.fn();
     const verifyRuntimeImpl = vi.fn();
@@ -85,9 +85,9 @@ describe("FFmpeg sidecar cache", () => {
     const cacheDirectory = join(root, "cache");
     const bytes = Buffer.from("reviewed Windows sidecar");
     const asset = { name: "ffmpeg-test.exe", sha256: sha256(bytes) };
-    const cached = join(cacheDirectory, "ffmpeg-sidecar-7.1.5-r1", asset.name);
+    const cached = join(cacheDirectory, "ffmpeg-sidecar-7.1.5-r2", asset.name);
     await mkdir(outputDirectory, { recursive: true });
-    await mkdir(join(cacheDirectory, "ffmpeg-sidecar-7.1.5-r1"), { recursive: true });
+    await mkdir(join(cacheDirectory, "ffmpeg-sidecar-7.1.5-r2"), { recursive: true });
     writeFileSync(join(outputDirectory, asset.name), "corrupt destination");
     writeFileSync(cached, bytes);
 
@@ -109,8 +109,8 @@ describe("FFmpeg sidecar cache", () => {
     const cacheDirectory = join(root, "cache");
     const bytes = Buffer.from("fresh reviewed sidecar");
     const asset = { name: "ffprobe-test", sha256: sha256(bytes) };
-    const cached = join(cacheDirectory, "ffmpeg-sidecar-7.1.5-r1", asset.name);
-    await mkdir(join(cacheDirectory, "ffmpeg-sidecar-7.1.5-r1"), { recursive: true });
+    const cached = join(cacheDirectory, "ffmpeg-sidecar-7.1.5-r2", asset.name);
+    await mkdir(join(cacheDirectory, "ffmpeg-sidecar-7.1.5-r2"), { recursive: true });
     writeFileSync(cached, "corrupt");
     const fetchImpl = vi.fn().mockResolvedValue(response(bytes));
 
@@ -146,7 +146,7 @@ describe("FFmpeg sidecar cache", () => {
     ).rejects.toThrow(/checksum mismatch/);
 
     expect(existsSync(join(outputDirectory, asset.name))).toBe(false);
-    expect(existsSync(join(cacheDirectory, "ffmpeg-sidecar-7.1.5-r1", asset.name))).toBe(false);
+    expect(existsSync(join(cacheDirectory, "ffmpeg-sidecar-7.1.5-r2", asset.name))).toBe(false);
   });
 });
 
