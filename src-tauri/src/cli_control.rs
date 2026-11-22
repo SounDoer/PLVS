@@ -5420,6 +5420,16 @@ fn execute<R: Read>(
     Ok(request) => request,
     Err(failure) => return (failure_report(failure.clone()), failure.exit_code),
   };
+  report_for_request(request, client, command == &ControlCommand::Capabilities)
+}
+
+/// Sends one wire request and turns PLVS's answer into the public envelope and exit class. Shared
+/// by the argv parser and the MCP adapter, which builds wire requests directly from the manifest.
+fn report_for_request(
+  request: JsonRpcRequest,
+  client: &dyn ControlClient,
+  is_capabilities: bool,
+) -> (ControlReport, u8) {
   let request_id = request.id.clone();
   match client.call(request) {
     Ok(call) => {
@@ -5440,7 +5450,7 @@ fn execute<R: Read>(
       }
       if let Some(result) = call.response.get("result") {
         let mut result = result.clone();
-        if command == &ControlCommand::Capabilities {
+        if is_capabilities {
           if let Value::Object(fields) = &mut result {
             fields.insert(
               "cliVersion".to_string(),
@@ -5505,6 +5515,67 @@ fn execute<R: Read>(
       (failure_report(failure), exit_code)
     }
   }
+}
+
+/// The MCP adapter's entry point: one wire method and its parameters, sent to the selected
+/// instance exactly as the CLI would send them, answered with the same public envelope.
+pub(crate) fn call_wire_method(
+  method: &str,
+  params: Value,
+  instance_id: Option<String>,
+) -> (Value, u8) {
+  let request = JsonRpcRequest {
+    id: format!(
+      "mcp-{}-{}",
+      std::process::id(),
+      REQUEST_SEQUENCE.fetch_add(1, Ordering::Relaxed)
+    ),
+    method: method.to_string(),
+    params,
+  };
+  let client = LocalControlClient::new(instance_id);
+  let (report, exit_code) = report_for_request(request, &client, false);
+  (
+    serde_json::to_value(&report).unwrap_or(Value::Null),
+    exit_code,
+  )
+}
+
+/// Reads a staged visual artifact into memory after the same byte-count and SHA-256 checks the
+/// `--out` copy applies. The MCP adapter returns screenshots inline instead of writing a file.
+pub(crate) fn read_staged_artifact(
+  artifact: &Value,
+  expected_media_type: &str,
+) -> Result<Vec<u8>, String> {
+  if artifact.get("mediaType").and_then(Value::as_str) != Some(expected_media_type) {
+    return Err("PLVS returned an artifact with an unexpected media type.".to_string());
+  }
+  let staged_path = artifact
+    .get("stagedPath")
+    .and_then(Value::as_str)
+    .filter(|path| !path.is_empty())
+    .ok_or_else(|| "PLVS returned an artifact without a staged path.".to_string())?;
+  let expected_bytes = artifact
+    .get("bytes")
+    .and_then(Value::as_u64)
+    .ok_or_else(|| "PLVS returned an artifact without a valid byte count.".to_string())?;
+  let expected_sha256 = artifact
+    .get("sha256")
+    .and_then(Value::as_str)
+    .ok_or_else(|| "PLVS returned an artifact without a SHA-256 digest.".to_string())?;
+  let contents = fs::read(staged_path)
+    .map_err(|error| format!("Unable to read the staged artifact at {staged_path}: {error}"))?;
+  if contents.len() as u64 != expected_bytes {
+    return Err("The staged artifact byte count did not match.".to_string());
+  }
+  let actual: String = Sha256::digest(&contents)
+    .iter()
+    .map(|byte| format!("{byte:02x}"))
+    .collect();
+  if !actual.eq_ignore_ascii_case(expected_sha256) {
+    return Err("The staged artifact SHA-256 digest did not match.".to_string());
+  }
+  Ok(contents)
 }
 
 fn failure_report(failure: ControlFailure) -> ControlReport {

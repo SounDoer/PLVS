@@ -30,6 +30,9 @@ pub struct CommandEntry {
   pub expected_revision: String,
   pub dry_run: bool,
   pub output_file: String,
+  /// `ordinary` or `risky` on every mutation and action; absent on queries and waits.
+  #[serde(skip_serializing_if = "Option::is_none")]
+  pub risk: Option<String>,
   pub positionals: Vec<CommandArgument>,
   pub options: Vec<CommandArgument>,
   pub wire_params: SchemaNode,
@@ -154,6 +157,17 @@ pub fn validate_manifest(manifest: &CommandManifest) -> Result<(), String> {
     }
     if !["none", "optional", "required"].contains(&entry.output_file.as_str()) {
       return Err(format!("{path}.outputFile is unknown"));
+    }
+    let is_change = matches!(entry.operation.as_str(), "mutation" | "action");
+    match entry.risk.as_deref() {
+      Some("ordinary" | "risky") if is_change => {}
+      None if !is_change => {}
+      _ if is_change => return Err(format!("{path}.risk must be ordinary or risky")),
+      _ => {
+        return Err(format!(
+          "{path}.risk is only allowed on mutations and actions"
+        ))
+      }
     }
     entry
       .positionals
@@ -400,7 +414,7 @@ mod tests {
   fn embedded_manifest_is_valid_and_complete() {
     let manifest = command_manifest().unwrap();
     assert_eq!(manifest.manifest_version, 1);
-    assert_eq!(manifest.commands.len(), 160);
+    assert_eq!(manifest.commands.len(), 161);
     assert_eq!(
       manifest
         .commands

@@ -5,168 +5,169 @@
 
 Manifest version `1`. Entries are shown in stable presentation order.
 
-| Command ID | CLI path | Execution / operation | Revision | Dry run | Output file |
-| --- | --- | --- | --- | --- | --- |
-| `app.capabilities` | `capabilities` | runningApp / query | none | no | none |
-| `app.inspect` | `inspect` | runningApp / query | none | no | none |
-| `ui.inspect` | `ui inspect` | runningApp / query | none | no | none |
-| `ui.show.settings` | `ui show settings` | runningApp / action | required | no | none |
-| `ui.show.panelSettings` | `ui show panel-settings` | runningApp / action | required | no | none |
-| `ui.show.themeEditor` | `ui show theme-editor` | runningApp / action | required | no | none |
-| `ui.show.loudnessProfileEditor` | `ui show loudness-profile-editor` | runningApp / action | required | no | none |
-| `ui.show.feedback` | `ui show feedback` | runningApp / action | required | no | none |
-| `ui.show.toolbarMenu` | `ui show toolbar-menu` | runningApp / action | required | no | none |
-| `ui.show.dockToolbar` | `ui show dock-toolbar` | runningApp / action | required | no | none |
-| `ui.show.panelHelp` | `ui show panel-help` | runningApp / action | required | no | none |
-| `ui.show.panelFullscreen` | `ui show panel-fullscreen` | runningApp / action | required | no | none |
-| `ui.show.addPanel` | `ui show add-panel` | runningApp / action | required | no | none |
-| `ui.show.sourceGroup` | `ui show source-group` | runningApp / action | required | no | none |
-| `ui.show.dropdown` | `ui show dropdown` | runningApp / action | required | no | none |
-| `ui.quickTour.start` | `ui quick-tour start` | runningApp / action | required | no | none |
-| `ui.quickTour.next` | `ui quick-tour next` | runningApp / action | required | no | none |
-| `ui.quickTour.back` | `ui quick-tour back` | runningApp / action | required | no | none |
-| `ui.action` | `ui action` | runningApp / action | required | no | none |
-| `ui.targets` | `ui targets` | runningApp / query | none | no | none |
-| `ui.locate` | `ui locate` | runningApp / query | none | no | none |
-| `ui.decide` | `ui decide` | runningApp / action | required | yes | none |
-| `ui.close` | `ui close` | runningApp / action | required | no | none |
-| `ui.cancel` | `ui cancel` | runningApp / action | required | no | none |
-| `window.inspect` | `window inspect` | runningApp / query | none | no | none |
-| `window.resize` | `window resize` | runningApp / action | required | no | none |
-| `window.move` | `window move` | runningApp / action | required | no | none |
-| `window.hide` | `window hide` | runningApp / action | required | no | none |
-| `window.show` | `window show` | runningApp / action | required | no | none |
-| `window.maximize` | `window maximize` | runningApp / action | required | no | none |
-| `window.unmaximize` | `window unmaximize` | runningApp / action | required | no | none |
-| `window.minimize` | `window minimize` | runningApp / action | required | no | none |
-| `workbench.open` | `workbench open` | runningApp / action | required | no | none |
-| `workbench.quit` | `workbench quit` | runningApp / action | required | no | none |
-| `workbench.quitAll` | `workbench quit-all` | runningApp / action | required | no | none |
-| `update.inspect` | `update inspect` | runningApp / query | none | no | none |
-| `update.check` | `update check` | runningApp / action | required | no | none |
-| `update.install` | `update install` | runningApp / action | required | no | none |
-| `pointer.move` | `pointer move` | runningApp / action | required | no | none |
-| `measurement.describe` | `measurement describe` | runningApp / query | none | no | none |
-| `measurement.inspect` | `measurement inspect` | runningApp / query | none | no | none |
-| `measurement.spectrum` | `measurement spectrum` | runningApp / query | none | no | none |
-| `measurement.wait` | `measurement wait` | runningApp / wait | none | no | none |
-| `measurement.waitUntil` | `measurement wait-until` | runningApp / wait | none | no | none |
-| `measurement.resetHold` | `measurement reset-hold` | runningApp / action | required | no | none |
-| `measurement.resetTruePeakMax` | `measurement reset-true-peak-max` | runningApp / action | required | no | none |
-| `view.describe` | `view describe` | runningApp / query | none | no | none |
-| `view.inspect` | `view inspect` | runningApp / query | none | no | none |
-| `view.update` | `view update` | runningApp / mutation | required | yes | none |
-| `view.reset` | `view reset` | runningApp / mutation | required | yes | none |
-| `module.list` | `module list` | runningApp / query | none | no | none |
-| `module.describe` | `module describe` | runningApp / query | none | no | none |
-| `workspace.applyLayout` | `workspace apply` | runningApp / mutation | required | yes | none |
-| `workspace.reset` | `workspace reset` | runningApp / mutation | required | yes | none |
-| `axis.describe` | `axis describe` | runningApp / query | none | no | none |
-| `axis.inspect` | `axis inspect` | runningApp / query | none | no | none |
-| `axis.shared.update` | `axis shared update` | runningApp / mutation | required | yes | none |
-| `axis.shared.reset` | `axis shared reset` | runningApp / mutation | required | yes | none |
-| `axis.panel.update` | `axis panel update` | runningApp / mutation | required | yes | none |
-| `axis.panel.reset` | `axis panel reset` | runningApp / mutation | required | yes | none |
-| `panel.describe` | `panel describe` | runningApp / query | none | no | none |
-| `panel.update` | `panel update` | runningApp / mutation | required | yes | none |
-| `panel.reset` | `panel reset` | runningApp / mutation | required | yes | none |
-| `panel.holdSlow` | `panel hold-slow` | runningApp / action | required | no | none |
-| `panel.pin` | `panel pin` | runningApp / action | required | no | none |
-| `panel.unpin` | `panel unpin` | runningApp / action | required | no | none |
-| `preset.list` | `preset list` | runningApp / query | none | no | none |
-| `preset.describe` | `preset describe` | runningApp / query | none | no | none |
-| `preset.rename` | `preset rename` | runningApp / mutation | required | yes | none |
-| `preset.delete` | `preset delete` | runningApp / mutation | required | yes | none |
-| `preset.reorder` | `preset reorder` | runningApp / mutation | required | yes | none |
-| `preset.save` | `preset save` | runningApp / mutation | required | yes | none |
-| `preset.update` | `preset update` | runningApp / mutation | required | yes | none |
-| `preset.apply` | `preset apply` | runningApp / mutation | required | yes | none |
-| `preset.export` | `preset export` | runningApp / query | none | no | optional |
-| `preset.import` | `preset import` | runningApp / mutation | required | yes | none |
-| `theme.list` | `theme list` | runningApp / query | none | no | none |
-| `theme.inspect` | `theme inspect` | runningApp / query | none | no | none |
-| `theme.describe` | `theme describe` | runningApp / query | none | no | none |
-| `theme.select` | `theme select` | runningApp / mutation | required | yes | none |
-| `theme.followSystem` | `theme follow-system` | runningApp / mutation | required | yes | none |
-| `theme.create` | `theme create` | runningApp / mutation | required | yes | none |
-| `theme.update` | `theme update` | runningApp / mutation | required | yes | none |
-| `theme.rename` | `theme rename` | runningApp / mutation | required | yes | none |
-| `theme.duplicate` | `theme duplicate` | runningApp / mutation | required | yes | none |
-| `theme.delete` | `theme delete` | runningApp / mutation | required | yes | none |
-| `theme.reorder` | `theme reorder` | runningApp / mutation | required | yes | none |
-| `theme.export` | `theme export` | runningApp / query | none | no | optional |
-| `theme.import` | `theme import` | runningApp / mutation | required | yes | none |
-| `loudnessProfile.list` | `loudness-profile list` | runningApp / query | none | no | none |
-| `loudnessProfile.describe` | `loudness-profile describe` | runningApp / query | none | no | none |
-| `loudnessProfile.select` | `loudness-profile select` | runningApp / mutation | required | yes | none |
-| `loudnessProfile.create` | `loudness-profile create` | runningApp / mutation | required | yes | none |
-| `loudnessProfile.update` | `loudness-profile update` | runningApp / mutation | required | yes | none |
-| `loudnessProfile.rename` | `loudness-profile rename` | runningApp / mutation | required | yes | none |
-| `loudnessProfile.delete` | `loudness-profile delete` | runningApp / mutation | required | yes | none |
-| `loudnessProfile.reorder` | `loudness-profile reorder` | runningApp / mutation | required | yes | none |
-| `loudnessProfile.export` | `loudness-profile export` | runningApp / query | none | no | optional |
-| `loudnessProfile.import` | `loudness-profile import` | runningApp / mutation | required | yes | none |
-| `config.export` | `config export` | runningApp / query | none | no | optional |
-| `config.reset` | `config reset` | runningApp / mutation | required | yes | none |
-| `config.import` | `config import` | runningApp / mutation | required | yes | none |
-| `settings.describe` | `settings describe` | runningApp / query | none | no | none |
-| `settings.inspect` | `settings inspect` | runningApp / query | none | no | none |
-| `settings.update` | `settings update` | runningApp / mutation | required | yes | none |
-| `device.list` | `device list` | runningApp / query | none | no | none |
-| `device.inspect` | `device inspect` | runningApp / query | none | no | none |
-| `device.select` | `device select` | runningApp / mutation | required | yes | none |
-| `app.wait` | `wait` | runningApp / wait | none | no | none |
-| `transport.inspect` | `transport inspect` | runningApp / query | none | no | none |
-| `transport.snapshot.select` | `transport snapshot select` | runningApp / mutation | required | yes | none |
-| `transport.snapshot.clear` | `transport snapshot clear` | runningApp / mutation | required | yes | none |
-| `transport.source.live` | `transport source live` | runningApp / mutation | required | yes | none |
-| `transport.source.file` | `transport source file` | runningApp / mutation | required | yes | none |
-| `transport.live.start` | `transport live start` | runningApp / action | required | no | none |
-| `transport.live.stop` | `transport live stop` | runningApp / action | required | no | none |
-| `transport.live.clear` | `transport live clear` | runningApp / mutation | required | yes | none |
-| `transport.file.batch.inspect` | `transport file batch inspect` | runningApp / query | none | no | none |
-| `transport.file.batch.enqueue` | `transport file batch enqueue` | runningApp / action | required | no | none |
-| `transport.file.batch.chooseTrack` | `transport file batch choose-track` | runningApp / action | required | no | none |
-| `transport.file.batch.stop` | `transport file batch stop` | runningApp / action | required | no | none |
-| `transport.file.batch.cancel` | `transport file batch cancel` | runningApp / action | required | no | none |
-| `transport.file.batch.resume` | `transport file batch resume` | runningApp / action | required | no | none |
-| `transport.file.analyze` | `transport file analyze` | runningApp / action | required | no | none |
-| `transport.file.reanalyze` | `transport file reanalyze` | runningApp / action | required | no | none |
-| `transport.file.restore` | `transport file restore` | runningApp / action | required | no | none |
-| `transport.file.stop` | `transport file stop` | runningApp / action | required | no | none |
-| `transport.file.select` | `transport file select` | runningApp / mutation | required | yes | none |
-| `transport.file.remove` | `transport file remove` | runningApp / mutation | required | yes | none |
-| `transport.file.clear` | `transport file clear` | runningApp / mutation | required | yes | none |
-| `transport.file.exportStatistics` | `transport file export-statistics` | runningApp / query | none | no | required |
-| `transport.file.wait` | `transport file wait` | runningApp / wait | none | no | none |
-| `transport.file.report` | `transport file report` | runningApp / query | none | no | optional |
-| `dock.describe` | `dock describe` | runningApp / query | none | no | none |
-| `dock.inspect` | `dock inspect` | runningApp / query | none | no | none |
-| `dock.enter` | `dock enter` | runningApp / mutation | required | yes | none |
-| `dock.exit` | `dock exit` | runningApp / mutation | required | yes | none |
-| `dock.layout.apply` | `dock layout apply` | runningApp / mutation | required | yes | none |
-| `dock.layout.reset` | `dock layout reset` | runningApp / mutation | required | yes | none |
-| `dock.panel.describe` | `dock panel describe` | runningApp / query | none | no | none |
-| `dock.panel.update` | `dock panel update` | runningApp / mutation | required | yes | none |
-| `dock.panel.reset` | `dock panel reset` | runningApp / mutation | required | yes | none |
-| `visual.describe` | `visual describe` | runningApp / query | none | no | none |
-| `visual.screenshot` | `visual screenshot` | runningApp / action | optional | no | required |
-| `visual.recording.start` | `visual recording start` | runningApp / action | optional | no | none |
-| `visual.recording.inspect` | `visual recording inspect` | runningApp / query | none | no | none |
-| `visual.recording.wait` | `visual recording wait` | runningApp / wait | none | no | optional |
-| `visual.recording.stop` | `visual recording stop` | runningApp / action | none | no | optional |
-| `editorDraft.describe` | `editor-draft describe` | runningApp / query | none | no | none |
-| `editorDraft.inspect` | `editor-draft inspect` | runningApp / query | none | no | none |
-| `editorDraft.patch` | `editor-draft patch` | runningApp / mutation | required | no | none |
-| `editorDraft.undo` | `editor-draft undo` | runningApp / mutation | required | no | none |
-| `editorDraft.redo` | `editor-draft redo` | runningApp / mutation | required | no | none |
-| `editorDraft.save` | `editor-draft save` | runningApp / action | required | no | none |
-| `editorDraft.discard` | `editor-draft discard` | runningApp / mutation | required | no | none |
-| `instances.list` | `instances` | offline / query | none | no | none |
-| `doctor` | `doctor` | offline / query | none | no | optional |
-| `schema.list` | `schema list` | offline / query | none | no | none |
-| `schema.get` | `schema get` | offline / query | none | no | none |
-| `completion` | `completion` | offline / query | none | no | none |
+| Command ID | CLI path | Execution / operation | Revision | Dry run | Output file | Risk |
+| --- | --- | --- | --- | --- | --- | --- |
+| `app.capabilities` | `capabilities` | runningApp / query | none | no | none |  |
+| `app.inspect` | `inspect` | runningApp / query | none | no | none |  |
+| `ui.inspect` | `ui inspect` | runningApp / query | none | no | none |  |
+| `ui.show.settings` | `ui show settings` | runningApp / action | required | no | none | ordinary |
+| `ui.show.panelSettings` | `ui show panel-settings` | runningApp / action | required | no | none | ordinary |
+| `ui.show.themeEditor` | `ui show theme-editor` | runningApp / action | required | no | none | ordinary |
+| `ui.show.loudnessProfileEditor` | `ui show loudness-profile-editor` | runningApp / action | required | no | none | ordinary |
+| `ui.show.feedback` | `ui show feedback` | runningApp / action | required | no | none | ordinary |
+| `ui.show.toolbarMenu` | `ui show toolbar-menu` | runningApp / action | required | no | none | ordinary |
+| `ui.show.dockToolbar` | `ui show dock-toolbar` | runningApp / action | required | no | none | ordinary |
+| `ui.show.panelHelp` | `ui show panel-help` | runningApp / action | required | no | none | ordinary |
+| `ui.show.panelFullscreen` | `ui show panel-fullscreen` | runningApp / action | required | no | none | ordinary |
+| `ui.show.addPanel` | `ui show add-panel` | runningApp / action | required | no | none | ordinary |
+| `ui.show.sourceGroup` | `ui show source-group` | runningApp / action | required | no | none | ordinary |
+| `ui.show.dropdown` | `ui show dropdown` | runningApp / action | required | no | none | ordinary |
+| `ui.quickTour.start` | `ui quick-tour start` | runningApp / action | required | no | none | ordinary |
+| `ui.quickTour.next` | `ui quick-tour next` | runningApp / action | required | no | none | ordinary |
+| `ui.quickTour.back` | `ui quick-tour back` | runningApp / action | required | no | none | ordinary |
+| `ui.action` | `ui action` | runningApp / action | required | no | none | ordinary |
+| `ui.targets` | `ui targets` | runningApp / query | none | no | none |  |
+| `ui.locate` | `ui locate` | runningApp / query | none | no | none |  |
+| `ui.decide` | `ui decide` | runningApp / action | required | yes | none | risky |
+| `ui.close` | `ui close` | runningApp / action | required | no | none | ordinary |
+| `ui.cancel` | `ui cancel` | runningApp / action | required | no | none | ordinary |
+| `window.inspect` | `window inspect` | runningApp / query | none | no | none |  |
+| `window.resize` | `window resize` | runningApp / action | required | no | none | ordinary |
+| `window.move` | `window move` | runningApp / action | required | no | none | ordinary |
+| `window.hide` | `window hide` | runningApp / action | required | no | none | ordinary |
+| `window.show` | `window show` | runningApp / action | required | no | none | ordinary |
+| `window.maximize` | `window maximize` | runningApp / action | required | no | none | ordinary |
+| `window.unmaximize` | `window unmaximize` | runningApp / action | required | no | none | ordinary |
+| `window.minimize` | `window minimize` | runningApp / action | required | no | none | ordinary |
+| `workbench.open` | `workbench open` | runningApp / action | required | no | none | ordinary |
+| `workbench.quit` | `workbench quit` | runningApp / action | required | no | none | risky |
+| `workbench.quitAll` | `workbench quit-all` | runningApp / action | required | no | none | risky |
+| `update.inspect` | `update inspect` | runningApp / query | none | no | none |  |
+| `update.check` | `update check` | runningApp / action | required | no | none | ordinary |
+| `update.install` | `update install` | runningApp / action | required | no | none | risky |
+| `pointer.move` | `pointer move` | runningApp / action | required | no | none | ordinary |
+| `measurement.describe` | `measurement describe` | runningApp / query | none | no | none |  |
+| `measurement.inspect` | `measurement inspect` | runningApp / query | none | no | none |  |
+| `measurement.spectrum` | `measurement spectrum` | runningApp / query | none | no | none |  |
+| `measurement.wait` | `measurement wait` | runningApp / wait | none | no | none |  |
+| `measurement.waitUntil` | `measurement wait-until` | runningApp / wait | none | no | none |  |
+| `measurement.resetHold` | `measurement reset-hold` | runningApp / action | required | no | none | risky |
+| `measurement.resetTruePeakMax` | `measurement reset-true-peak-max` | runningApp / action | required | no | none | risky |
+| `view.describe` | `view describe` | runningApp / query | none | no | none |  |
+| `view.inspect` | `view inspect` | runningApp / query | none | no | none |  |
+| `view.update` | `view update` | runningApp / mutation | required | yes | none | ordinary |
+| `view.reset` | `view reset` | runningApp / mutation | required | yes | none | ordinary |
+| `module.list` | `module list` | runningApp / query | none | no | none |  |
+| `module.describe` | `module describe` | runningApp / query | none | no | none |  |
+| `workspace.applyLayout` | `workspace apply` | runningApp / mutation | required | yes | none | ordinary |
+| `workspace.reset` | `workspace reset` | runningApp / mutation | required | yes | none | risky |
+| `axis.describe` | `axis describe` | runningApp / query | none | no | none |  |
+| `axis.inspect` | `axis inspect` | runningApp / query | none | no | none |  |
+| `axis.shared.update` | `axis shared update` | runningApp / mutation | required | yes | none | ordinary |
+| `axis.shared.reset` | `axis shared reset` | runningApp / mutation | required | yes | none | ordinary |
+| `axis.panel.update` | `axis panel update` | runningApp / mutation | required | yes | none | ordinary |
+| `axis.panel.reset` | `axis panel reset` | runningApp / mutation | required | yes | none | ordinary |
+| `panel.describe` | `panel describe` | runningApp / query | none | no | none |  |
+| `panel.update` | `panel update` | runningApp / mutation | required | yes | none | ordinary |
+| `panel.reset` | `panel reset` | runningApp / mutation | required | yes | none | ordinary |
+| `panel.holdSlow` | `panel hold-slow` | runningApp / action | required | no | none | ordinary |
+| `panel.pin` | `panel pin` | runningApp / action | required | no | none | ordinary |
+| `panel.unpin` | `panel unpin` | runningApp / action | required | no | none | ordinary |
+| `preset.list` | `preset list` | runningApp / query | none | no | none |  |
+| `preset.describe` | `preset describe` | runningApp / query | none | no | none |  |
+| `preset.rename` | `preset rename` | runningApp / mutation | required | yes | none | ordinary |
+| `preset.delete` | `preset delete` | runningApp / mutation | required | yes | none | risky |
+| `preset.reorder` | `preset reorder` | runningApp / mutation | required | yes | none | ordinary |
+| `preset.save` | `preset save` | runningApp / mutation | required | yes | none | ordinary |
+| `preset.update` | `preset update` | runningApp / mutation | required | yes | none | risky |
+| `preset.apply` | `preset apply` | runningApp / mutation | required | yes | none | ordinary |
+| `preset.export` | `preset export` | runningApp / query | none | no | optional |  |
+| `preset.import` | `preset import` | runningApp / mutation | required | yes | none | risky |
+| `theme.list` | `theme list` | runningApp / query | none | no | none |  |
+| `theme.inspect` | `theme inspect` | runningApp / query | none | no | none |  |
+| `theme.describe` | `theme describe` | runningApp / query | none | no | none |  |
+| `theme.select` | `theme select` | runningApp / mutation | required | yes | none | ordinary |
+| `theme.followSystem` | `theme follow-system` | runningApp / mutation | required | yes | none | ordinary |
+| `theme.create` | `theme create` | runningApp / mutation | required | yes | none | ordinary |
+| `theme.update` | `theme update` | runningApp / mutation | required | yes | none | ordinary |
+| `theme.rename` | `theme rename` | runningApp / mutation | required | yes | none | ordinary |
+| `theme.duplicate` | `theme duplicate` | runningApp / mutation | required | yes | none | ordinary |
+| `theme.delete` | `theme delete` | runningApp / mutation | required | yes | none | risky |
+| `theme.reorder` | `theme reorder` | runningApp / mutation | required | yes | none | ordinary |
+| `theme.export` | `theme export` | runningApp / query | none | no | optional |  |
+| `theme.import` | `theme import` | runningApp / mutation | required | yes | none | risky |
+| `loudnessProfile.list` | `loudness-profile list` | runningApp / query | none | no | none |  |
+| `loudnessProfile.describe` | `loudness-profile describe` | runningApp / query | none | no | none |  |
+| `loudnessProfile.select` | `loudness-profile select` | runningApp / mutation | required | yes | none | ordinary |
+| `loudnessProfile.create` | `loudness-profile create` | runningApp / mutation | required | yes | none | ordinary |
+| `loudnessProfile.update` | `loudness-profile update` | runningApp / mutation | required | yes | none | ordinary |
+| `loudnessProfile.rename` | `loudness-profile rename` | runningApp / mutation | required | yes | none | ordinary |
+| `loudnessProfile.delete` | `loudness-profile delete` | runningApp / mutation | required | yes | none | risky |
+| `loudnessProfile.reorder` | `loudness-profile reorder` | runningApp / mutation | required | yes | none | ordinary |
+| `loudnessProfile.export` | `loudness-profile export` | runningApp / query | none | no | optional |  |
+| `loudnessProfile.import` | `loudness-profile import` | runningApp / mutation | required | yes | none | risky |
+| `config.export` | `config export` | runningApp / query | none | no | optional |  |
+| `config.reset` | `config reset` | runningApp / mutation | required | yes | none | risky |
+| `config.import` | `config import` | runningApp / mutation | required | yes | none | risky |
+| `settings.describe` | `settings describe` | runningApp / query | none | no | none |  |
+| `settings.inspect` | `settings inspect` | runningApp / query | none | no | none |  |
+| `settings.update` | `settings update` | runningApp / mutation | required | yes | none | ordinary |
+| `device.list` | `device list` | runningApp / query | none | no | none |  |
+| `device.inspect` | `device inspect` | runningApp / query | none | no | none |  |
+| `device.select` | `device select` | runningApp / mutation | required | yes | none | ordinary |
+| `app.wait` | `wait` | runningApp / wait | none | no | none |  |
+| `transport.inspect` | `transport inspect` | runningApp / query | none | no | none |  |
+| `transport.snapshot.select` | `transport snapshot select` | runningApp / mutation | required | yes | none | ordinary |
+| `transport.snapshot.clear` | `transport snapshot clear` | runningApp / mutation | required | yes | none | ordinary |
+| `transport.source.live` | `transport source live` | runningApp / mutation | required | yes | none | ordinary |
+| `transport.source.file` | `transport source file` | runningApp / mutation | required | yes | none | ordinary |
+| `transport.live.start` | `transport live start` | runningApp / action | required | no | none | ordinary |
+| `transport.live.stop` | `transport live stop` | runningApp / action | required | no | none | ordinary |
+| `transport.live.clear` | `transport live clear` | runningApp / mutation | required | yes | none | risky |
+| `transport.file.batch.inspect` | `transport file batch inspect` | runningApp / query | none | no | none |  |
+| `transport.file.batch.enqueue` | `transport file batch enqueue` | runningApp / action | required | no | none | ordinary |
+| `transport.file.batch.chooseTrack` | `transport file batch choose-track` | runningApp / action | required | no | none | ordinary |
+| `transport.file.batch.stop` | `transport file batch stop` | runningApp / action | required | no | none | ordinary |
+| `transport.file.batch.cancel` | `transport file batch cancel` | runningApp / action | required | no | none | ordinary |
+| `transport.file.batch.resume` | `transport file batch resume` | runningApp / action | required | no | none | ordinary |
+| `transport.file.analyze` | `transport file analyze` | runningApp / action | required | no | none | ordinary |
+| `transport.file.reanalyze` | `transport file reanalyze` | runningApp / action | required | no | none | ordinary |
+| `transport.file.restore` | `transport file restore` | runningApp / action | required | no | none | ordinary |
+| `transport.file.stop` | `transport file stop` | runningApp / action | required | no | none | ordinary |
+| `transport.file.select` | `transport file select` | runningApp / mutation | required | yes | none | ordinary |
+| `transport.file.remove` | `transport file remove` | runningApp / mutation | required | yes | none | risky |
+| `transport.file.clear` | `transport file clear` | runningApp / mutation | required | yes | none | risky |
+| `transport.file.exportStatistics` | `transport file export-statistics` | runningApp / query | none | no | required |  |
+| `transport.file.wait` | `transport file wait` | runningApp / wait | none | no | none |  |
+| `transport.file.report` | `transport file report` | runningApp / query | none | no | optional |  |
+| `dock.describe` | `dock describe` | runningApp / query | none | no | none |  |
+| `dock.inspect` | `dock inspect` | runningApp / query | none | no | none |  |
+| `dock.enter` | `dock enter` | runningApp / mutation | required | yes | none | ordinary |
+| `dock.exit` | `dock exit` | runningApp / mutation | required | yes | none | ordinary |
+| `dock.layout.apply` | `dock layout apply` | runningApp / mutation | required | yes | none | ordinary |
+| `dock.layout.reset` | `dock layout reset` | runningApp / mutation | required | yes | none | risky |
+| `dock.panel.describe` | `dock panel describe` | runningApp / query | none | no | none |  |
+| `dock.panel.update` | `dock panel update` | runningApp / mutation | required | yes | none | ordinary |
+| `dock.panel.reset` | `dock panel reset` | runningApp / mutation | required | yes | none | ordinary |
+| `visual.describe` | `visual describe` | runningApp / query | none | no | none |  |
+| `visual.screenshot` | `visual screenshot` | runningApp / action | optional | no | required | ordinary |
+| `visual.recording.start` | `visual recording start` | runningApp / action | optional | no | none | ordinary |
+| `visual.recording.inspect` | `visual recording inspect` | runningApp / query | none | no | none |  |
+| `visual.recording.wait` | `visual recording wait` | runningApp / wait | none | no | optional |  |
+| `visual.recording.stop` | `visual recording stop` | runningApp / action | none | no | optional | ordinary |
+| `editorDraft.describe` | `editor-draft describe` | runningApp / query | none | no | none |  |
+| `editorDraft.inspect` | `editor-draft inspect` | runningApp / query | none | no | none |  |
+| `editorDraft.patch` | `editor-draft patch` | runningApp / mutation | required | no | none | ordinary |
+| `editorDraft.undo` | `editor-draft undo` | runningApp / mutation | required | no | none | ordinary |
+| `editorDraft.redo` | `editor-draft redo` | runningApp / mutation | required | no | none | ordinary |
+| `editorDraft.save` | `editor-draft save` | runningApp / action | required | no | none | ordinary |
+| `editorDraft.discard` | `editor-draft discard` | runningApp / mutation | required | no | none | risky |
+| `instances.list` | `instances` | offline / query | none | no | none |  |
+| `doctor` | `doctor` | offline / query | none | no | optional |  |
+| `schema.list` | `schema list` | offline / query | none | no | none |  |
+| `schema.get` | `schema get` | offline / query | none | no | none |  |
+| `completion` | `completion` | offline / query | none | no | none |  |
+| `mcp` | `mcp` | offline / query | none | no | none |  |
 
 ## `app.capabilities`
 
@@ -245,6 +246,7 @@ Open or focus a Settings section without applying changes.
 
 - CLI path: `ui show settings`
 - Execution: `runningApp`; operation: `action`
+- Risk: `ordinary`
 - JSON: `required`; expected revision: `required`; dry-run: `false`; output file: `none`
 - Wire method: `ui.show.settings`
 
@@ -271,6 +273,7 @@ Open or focus settings for one Panel instance.
 
 - CLI path: `ui show panel-settings`
 - Execution: `runningApp`; operation: `action`
+- Risk: `ordinary`
 - JSON: `required`; expected revision: `required`; dry-run: `false`; output file: `none`
 - Wire method: `ui.show.panelSettings`
 
@@ -297,6 +300,7 @@ Open or focus a Theme authoring session without saving it.
 
 - CLI path: `ui show theme-editor`
 - Execution: `runningApp`; operation: `action`
+- Risk: `ordinary`
 - JSON: `required`; expected revision: `required`; dry-run: `false`; output file: `none`
 - Wire method: `ui.show.themeEditor`
 
@@ -325,6 +329,7 @@ Open or focus a Loudness Profile authoring session without saving it.
 
 - CLI path: `ui show loudness-profile-editor`
 - Execution: `runningApp`; operation: `action`
+- Risk: `ordinary`
 - JSON: `required`; expected revision: `required`; dry-run: `false`; output file: `none`
 - Wire method: `ui.show.loudnessProfileEditor`
 
@@ -352,6 +357,7 @@ Open or focus an unsent Feedback draft without sending it.
 
 - CLI path: `ui show feedback`
 - Execution: `runningApp`; operation: `action`
+- Risk: `ordinary`
 - JSON: `required`; expected revision: `required`; dry-run: `false`; output file: `none`
 - Wire method: `ui.show.feedback`
 
@@ -377,6 +383,7 @@ Open one toolbar menu in the normal window or Dock as its toolbar button does.
 
 - CLI path: `ui show toolbar-menu`
 - Execution: `runningApp`; operation: `action`
+- Risk: `ordinary`
 - JSON: `required`; expected revision: `required`; dry-run: `false`; output file: `none`
 - Wire method: `ui.show.toolbarMenu`
 
@@ -403,6 +410,7 @@ Reveal the Dock toolbar as its arrow button does.
 
 - CLI path: `ui show dock-toolbar`
 - Execution: `runningApp`; operation: `action`
+- Risk: `ordinary`
 - JSON: `required`; expected revision: `required`; dry-run: `false`; output file: `none`
 - Wire method: `ui.show.dockToolbar`
 
@@ -428,6 +436,7 @@ Open a panel's gesture reference as clicking its question mark does.
 
 - CLI path: `ui show panel-help`
 - Execution: `runningApp`; operation: `action`
+- Risk: `ordinary`
 - JSON: `required`; expected revision: `required`; dry-run: `false`; output file: `none`
 - Wire method: `ui.show.panelHelp`
 
@@ -454,6 +463,7 @@ Show one panel in Fullscreen as its header's Fullscreen button does; close the s
 
 - CLI path: `ui show panel-fullscreen`
 - Execution: `runningApp`; operation: `action`
+- Risk: `ordinary`
 - JSON: `required`; expected revision: `required`; dry-run: `false`; output file: `none`
 - Wire method: `ui.show.panelFullscreen`
 
@@ -480,6 +490,7 @@ Open the Panels menu's Add Panel list as its button does.
 
 - CLI path: `ui show add-panel`
 - Execution: `runningApp`; operation: `action`
+- Risk: `ordinary`
 - JSON: `required`; expected revision: `required`; dry-run: `false`; output file: `none`
 - Wire method: `ui.show.addPanel`
 
@@ -505,6 +516,7 @@ Expand a Sources group as clicking its heading does.
 
 - CLI path: `ui show source-group`
 - Execution: `runningApp`; operation: `action`
+- Risk: `ordinary`
 - JSON: `required`; expected revision: `required`; dry-run: `false`; output file: `none`
 - Wire method: `ui.show.sourceGroup`
 
@@ -531,6 +543,7 @@ Open a named single-choice dropdown as clicking it does.
 
 - CLI path: `ui show dropdown`
 - Execution: `runningApp`; operation: `action`
+- Risk: `ordinary`
 - JSON: `required`; expected revision: `required`; dry-run: `false`; output file: `none`
 - Wire method: `ui.show.dropdown`
 
@@ -557,6 +570,7 @@ Start the Quick Tour as Start Tour or the Settings footer link does.
 
 - CLI path: `ui quick-tour start`
 - Execution: `runningApp`; operation: `action`
+- Risk: `ordinary`
 - JSON: `required`; expected revision: `required`; dry-run: `false`; output file: `none`
 - Wire method: `ui.quickTour.start`
 
@@ -582,6 +596,7 @@ Advance the Quick Tour as Next or Finish does.
 
 - CLI path: `ui quick-tour next`
 - Execution: `runningApp`; operation: `action`
+- Risk: `ordinary`
 - JSON: `required`; expected revision: `required`; dry-run: `false`; output file: `none`
 - Wire method: `ui.quickTour.next`
 
@@ -607,6 +622,7 @@ Go back one Quick Tour step as Back does.
 
 - CLI path: `ui quick-tour back`
 - Execution: `runningApp`; operation: `action`
+- Risk: `ordinary`
 - JSON: `required`; expected revision: `required`; dry-run: `false`; output file: `none`
 - Wire method: `ui.quickTour.back`
 
@@ -632,6 +648,7 @@ Run a named Status action or open a fixed help destination.
 
 - CLI path: `ui action`
 - Execution: `runningApp`; operation: `action`
+- Risk: `ordinary`
 - JSON: `required`; expected revision: `required`; dry-run: `false`; output file: `none`
 - Wire method: `ui.action`
 
@@ -705,6 +722,7 @@ Answer one exact UI surface using a declared choice.
 
 - CLI path: `ui decide`
 - Execution: `runningApp`; operation: `action`
+- Risk: `risky`
 - JSON: `required`; expected revision: `required`; dry-run: `true`; output file: `none`
 - Wire method: `ui.decide`
 
@@ -733,6 +751,7 @@ Close one exact non-draft UI surface through its normal Close intent.
 
 - CLI path: `ui close`
 - Execution: `runningApp`; operation: `action`
+- Risk: `ordinary`
 - JSON: `required`; expected revision: `required`; dry-run: `false`; output file: `none`
 - Wire method: `ui.close`
 
@@ -760,6 +779,7 @@ Cancel one exact UI surface through its normal Cancel or Escape intent.
 
 - CLI path: `ui cancel`
 - Execution: `runningApp`; operation: `action`
+- Risk: `ordinary`
 - JSON: `required`; expected revision: `required`; dry-run: `false`; output file: `none`
 - Wire method: `ui.cancel`
 
@@ -810,6 +830,7 @@ Set the normal window's inner size in CSS pixels, keeping its position.
 
 - CLI path: `window resize`
 - Execution: `runningApp`; operation: `action`
+- Risk: `ordinary`
 - JSON: `required`; expected revision: `required`; dry-run: `false`; output file: `none`
 - Wire method: `window.resize`
 
@@ -836,6 +857,7 @@ Place the normal window's top-left corner at a CSS-pixel offset from a monitor's
 
 - CLI path: `window move`
 - Execution: `runningApp`; operation: `action`
+- Risk: `ordinary`
 - JSON: `required`; expected revision: `required`; dry-run: `false`; output file: `none`
 - Wire method: `window.move`
 - Feature gate: `window.move`
@@ -864,6 +886,7 @@ Hide the window as the tray's Hide does.
 
 - CLI path: `window hide`
 - Execution: `runningApp`; operation: `action`
+- Risk: `ordinary`
 - JSON: `required`; expected revision: `required`; dry-run: `false`; output file: `none`
 - Wire method: `window.hide`
 
@@ -888,6 +911,7 @@ Show and focus the window as the tray's Show does.
 
 - CLI path: `window show`
 - Execution: `runningApp`; operation: `action`
+- Risk: `ordinary`
 - JSON: `required`; expected revision: `required`; dry-run: `false`; output file: `none`
 - Wire method: `window.show`
 
@@ -912,6 +936,7 @@ Maximize the normal window as the title bar does.
 
 - CLI path: `window maximize`
 - Execution: `runningApp`; operation: `action`
+- Risk: `ordinary`
 - JSON: `required`; expected revision: `required`; dry-run: `false`; output file: `none`
 - Wire method: `window.maximize`
 
@@ -936,6 +961,7 @@ Restore a maximized normal window as the title bar does.
 
 - CLI path: `window unmaximize`
 - Execution: `runningApp`; operation: `action`
+- Risk: `ordinary`
 - JSON: `required`; expected revision: `required`; dry-run: `false`; output file: `none`
 - Wire method: `window.unmaximize`
 
@@ -960,6 +986,7 @@ Minimize the normal window as the title bar does.
 
 - CLI path: `window minimize`
 - Execution: `runningApp`; operation: `action`
+- Risk: `ordinary`
 - JSON: `required`; expected revision: `required`; dry-run: `false`; output file: `none`
 - Wire method: `window.minimize`
 - Feature gate: `window.minimize`
@@ -985,6 +1012,7 @@ Open one more workbench as launching PLVS again does, and return its instance.
 
 - CLI path: `workbench open`
 - Execution: `runningApp`; operation: `action`
+- Risk: `ordinary`
 - JSON: `required`; expected revision: `required`; dry-run: `false`; output file: `none`
 - Wire method: `workbench.open`
 
@@ -1009,6 +1037,7 @@ Quit this workbench as the Tray's Quit Workbench does; with one workbench, quit 
 
 - CLI path: `workbench quit`
 - Execution: `runningApp`; operation: `action`
+- Risk: `risky`
 - JSON: `required`; expected revision: `required`; dry-run: `false`; output file: `none`
 - Wire method: `workbench.quit`
 
@@ -1033,6 +1062,7 @@ Quit every workbench as the Tray's Quit PLVS does, keeping the restore set.
 
 - CLI path: `workbench quit-all`
 - Execution: `runningApp`; operation: `action`
+- Risk: `risky`
 - JSON: `required`; expected revision: `required`; dry-run: `false`; output file: `none`
 - Wire method: `workbench.quitAll`
 
@@ -1080,6 +1110,7 @@ Check for updates once, as Check for Updates in About does, without downloading 
 
 - CLI path: `update check`
 - Execution: `runningApp`; operation: `action`
+- Risk: `ordinary`
 - JSON: `required`; expected revision: `required`; dry-run: `false`; output file: `none`
 - Wire method: `update.check`
 
@@ -1104,6 +1135,7 @@ Install the named update version as About's Install does, then relaunch.
 
 - CLI path: `update install`
 - Execution: `runningApp`; operation: `action`
+- Risk: `risky`
 - JSON: `required`; expected revision: `required`; dry-run: `false`; output file: `none`
 - Wire method: `update.install`
 
@@ -1129,6 +1161,7 @@ Move the system pointer onto a named target without pressing anything.
 
 - CLI path: `pointer move`
 - Execution: `runningApp`; operation: `action`
+- Risk: `ordinary`
 - JSON: `required`; expected revision: `required`; dry-run: `false`; output file: `none`
 - Wire method: `pointer.move`
 
@@ -1282,6 +1315,7 @@ Clear a panel's Max Hold as clicking the held curve does.
 
 - CLI path: `measurement reset-hold`
 - Execution: `runningApp`; operation: `action`
+- Risk: `risky`
 - JSON: `required`; expected revision: `required`; dry-run: `false`; output file: `none`
 - Wire method: `measurement.resetHold`
 
@@ -1307,6 +1341,7 @@ Reset TP Max as clicking a Level Meter's TP Max marker does.
 
 - CLI path: `measurement reset-true-peak-max`
 - Execution: `runningApp`; operation: `action`
+- Risk: `risky`
 - JSON: `required`; expected revision: `required`; dry-run: `false`; output file: `none`
 - Wire method: `measurement.resetTruePeakMax`
 
@@ -1380,6 +1415,7 @@ Update public view state.
 
 - CLI path: `view update`
 - Execution: `runningApp`; operation: `mutation`
+- Risk: `ordinary`
 - JSON: `required`; expected revision: `required`; dry-run: `true`; output file: `none`
 - Wire method: `view.update`
 - Schema references: `agentControl.revision`, `view.patch`
@@ -1408,6 +1444,7 @@ Reset public view state.
 
 - CLI path: `view reset`
 - Execution: `runningApp`; operation: `mutation`
+- Risk: `ordinary`
 - JSON: `required`; expected revision: `required`; dry-run: `true`; output file: `none`
 - Wire method: `view.reset`
 - Schema references: `agentControl.revision`
@@ -1484,6 +1521,7 @@ Apply a Workspace layout document. Use JSON null for an empty Workspace.
 
 - CLI path: `workspace apply`
 - Execution: `runningApp`; operation: `mutation`
+- Risk: `ordinary`
 - JSON: `required`; expected revision: `required`; dry-run: `true`; output file: `none`
 - Wire method: `workspace.applyLayout`
 - Schema references: `workspace.layout`, `agentControl.revision`
@@ -1512,6 +1550,7 @@ Restore the default Workspace layout, panel settings, and shared axis ranges.
 
 - CLI path: `workspace reset`
 - Execution: `runningApp`; operation: `mutation`
+- Risk: `risky`
 - JSON: `required`; expected revision: `required`; dry-run: `true`; output file: `none`
 - Wire method: `workspace.reset`
 - Schema references: `agentControl.revision`
@@ -1586,6 +1625,7 @@ Update a shared workspace axis.
 
 - CLI path: `axis shared update`
 - Execution: `runningApp`; operation: `mutation`
+- Risk: `ordinary`
 - JSON: `required`; expected revision: `required`; dry-run: `true`; output file: `none`
 - Wire method: `axis.shared.update`
 - Schema references: `agentControl.revision`, `axis.patch.runtime`
@@ -1617,6 +1657,7 @@ Reset a shared workspace axis.
 
 - CLI path: `axis shared reset`
 - Execution: `runningApp`; operation: `mutation`
+- Risk: `ordinary`
 - JSON: `required`; expected revision: `required`; dry-run: `true`; output file: `none`
 - Wire method: `axis.shared.reset`
 - Schema references: `agentControl.revision`
@@ -1645,6 +1686,7 @@ Update a panel-local axis.
 
 - CLI path: `axis panel update`
 - Execution: `runningApp`; operation: `mutation`
+- Risk: `ordinary`
 - JSON: `required`; expected revision: `required`; dry-run: `true`; output file: `none`
 - Wire method: `axis.panel.update`
 - Schema references: `agentControl.revision`, `axis.patch.runtime`
@@ -1677,6 +1719,7 @@ Reset a panel-local axis.
 
 - CLI path: `axis panel reset`
 - Execution: `runningApp`; operation: `mutation`
+- Risk: `ordinary`
 - JSON: `required`; expected revision: `required`; dry-run: `true`; output file: `none`
 - Wire method: `axis.panel.reset`
 - Schema references: `agentControl.revision`
@@ -1732,6 +1775,7 @@ Update one live panel's public controls.
 
 - CLI path: `panel update`
 - Execution: `runningApp`; operation: `mutation`
+- Risk: `ordinary`
 - JSON: `required`; expected revision: `required`; dry-run: `true`; output file: `none`
 - Wire method: `panel.update`
 - Schema references: `agentControl.revision`, `panel.patch.runtime`
@@ -1763,6 +1807,7 @@ Reset one live panel's public controls.
 
 - CLI path: `panel reset`
 - Execution: `runningApp`; operation: `mutation`
+- Risk: `ordinary`
 - JSON: `required`; expected revision: `required`; dry-run: `true`; output file: `none`
 - Wire method: `panel.reset`
 - Schema references: `agentControl.revision`
@@ -1791,6 +1836,7 @@ Hold Slow Trace for a time, as pressing and holding the chart does.
 
 - CLI path: `panel hold-slow`
 - Execution: `runningApp`; operation: `action`
+- Risk: `ordinary`
 - JSON: `required`; expected revision: `required`; dry-run: `false`; output file: `none`
 - Wire method: `panel.holdSlow`
 
@@ -1817,6 +1863,7 @@ Lock a panel at its rendered size, as the header's Pin button does.
 
 - CLI path: `panel pin`
 - Execution: `runningApp`; operation: `action`
+- Risk: `ordinary`
 - JSON: `required`; expected revision: `required`; dry-run: `false`; output file: `none`
 - Wire method: `panel.pin`
 
@@ -1842,6 +1889,7 @@ Release a panel's pinned size, as the header's Unpin button does.
 
 - CLI path: `panel unpin`
 - Execution: `runningApp`; operation: `action`
+- Risk: `ordinary`
 - JSON: `required`; expected revision: `required`; dry-run: `false`; output file: `none`
 - Wire method: `panel.unpin`
 
@@ -1917,6 +1965,7 @@ Rename a preset.
 
 - CLI path: `preset rename`
 - Execution: `runningApp`; operation: `mutation`
+- Risk: `ordinary`
 - JSON: `required`; expected revision: `required`; dry-run: `true`; output file: `none`
 - Wire method: `preset.rename`
 - Schema references: `agentControl.revision`
@@ -1946,6 +1995,7 @@ Delete a preset.
 
 - CLI path: `preset delete`
 - Execution: `runningApp`; operation: `mutation`
+- Risk: `risky`
 - JSON: `required`; expected revision: `required`; dry-run: `true`; output file: `none`
 - Wire method: `preset.delete`
 - Schema references: `agentControl.revision`
@@ -1974,6 +2024,7 @@ Reorder presets.
 
 - CLI path: `preset reorder`
 - Execution: `runningApp`; operation: `mutation`
+- Risk: `ordinary`
 - JSON: `required`; expected revision: `required`; dry-run: `true`; output file: `none`
 - Wire method: `preset.reorder`
 - Schema references: `agentControl.revision`, `preset.order`
@@ -2002,6 +2053,7 @@ Save the current scene as a preset.
 
 - CLI path: `preset save`
 - Execution: `runningApp`; operation: `mutation`
+- Risk: `ordinary`
 - JSON: `required`; expected revision: `required`; dry-run: `true`; output file: `none`
 - Wire method: `preset.save`
 - Schema references: `agentControl.revision`
@@ -2030,6 +2082,7 @@ Update a preset from the current scene.
 
 - CLI path: `preset update`
 - Execution: `runningApp`; operation: `mutation`
+- Risk: `risky`
 - JSON: `required`; expected revision: `required`; dry-run: `true`; output file: `none`
 - Wire method: `preset.update`
 - Schema references: `agentControl.revision`
@@ -2058,6 +2111,7 @@ Apply a preset.
 
 - CLI path: `preset apply`
 - Execution: `runningApp`; operation: `mutation`
+- Risk: `ordinary`
 - JSON: `required`; expected revision: `required`; dry-run: `true`; output file: `none`
 - Wire method: `preset.apply`
 - Schema references: `agentControl.revision`
@@ -2112,6 +2166,7 @@ Import a preset library pack.
 
 - CLI path: `preset import`
 - Execution: `runningApp`; operation: `mutation`
+- Risk: `risky`
 - JSON: `required`; expected revision: `required`; dry-run: `true`; output file: `none`
 - Wire method: `preset.import`
 - Schema references: `preset.pack`, `agentControl.revision`
@@ -2214,6 +2269,7 @@ Select a theme.
 
 - CLI path: `theme select`
 - Execution: `runningApp`; operation: `mutation`
+- Risk: `ordinary`
 - JSON: `required`; expected revision: `required`; dry-run: `true`; output file: `none`
 - Wire method: `theme.select`
 - Schema references: `agentControl.revision`
@@ -2242,6 +2298,7 @@ Follow the system appearance mode.
 
 - CLI path: `theme follow-system`
 - Execution: `runningApp`; operation: `mutation`
+- Risk: `ordinary`
 - JSON: `required`; expected revision: `required`; dry-run: `true`; output file: `none`
 - Wire method: `theme.followSystem`
 - Schema references: `agentControl.revision`
@@ -2268,6 +2325,7 @@ Create a theme.
 
 - CLI path: `theme create`
 - Execution: `runningApp`; operation: `mutation`
+- Risk: `ordinary`
 - JSON: `required`; expected revision: `required`; dry-run: `true`; output file: `none`
 - Wire method: `theme.create`
 - Schema references: `agentControl.revision`, `theme.document.v2`
@@ -2296,6 +2354,7 @@ Update a theme.
 
 - CLI path: `theme update`
 - Execution: `runningApp`; operation: `mutation`
+- Risk: `ordinary`
 - JSON: `required`; expected revision: `required`; dry-run: `true`; output file: `none`
 - Wire method: `theme.update`
 - Schema references: `agentControl.revision`, `theme.document.v2`
@@ -2325,6 +2384,7 @@ Rename a theme.
 
 - CLI path: `theme rename`
 - Execution: `runningApp`; operation: `mutation`
+- Risk: `ordinary`
 - JSON: `required`; expected revision: `required`; dry-run: `true`; output file: `none`
 - Wire method: `theme.rename`
 - Schema references: `agentControl.revision`
@@ -2354,6 +2414,7 @@ Duplicate a theme.
 
 - CLI path: `theme duplicate`
 - Execution: `runningApp`; operation: `mutation`
+- Risk: `ordinary`
 - JSON: `required`; expected revision: `required`; dry-run: `true`; output file: `none`
 - Wire method: `theme.duplicate`
 - Schema references: `agentControl.revision`
@@ -2383,6 +2444,7 @@ Delete a theme.
 
 - CLI path: `theme delete`
 - Execution: `runningApp`; operation: `mutation`
+- Risk: `risky`
 - JSON: `required`; expected revision: `required`; dry-run: `true`; output file: `none`
 - Wire method: `theme.delete`
 - Schema references: `agentControl.revision`
@@ -2411,6 +2473,7 @@ Reorder themes.
 
 - CLI path: `theme reorder`
 - Execution: `runningApp`; operation: `mutation`
+- Risk: `ordinary`
 - JSON: `required`; expected revision: `required`; dry-run: `true`; output file: `none`
 - Wire method: `theme.reorder`
 - Schema references: `agentControl.revision`, `theme.order`
@@ -2465,6 +2528,7 @@ Import a theme library pack.
 
 - CLI path: `theme import`
 - Execution: `runningApp`; operation: `mutation`
+- Risk: `risky`
 - JSON: `required`; expected revision: `required`; dry-run: `true`; output file: `none`
 - Wire method: `theme.import`
 - Schema references: `theme.pack`, `agentControl.revision`
@@ -2543,6 +2607,7 @@ Select or disable a loudness profile.
 
 - CLI path: `loudness-profile select`
 - Execution: `runningApp`; operation: `mutation`
+- Risk: `ordinary`
 - JSON: `required`; expected revision: `required`; dry-run: `true`; output file: `none`
 - Wire method: `loudnessProfile.select`
 - Schema references: `agentControl.revision`
@@ -2571,6 +2636,7 @@ Create a loudness profile.
 
 - CLI path: `loudness-profile create`
 - Execution: `runningApp`; operation: `mutation`
+- Risk: `ordinary`
 - JSON: `required`; expected revision: `required`; dry-run: `true`; output file: `none`
 - Wire method: `loudnessProfile.create`
 - Schema references: `agentControl.revision`, `loudnessProfile.document`
@@ -2599,6 +2665,7 @@ Update a loudness profile.
 
 - CLI path: `loudness-profile update`
 - Execution: `runningApp`; operation: `mutation`
+- Risk: `ordinary`
 - JSON: `required`; expected revision: `required`; dry-run: `true`; output file: `none`
 - Wire method: `loudnessProfile.update`
 - Schema references: `agentControl.revision`, `loudnessProfile.document`
@@ -2628,6 +2695,7 @@ Rename a loudness profile.
 
 - CLI path: `loudness-profile rename`
 - Execution: `runningApp`; operation: `mutation`
+- Risk: `ordinary`
 - JSON: `required`; expected revision: `required`; dry-run: `true`; output file: `none`
 - Wire method: `loudnessProfile.rename`
 - Schema references: `agentControl.revision`
@@ -2657,6 +2725,7 @@ Delete a loudness profile.
 
 - CLI path: `loudness-profile delete`
 - Execution: `runningApp`; operation: `mutation`
+- Risk: `risky`
 - JSON: `required`; expected revision: `required`; dry-run: `true`; output file: `none`
 - Wire method: `loudnessProfile.delete`
 - Schema references: `agentControl.revision`
@@ -2685,6 +2754,7 @@ Reorder loudness profiles.
 
 - CLI path: `loudness-profile reorder`
 - Execution: `runningApp`; operation: `mutation`
+- Risk: `ordinary`
 - JSON: `required`; expected revision: `required`; dry-run: `true`; output file: `none`
 - Wire method: `loudnessProfile.reorder`
 - Schema references: `agentControl.revision`, `loudnessProfile.order`
@@ -2739,6 +2809,7 @@ Import a loudness profile library pack.
 
 - CLI path: `loudness-profile import`
 - Execution: `runningApp`; operation: `mutation`
+- Risk: `risky`
 - JSON: `required`; expected revision: `required`; dry-run: `true`; output file: `none`
 - Wire method: `loudnessProfile.import`
 - Schema references: `loudnessProfile.pack`, `agentControl.revision`
@@ -2791,6 +2862,7 @@ Reset the configuration and restart PLVS.
 
 - CLI path: `config reset`
 - Execution: `runningApp`; operation: `mutation`
+- Risk: `risky`
 - JSON: `required`; expected revision: `required`; dry-run: `true`; output file: `none`
 - Wire method: `config.reset`
 - Schema references: `agentControl.revision`
@@ -2817,6 +2889,7 @@ Import the complete public configuration.
 
 - CLI path: `config import`
 - Execution: `runningApp`; operation: `mutation`
+- Risk: `risky`
 - JSON: `required`; expected revision: `required`; dry-run: `true`; output file: `none`
 - Wire method: `config.import`
 - Schema references: `configurationProfile.v1`, `agentControl.revision`
@@ -2893,6 +2966,7 @@ Update public settings.
 
 - CLI path: `settings update`
 - Execution: `runningApp`; operation: `mutation`
+- Risk: `ordinary`
 - JSON: `required`; expected revision: `required`; dry-run: `true`; output file: `none`
 - Wire method: `settings.update`
 - Schema references: `agentControl.revision`, `settings.patch`
@@ -2970,6 +3044,7 @@ Select an audio capture device.
 
 - CLI path: `device select`
 - Execution: `runningApp`; operation: `mutation`
+- Risk: `ordinary`
 - JSON: `required`; expected revision: `required`; dry-run: `true`; output file: `none`
 - Wire method: `device.select`
 - Schema references: `agentControl.revision`
@@ -3049,6 +3124,7 @@ Select a retained history snapshot.
 
 - CLI path: `transport snapshot select`
 - Execution: `runningApp`; operation: `mutation`
+- Risk: `ordinary`
 - JSON: `required`; expected revision: `required`; dry-run: `true`; output file: `none`
 - Wire method: `transport.snapshot.select`
 - Schema references: `agentControl.revision`
@@ -3078,6 +3154,7 @@ Return from a retained history snapshot.
 
 - CLI path: `transport snapshot clear`
 - Execution: `runningApp`; operation: `mutation`
+- Risk: `ordinary`
 - JSON: `required`; expected revision: `required`; dry-run: `true`; output file: `none`
 - Wire method: `transport.snapshot.clear`
 - Schema references: `agentControl.revision`
@@ -3104,6 +3181,7 @@ Switch transport to the live source.
 
 - CLI path: `transport source live`
 - Execution: `runningApp`; operation: `mutation`
+- Risk: `ordinary`
 - JSON: `required`; expected revision: `required`; dry-run: `true`; output file: `none`
 - Wire method: `transport.source.live`
 - Schema references: `agentControl.revision`
@@ -3131,6 +3209,7 @@ Switch transport to the file source.
 
 - CLI path: `transport source file`
 - Execution: `runningApp`; operation: `mutation`
+- Risk: `ordinary`
 - JSON: `required`; expected revision: `required`; dry-run: `true`; output file: `none`
 - Wire method: `transport.source.file`
 - Schema references: `agentControl.revision`
@@ -3158,6 +3237,7 @@ Start live measurement.
 
 - CLI path: `transport live start`
 - Execution: `runningApp`; operation: `action`
+- Risk: `ordinary`
 - JSON: `required`; expected revision: `required`; dry-run: `false`; output file: `none`
 - Wire method: `transport.live.start`
 - Schema references: `agentControl.revision`
@@ -3184,6 +3264,7 @@ Stop live measurement.
 
 - CLI path: `transport live stop`
 - Execution: `runningApp`; operation: `action`
+- Risk: `ordinary`
 - JSON: `required`; expected revision: `required`; dry-run: `false`; output file: `none`
 - Wire method: `transport.live.stop`
 - Schema references: `agentControl.revision`
@@ -3210,6 +3291,7 @@ Clear live measurements.
 
 - CLI path: `transport live clear`
 - Execution: `runningApp`; operation: `mutation`
+- Risk: `risky`
 - JSON: `required`; expected revision: `required`; dry-run: `true`; output file: `none`
 - Wire method: `transport.live.clear`
 - Schema references: `agentControl.revision`
@@ -3259,6 +3341,7 @@ Append an ordered list of paths to the File batch queue.
 
 - CLI path: `transport file batch enqueue`
 - Execution: `runningApp`; operation: `action`
+- Risk: `ordinary`
 - JSON: `required`; expected revision: `required`; dry-run: `false`; output file: `none`
 - Wire method: `transport.file.batch.enqueue`
 - Schema references: `agentControl.revision`
@@ -3286,6 +3369,7 @@ Choose a track for a waiting File batch item.
 
 - CLI path: `transport file batch choose-track`
 - Execution: `runningApp`; operation: `action`
+- Risk: `ordinary`
 - JSON: `required`; expected revision: `required`; dry-run: `false`; output file: `none`
 - Wire method: `transport.file.batch.chooseTrack`
 - Schema references: `agentControl.revision`
@@ -3314,6 +3398,7 @@ Stop the current File batch item.
 
 - CLI path: `transport file batch stop`
 - Execution: `runningApp`; operation: `action`
+- Risk: `ordinary`
 - JSON: `required`; expected revision: `required`; dry-run: `false`; output file: `none`
 - Wire method: `transport.file.batch.stop`
 - Schema references: `agentControl.revision`
@@ -3341,6 +3426,7 @@ Cancel the current File batch.
 
 - CLI path: `transport file batch cancel`
 - Execution: `runningApp`; operation: `action`
+- Risk: `ordinary`
 - JSON: `required`; expected revision: `required`; dry-run: `false`; output file: `none`
 - Wire method: `transport.file.batch.cancel`
 - Schema references: `agentControl.revision`
@@ -3366,6 +3452,7 @@ Resume interrupted and pending File batch work.
 
 - CLI path: `transport file batch resume`
 - Execution: `runningApp`; operation: `action`
+- Risk: `ordinary`
 - JSON: `required`; expected revision: `required`; dry-run: `false`; output file: `none`
 - Wire method: `transport.file.batch.resume`
 - Schema references: `agentControl.revision`
@@ -3391,6 +3478,7 @@ Analyze a file, or select its existing result.
 
 - CLI path: `transport file analyze`
 - Execution: `runningApp`; operation: `action`
+- Risk: `ordinary`
 - JSON: `required`; expected revision: `required`; dry-run: `false`; output file: `none`
 - Wire method: `transport.file.analyze`
 - Schema references: `agentControl.revision`
@@ -3419,6 +3507,7 @@ Reanalyze a file session.
 
 - CLI path: `transport file reanalyze`
 - Execution: `runningApp`; operation: `action`
+- Risk: `ordinary`
 - JSON: `required`; expected revision: `required`; dry-run: `false`; output file: `none`
 - Wire method: `transport.file.reanalyze`
 - Schema references: `agentControl.revision`
@@ -3446,6 +3535,7 @@ Restore released browsing history using the original analysis conditions.
 
 - CLI path: `transport file restore`
 - Execution: `runningApp`; operation: `action`
+- Risk: `ordinary`
 - JSON: `required`; expected revision: `required`; dry-run: `false`; output file: `none`
 - Wire method: `transport.file.restore`
 - Schema references: `agentControl.revision`
@@ -3473,6 +3563,7 @@ Stop file analysis.
 
 - CLI path: `transport file stop`
 - Execution: `runningApp`; operation: `action`
+- Risk: `ordinary`
 - JSON: `required`; expected revision: `required`; dry-run: `false`; output file: `none`
 - Wire method: `transport.file.stop`
 - Schema references: `agentControl.revision`
@@ -3500,6 +3591,7 @@ Select a file session.
 
 - CLI path: `transport file select`
 - Execution: `runningApp`; operation: `mutation`
+- Risk: `ordinary`
 - JSON: `required`; expected revision: `required`; dry-run: `true`; output file: `none`
 - Wire method: `transport.file.select`
 - Schema references: `agentControl.revision`
@@ -3528,6 +3620,7 @@ Remove a file session.
 
 - CLI path: `transport file remove`
 - Execution: `runningApp`; operation: `mutation`
+- Risk: `risky`
 - JSON: `required`; expected revision: `required`; dry-run: `true`; output file: `none`
 - Wire method: `transport.file.remove`
 - Schema references: `agentControl.revision`
@@ -3556,6 +3649,7 @@ Clear file sessions.
 
 - CLI path: `transport file clear`
 - Execution: `runningApp`; operation: `mutation`
+- Risk: `risky`
 - JSON: `required`; expected revision: `required`; dry-run: `true`; output file: `none`
 - Wire method: `transport.file.clear`
 - Schema references: `agentControl.revision`
@@ -3710,6 +3804,7 @@ Enter Dock mode.
 
 - CLI path: `dock enter`
 - Execution: `runningApp`; operation: `mutation`
+- Risk: `ordinary`
 - JSON: `required`; expected revision: `required`; dry-run: `true`; output file: `none`
 - Wire method: `dock.enter`
 - Schema references: `agentControl.revision`
@@ -3741,6 +3836,7 @@ Exit Dock mode.
 
 - CLI path: `dock exit`
 - Execution: `runningApp`; operation: `mutation`
+- Risk: `ordinary`
 - JSON: `required`; expected revision: `required`; dry-run: `true`; output file: `none`
 - Wire method: `dock.exit`
 - Schema references: `agentControl.revision`
@@ -3767,6 +3863,7 @@ Apply a Dock strip layout.
 
 - CLI path: `dock layout apply`
 - Execution: `runningApp`; operation: `mutation`
+- Risk: `ordinary`
 - JSON: `required`; expected revision: `required`; dry-run: `true`; output file: `none`
 - Wire method: `dock.layout.apply`
 - Schema references: `dock.layout`, `agentControl.revision`
@@ -3795,6 +3892,7 @@ Reset the Dock layout as the Dock Panels editor's Reset Layout does.
 
 - CLI path: `dock layout reset`
 - Execution: `runningApp`; operation: `mutation`
+- Risk: `risky`
 - JSON: `required`; expected revision: `required`; dry-run: `true`; output file: `none`
 - Wire method: `dock.layout.reset`
 - Schema references: `agentControl.revision`
@@ -3847,6 +3945,7 @@ Update a Dock panel.
 
 - CLI path: `dock panel update`
 - Execution: `runningApp`; operation: `mutation`
+- Risk: `ordinary`
 - JSON: `required`; expected revision: `required`; dry-run: `true`; output file: `none`
 - Wire method: `dock.panel.update`
 - Schema references: `agentControl.revision`, `dock.panel.patch`
@@ -3876,6 +3975,7 @@ Reset a Dock panel.
 
 - CLI path: `dock panel reset`
 - Execution: `runningApp`; operation: `mutation`
+- Risk: `ordinary`
 - JSON: `required`; expected revision: `required`; dry-run: `true`; output file: `none`
 - Wire method: `dock.panel.reset`
 - Schema references: `agentControl.revision`
@@ -3929,6 +4029,7 @@ Capture a PLVS surface screenshot.
 
 - CLI path: `visual screenshot`
 - Execution: `runningApp`; operation: `action`
+- Risk: `ordinary`
 - JSON: `required`; expected revision: `optional`; dry-run: `false`; output file: `required`
 - Wire method: `visual.screenshot`
 - Feature gate: `visual.screenshot`
@@ -3960,6 +4061,7 @@ Start one bounded PLVS surface recording.
 
 - CLI path: `visual recording start`
 - Execution: `runningApp`; operation: `action`
+- Risk: `ordinary`
 - JSON: `required`; expected revision: `optional`; dry-run: `false`; output file: `none`
 - Wire method: `visual.recording.start`
 - Feature gate: `visual.recording`
@@ -4047,6 +4149,7 @@ Stop a Visual recording.
 
 - CLI path: `visual recording stop`
 - Execution: `runningApp`; operation: `action`
+- Risk: `ordinary`
 - JSON: `required`; expected revision: `none`; dry-run: `false`; output file: `optional`
 - Wire method: `visual.recording.stop`
 - Feature gate: `visual.recording`
@@ -4125,6 +4228,7 @@ Apply one closed atomic semantic transaction to the exact mounted draft.
 
 - CLI path: `editor-draft patch`
 - Execution: `runningApp`; operation: `mutation`
+- Risk: `ordinary`
 - JSON: `required`; expected revision: `required`; dry-run: `false`; output file: `none`
 - Wire method: `editorDraft.patch`
 - Schema references: `editorDraft.patch`, `agentControl.revision`, `agentControl.uiGeneration`, `editorDraft.generation`
@@ -4156,6 +4260,7 @@ Undo one Theme draft history entry on the exact mounted editor.
 
 - CLI path: `editor-draft undo`
 - Execution: `runningApp`; operation: `mutation`
+- Risk: `ordinary`
 - JSON: `required`; expected revision: `required`; dry-run: `false`; output file: `none`
 - Wire method: `editorDraft.undo`
 - Schema references: `agentControl.revision`, `agentControl.uiGeneration`, `editorDraft.generation`
@@ -4186,6 +4291,7 @@ Redo one Theme draft history entry on the exact mounted editor.
 
 - CLI path: `editor-draft redo`
 - Execution: `runningApp`; operation: `mutation`
+- Risk: `ordinary`
 - JSON: `required`; expected revision: `required`; dry-run: `false`; output file: `none`
 - Wire method: `editorDraft.redo`
 - Schema references: `agentControl.revision`, `agentControl.uiGeneration`, `editorDraft.generation`
@@ -4216,6 +4322,7 @@ Save the exact mounted editor draft through its owner and await durable persiste
 
 - CLI path: `editor-draft save`
 - Execution: `runningApp`; operation: `action`
+- Risk: `ordinary`
 - JSON: `required`; expected revision: `required`; dry-run: `false`; output file: `none`
 - Wire method: `editorDraft.save`
 - Schema references: `agentControl.revision`, `agentControl.uiGeneration`, `editorDraft.generation`
@@ -4246,6 +4353,7 @@ Confirm the exact linked discard decision opened through UI Cancel.
 
 - CLI path: `editor-draft discard`
 - Execution: `runningApp`; operation: `mutation`
+- Risk: `risky`
 - JSON: `required`; expected revision: `required`; dry-run: `false`; output file: `none`
 - Wire method: `editorDraft.discard`
 - Schema references: `agentControl.revision`, `agentControl.uiGeneration`, `editorDraft.generation`
@@ -4380,6 +4488,26 @@ plvs-cli completion <powershell|bash|zsh>
 | Name | Maps to | Required | Value |
 | --- | --- | --- | --- |
 | `shell` | local only | yes | string; one of "powershell", "bash", "zsh" |
+
+### Options
+
+None.
+
+## `mcp`
+
+Serve Agent Control to a chat app as a local MCP server over standard input and output.
+
+- CLI path: `mcp`
+- Execution: `offline`; operation: `query`
+- JSON: `none`; expected revision: `none`; dry-run: `false`; output file: `none`
+
+```text
+plvs-cli mcp
+```
+
+### Positionals
+
+None.
 
 ### Options
 

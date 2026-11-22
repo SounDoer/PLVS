@@ -15,6 +15,7 @@ const ENTRY_FIELDS = new Set([
   "expectedRevision",
   "dryRun",
   "outputFile",
+  "risk",
   "positionals",
   "options",
   "wireParams",
@@ -41,6 +42,11 @@ const OPERATIONS = new Set(["query", "mutation", "action", "wait"]);
 const JSON_POLICIES = new Set(["none", "optional", "required"]);
 const REVISION_POLICIES = new Set(["none", "optional", "required"]);
 const OUTPUT_POLICIES = new Set(["none", "optional", "required"]);
+// Risky: cannot be undone inside PLVS, or ends the connection. The MCP adapter serves the two
+// tiers through separate tools so a host can confirm risky changes even when ordinary ones are
+// always allowed.
+const RISK_TIERS = new Set(["ordinary", "risky"]);
+const CHANGE_OPERATIONS = new Set(["mutation", "action"]);
 const SCHEMA_TYPES = new Set(["boolean", "integer", "number", "string", "array", "object"]);
 
 /**
@@ -132,6 +138,11 @@ function validateEntry(entry, index) {
   }
   if (!OUTPUT_POLICIES.has(entry.outputFile)) fail(`${path}.outputFile`, "unknown output policy");
   if (typeof entry.dryRun !== "boolean") fail(`${path}.dryRun`, "must be boolean");
+  if (CHANGE_OPERATIONS.has(entry.operation)) {
+    if (!RISK_TIERS.has(entry.risk)) fail(`${path}.risk`, "mutations and actions need a risk tier");
+  } else if (entry.risk !== undefined) {
+    fail(`${path}.risk`, "only mutations and actions have a risk tier");
+  }
   if (!Array.isArray(entry.positionals)) fail(`${path}.positionals`, "must be an array");
   if (!Array.isArray(entry.options)) fail(`${path}.options`, "must be an array");
   entry.positionals.forEach((argument, offset) =>

@@ -239,7 +239,7 @@ function collectSchemaRefs(schema, found = new Set()) {
 function commandPage() {
   const summaryRows = commandEntries.map(
     (entry) =>
-      `| \`${entry.id}\` | \`${entry.path.join(" ")}\` | ${entry.execution} / ${entry.operation} | ${entry.expectedRevision} | ${entry.dryRun ? "yes" : "no"} | ${entry.outputFile} |`
+      `| \`${entry.id}\` | \`${entry.path.join(" ")}\` | ${entry.execution} / ${entry.operation} | ${entry.expectedRevision} | ${entry.dryRun ? "yes" : "no"} | ${entry.outputFile} | ${entry.risk ?? ""} |`
   );
   return [
     BANNER,
@@ -248,8 +248,8 @@ function commandPage() {
     "",
     `Manifest version \`${commandManifest.manifestVersion}\`. Entries are shown in stable presentation order.`,
     "",
-    "| Command ID | CLI path | Execution / operation | Revision | Dry run | Output file |",
-    "| --- | --- | --- | --- | --- | --- |",
+    "| Command ID | CLI path | Execution / operation | Revision | Dry run | Output file | Risk |",
+    "| --- | --- | --- | --- | --- | --- | --- |",
     ...summaryRows,
     "",
     ...commandEntries.flatMap((entry) => {
@@ -264,6 +264,7 @@ function commandPage() {
         "",
         `- CLI path: \`${entry.path.join(" ")}\``,
         `- Execution: \`${entry.execution}\`; operation: \`${entry.operation}\``,
+        ...(entry.risk ? [`- Risk: \`${entry.risk}\``] : []),
         `- JSON: \`${entry.json}\`; expected revision: \`${entry.expectedRevision}\`; dry-run: \`${entry.dryRun}\`; output file: \`${entry.outputFile}\``,
         ...(entry.wireMethod ? [`- Wire method: \`${entry.wireMethod}\``] : []),
         ...(entry.featureGate ? [`- Feature gate: \`${entry.featureGate}\``] : []),

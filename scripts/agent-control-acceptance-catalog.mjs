@@ -12,7 +12,7 @@ const groups = [
   {
     scenario: "offline-contract",
     disposition: "offline",
-    commands: ["instances.list", "doctor", "schema.list", "schema.get", "completion"],
+    commands: ["instances.list", "doctor", "schema.list", "schema.get", "completion", "mcp"],
   },
   {
     scenario: "base-smoke",

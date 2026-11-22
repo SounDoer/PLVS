@@ -118,6 +118,7 @@
       "expectedRevision": "required",
       "dryRun": false,
       "outputFile": "none",
+      "risk": "ordinary",
       "positionals": [],
       "options": [
         {
@@ -190,6 +191,7 @@
       "expectedRevision": "required",
       "dryRun": false,
       "outputFile": "none",
+      "risk": "ordinary",
       "positionals": [],
       "options": [
         {
@@ -235,6 +237,7 @@
       "expectedRevision": "required",
       "dryRun": false,
       "outputFile": "none",
+      "risk": "ordinary",
       "positionals": [],
       "options": [
         {
@@ -300,6 +303,7 @@
       "expectedRevision": "required",
       "dryRun": false,
       "outputFile": "none",
+      "risk": "ordinary",
       "positionals": [],
       "options": [
         {
@@ -352,6 +356,7 @@
       "expectedRevision": "required",
       "dryRun": false,
       "outputFile": "none",
+      "risk": "ordinary",
       "positionals": [],
       "options": [
         {
@@ -390,6 +395,7 @@
       "expectedRevision": "required",
       "dryRun": false,
       "outputFile": "none",
+      "risk": "ordinary",
       "positionals": [],
       "options": [
         {
@@ -441,6 +447,7 @@
       "expectedRevision": "required",
       "dryRun": false,
       "outputFile": "none",
+      "risk": "ordinary",
       "positionals": [],
       "options": [
         {
@@ -479,6 +486,7 @@
       "expectedRevision": "required",
       "dryRun": false,
       "outputFile": "none",
+      "risk": "ordinary",
       "positionals": [],
       "options": [
         {
@@ -524,6 +532,7 @@
       "expectedRevision": "required",
       "dryRun": false,
       "outputFile": "none",
+      "risk": "ordinary",
       "positionals": [],
       "options": [
         {
@@ -569,6 +578,7 @@
       "expectedRevision": "required",
       "dryRun": false,
       "outputFile": "none",
+      "risk": "ordinary",
       "positionals": [],
       "options": [
         {
@@ -607,6 +617,7 @@
       "expectedRevision": "required",
       "dryRun": false,
       "outputFile": "none",
+      "risk": "ordinary",
       "positionals": [],
       "options": [
         {
@@ -652,6 +663,7 @@
       "expectedRevision": "required",
       "dryRun": false,
       "outputFile": "none",
+      "risk": "ordinary",
       "positionals": [],
       "options": [
         {
@@ -697,6 +709,7 @@
       "expectedRevision": "required",
       "dryRun": false,
       "outputFile": "none",
+      "risk": "ordinary",
       "positionals": [],
       "options": [
         {
@@ -735,6 +748,7 @@
       "expectedRevision": "required",
       "dryRun": false,
       "outputFile": "none",
+      "risk": "ordinary",
       "positionals": [],
       "options": [
         {
@@ -773,6 +787,7 @@
       "expectedRevision": "required",
       "dryRun": false,
       "outputFile": "none",
+      "risk": "ordinary",
       "positionals": [],
       "options": [
         {
@@ -811,6 +826,7 @@
       "expectedRevision": "required",
       "dryRun": false,
       "outputFile": "none",
+      "risk": "ordinary",
       "positionals": [],
       "options": [
         { "name": "--target", "mapsTo": "target", "required": true, "value": { "type": "string" } },
@@ -899,6 +915,7 @@
       "expectedRevision": "required",
       "dryRun": true,
       "outputFile": "none",
+      "risk": "risky",
       "positionals": [],
       "options": [
         {
@@ -992,6 +1009,7 @@
       "expectedRevision": "required",
       "dryRun": false,
       "outputFile": "none",
+      "risk": "ordinary",
       "positionals": [
         {
           "name": "surface-id",
@@ -1038,6 +1056,7 @@
       "expectedRevision": "required",
       "dryRun": false,
       "outputFile": "none",
+      "risk": "ordinary",
       "positionals": [
         {
           "name": "surface-id",
@@ -1106,6 +1125,7 @@
       "expectedRevision": "required",
       "dryRun": false,
       "outputFile": "none",
+      "risk": "ordinary",
       "positionals": [],
       "options": [
         {
@@ -1152,6 +1172,7 @@
       "expectedRevision": "required",
       "dryRun": false,
       "outputFile": "none",
+      "risk": "ordinary",
       "positionals": [],
       "options": [
         {
@@ -1204,6 +1225,7 @@
       "expectedRevision": "required",
       "dryRun": false,
       "outputFile": "none",
+      "risk": "ordinary",
       "positionals": [],
       "options": [
         {
@@ -1235,6 +1257,7 @@
       "expectedRevision": "required",
       "dryRun": false,
       "outputFile": "none",
+      "risk": "ordinary",
       "positionals": [],
       "options": [
         {
@@ -1266,6 +1289,7 @@
       "expectedRevision": "required",
       "dryRun": false,
       "outputFile": "none",
+      "risk": "ordinary",
       "positionals": [],
       "options": [
         {
@@ -1297,6 +1321,7 @@
       "expectedRevision": "required",
       "dryRun": false,
       "outputFile": "none",
+      "risk": "ordinary",
       "positionals": [],
       "options": [
         {
@@ -1329,6 +1354,7 @@
       "expectedRevision": "required",
       "dryRun": false,
       "outputFile": "none",
+      "risk": "ordinary",
       "positionals": [],
       "options": [
         {
@@ -1360,6 +1386,7 @@
       "expectedRevision": "required",
       "dryRun": false,
       "outputFile": "none",
+      "risk": "ordinary",
       "positionals": [],
       "options": [
         {
@@ -1391,6 +1418,7 @@
       "expectedRevision": "required",
       "dryRun": false,
       "outputFile": "none",
+      "risk": "risky",
       "positionals": [],
       "options": [
         {
@@ -1422,6 +1450,7 @@
       "expectedRevision": "required",
       "dryRun": false,
       "outputFile": "none",
+      "risk": "risky",
       "positionals": [],
       "options": [
         {
@@ -1475,6 +1504,7 @@
       "expectedRevision": "required",
       "dryRun": false,
       "outputFile": "none",
+      "risk": "ordinary",
       "positionals": [],
       "options": [
         {
@@ -1506,6 +1536,7 @@
       "expectedRevision": "required",
       "dryRun": false,
       "outputFile": "none",
+      "risk": "risky",
       "positionals": [],
       "options": [
         {
@@ -1544,6 +1575,7 @@
       "expectedRevision": "required",
       "dryRun": false,
       "outputFile": "none",
+      "risk": "ordinary",
       "positionals": [],
       "options": [
         { "name": "--target", "mapsTo": "target", "required": true, "value": { "type": "string" } },
@@ -1920,6 +1952,7 @@
       "expectedRevision": "required",
       "dryRun": false,
       "outputFile": "none",
+      "risk": "risky",
       "positionals": [],
       "options": [
         {
@@ -1958,6 +1991,7 @@
       "expectedRevision": "required",
       "dryRun": false,
       "outputFile": "none",
+      "risk": "risky",
       "positionals": [],
       "options": [
         {
@@ -2072,6 +2106,7 @@
       "expectedRevision": "required",
       "dryRun": true,
       "outputFile": "none",
+      "risk": "ordinary",
       "positionals": [
         {
           "name": "file|-",
@@ -2139,6 +2174,7 @@
       "expectedRevision": "required",
       "dryRun": true,
       "outputFile": "none",
+      "risk": "ordinary",
       "positionals": [],
       "options": [
         {
@@ -2282,6 +2318,7 @@
       "expectedRevision": "required",
       "dryRun": true,
       "outputFile": "none",
+      "risk": "ordinary",
       "positionals": [
         {
           "name": "file|-",
@@ -2350,6 +2387,7 @@
       "expectedRevision": "required",
       "dryRun": true,
       "outputFile": "none",
+      "risk": "risky",
       "positionals": [],
       "options": [
         { "name": "--json", "required": true, "value": { "type": "boolean" } },
@@ -2465,6 +2503,7 @@
       "expectedRevision": "required",
       "dryRun": true,
       "outputFile": "none",
+      "risk": "ordinary",
       "positionals": [
         {
           "name": "frequency|time",
@@ -2533,6 +2572,7 @@
       "expectedRevision": "required",
       "dryRun": true,
       "outputFile": "none",
+      "risk": "ordinary",
       "positionals": [
         {
           "name": "frequency|time",
@@ -2599,6 +2639,7 @@
       "expectedRevision": "required",
       "dryRun": true,
       "outputFile": "none",
+      "risk": "ordinary",
       "positionals": [
         {
           "name": "panel-id",
@@ -2674,6 +2715,7 @@
       "expectedRevision": "required",
       "dryRun": true,
       "outputFile": "none",
+      "risk": "ordinary",
       "positionals": [
         {
           "name": "panel-id",
@@ -2802,6 +2844,7 @@
       "expectedRevision": "required",
       "dryRun": true,
       "outputFile": "none",
+      "risk": "ordinary",
       "positionals": [
         {
           "name": "panel-id",
@@ -2870,6 +2913,7 @@
       "expectedRevision": "required",
       "dryRun": true,
       "outputFile": "none",
+      "risk": "ordinary",
       "positionals": [
         {
           "name": "panel-id",
@@ -2936,6 +2980,7 @@
       "expectedRevision": "required",
       "dryRun": false,
       "outputFile": "none",
+      "risk": "ordinary",
       "positionals": [],
       "options": [
         {
@@ -2981,6 +3026,7 @@
       "expectedRevision": "required",
       "dryRun": false,
       "outputFile": "none",
+      "risk": "ordinary",
       "positionals": [],
       "options": [
         {
@@ -3019,6 +3065,7 @@
       "expectedRevision": "required",
       "dryRun": false,
       "outputFile": "none",
+      "risk": "ordinary",
       "positionals": [],
       "options": [
         {
@@ -3146,6 +3193,7 @@
       "expectedRevision": "required",
       "dryRun": true,
       "outputFile": "none",
+      "risk": "ordinary",
       "positionals": [
         {
           "name": "preset-id",
@@ -3223,6 +3271,7 @@
       "expectedRevision": "required",
       "dryRun": true,
       "outputFile": "none",
+      "risk": "risky",
       "positionals": [
         {
           "name": "preset-id",
@@ -3289,6 +3338,7 @@
       "expectedRevision": "required",
       "dryRun": true,
       "outputFile": "none",
+      "risk": "ordinary",
       "positionals": [
         {
           "name": "file|-",
@@ -3359,6 +3409,7 @@
       "expectedRevision": "required",
       "dryRun": true,
       "outputFile": "none",
+      "risk": "ordinary",
       "positionals": [
         {
           "name": "name",
@@ -3425,6 +3476,7 @@
       "expectedRevision": "required",
       "dryRun": true,
       "outputFile": "none",
+      "risk": "risky",
       "positionals": [
         {
           "name": "preset-id",
@@ -3491,6 +3543,7 @@
       "expectedRevision": "required",
       "dryRun": true,
       "outputFile": "none",
+      "risk": "ordinary",
       "positionals": [
         {
           "name": "preset-id",
@@ -3619,6 +3672,7 @@
       "expectedRevision": "required",
       "dryRun": true,
       "outputFile": "none",
+      "risk": "risky",
       "positionals": [
         {
           "name": "file|-",
@@ -3813,6 +3867,7 @@
       "expectedRevision": "required",
       "dryRun": true,
       "outputFile": "none",
+      "risk": "ordinary",
       "positionals": [
         {
           "name": "theme-id",
@@ -3879,6 +3934,7 @@
       "expectedRevision": "required",
       "dryRun": true,
       "outputFile": "none",
+      "risk": "ordinary",
       "positionals": [],
       "options": [
         {
@@ -3933,6 +3989,7 @@
       "expectedRevision": "required",
       "dryRun": true,
       "outputFile": "none",
+      "risk": "ordinary",
       "positionals": [
         {
           "name": "file|-",
@@ -4000,6 +4057,7 @@
       "expectedRevision": "required",
       "dryRun": true,
       "outputFile": "none",
+      "risk": "ordinary",
       "positionals": [
         {
           "name": "theme-id",
@@ -4078,6 +4136,7 @@
       "expectedRevision": "required",
       "dryRun": true,
       "outputFile": "none",
+      "risk": "ordinary",
       "positionals": [
         {
           "name": "theme-id",
@@ -4155,6 +4214,7 @@
       "expectedRevision": "required",
       "dryRun": true,
       "outputFile": "none",
+      "risk": "ordinary",
       "positionals": [
         {
           "name": "theme-id",
@@ -4232,6 +4292,7 @@
       "expectedRevision": "required",
       "dryRun": true,
       "outputFile": "none",
+      "risk": "risky",
       "positionals": [
         {
           "name": "theme-id",
@@ -4298,6 +4359,7 @@
       "expectedRevision": "required",
       "dryRun": true,
       "outputFile": "none",
+      "risk": "ordinary",
       "positionals": [
         {
           "name": "file|-",
@@ -4430,6 +4492,7 @@
       "expectedRevision": "required",
       "dryRun": true,
       "outputFile": "none",
+      "risk": "risky",
       "positionals": [
         {
           "name": "file|-",
@@ -4586,6 +4649,7 @@
       "expectedRevision": "required",
       "dryRun": true,
       "outputFile": "none",
+      "risk": "ordinary",
       "positionals": [
         {
           "name": "profile-id|off",
@@ -4652,6 +4716,7 @@
       "expectedRevision": "required",
       "dryRun": true,
       "outputFile": "none",
+      "risk": "ordinary",
       "positionals": [
         {
           "name": "file|-",
@@ -4719,6 +4784,7 @@
       "expectedRevision": "required",
       "dryRun": true,
       "outputFile": "none",
+      "risk": "ordinary",
       "positionals": [
         {
           "name": "profile-id",
@@ -4797,6 +4863,7 @@
       "expectedRevision": "required",
       "dryRun": true,
       "outputFile": "none",
+      "risk": "ordinary",
       "positionals": [
         {
           "name": "profile-id",
@@ -4874,6 +4941,7 @@
       "expectedRevision": "required",
       "dryRun": true,
       "outputFile": "none",
+      "risk": "risky",
       "positionals": [
         {
           "name": "profile-id",
@@ -4940,6 +5008,7 @@
       "expectedRevision": "required",
       "dryRun": true,
       "outputFile": "none",
+      "risk": "ordinary",
       "positionals": [
         {
           "name": "file|-",
@@ -5072,6 +5141,7 @@
       "expectedRevision": "required",
       "dryRun": true,
       "outputFile": "none",
+      "risk": "risky",
       "positionals": [
         {
           "name": "file|-",
@@ -5176,6 +5246,7 @@
       "expectedRevision": "required",
       "dryRun": true,
       "outputFile": "none",
+      "risk": "risky",
       "positionals": [],
       "options": [
         {
@@ -5230,6 +5301,7 @@
       "expectedRevision": "required",
       "dryRun": true,
       "outputFile": "none",
+      "risk": "risky",
       "positionals": [
         {
           "name": "file|-",
@@ -5373,6 +5445,7 @@
       "expectedRevision": "required",
       "dryRun": true,
       "outputFile": "none",
+      "risk": "ordinary",
       "positionals": [
         {
           "name": "file|-",
@@ -5527,6 +5600,7 @@
       "expectedRevision": "required",
       "dryRun": true,
       "outputFile": "none",
+      "risk": "ordinary",
       "positionals": [
         {
           "name": "device-id|default",
@@ -5716,6 +5790,7 @@
       "expectedRevision": "required",
       "dryRun": true,
       "outputFile": "none",
+      "risk": "ordinary",
       "positionals": [],
       "options": [
         {
@@ -5776,6 +5851,7 @@
       "expectedRevision": "required",
       "dryRun": true,
       "outputFile": "none",
+      "risk": "ordinary",
       "positionals": [],
       "options": [
         {
@@ -5830,6 +5906,7 @@
       "expectedRevision": "required",
       "dryRun": true,
       "outputFile": "none",
+      "risk": "ordinary",
       "positionals": [],
       "options": [
         {
@@ -5895,6 +5972,7 @@
       "expectedRevision": "required",
       "dryRun": true,
       "outputFile": "none",
+      "risk": "ordinary",
       "positionals": [],
       "options": [
         {
@@ -5960,6 +6038,7 @@
       "expectedRevision": "required",
       "dryRun": false,
       "outputFile": "none",
+      "risk": "ordinary",
       "positionals": [],
       "options": [
         {
@@ -6014,6 +6093,7 @@
       "expectedRevision": "required",
       "dryRun": false,
       "outputFile": "none",
+      "risk": "ordinary",
       "positionals": [],
       "options": [
         {
@@ -6068,6 +6148,7 @@
       "expectedRevision": "required",
       "dryRun": true,
       "outputFile": "none",
+      "risk": "risky",
       "positionals": [],
       "options": [
         {
@@ -6152,6 +6233,7 @@
       "expectedRevision": "required",
       "dryRun": false,
       "outputFile": "none",
+      "risk": "ordinary",
       "positionals": [
         {
           "name": "file",
@@ -6211,6 +6293,7 @@
       "expectedRevision": "required",
       "dryRun": false,
       "outputFile": "none",
+      "risk": "ordinary",
       "positionals": [
         {
           "name": "item-id",
@@ -6283,6 +6366,7 @@
       "expectedRevision": "required",
       "dryRun": false,
       "outputFile": "none",
+      "risk": "ordinary",
       "positionals": [
         {
           "name": "item-id",
@@ -6340,6 +6424,7 @@
       "expectedRevision": "required",
       "dryRun": false,
       "outputFile": "none",
+      "risk": "ordinary",
       "positionals": [],
       "options": [
         {
@@ -6383,6 +6468,7 @@
       "expectedRevision": "required",
       "dryRun": false,
       "outputFile": "none",
+      "risk": "ordinary",
       "positionals": [],
       "options": [
         {
@@ -6426,6 +6512,7 @@
       "expectedRevision": "required",
       "dryRun": false,
       "outputFile": "none",
+      "risk": "ordinary",
       "positionals": [
         {
           "name": "path",
@@ -6494,6 +6581,7 @@
       "expectedRevision": "required",
       "dryRun": false,
       "outputFile": "none",
+      "risk": "ordinary",
       "positionals": [
         {
           "name": "session-id",
@@ -6549,6 +6637,7 @@
       "expectedRevision": "required",
       "dryRun": false,
       "outputFile": "none",
+      "risk": "ordinary",
       "positionals": [
         {
           "name": "session-id",
@@ -6604,6 +6693,7 @@
       "expectedRevision": "required",
       "dryRun": false,
       "outputFile": "none",
+      "risk": "ordinary",
       "positionals": [
         {
           "name": "session-id",
@@ -6659,6 +6749,7 @@
       "expectedRevision": "required",
       "dryRun": true,
       "outputFile": "none",
+      "risk": "ordinary",
       "positionals": [
         {
           "name": "session-id",
@@ -6725,6 +6816,7 @@
       "expectedRevision": "required",
       "dryRun": true,
       "outputFile": "none",
+      "risk": "risky",
       "positionals": [
         {
           "name": "session-id",
@@ -6791,6 +6883,7 @@
       "expectedRevision": "required",
       "dryRun": true,
       "outputFile": "none",
+      "risk": "risky",
       "positionals": [],
       "options": [
         {
@@ -7111,6 +7204,7 @@
       "expectedRevision": "required",
       "dryRun": true,
       "outputFile": "none",
+      "risk": "ordinary",
       "positionals": [],
       "options": [
         {
@@ -7226,6 +7320,7 @@
       "expectedRevision": "required",
       "dryRun": true,
       "outputFile": "none",
+      "risk": "ordinary",
       "positionals": [],
       "options": [
         {
@@ -7280,6 +7375,7 @@
       "expectedRevision": "required",
       "dryRun": true,
       "outputFile": "none",
+      "risk": "ordinary",
       "positionals": [
         {
           "name": "file|-",
@@ -7347,6 +7443,7 @@
       "expectedRevision": "required",
       "dryRun": true,
       "outputFile": "none",
+      "risk": "risky",
       "positionals": [],
       "options": [
         { "name": "--json", "required": true, "value": { "type": "boolean" } },
@@ -7437,6 +7534,7 @@
       "expectedRevision": "required",
       "dryRun": true,
       "outputFile": "none",
+      "risk": "ordinary",
       "positionals": [
         {
           "name": "panel-id",
@@ -7515,6 +7613,7 @@
       "expectedRevision": "required",
       "dryRun": true,
       "outputFile": "none",
+      "risk": "ordinary",
       "positionals": [
         {
           "name": "panel-id",
@@ -7621,6 +7720,7 @@
       "expectedRevision": "optional",
       "dryRun": false,
       "outputFile": "required",
+      "risk": "ordinary",
       "positionals": [],
       "options": [
         {
@@ -7723,6 +7823,7 @@
       "expectedRevision": "optional",
       "dryRun": false,
       "outputFile": "none",
+      "risk": "ordinary",
       "positionals": [],
       "options": [
         {
@@ -7974,6 +8075,7 @@
       "expectedRevision": "none",
       "dryRun": false,
       "outputFile": "optional",
+      "risk": "ordinary",
       "positionals": [
         {
           "name": "recording-id",
@@ -8115,6 +8217,7 @@
       "expectedRevision": "required",
       "dryRun": false,
       "outputFile": "none",
+      "risk": "ordinary",
       "positionals": [
         {
           "name": "kind",
@@ -8190,6 +8293,7 @@
       "expectedRevision": "required",
       "dryRun": false,
       "outputFile": "none",
+      "risk": "ordinary",
       "positionals": [
         { "name": "kind", "required": true, "value": { "type": "string", "enum": ["theme"] } },
         {
@@ -8252,6 +8356,7 @@
       "expectedRevision": "required",
       "dryRun": false,
       "outputFile": "none",
+      "risk": "ordinary",
       "positionals": [
         { "name": "kind", "required": true, "value": { "type": "string", "enum": ["theme"] } },
         {
@@ -8314,6 +8419,7 @@
       "expectedRevision": "required",
       "dryRun": false,
       "outputFile": "none",
+      "risk": "ordinary",
       "positionals": [
         {
           "name": "kind",
@@ -8408,6 +8514,7 @@
       "expectedRevision": "required",
       "dryRun": false,
       "outputFile": "none",
+      "risk": "risky",
       "positionals": [
         {
           "name": "kind",
@@ -8635,6 +8742,27 @@
           }
         }
       ],
+      "options": [],
+      "wireParams": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [],
+        "properties": {}
+      }
+    },
+    {
+      "id": "mcp",
+      "family": "mcp",
+      "path": ["mcp"],
+      "usage": "plvs-cli mcp",
+      "summary": "Serve Agent Control to a chat app as a local MCP server over standard input and output.",
+      "execution": "offline",
+      "operation": "query",
+      "json": "none",
+      "expectedRevision": "none",
+      "dryRun": false,
+      "outputFile": "none",
+      "positionals": [],
       "options": [],
       "wireParams": {
         "type": "object",

@@ -42,6 +42,7 @@ enum CliCommand {
   Instances {
     json: bool,
   },
+  Mcp,
   SchemaList,
   SchemaGet(String),
   Completion(String),
@@ -71,6 +72,7 @@ enum HelpTopic {
   Schema,
   Completion,
   Instances,
+  Mcp,
   #[cfg(any(feature = "capture-harness", test))]
   Analyze,
   #[cfg(any(feature = "capture-harness", test))]
@@ -104,6 +106,11 @@ fn parse_args(args: &[String]) -> Result<CliCommand, String> {
     [command, rest @ ..] if command == "doctor" => parse_doctor_args(rest),
     [command, rest @ ..] if command == "instances" => parse_instances_args(rest),
     [command, rest @ ..] if command == "schema" => parse_schema_args(rest),
+    [command] if command == "mcp" => Ok(CliCommand::Mcp),
+    [command, flag] if command == "mcp" && is_help_flag(flag) => {
+      Ok(CliCommand::Help(HelpTopic::Mcp))
+    }
+    [command, ..] if command == "mcp" => Err("Usage: plvs-cli mcp".to_string()),
     [command, flag] if command == "completion" && is_help_flag(flag) => {
       Ok(CliCommand::Help(HelpTopic::Completion))
     }
@@ -448,6 +455,7 @@ fn parse_help_topic(topic: &str) -> Result<CliCommand, String> {
     "schema" => Ok(CliCommand::Help(HelpTopic::Schema)),
     "completion" => Ok(CliCommand::Help(HelpTopic::Completion)),
     "instances" => Ok(CliCommand::Help(HelpTopic::Instances)),
+    "mcp" => Ok(CliCommand::Help(HelpTopic::Mcp)),
     topic if cli_control::is_command(topic) => Ok(CliCommand::Control {
       command: ControlCommand::FamilyHelp(topic.to_string()),
       instance_id: None,
@@ -594,7 +602,7 @@ struct InstancesResult {
   instances: Vec<crate::coordinator::InstanceSummary>,
 }
 
-fn read_live_instances() -> Result<Vec<crate::coordinator::InstanceSummary>, String> {
+pub(crate) fn read_live_instances() -> Result<Vec<crate::coordinator::InstanceSummary>, String> {
   // The CLI side of `--plvs-test-app-data-root` in lib.rs, accepted by every build (ADR 0035).
   let test_root = std::env::var_os("PLVS_TEST_IDENTITY_ROOT").map(std::path::PathBuf::from);
   let root = match test_root {
@@ -894,6 +902,9 @@ fn help_text(topic: HelpTopic) -> String {
     HelpTopic::Instances => {
       "PLVS CLI - instances\n\nUsage:\n  plvs-cli instances <--json|--format text>\n\nLists live PLVS workbenches for this Dev, Preview, or Stable identity without requiring Agent Control.\n\nExit codes:\n  0  success\n  1  runtime or system failure\n  3  invalid command input".to_string()
     }
+    HelpTopic::Mcp => {
+      "PLVS CLI - mcp\n\nUsage:\n  plvs-cli mcp\n\nRuns a local MCP server over standard input and output so a desktop chat app or agent can\ninspect and control the running PLVS through Agent Control. Register it in the chat app as a\nlocal (stdio) server with this program's absolute path and the argument `mcp`; PLVS Settings\nshows the exact entry under Agent Control. The chat app starts and stops the server itself.\nRunning-app tools require Agent Control to be enabled and never launch PLVS.\n\nExit codes:\n  0  the chat app closed the connection\n  1  the server could not start or stopped on an error\n  3  invalid command input".to_string()
+    }
     #[cfg(any(feature = "capture-harness", test))]
     HelpTopic::Analyze => {
       "PLVS internal capture harness - analyze\n\nUsage:\n  plvs --harness analyze <path> --json [--track <index>] [--layout <id>] [--dialogue] [--vad silero|firered] [--reference-lufs <n>] [--target-lufs <n> --lufs-tolerance <n>] [--max-true-peak <n>] [--out <file>]\n\nRepository-owned ground-truth analysis for capture verification. This is not a public CLI command.".to_string()
@@ -990,6 +1001,7 @@ fn execute(command: CliCommand) -> ExitCode {
       }
       Err(error) => emit_cli_failure("instanceDiscoveryFailed", &error, json, 1),
     },
+    CliCommand::Mcp => crate::cli_mcp::run(),
     CliCommand::SchemaList => {
       match serialize_schema_list().and_then(|json| emit_schema_json(&json)) {
         Ok(()) => ExitCode::SUCCESS,
@@ -1242,6 +1254,21 @@ mod tests {
       Ok(CliCommand::Instances { json: false })
     );
     assert!(parse_args(&args(&["instances"])).is_err());
+  }
+
+  #[test]
+  fn parses_the_mcp_server_and_its_help() {
+    assert_eq!(parse_args(&args(&["mcp"])), Ok(CliCommand::Mcp));
+    assert_eq!(
+      parse_args(&args(&["mcp", "--help"])),
+      Ok(CliCommand::Help(HelpTopic::Mcp))
+    );
+    assert_eq!(
+      parse_args(&args(&["help", "mcp"])),
+      Ok(CliCommand::Help(HelpTopic::Mcp))
+    );
+    assert!(parse_args(&args(&["mcp", "--json"])).is_err());
+    assert!(help_text(HelpTopic::Root).contains("plvs-cli mcp"));
   }
 
   #[test]

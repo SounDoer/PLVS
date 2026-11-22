@@ -142,6 +142,7 @@ plvs-cli instances <--json|--format text>
 plvs-cli schema list --json
 plvs-cli schema get <command-id> --json
 plvs-cli completion <powershell|bash|zsh>
+plvs-cli mcp
 plvs-cli [--instance <instance-id>] <command> [options]
 plvs-cli --help
 plvs-cli --version
@@ -164,6 +165,21 @@ This is the layout value returned by `inspect` when the Workspace is empty.
 `workspace reset` and `dock layout reset` are the Reset Layout actions of the Panels menu and the
 Dock Panels editor. The Workspace reset preview includes the default panel controls, pins,
 panel axes, and shared axis ranges.
+
+Every state mutation and action carries a risk tier in the command catalog: `risky` when it cannot
+be undone inside PLVS or ends the connection (deleting or importing library items, resetting or
+importing the configuration, clearing measurements, installing an update, quitting), otherwise
+`ordinary`. The CLI treats both alike.
+
+### MCP server
+
+`plvs-cli mcp` serves the same running-app commands to a desktop chat app or agent as a local MCP
+server over standard input and output. The chat app starts it; register this program's absolute
+path with the argument `mcp` as a local (stdio) server. It offers eight tools — capabilities,
+inspect, describe, query, wait, screenshot, and separate tools for ordinary and risky changes, so a
+chat app can ask before every risky one. Tool parameters are each command's wire parameters from
+`schema get`; revisions, dry runs, refusals and errors behave exactly as on the CLI. A wait returns
+`stillWaiting` after at most 45 seconds and is called again. Screenshots come back as images.
 
 ## Shell Completion
 

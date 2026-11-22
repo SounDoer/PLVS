@@ -85,6 +85,11 @@ rusqlite = { version = "0.41.1", features = ["bundled"] }
 subtle = "2.6.1"
 tauri-plugin-clipboard-manager = "2.3.3"
 hound = { version = "3.5.1", optional = true }
+# Agent Control MCP adapter (`plvs-cli mcp`). Pinned: the 3.x API moves quickly and published
+# examples disagree, so upgrades are deliberate.
+rmcp = { version = "=3.9.0", default-features = false, features = ["server", "base64", "transport-io"] }
+tokio = { version = "1", features = ["rt", "macros", "time", "io-std"] }
+base64 = "0.22"
 
 # Glass is macOS-only (see glass_effect.rs) — Windows has no compatible blur mechanism for a
 # per-pixel-transparent window, so this dependency isn't needed on that target at all.

@@ -16,7 +16,7 @@ function changed(mutator) {
 describe("command manifest", () => {
   it("loads one immutable catalog without React or runtime state", () => {
     expect(commandManifest.manifestVersion).toBe(1);
-    expect(commandEntries).toHaveLength(160);
+    expect(commandEntries).toHaveLength(161);
     expect(runningAppCommandEntries).toHaveLength(155);
     expect(Object.isFrozen(commandManifest)).toBe(true);
     expect(Object.isFrozen(commandEntries[0].wireParams)).toBe(true);
@@ -95,6 +95,23 @@ describe("command manifest", () => {
       expect.objectContaining({ name: "command-id", mapsTo: "commandId", required: true }),
     ]);
     expect(commandEntries.some(({ path }) => path.includes("--harness"))).toBe(false);
+    expect(commandEntryById.get("mcp")).toMatchObject({ execution: "offline", json: "none" });
+  });
+
+  it("tiers every change and nothing else", () => {
+    for (const entry of commandEntries) {
+      if (entry.operation === "mutation" || entry.operation === "action") {
+        expect(["ordinary", "risky"], entry.id).toContain(entry.risk);
+      } else {
+        expect(entry.risk, entry.id).toBeUndefined();
+      }
+    }
+    for (const id of ["preset.delete", "config.reset", "update.install", "workbench.quitAll"]) {
+      expect(commandEntryById.get(id).risk, id).toBe("risky");
+    }
+    for (const id of ["panel.update", "loudnessProfile.select", "transport.live.start"]) {
+      expect(commandEntryById.get(id).risk, id).toBe("ordinary");
+    }
   });
 
   it.each([
@@ -119,6 +136,16 @@ describe("command manifest", () => {
     ["empty usage", (m) => (m.commands[0].usage = ""), ".usage"],
     ["unknown operation", (m) => (m.commands[0].operation = "read"), ".operation"],
     ["unknown policy", (m) => (m.commands[0].outputFile = "sometimes"), ".outputFile"],
+    [
+      "change without risk tier",
+      (m) => delete m.commands.find((entry) => entry.id === "panel.update").risk,
+      "need a risk tier",
+    ],
+    [
+      "query with risk tier",
+      (m) => (m.commands.find((entry) => entry.id === "app.inspect").risk = "ordinary"),
+      "only mutations and actions",
+    ],
     [
       "offline wire method",
       (m) => (m.commands.at(-1).wireMethod = "doctor.run"),
