@@ -62,7 +62,10 @@ does. Menu contents are not reported; select an item through its owning family, 
 `add-panel` and `source-group` act inside an open menu: open the Panels or Sources menu first, or
 the request is `surfaceUnavailable`. `dropdown` takes a target id from `ui targets`, such as
 `setting:appearance.interfaceSize` or `panel-control:<panelId>:<control>`; its surface closes as a
-click outside does. `panel-help` is available for the rendered tab of a normal or fullscreen panel.
+click outside does. Opening a dropdown only shows its options, for a screenshot or a tutorial
+recording; there is deliberately no command that picks one. Change the value through the mutation
+the target's `binding` names, such as `settings update` or `panel update`, which applies the
+app's validation and persistence. `panel-help` is available for the rendered tab of a normal or fullscreen panel.
 A hover preview of the gesture reference, opened by the pointer resting on the question mark, is
 the same surface.
 
