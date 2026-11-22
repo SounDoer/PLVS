@@ -333,7 +333,11 @@ export function useAudioEngine({
           }
           measurementOwner?.commitSession();
           audioRef.current = { mode: "tauri", unsubs, meter };
-          markStarted?.({ resolvedDeviceId: resolvedDevice.id ?? engineDeviceId });
+          // Automatic captures the OS default route, not the row resolveDevice picked as a
+          // fallback, so report the policy rather than a physical device the engine never opened.
+          markStarted?.({
+            resolvedDeviceId: isAutomatic ? "default" : (resolvedDevice.id ?? engineDeviceId),
+          });
           return;
         }
 

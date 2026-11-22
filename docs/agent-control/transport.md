@@ -69,6 +69,9 @@ not a running-app selection command.
 
 LIVE exposes `stopped`, `starting`, `running`, `stopping`, or `error`, together with requested and
 resolved device identity, start time, whether the view is at the live edge, and a compact last error.
+`resolvedDeviceId` is the Source the running engine opened: an exact device or application ID, or
+`default` when Automatic follows the system output route, and `null` while stopped. Automatic
+names a policy, not a device row; `device inspect` reports the route it currently resolves to.
 Agent Control completion follows the native engine acknowledgement rather than the GUI's current
 optimistic `running` boolean.
 

@@ -133,6 +133,40 @@ describe("useAudioEngine", () => {
     vi.mocked(stopAudioCapture).mockResolvedValue(undefined);
   });
 
+  it("reports Automatic as the started Source instead of a fallback device row", async () => {
+    vi.mocked(listAudioDevices).mockResolvedValue([
+      { id: "lb-other", label: "BlackHole 2ch", isSystemOutputMonitor: true, channels: 2 },
+      { id: "lb-main", label: "Speakers", isSystemOutputMonitor: true, channels: 2 },
+    ]);
+    const transport = {
+      running: true,
+      lifecycle: "running",
+      halt: vi.fn(),
+      markStarted: vi.fn(),
+      markStopped: vi.fn(),
+      markStopFailed: vi.fn(),
+    };
+    renderHook(() =>
+      useHarness({
+        captureDeviceId: "default",
+        intake: { reset: vi.fn() },
+        setAudio: vi.fn(),
+        raiseNotice: vi.fn(),
+        halt: transport.halt,
+        transport,
+        setSelectedOffset: vi.fn(),
+        resetTimer: vi.fn(),
+        setShowClock: vi.fn(),
+      })
+    );
+
+    await waitFor(() => expect(transport.markStarted).toHaveBeenCalledOnce());
+    expect(startAudioCapture).toHaveBeenCalledWith(
+      expect.objectContaining({ deviceId: "default" })
+    );
+    expect(transport.markStarted).toHaveBeenCalledWith({ resolvedDeviceId: "default" });
+  });
+
   it("starts process loopback for a stable application selection", async () => {
     const applicationId = "app-00112233445566778899aabbccddeeff";
     renderHook(() =>
