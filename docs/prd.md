@@ -13,7 +13,8 @@ describes available sources, panels and platform support.
   must not be presented as trustworthy live measurement.
 - Audio and metering stay local by default. PLVS has no default telemetry. Automatic outbound
   requests are for update checks by default. Feedback diagnostics and crash reports are sent only
-  after explicit user action, and their attachments never include audio samples.
+  after explicit user action, and their attachments never include audio samples. A chat app the
+  user connects through Agent Control receives what its requests return, never audio samples.
 - Official builds are distributed through GitHub Releases. The app offers in-app update checks.
   See the [installation guide](user/getting-started.md) for platform availability and package details.
 
@@ -46,10 +47,12 @@ restore a previous measurement session.
 
 The project scope excludes effects, routing that controls the audio output, audio plug-in
 formats, general Live or time-series export, multi-source A/B in one workbench, a general-purpose
-preferences framework and object or scene-based audio rendering. Agent Control uses the CLI.
-Its screenshots and recordings serve automation.
+preferences framework and object or scene-based audio rendering. Agent Control is offered through
+the CLI and, for desktop chat apps, a local MCP server (`plvs-cli mcp`) with the same capabilities;
+neither adds abilities the app does not have. Its screenshots and recordings serve automation. A
+remote (network) MCP server is outside scope: Agent Control stays local to the user's machine.
 
-App Store distribution, additional UI languages, a dedicated accessibility initiative, one-click
-diagnostic bundle export and an MCP server are outside current commitments. English is the
+App Store distribution, additional UI languages, a dedicated accessibility initiative and one-click
+diagnostic bundle export are outside current commitments. English is the
 default UI language. Platform-specific accessibility interactions used by existing features still
 follow their documented behavior.

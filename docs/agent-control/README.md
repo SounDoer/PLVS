@@ -91,6 +91,37 @@ the declaration alongside the development fixture. Route callbacks through the s
 the corresponding button. Keep UI observation serializable and advertise disabled choices as
 unavailable.
 
+## MCP adapter
+
+`plvs-cli mcp` (`src-tauri/src/cli_mcp.rs`) serves the same running-app commands to desktop chat
+apps as a local stdio MCP server, built on the pinned `rmcp` crate. It adds no command semantics:
+tool input is a command's manifest `wireParams`, sent through the CLI's own client
+(`call_wire_method`), so the Agent Control switch, identity matching, instance selection,
+revisions, dry runs and every app-side refusal are the CLI's.
+
+It offers eight fixed tools, and which one serves a command is derived from the manifest:
+`app.capabilities`, `app.inspect`/`ui.inspect` and `visual.screenshot` have their own tools; other
+queries go to `plvs_query`, waits to `plvs_wait`, and mutations and actions to `plvs_change` or
+`plvs_change_risky` by their `risk` tier. A host remembers "always allow" per tool, so the separate
+risky tool keeps a confirmation in front of changes that cannot be undone inside PLVS or that end
+the connection. Offline commands are either answered by a tool (`instances.list`, `doctor`,
+`schema.*`) or excluded with a reason (`completion`, `mcp`).
+
+What this means when the surface changes:
+
+- A new mutation or action needs a `risk` tier in the manifest; both manifest validators refuse an
+  untiered change, and the MCP route follows the tier with no adapter edit.
+- A new offline command needs a route in `route()`; the adapter's tests refuse an unrouted one.
+- A new `file|-` document argument becomes readable through the tool's `files` argument
+  automatically; a new exported document, report or file artifact needs an entry in
+  `cli_mcp/files.rs` (`output_spec`) so it can be saved with `saveTo`.
+- A new wait method must resume safely when called again after a 45-second segment, and the
+  broker's wait budget list must include it.
+
+Measured host limits (Claude's chat bridge stops a tool call at 80 seconds and sends no progress
+token) set the 45-second wait segment; see [Chat Apps](../user/chat-apps.md) for the user-facing
+behaviour and the MCP usage report below for the Settings status line.
+
 ## Application-wide methods
 
 ### Private development controls
