@@ -13,7 +13,7 @@ function assertNear(actual, expected) {
   }
 }
 
-export async function runWindowContract({ invoke, until, restart, steps }) {
+export async function runWindowContract({ invoke, until, restart, steps, screenshotPath }) {
   const inspect = () => invoke(["window", "inspect"]);
   const initial = inspect();
   const capabilities = invoke(["capabilities"]);
@@ -118,6 +118,17 @@ export async function runWindowContract({ invoke, until, restart, steps }) {
     assert.equal(action(name).changed, true);
     observe(expected);
     assert.equal(action(name).changed, false);
+    if (name === "minimize" && screenshotPath && process.platform !== "linux") {
+      // Capture reveals a minimized window without activating PLVS (docs/agent-control/visual.md).
+      const capture = invoke(["visual", "screenshot", "--target", "main", "--out", screenshotPath]);
+      assert.ok(capture.artifact.width > 0 && capture.artifact.height > 0);
+      observe({ visible: true, minimized: false });
+      steps.push("verify a screenshot restores a minimized window without window show");
+      action("minimize");
+      observe(expected);
+    } else if (name === "minimize" && screenshotPath) {
+      steps.push("skip minimized capture: Wayland gives a client no way to restore its window");
+    }
     if (name === "minimize") {
       action("show");
       await until(() => !observe({ visible: true }).minimized, "restoring the minimized window");

@@ -130,6 +130,16 @@ pub async fn visual_capture_capabilities() -> PlatformCapabilities {
     .unwrap_or_else(|_| platform::UnsupportedPlatform.capabilities())
 }
 
+/// Reveals the calling PLVS window without taking keyboard focus when visual settlement
+/// receives no animation frames (hidden, minimized or fully covered).
+#[tauri::command]
+pub fn visual_reveal_window(window: tauri::WebviewWindow) -> Result<(), String> {
+  if window.label() != "main" {
+    return Err("Only the main PLVS window can be revealed for capture.".to_string());
+  }
+  crate::window_reveal::reveal_without_focus(&window)
+}
+
 #[tauri::command]
 pub async fn visual_capture_screenshot(
   app: AppHandle,

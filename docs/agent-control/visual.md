@@ -73,6 +73,22 @@ later mutations.
 
 Render settlement waits for opening and closing popover animations that overlap the capture area.
 
+## Background windows
+
+Capture never takes keyboard focus from the user's current app. A WebView stops drawing while
+its window is hidden, minimized, or fully covered, so render settlement asks for one native
+reveal when the page reports itself hidden or no animation frame arrives within 150 ms. The reveal
+restores a minimized main window and orders it above other windows without activating PLVS:
+`orderFrontRegardless` on macOS, `SW_SHOWNOACTIVATE` with a non-activating `SetWindowPos` on
+Windows, and a raise with focus-on-map disabled on Linux. A window that is already drawing keeps
+its place. A window hidden with `window hide` or the Tray's Hide stays hidden, because that is a
+deliberate choice; call `window show` first. A docked strip is left to the Dock lifecycle; on macOS
+its Space-aware reveal applies.
+A window manager may decline the raise. Under Wayland a client can neither raise its window nor
+restore it from minimized, so there PLVS must already be visible; capture otherwise fails as
+`renderNotSettled` with `details.revealed: true`, and the agent can ask the user to bring PLVS
+into view.
+
 ## Screenshot workflow
 
 ```powershell

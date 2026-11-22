@@ -330,6 +330,13 @@ export function captureVisualScreenshot(request) {
 }
 
 /**
+ * Reveal the main PLVS window without taking keyboard focus so its WebView renders again.
+ */
+export function revealVisualWindow() {
+  return invoke("visual_reveal_window");
+}
+
+/**
  * Start a native video-only recording from settled semantic geometry.
  */
 export function startVisualRecording(request) {

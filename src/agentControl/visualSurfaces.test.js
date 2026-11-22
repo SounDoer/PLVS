@@ -272,6 +272,89 @@ describe("visual paint settlement", () => {
     ).rejects.toMatchObject({ reason: "renderNotSettled" });
   });
 
+  it("does not reveal the window while animation frames arrive", async () => {
+    addSurface("workspace", rect(0, 0, 640, 480));
+    const reveal = vi.fn();
+    await settleVisualSurface({
+      target: { kind: "workspace" },
+      workspace: {},
+      getRevision: () => 0,
+      expectedRevision: 0,
+      signal: undefined,
+      reveal,
+      revealGraceMs: 50,
+    });
+    await new Promise((resolve) => setTimeout(resolve, 60));
+    expect(reveal).not.toHaveBeenCalled();
+  });
+
+  it("reveals a hidden document immediately, once, and settles when frames resume", async () => {
+    addSurface("workspace", rect(0, 0, 640, 480));
+    vi.spyOn(document, "visibilityState", "get").mockReturnValue("hidden");
+    const reveal = vi.fn();
+    await expect(
+      settleVisualSurface({
+        target: { kind: "workspace" },
+        workspace: {},
+        getRevision: () => 0,
+        expectedRevision: 0,
+        signal: undefined,
+        reveal,
+      })
+    ).resolves.toMatchObject({ revision: 0 });
+    expect(reveal).toHaveBeenCalledTimes(1);
+  });
+
+  it("reveals once when no frame arrives within the grace period", async () => {
+    addSurface("workspace", rect(0, 0, 640, 480));
+    const pendingFrames = [];
+    vi.mocked(window.requestAnimationFrame).mockImplementation((callback) => {
+      pendingFrames.push(callback);
+      return pendingFrames.length;
+    });
+    const reveal = vi.fn(() => {
+      // The native reveal lets the WebView render again.
+      vi.mocked(window.requestAnimationFrame).mockImplementation((callback) =>
+        standIn(setTimeout(() => callback(performance.now()), 0))
+      );
+      for (const callback of pendingFrames.splice(0)) setTimeout(() => callback(0), 0);
+    });
+    await expect(
+      settleVisualSurface({
+        target: { kind: "workspace" },
+        workspace: {},
+        getRevision: () => 0,
+        expectedRevision: 0,
+        signal: undefined,
+        reveal,
+        revealGraceMs: 5,
+      })
+    ).resolves.toMatchObject({ revision: 0 });
+    expect(reveal).toHaveBeenCalledTimes(1);
+  });
+
+  it("reports the reveal attempt when frames never resume", async () => {
+    addSurface("workspace", rect(0, 0, 640, 480));
+    vi.mocked(window.requestAnimationFrame).mockImplementation(() => 1);
+    const reveal = vi.fn(() => Promise.reject(new Error("declined")));
+    await expect(
+      settleVisualSurface({
+        target: { kind: "workspace" },
+        workspace: {},
+        getRevision: () => 0,
+        expectedRevision: undefined,
+        signal: undefined,
+        timeoutMs: 30,
+        reveal,
+        revealGraceMs: 5,
+      })
+    ).rejects.toMatchObject({
+      reason: "renderNotSettled",
+      details: { frames: 0, revealed: true },
+    });
+    expect(reveal).toHaveBeenCalledTimes(1);
+  });
+
   it("supports cancellation", async () => {
     addSurface("workspace", rect(0, 0, 640, 480), { ready: false });
     const controller = new AbortController();

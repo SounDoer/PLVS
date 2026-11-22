@@ -379,6 +379,7 @@ export async function runIsolatedAgentControl({
         invoke,
         until,
         steps: evidence.steps,
+        screenshotPath: join(outDir, "window-minimized.png"),
         restart: async () => {
           const previous = instance;
           await stop(app);

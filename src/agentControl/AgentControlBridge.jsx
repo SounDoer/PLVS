@@ -1,4 +1,4 @@
-import { useCallback, useMemo } from "react";
+import { useCallback, useMemo, useRef } from "react";
 import { readMonitorInventory } from "./monitorInventory.js";
 import { useDock } from "../dock/DockContext.jsx";
 import { useWindowChrome } from "../hooks/WindowChromeContext.jsx";
@@ -50,6 +50,7 @@ import {
   rememberMainWindowPosition,
   startFileProbe,
   captureVisualScreenshot,
+  revealVisualWindow,
   movePointer,
   inspectVisualRecording,
   startVisualRecording,
@@ -177,6 +178,9 @@ export function AgentControlBridge() {
     onShowWindow,
     crashReportSetting,
   } = useAppLifecycle();
+  // Capture reveals a covered or minimized window, never one deliberately hidden (Tray Hide).
+  const windowVisibleRef = useRef(windowVisible);
+  windowVisibleRef.current = windowVisible;
   const windowControl = useMemo(
     () => ({
       available: isTauri(),
@@ -751,7 +755,10 @@ export function AgentControlBridge() {
       settle: (target, options) =>
         ["dockHeader", "dockEditor", "dockUpdate", "dockSettings"].includes(target.kind)
           ? settleDockAccessory(target, visualRuntimeRef.current, options)
-          : visualCaptureSurfaces.settle(target, options),
+          : visualCaptureSurfaces.settle(target, {
+              ...options,
+              reveal: windowVisibleRef.current === false ? null : revealVisualWindow,
+            }),
       captureScreenshot: captureVisualScreenshot,
       startRecording: startVisualRecording,
       inspectRecording: inspectVisualRecording,

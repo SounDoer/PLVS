@@ -5,6 +5,11 @@ export const VISUAL_SURFACE_ATTRIBUTE = "data-visual-capture-surface";
 export const VISUAL_PANEL_ATTRIBUTE = "data-visual-panel-id";
 export const VISUAL_SURFACE_READY_ATTRIBUTE = "data-visual-capture-ready";
 export const VISUAL_SETTLEMENT_TIMEOUT_MS = 3000;
+/**
+ * How long settlement waits for a first animation frame before asking the native side to reveal
+ * the window without focus. A hidden, minimized or fully covered WebView produces no frames.
+ */
+export const VISUAL_REVEAL_GRACE_MS = 150;
 
 const WINDOW_LABELS = Object.freeze({
   main: "main",
@@ -249,6 +254,8 @@ function nextAnimationFrame(windowObject, signal) {
  *   documentObject?: Document,
  *   windowObject?: Window & typeof globalThis,
  *   windowLabel?: string,
+ *   reveal?: (() => unknown) | null,
+ *   revealGraceMs?: number,
  * }} options
  */
 export async function settleVisualSurface({
@@ -263,6 +270,8 @@ export async function settleVisualSurface({
   documentObject = globalThis.document,
   windowObject = globalThis.window,
   windowLabel = "main",
+  reveal = null,
+  revealGraceMs = VISUAL_REVEAL_GRACE_MS,
 }) {
   const controller = new AbortController();
   const cancel = () => controller.abort();
@@ -270,7 +279,19 @@ export async function settleVisualSurface({
   let stage = "fonts";
   let frames = 0;
   let canvas = null;
+  let revealed = false;
   let timeout;
+  // Frames stop while the window cannot be seen. Reveal it once, never taking keyboard focus.
+  const requestReveal = () => {
+    if (revealed || frames > 0 || typeof reveal !== "function") return;
+    revealed = true;
+    Promise.resolve()
+      .then(reveal)
+      .catch(() => {});
+  };
+  let revealTimer = null;
+  if (documentObject.visibilityState !== "visible") requestReveal();
+  else revealTimer = setTimeout(requestReveal, revealGraceMs);
   const timeoutPromise = new Promise((_, reject) => {
     timeout = setTimeout(
       () =>
@@ -283,6 +304,7 @@ export async function settleVisualSurface({
               visible: documentObject.visibilityState === "visible",
               focused: documentObject.hasFocus?.() === true,
               canvas,
+              revealed,
             },
           })
         ),
@@ -358,6 +380,7 @@ export async function settleVisualSurface({
     return await Promise.race([settle(), timeoutPromise]);
   } finally {
     clearTimeout(timeout);
+    clearTimeout(revealTimer);
     controller.abort();
     signal?.removeEventListener("abort", cancel);
   }

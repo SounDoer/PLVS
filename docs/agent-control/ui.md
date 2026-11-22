@@ -67,8 +67,8 @@ A hover preview of the gesture reference, opened by the pointer resting on the q
 the same surface.
 
 Popovers, toolbar menus and dropdowns normally close when the PLVS window loses focus, as native
-menus close when the user switches apps. `show` brings PLVS forward, and focus then returns to the
-agent's own terminal or app, so a surface `show` opened ignores that window blur: it stays until
+menus close when the user switches apps. An agent drives PLVS while another app keeps keyboard
+focus, so a surface `show` opened ignores window blur: it stays until
 `ui close`, Escape, or a click elsewhere in PLVS closes it. The user's first pointer or key input
 in the window restores the normal behaviour.
 
@@ -136,18 +136,21 @@ UI transition also advances `uiGeneration`.
 
 ## Show, settlement, and idempotency
 
-`show` may reveal and focus the selected workbench, activate a supported Panel tab through its
-existing business function, mount or retarget the requested surface, and focus its semantic
-section. It never invokes Save, Send, Confirm, Delete, Reset, Import, Export, Install, Restart, or
-Apply, and it accepts no form values.
+`show` may activate a supported Panel tab through its existing business function, mount or
+retarget the requested surface, and focus its semantic section inside the selected workbench. It
+neither moves the PLVS window nor takes keyboard focus from the user's current app, on every
+platform; the surface settles even while PLVS is covered, minimized, or hidden. A later
+[visual capture](visual.md#background-windows) reveals the window without focus only if it needs
+pixels the window cannot draw. Use `window show` to put PLVS in front of the user deliberately. It never invokes Save, Send, Confirm, Delete, Reset, Import, Export, Install,
+Restart, or Apply, and it accepts no form values.
 
 A successful command waits for the requested component to mount and commit its semantic target,
 then for stable non-zero bounds across the render barrier. It returns `changed`, `action`, the
 current `revision` and `uiGeneration`, the exact `surface`, and compact UI state. A bounded failure
 is `uiNotSettled`; inspect before deciding whether to retry.
 
-Repeating an exact settled target is idempotent. The command may reassert best-effort window focus,
-but returns `changed: false` and advances neither token. Selecting another Settings section or
+Repeating an exact settled target is idempotent: it returns `changed: false` and advances neither
+token. Selecting another Settings section or
 Panel is a real presentation change and advances `uiGeneration` once.
 
 The `settings` surface's `section` is the section on screen. It stays the requested section until

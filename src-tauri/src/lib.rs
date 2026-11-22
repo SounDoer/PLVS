@@ -54,6 +54,7 @@ pub mod update_worker;
 pub mod vad;
 pub mod visual_capture;
 mod window_chrome;
+mod window_reveal;
 mod window_state;
 
 use std::path::{Path, PathBuf};
@@ -375,6 +376,7 @@ pub fn run() {
       agent_control::toggle::set_agent_control_enabled,
       visual_capture::visual_capture_capabilities,
       visual_capture::visual_capture_screenshot,
+      visual_capture::visual_reveal_window,
       visual_capture::visual_recording_start,
       visual_capture::visual_recording_inspect,
       visual_capture::visual_recording_update_audio_state,

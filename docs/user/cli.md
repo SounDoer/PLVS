@@ -391,6 +391,10 @@ control or region, use
 `visual screenshot --target-id <id> --out <file> --json` with an ID from `ui targets`.
 Dock accessory screenshots capture the complete visible client area, including when the screen
 constrains the editor's size.
+Agent Control never takes keyboard focus from the app you are using. When PLVS is covered or
+minimized, a screenshot or recording raises it into view without activating it. A hidden window
+stays hidden until `window show`; see
+[Background windows](../agent-control/visual.md#background-windows).
 Screenshots and recording are available on Windows, macOS, and Linux. The recording-only `dock`
 target is available on Windows and macOS and includes the strip, toolbar, open editor, and any
 desktop visible behind transparent surfaces:
