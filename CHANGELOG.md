@@ -7,6 +7,38 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.26.4] - 2026-11-23
+
+### Added
+
+- Agent Control can read Spectrum bands, peaks and Max curves from a panel in Live, Live history
+  or File Mode. Live measurement waits can check for silence, levels on specific channels, and
+  Loudness Profile verdicts.
+- Agent Control can inspect and edit Welcome preferences before choosing Continue. UI targets
+  identify the commands behind toolbar menus and list the options in open dropdowns.
+- On macOS, enabling Agent Control can put the bundled `plvs-cli` on your PATH. macOS prompts
+  for administrator authorization when needed.
+
+### Changed
+
+- CLI text output rounds fractional readings to three decimals and uses PLVS unit names. JSON
+  retains raw precision. The CLI suggests available names when it cannot find a command, panel,
+  UI target or control.
+
+### Fixed
+
+- Start after Stop continues the Live measurement on the same Source and format, preserving
+  Integrated loudness, Loudness Range, maxima and dialogue readings. Clear starts a fresh
+  measurement. Agent Control correctly reports Automatic when it measures the system default.
+- File Mode uses the selected audio track's channel layout from the first analysis. It now
+  decodes big-endian PCM and names unsupported codecs in the error message.
+- macOS no longer lists PLVS's private capture device among selectable sources.
+- Agent Control keeps menus open when focus returns to the agent and restores panel targets after
+  Fullscreen closes. Screenshots can reveal covered PLVS windows without taking keyboard focus
+  where the platform supports it. Windows recordings can continue while PLVS is minimized,
+  repeating the last frame until the view renders again.
+- FFmpeg sidecar releases no longer replace the stable update feed on GitHub.
+
 ## [0.26.3] - 2026-11-22
 
 ### Added

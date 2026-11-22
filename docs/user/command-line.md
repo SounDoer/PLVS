@@ -12,11 +12,10 @@ not a headless replacement for the desktop app. The full command set is in the
   run `.\plvs-cli.exe` and keep it beside `plvs.exe`.
 - **macOS**: `/Applications/PLVS.app/Contents/MacOS/plvs-cli` (or the same path under
   `~/Applications`). Enabling **Agent Control** in Settings links it as `/usr/local/bin/plvs-cli`
-  (`plvs-preview-cli` for Preview), which a new terminal finds by name; macOS asks for an
-  administrator password to write there. Turning Agent Control off removes the link. If you decline
-  the password, or the name already belongs to another installation, use the full path. After
-  moving the app, turn Agent Control off and on again to relink it. PLVS does not edit shell
-  startup files.
+  (`plvs-preview-cli` for Preview), which a new terminal finds by name. macOS asks for
+  administrator authorization if writing there requires it. If you decline, or another
+  installation owns the link, use the full path. To move the app, turn Agent Control off before
+  moving it and enable it again from the new location. PLVS does not edit shell startup files.
 - **Linux**: `/usr/bin/plvs-cli` for the stable package and `/usr/bin/plvs-preview-cli` for the
   Preview package, so the two can be installed side by side. Development builds
   stage `plvs-cli` beside the desktop executable. PLVS does not edit shell startup files.

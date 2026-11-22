@@ -85,10 +85,10 @@ plvs-cli --help
 Portable builds may require the executable's full path.
 
 On Windows, Agent Control adds the install folder to the user `PATH`. On macOS it links the bundled
-CLI as `/usr/local/bin/plvs-cli` (`plvs-preview-cli` for Preview) after an administrator prompt,
-and never replaces a file of that name that another installation owns; turning Agent Control off
-removes only its own link. PLVS does not edit shell startup files. Full-path invocation always
-works, and the dev identity installs no link.
+CLI as `/usr/local/bin/plvs-cli` (`plvs-preview-cli` for Preview) and asks for administrator
+authorization if needed. When another installation owns that name, PLVS leaves it in place.
+Turning Agent Control off removes only its own link. PLVS does not edit shell startup files.
+Full-path invocation always works, and the dev identity installs no link.
 The Ubuntu stable package installs `plvs-cli` directly in `/usr/bin`; the Preview package installs
 `plvs-preview-cli` there so that both packages can be installed side by side.
 

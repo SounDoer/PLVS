@@ -6,7 +6,9 @@ Inspect a local audio file offline, using the same meter panels as live monitori
 
 In File Mode, drag an audio file or a video with an audio track over the window. Release it when
 **Drop File to Analyze** appears. You can also choose **Open** in the transport pill.
-PLVS analyzes files locally using bundled ffprobe and FFmpeg.
+PLVS analyzes files locally using bundled ffprobe and FFmpeg. Supported PCM includes big-endian
+audio in AIFF and MOV files. If the bundled decoder does not support the selected track's codec,
+PLVS shows the codec name in the error message.
 Panels with a channel or channel pair selection use the selected audio track's channel layout
 from the first analysis. If the track lacks the chosen channels, the panel uses its available
 fallback and keeps the original selection for other files.
