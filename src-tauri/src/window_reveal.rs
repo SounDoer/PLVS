@@ -11,7 +11,11 @@
 use std::sync::atomic::Ordering;
 use tauri::{Manager, Runtime, WebviewWindow};
 
-pub fn reveal_without_focus<R: Runtime>(window: &WebviewWindow<R>) -> Result<(), String> {
+/// Restores a minimized window and, when `raise` is set, orders it above other windows.
+pub fn reveal_without_focus<R: Runtime>(
+  window: &WebviewWindow<R>,
+  raise: bool,
+) -> Result<(), String> {
   let docked = window
     .try_state::<crate::dock::DockedFlag>()
     .is_some_and(|flag| flag.0.load(Ordering::Relaxed));
@@ -26,7 +30,7 @@ pub fn reveal_without_focus<R: Runtime>(window: &WebviewWindow<R>) -> Result<(),
   let target = window.clone();
   window
     .run_on_main_thread(move || {
-      if let Err(error) = reveal_on_main(&target) {
+      if let Err(error) = reveal_on_main(&target, raise) {
         log::warn!("reveal without focus failed: {error}");
       }
     })
@@ -34,17 +38,17 @@ pub fn reveal_without_focus<R: Runtime>(window: &WebviewWindow<R>) -> Result<(),
 }
 
 #[cfg(target_os = "macos")]
-fn reveal_on_main<R: Runtime>(window: &WebviewWindow<R>) -> Result<(), String> {
+fn reveal_on_main<R: Runtime>(window: &WebviewWindow<R>, raise: bool) -> Result<(), String> {
   extern "C" {
-    fn plvs_macos_reveal_without_focus(window: *mut std::ffi::c_void);
+    fn plvs_macos_reveal_without_focus(window: *mut std::ffi::c_void, raise: bool);
   }
   let raw = window.ns_window().map_err(|error| error.to_string())?;
-  unsafe { plvs_macos_reveal_without_focus(raw as *mut _) };
+  unsafe { plvs_macos_reveal_without_focus(raw as *mut _, raise) };
   Ok(())
 }
 
 #[cfg(target_os = "windows")]
-fn reveal_on_main<R: Runtime>(window: &WebviewWindow<R>) -> Result<(), String> {
+fn reveal_on_main<R: Runtime>(window: &WebviewWindow<R>, raise: bool) -> Result<(), String> {
   use windows_sys::Win32::UI::WindowsAndMessaging::{
     IsIconic, IsWindowVisible, SetWindowPos, ShowWindow, HWND_TOP, SWP_NOACTIVATE, SWP_NOMOVE,
     SWP_NOSIZE, SWP_SHOWWINDOW, SW_SHOWNOACTIVATE,
@@ -54,6 +58,9 @@ fn reveal_on_main<R: Runtime>(window: &WebviewWindow<R>) -> Result<(), String> {
     if IsIconic(hwnd) != 0 || IsWindowVisible(hwnd) == 0 {
       // Restores a minimized window to its previous placement; the active window stays active.
       ShowWindow(hwnd, SW_SHOWNOACTIVATE);
+    }
+    if !raise {
+      return Ok(());
     }
     SetWindowPos(
       hwnd,
@@ -69,21 +76,23 @@ fn reveal_on_main<R: Runtime>(window: &WebviewWindow<R>) -> Result<(), String> {
 }
 
 #[cfg(target_os = "linux")]
-fn reveal_on_main<R: Runtime>(window: &WebviewWindow<R>) -> Result<(), String> {
+fn reveal_on_main<R: Runtime>(window: &WebviewWindow<R>, raise: bool) -> Result<(), String> {
   use gtk::prelude::*;
   let gtk = window.gtk_window().map_err(|error| error.to_string())?;
   let focus_on_map = gtk.gets_focus_on_map();
   gtk.set_focus_on_map(false);
   gtk.deiconify();
   gtk.show();
-  if let Some(gdk) = gtk.window() {
-    gdk.raise();
+  if raise {
+    if let Some(gdk) = gtk.window() {
+      gdk.raise();
+    }
   }
   gtk.set_focus_on_map(focus_on_map);
   Ok(())
 }
 
 #[cfg(not(any(target_os = "macos", target_os = "windows", target_os = "linux")))]
-fn reveal_on_main<R: Runtime>(_window: &WebviewWindow<R>) -> Result<(), String> {
+fn reveal_on_main<R: Runtime>(_window: &WebviewWindow<R>, _raise: bool) -> Result<(), String> {
   Ok(())
 }

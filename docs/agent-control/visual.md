@@ -90,6 +90,15 @@ restore it from minimized, so there PLVS must already be visible; capture otherw
 `renderNotSettled` with `details.revealed: true`, and the agent can ask the user to bring PLVS
 into view.
 
+A recording of `main` or `workspace` captures the native window, which yields no pictures while
+it is minimized on any platform, so `recording start` first restores a minimized window without
+raising it or taking focus (Wayland does not allow this), then settles as above. Once recording, PLVS never moves the window: if
+the user covers, minimizes, or hides it, the recording repeats the last picture. Each such span is
+logged in the recording's `events` as `renderStalled` and ends with `renderResumed` when PLVS draws
+again, with `elapsedMs` on the recording clock, so an agent can tell a frozen span from a still
+meter and decide whether to record again. Dock region recordings capture the screen and are not
+watched.
+
 ## Screenshot workflow
 
 ```powershell

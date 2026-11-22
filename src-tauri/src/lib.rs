@@ -380,6 +380,7 @@ pub fn run() {
       visual_capture::visual_recording_start,
       visual_capture::visual_recording_inspect,
       visual_capture::visual_recording_update_audio_state,
+      visual_capture::visual_recording_update_render_state,
       visual_capture::visual_recording_update_geometry,
       visual_capture::visual_recording_stop,
       ipc::commands::record_frontend_crash,

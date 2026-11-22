@@ -208,6 +208,37 @@ export async function runWindowContract({ invoke, until, restart, steps, screens
         action("minimize");
         observe(expected);
       }
+      // Window capture gets no pictures from a minimized window on any platform, so a recording
+      // restores it first, without raising it, and must then record live pictures.
+      const started = invoke([
+        "visual",
+        "recording",
+        "start",
+        "--target",
+        "main",
+        "--audio",
+        "none",
+        "--max-duration-seconds",
+        "2",
+      ]);
+      const finished = invoke([
+        "visual",
+        "recording",
+        "wait",
+        started.recording.recordingId,
+        "--timeout-ms",
+        "30000",
+        "--out",
+        screenshotPath.replace(/\.png$/, "-recording.mp4"),
+      ]);
+      assert.equal(finished.recording.state, "completed");
+      assert.ok(finished.recording.capturedFrames > 0);
+      assert.ok(
+        !finished.recording.events.some(({ kind }) => kind === "renderStalled"),
+        "The recording of a restored window stalled."
+      );
+      observe({ visible: true, minimized: false });
+      steps.push("verify a recording restores a minimized window and records live pictures");
     } else if (name === "minimize" && screenshotPath) {
       steps.push("skip minimized capture: Wayland gives a client no way to restore its window");
     }

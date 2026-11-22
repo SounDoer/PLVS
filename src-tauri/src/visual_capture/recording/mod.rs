@@ -103,6 +103,14 @@ pub struct RecordingAudioStateRequest {
 
 #[derive(Clone, Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
+pub struct RecordingRenderStateRequest {
+  pub recording_id: String,
+  /// False while the captured WebView produces no new frames (covered, minimized or hidden).
+  pub rendering: bool,
+}
+
+#[derive(Clone, Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct RecordingIdRequest {
   pub recording_id: String,
 }
@@ -169,6 +177,34 @@ impl RecordingController {
       "audioState",
       format!("Measured-source state changed to {:?}.", request.state),
     );
+    Ok(())
+  }
+
+  pub fn update_render_state(
+    &self,
+    request: RecordingRenderStateRequest,
+  ) -> Result<(), &'static str> {
+    let snapshot = self
+      .registry
+      .inspect(&request.recording_id)
+      .ok_or("recordingNotFound")?;
+    if !matches!(
+      snapshot.state,
+      state::RecordingState::Starting | state::RecordingState::Recording
+    ) {
+      return Ok(());
+    }
+    let (kind, message) = if request.rendering {
+      ("renderResumed", "The captured PLVS view is drawing again.")
+    } else {
+      (
+        "renderStalled",
+        "The captured PLVS view stopped drawing; frames repeat the last picture.",
+      )
+    };
+    self
+      .registry
+      .record_event(&request.recording_id, kind, message);
     Ok(())
   }
 
@@ -362,6 +398,47 @@ mod tests {
     }))
     .unwrap();
     assert_eq!(request.cursor, RecordingCursorMode::Visible);
+  }
+
+  #[test]
+  fn render_state_changes_are_logged_as_recording_events() {
+    let controller = RecordingController::default();
+    let created = controller
+      .registry()
+      .create(
+        640,
+        480,
+        30,
+        60,
+        RecordingAudioSource::None,
+        RecordingCursorMode::None,
+      )
+      .unwrap();
+    let update = |rendering| {
+      controller.update_render_state(RecordingRenderStateRequest {
+        recording_id: created.recording_id.clone(),
+        rendering,
+      })
+    };
+    update(false).unwrap();
+    update(true).unwrap();
+    let kinds: Vec<_> = controller
+      .inspect(&created.recording_id)
+      .unwrap()
+      .events
+      .iter()
+      .map(|event| event.kind)
+      .collect();
+    assert_eq!(kinds, ["starting", "renderStalled", "renderResumed"]);
+    assert_eq!(
+      controller
+        .update_render_state(RecordingRenderStateRequest {
+          recording_id: "rec-missing".to_string(),
+          rendering: false,
+        })
+        .unwrap_err(),
+      "recordingNotFound"
+    );
   }
 
   #[test]

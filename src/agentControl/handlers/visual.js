@@ -184,6 +184,7 @@ async function startRecording(ctx) {
   const controller = new AbortController();
   visual.captures.set(requestId, controller);
   try {
+    if (!dockTarget) await visualControl.prepareRecording?.();
     const settled = region(
       await visualControl.settle(surfaceTarget, {
         expectedRevision: request.params.expectedRevision,
@@ -240,6 +241,14 @@ async function startRecording(ctx) {
       },
       { signal: controller.signal, followDockEdge: dockTarget }
     );
+    const stopGeometry = active.unsubscribe;
+    const stopRenderWatch = dockTarget
+      ? undefined
+      : visualControl.watchRecordingRender?.(recording.recordingId);
+    active.unsubscribe = () => {
+      stopGeometry?.();
+      stopRenderWatch?.();
+    };
     observeRecording(visual, visualControl, recording, clock.current());
     void pollRecording(visual, visualControl, active, clock);
     return {

@@ -28,7 +28,7 @@ use platform::{CaptureError, PlatformCapabilities, ScreenshotRequest, VisualCapt
 use recording::state::{RecordingAudioSource, RecordingSnapshot, StopReason};
 use recording::{
   RecordingAudioStateRequest, RecordingController, RecordingGeometryRequest, RecordingIdRequest,
-  RecordingSourceMode, RecordingStartRequest,
+  RecordingRenderStateRequest, RecordingSourceMode, RecordingStartRequest,
 };
 #[cfg(target_os = "windows")]
 use windows::WindowsPlatform;
@@ -130,14 +130,17 @@ pub async fn visual_capture_capabilities() -> PlatformCapabilities {
     .unwrap_or_else(|_| platform::UnsupportedPlatform.capabilities())
 }
 
-/// Reveals the calling PLVS window without taking keyboard focus when visual settlement
-/// receives no animation frames (hidden, minimized or fully covered).
+/// Reveals the calling PLVS window without taking keyboard focus: restores it from minimized and,
+/// unless `raise` is false, orders it above other windows so a stalled WebView renders again.
 #[tauri::command]
-pub fn visual_reveal_window(window: tauri::WebviewWindow) -> Result<(), String> {
+pub fn visual_reveal_window(
+  window: tauri::WebviewWindow,
+  raise: Option<bool>,
+) -> Result<(), String> {
   if window.label() != "main" {
     return Err("Only the main PLVS window can be revealed for capture.".to_string());
   }
-  crate::window_reveal::reveal_without_focus(&window)
+  crate::window_reveal::reveal_without_focus(&window, raise.unwrap_or(true))
 }
 
 #[tauri::command]
@@ -621,6 +624,17 @@ pub fn visual_recording_update_audio_state(
 ) -> Result<(), NativeCaptureError> {
   controller.update_audio_state(request).map_err(|reason| {
     NativeCaptureError::recording(reason, "The recording audio state could not be updated.")
+  })
+}
+
+/// Records in the recording's events when the captured WebView stops or resumes drawing.
+#[tauri::command]
+pub fn visual_recording_update_render_state(
+  controller: State<'_, RecordingController>,
+  request: RecordingRenderStateRequest,
+) -> Result<(), NativeCaptureError> {
+  controller.update_render_state(request).map_err(|reason| {
+    NativeCaptureError::recording(reason, "The recording render state could not be updated.")
   })
 }
 

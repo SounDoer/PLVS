@@ -25,6 +25,7 @@ import { semanticFailure } from "./bridge/failures.js";
 import { getSuccessfulFileSession } from "../lib/fileAnalysisSessionRegistry.js";
 import { useAgentControlBridge } from "./useAgentControlBridge.js";
 import { useAgentControlState } from "./AgentControlStateContext.jsx";
+import { watchRecordingRender } from "./recordingRenderWatch.js";
 import { useVisualCaptureSurfaces } from "./useVisualCaptureSurfaces.js";
 import { settleDockAccessory } from "./settleDockAccessory.js";
 import { useDockAccessories } from "../dock/DockAccessoriesContext.jsx";
@@ -51,6 +52,7 @@ import {
   startFileProbe,
   captureVisualScreenshot,
   revealVisualWindow,
+  updateVisualRecordingRenderState,
   movePointer,
   inspectVisualRecording,
   startVisualRecording,
@@ -757,8 +759,21 @@ export function AgentControlBridge() {
           ? settleDockAccessory(target, visualRuntimeRef.current, options)
           : visualCaptureSurfaces.settle(target, {
               ...options,
-              reveal: windowVisibleRef.current === false ? null : revealVisualWindow,
+              reveal: windowVisibleRef.current === false ? null : () => revealVisualWindow(),
             }),
+      // Window capture receives no pictures from a minimized window on any platform, even where
+      // the WebView keeps drawing. Restore it before a recording starts, without raising it.
+      prepareRecording: async () => {
+        if (windowVisibleRef.current === false) return;
+        const geometry = await readWindowGeometry().catch(() => null);
+        if (geometry?.minimized === true) await revealVisualWindow({ raise: false });
+      },
+      watchRecordingRender: (recordingId) =>
+        watchRecordingRender({
+          isMinimized: async () => (await readWindowGeometry())?.minimized === true,
+          report: (rendering) =>
+            updateVisualRecordingRenderState({ recordingId, rendering }).catch(() => undefined),
+        }),
       captureScreenshot: captureVisualScreenshot,
       startRecording: startVisualRecording,
       inspectRecording: inspectVisualRecording,

@@ -330,10 +330,16 @@ export function captureVisualScreenshot(request) {
 }
 
 /**
- * Reveal the main PLVS window without taking keyboard focus so its WebView renders again.
+ * Reveal the main PLVS window without taking keyboard focus: restore it from minimized and, unless
+ * `raise` is false, order it above other windows so its WebView renders again.
  */
-export function revealVisualWindow() {
-  return invoke("visual_reveal_window");
+export function revealVisualWindow({ raise = true } = {}) {
+  return invoke("visual_reveal_window", { raise });
+}
+
+/** Log in the active recording's events when the captured view stops or resumes drawing. */
+export function updateVisualRecordingRenderState(request) {
+  return invoke("visual_recording_update_render_state", { request });
 }
 
 /**

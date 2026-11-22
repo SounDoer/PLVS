@@ -1,12 +1,16 @@
 #import <AppKit/AppKit.h>
 
-// Orders a PLVS window above other normal windows so its WebView renders again, without
-// activating PLVS or making the window key: keyboard focus stays with the user's current app.
-// Callers run this on the main thread.
-void plvs_macos_reveal_without_focus(void *raw) {
+// Restores a minimized PLVS window and, when `raise` is set, orders it above other normal windows
+// so its WebView renders again. Never activates PLVS or makes the window key: keyboard focus stays
+// with the user's current app. Callers run this on the main thread.
+void plvs_macos_reveal_without_focus(void *raw, bool raise) {
   NSWindow *window = (__bridge NSWindow *)raw;
   if (!window.miniaturized) {
-    [window orderFrontRegardless];
+    if (raise) [window orderFrontRegardless];
+    return;
+  }
+  if (!raise) {
+    [window deminiaturize:nil];
     return;
   }
   // Reordering during the restore animation leaves WebKit's page hidden; order it front once

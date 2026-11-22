@@ -81,6 +81,46 @@ describe("Visual recording lifecycle", () => {
     expect(book.activeRecording.current).toMatchObject({ recordingId: "second" });
   });
 
+  it("restores a minimized window before settling and watches rendering until the end", async () => {
+    vi.useFakeTimers();
+    const { state, start, book } = harness();
+    const { visual } = state;
+    const order = [];
+    const stopWatch = vi.fn();
+    Object.assign(visual, {
+      prepareRecording: vi.fn(async () => order.push("prepare")),
+      watchRecordingRender: vi.fn(() => stopWatch),
+    });
+    visual.settle.mockImplementationOnce(async () => {
+      order.push("settle");
+      return {
+        revision: 0,
+        viewport: { width: 800, height: 50 },
+        rect: { x: 0, y: 0, width: 800, height: 50 },
+      };
+    });
+    visual.inspectRecording.mockResolvedValue({ recordingId: "first", state: "completed" });
+    await start();
+    expect(order).toEqual(["prepare", "settle"]);
+    expect(visual.watchRecordingRender).toHaveBeenCalledWith("first");
+
+    await vi.advanceTimersByTimeAsync(250);
+    expect(book.activeRecording.current).toBeNull();
+    expect(stopWatch).toHaveBeenCalledOnce();
+  });
+
+  it("neither restores nor watches the window for a Dock region recording", async () => {
+    const { state, start } = harness();
+    const { visual } = state;
+    Object.assign(visual, {
+      prepareRecording: vi.fn(async () => {}),
+      watchRecordingRender: vi.fn(),
+    });
+    await start("dock");
+    expect(visual.prepareRecording).not.toHaveBeenCalled();
+    expect(visual.watchRecordingRender).not.toHaveBeenCalled();
+  });
+
   it("retries a temporary inspection error and cleans up exactly once", async () => {
     vi.useFakeTimers();
     const { state, start, inspect, bump, book } = harness();

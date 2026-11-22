@@ -392,8 +392,10 @@ control or region, use
 Dock accessory screenshots capture the complete visible client area, including when the screen
 constrains the editor's size.
 Agent Control never takes keyboard focus from the app you are using. When PLVS is covered, or
-minimized on macOS, a screenshot or recording raises it into view without activating it. A hidden window
-stays hidden until `window show`; see
+minimized on macOS, a screenshot raises it into view without activating it; a recording restores a
+minimized window wherever the system allows it (not under Wayland). A hidden window stays hidden until `window show`. If you cover
+or minimize PLVS during a recording, PLVS leaves it there and the agent sees that span as
+`renderStalled` in the recording's events. See
 [Background windows](../agent-control/visual.md#background-windows).
 Screenshots and recording are available on Windows, macOS, and Linux. The recording-only `dock`
 target is available on Windows and macOS and includes the strip, toolbar, open editor, and any
