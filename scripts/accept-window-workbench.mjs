@@ -119,13 +119,21 @@ export async function runWindowContract({ invoke, until, restart, steps, screens
     observe(expected);
     assert.equal(action(name).changed, false);
     if (name === "minimize" && screenshotPath && process.platform !== "linux") {
-      // Capture reveals a minimized window without activating PLVS (docs/agent-control/visual.md).
+      // Capture reveals a window only when its WebView cannot draw (docs/agent-control/visual.md).
+      // WebKit stops drawing a minimized window; WebView2's CapturePreview still renders it.
+      const restores = process.platform === "darwin";
       const capture = invoke(["visual", "screenshot", "--target", "main", "--out", screenshotPath]);
       assert.ok(capture.artifact.width > 0 && capture.artifact.height > 0);
-      observe({ visible: true, minimized: false });
-      steps.push("verify a screenshot restores a minimized window without window show");
-      action("minimize");
-      observe(expected);
+      observe({ visible: true, minimized: !restores });
+      steps.push(
+        restores
+          ? "verify a screenshot restores a minimized window without window show"
+          : "verify a minimized window is captured in place"
+      );
+      if (restores) {
+        action("minimize");
+        observe(expected);
+      }
     } else if (name === "minimize" && screenshotPath) {
       steps.push("skip minimized capture: Wayland gives a client no way to restore its window");
     }
