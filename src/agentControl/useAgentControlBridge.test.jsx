@@ -4905,6 +4905,19 @@ describe("useAgentControlBridge", () => {
     });
   });
 
+  it("suggests the closest Panel IDs for an unknown panel", async () => {
+    mount();
+    await waitUntilReady();
+
+    const response = await send(
+      request("panel.describe", { panelId: "levelMetr" }, "describe-typo")
+    );
+
+    expect(response.error.data.reason).toBe("panelNotFound");
+    expect(response.error.data.details.suggestions).toEqual(["levelMeter"]);
+    expect(response.error.data.details.availablePanelIds).toContain("levelMeter");
+  });
+
   it("describes and inspects Axis Control without mutating Workspace state", async () => {
     const view = mount({
       analysisContext: { timeMaxWindowSec: 3600, timeMaxOffsetSec: 3540 },
@@ -5240,6 +5253,29 @@ describe("useAgentControlBridge", () => {
     });
     expect(view.store.state.panelControlsById.levelMeter).toBe(initialControls);
     expect(flush).not.toHaveBeenCalled();
+  });
+
+  it("names the intended control and the inspection wrapper in panel validation issues", async () => {
+    mount();
+    await waitUntilReady();
+
+    const typo = await send(
+      request("panel.update", { panelId: "levelMeter", patch: { mdoe: "vu" } }, "panel-typo")
+    );
+    expect(typo.error.data.details.issues).toEqual([
+      expect.objectContaining({ code: "unknownControl", path: "$.mdoe", suggestions: ["mode"] }),
+    ]);
+
+    const wrapped = await send(
+      request(
+        "panel.update",
+        { panelId: "levelMeter", patch: { controls: { mode: "peak" } } },
+        "panel-wrapped"
+      )
+    );
+    const [issue] = wrapped.error.data.details.issues;
+    expect(issue).toMatchObject({ code: "unknownControl", path: "$.controls" });
+    expect(issue.message).toContain('remove the "controls" wrapper');
   });
 
   it("keeps a no-op panel update clean and marks an effective update dirty", async () => {

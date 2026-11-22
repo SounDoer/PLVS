@@ -652,6 +652,13 @@ validates a document or patch, the response lists every independently discoverab
 under `error.details.issues`, so a caller can correct them together. Each issue has a stable machine
 `code`, a `path` into the caller's submitted JSON, and a human-readable `message`.
 
+A name that does not exist is answered with the closest existing names. An `unknownControl` issue in
+a Panel, Settings or View patch can carry `suggestions`, and its message says when the patch still
+wraps its fields in the `controls`, `settings` or `view` object that inspection shows. A
+`panelNotFound` error carries `details.suggestions` and `details.availablePanelIds`, and a
+`uiTargetNotFound` error can carry `details.suggestions`. An unknown command names the closest
+commands in its message, for example `measurement wait-until` for `wait-until`.
+
 Error codes shared by every mutating family:
 
 - `revisionConflict` — `details` carries `expectedRevision` and `currentRevision`.

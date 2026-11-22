@@ -253,6 +253,80 @@ pub fn command_families(execution: &str) -> Vec<&'static str> {
     .collect()
 }
 
+/// Optimal string alignment distance: Levenshtein plus adjacent transpositions.
+fn edit_distance(a: &str, b: &str) -> usize {
+  let a: Vec<char> = a.chars().collect();
+  let b: Vec<char> = b.chars().collect();
+  let mut d = vec![vec![0usize; b.len() + 1]; a.len() + 1];
+  for (i, row) in d.iter_mut().enumerate() {
+    row[0] = i;
+  }
+  for j in 0..=b.len() {
+    d[0][j] = j;
+  }
+  for i in 1..=a.len() {
+    for j in 1..=b.len() {
+      let cost = usize::from(a[i - 1] != b[j - 1]);
+      d[i][j] = (d[i - 1][j] + 1)
+        .min(d[i][j - 1] + 1)
+        .min(d[i - 1][j - 1] + cost);
+      if i > 1 && j > 1 && a[i - 1] == b[j - 2] && a[i - 2] == b[j - 1] {
+        d[i][j] = d[i][j].min(d[i - 2][j - 2] + 1);
+      }
+    }
+  }
+  d[a.len()][b.len()]
+}
+
+/// Commands an unknown first word probably meant: the full path of a subcommand typed without its
+/// family (`wait-until` → `measurement wait-until`), otherwise the nearest command names.
+pub fn command_suggestions(word: &str) -> Vec<String> {
+  let Ok(manifest) = command_manifest() else {
+    return Vec::new();
+  };
+  let public = || {
+    manifest
+      .commands
+      .iter()
+      .filter(|command| command.feature_gate.is_none() && !command.path.is_empty())
+  };
+  let mut nested: Vec<String> = public()
+    .filter(|command| command.path.iter().skip(1).any(|part| part == word))
+    .map(|command| {
+      let end = command
+        .path
+        .iter()
+        .position(|part| part == word)
+        .unwrap_or(0);
+      command.path[..=end].join(" ")
+    })
+    .collect();
+  nested.sort();
+  nested.dedup();
+  if !nested.is_empty() {
+    nested.truncate(3);
+    return nested;
+  }
+  let word = word.to_lowercase();
+  let allowance = (word.chars().count() / 3).max(1);
+  let mut scored: Vec<(usize, &str)> = public()
+    .map(|command| command.path[0].as_str())
+    .collect::<HashSet<_>>()
+    .into_iter()
+    .filter_map(|name| {
+      let distance = edit_distance(&word, name);
+      let contains = word.len() >= 3 && (name.contains(word.as_str()) || word.contains(name));
+      (distance <= allowance || contains).then_some((distance, name))
+    })
+    .collect();
+  scored.sort();
+  scored
+    .into_iter()
+    .take(3)
+    .map(|(_, name)| name.to_string())
+    .collect()
+}
+
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct CommandSummary<'a> {

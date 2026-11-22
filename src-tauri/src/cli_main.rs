@@ -77,6 +77,22 @@ enum HelpTopic {
   Capture,
 }
 
+fn unknown_command_message(command: &str) -> String {
+  let suggestions = crate::cli_manifest::command_suggestions(command);
+  if suggestions.is_empty() {
+    format!("Unknown command: {command}. Try: plvs-cli --help")
+  } else {
+    format!(
+      "Unknown command: {command}. Did you mean: {}?",
+      suggestions
+        .iter()
+        .map(|suggestion| format!("plvs-cli {suggestion}"))
+        .collect::<Vec<_>>()
+        .join(", ")
+    )
+  }
+}
+
 fn parse_args(args: &[String]) -> Result<CliCommand, String> {
   if args.first().is_some_and(|arg| arg == "--instance") {
     return parse_control_invocation(args);
@@ -110,7 +126,7 @@ fn parse_args(args: &[String]) -> Result<CliCommand, String> {
     }
     [command, ..] if is_help_flag(command) => Ok(CliCommand::Help(HelpTopic::Root)),
     [command] if command == "--version" || command == "-V" => Ok(CliCommand::Version),
-    [command, ..] => Err(format!("Unknown command: {command}")),
+    [command, ..] => Err(unknown_command_message(command)),
     [] => Err("Missing command. Try: plvs-cli --help".to_string()),
   }
 }
@@ -1613,10 +1629,29 @@ mod tests {
   }
 
   #[test]
+  fn suggests_the_command_an_unknown_word_probably_meant() {
+    assert_eq!(
+      parse_args(&args(&["wait-until", "-", "--json"])),
+      Err(
+        "Unknown command: wait-until. Did you mean: plvs-cli measurement wait-until?".to_string()
+      )
+    );
+    assert_eq!(
+      parse_args(&args(&["pannel", "describe", "spectrum"])),
+      Err("Unknown command: pannel. Did you mean: plvs-cli panel?".to_string())
+    );
+    assert!(
+      serialize_parse_error("Unknown command: pannel. Did you mean: plvs-cli panel?")
+        .0
+        .contains("\"unknownCommand\"")
+    );
+  }
+
+  #[test]
   fn removes_the_app_command_family_without_an_alias() {
     assert_eq!(
       parse_args(&args(&["app", "inspect", "--json"])),
-      Err("Unknown command: app".to_string())
+      Err("Unknown command: app. Try: plvs-cli --help".to_string())
     );
     assert_eq!(
       parse_args(&args(&["help", "app"])),

@@ -7,6 +7,7 @@ import {
 } from "../viewControl.js";
 import { viewResultPreset } from "./shared.js";
 import { semanticFailure } from "../bridge/failures.js";
+import { withControlSuggestions } from "../nameSuggestions.js";
 
 /** @param {import("../bridge/types.js").BridgeContext} ctx */
 async function describeOrInspect(ctx) {
@@ -49,7 +50,17 @@ async function updateOrReset(ctx) {
   let planned = plan(context);
   if (planned.issues.length > 0) {
     throw semanticFailure("invalidView", "$.params.patch", "The View patch is invalid.", -32602, {
-      issues: planned.issues,
+      issues:
+        request.method === "view.update"
+          ? withControlSuggestions(
+              planned.issues,
+              buildViewInspection(context.view, context).view,
+              {
+                wrapper: "view",
+                command: "view update",
+              }
+            )
+          : planned.issues,
     });
   }
   if (planned.refusal) {

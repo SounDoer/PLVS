@@ -4,6 +4,7 @@ import {
   planSettingsUpdate,
 } from "../settingsControl.js";
 import { semanticFailure } from "../bridge/failures.js";
+import { withControlSuggestions } from "../nameSuggestions.js";
 import { settingsStateSignature } from "../bridge/signatures.js";
 
 /** @param {import("../bridge/types.js").BridgeContext} ctx */
@@ -52,7 +53,13 @@ async function update(ctx) {
       "$.params.patch",
       "The Settings patch is invalid.",
       -32602,
-      { issues: planned.issues }
+      {
+        issues: withControlSuggestions(
+          planned.issues,
+          buildSettingsInspection(settings, settingsContext).settings,
+          { wrapper: "settings", command: "settings update" }
+        ),
+      }
     );
   }
   if (planned.refusal) {

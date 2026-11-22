@@ -1,3 +1,5 @@
+import { suggestNames } from "./nameSuggestions.js";
+
 export const MEASUREMENT_SIGNAL_FLOOR_DBFS = -90;
 
 export const MEASUREMENT_AVAILABLE_METRICS = Object.freeze([
@@ -31,6 +33,20 @@ export const MEASUREMENT_THRESHOLD_OPERATORS = Object.freeze([
   "atOrBelow",
 ]);
 
+const PREDICATE_KINDS = Object.freeze(["signalPresent", "metricAvailable", "metricThreshold"]);
+
+/** "a, b, or c" */
+function listed(values) {
+  return values.length < 3
+    ? values.join(" or ")
+    : `${values.slice(0, -1).join(", ")}, or ${values.at(-1)}`;
+}
+
+function didYouMean(input, candidates) {
+  const suggestions = suggestNames(input, candidates);
+  return suggestions.length > 0 ? ` Did you mean ${listed(suggestions)}?` : "";
+}
+
 function plainObject(value) {
   return value !== null && typeof value === "object" && !Array.isArray(value);
 }
@@ -45,10 +61,16 @@ function failure(path, message) {
 
 export function normalizeMeasurementPredicate(value, path = "$.params.predicate") {
   if (!plainObject(value)) return failure(path, "predicate must be an object.");
-  if (!["signalPresent", "metricAvailable", "metricThreshold"].includes(value.kind)) {
+  if (value.kind === undefined && plainObject(value.predicate)) {
+    return failure(
+      `${path}.predicate`,
+      'The input is the predicate itself: remove the "predicate" wrapper.'
+    );
+  }
+  if (!PREDICATE_KINDS.includes(value.kind)) {
     return failure(
       `${path}.kind`,
-      "kind must be signalPresent, metricAvailable, or metricThreshold."
+      `kind must be ${listed(PREDICATE_KINDS)}.${didYouMean(value.kind, PREDICATE_KINDS)}`
     );
   }
   const allowed =
@@ -65,7 +87,10 @@ export function normalizeMeasurementPredicate(value, path = "$.params.predicate"
       ? MEASUREMENT_AVAILABLE_METRICS
       : MEASUREMENT_THRESHOLD_METRICS;
   if (!metrics.includes(value.metric)) {
-    return failure(`${path}.metric`, `metric is not supported for ${value.kind}.`);
+    return failure(
+      `${path}.metric`,
+      `metric is not supported for ${value.kind}.${didYouMean(value.metric, metrics)}`
+    );
   }
   if (value.kind === "metricAvailable") {
     return { ok: true, predicate: { kind: value.kind, metric: value.metric } };

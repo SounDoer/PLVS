@@ -6,6 +6,7 @@ import {
 import { buildPublicPanelControlSchema } from "../panelControlSchema.js";
 import { assertExpectedRevision, panelResultPreset } from "./shared.js";
 import { semanticFailure } from "../bridge/failures.js";
+import { withControlSuggestions } from "../nameSuggestions.js";
 import { paced } from "./paced.js";
 import { panelControlsMatch } from "../bridge/signatures.js";
 import { awaitWorkspacePersistence } from "../bridge/settlement.js";
@@ -97,7 +98,21 @@ async function updateOrReset(ctx) {
       request.method === "panel.update" ? "$.params.patch" : "$.params",
       "The panel controls are invalid.",
       -32602,
-      { issues: planned.issues }
+      {
+        issues:
+          request.method === "panel.update"
+            ? withControlSuggestions(
+                planned.issues,
+                buildAgentControlPanelSnapshot({
+                  workspace,
+                  panelId,
+                  hasLoudnessReference,
+                  analysisContext,
+                }).controls,
+                { wrapper: "controls", command: "panel update" }
+              )
+            : planned.issues,
+      }
     );
   }
   const nextWorkspace = {

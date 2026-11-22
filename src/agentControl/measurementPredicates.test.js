@@ -87,3 +87,20 @@ describe("measurement wait predicates", () => {
     ).toBe(false);
   });
 });
+
+describe("predicate input mistakes", () => {
+  it("explains a predicate wrapper and suggests the intended kind and metric", () => {
+    expect(normalizeMeasurementPredicate({ predicate: { kind: "signalPresent" } })).toEqual({
+      ok: false,
+      path: "$.params.predicate.predicate",
+      message: 'The input is the predicate itself: remove the "predicate" wrapper.',
+    });
+    expect(normalizeMeasurementPredicate({ kind: "signalPresnt" }).message).toBe(
+      "kind must be signalPresent, metricAvailable, or metricThreshold. Did you mean signalPresent?"
+    );
+    expect(
+      normalizeMeasurementPredicate({ kind: "metricAvailable", metric: "loudness.integrated" })
+        .message
+    ).toBe("metric is not supported for metricAvailable. Did you mean loudness.integratedLufs?");
+  });
+});

@@ -1,3 +1,5 @@
+import { suggestNames } from "../nameSuggestions.js";
+import { listUiTargets } from "../../uiNavigation/uiTargets.js";
 import { isSceneOperationRefused } from "../../lib/sceneOperations.js";
 import {
   isDevelopmentFixtureMethod,
@@ -165,9 +167,57 @@ export function createRequestProcessor({
                 ...(typeof error.reason === "string" ? { reason: error.reason } : {}),
               })
             : error;
-      return { requestId, error: agentControlRpcError(semantic) };
+      return {
+        requestId,
+        error: agentControlRpcError(
+          withUiTargetSuggestions(
+            withPanelSuggestions(semantic, request, snap),
+            request,
+            latestInputs
+          )
+        ),
+      };
     } finally {
       clock.endBatch(revisionBatch);
     }
   };
+}
+
+/**
+ * A Panel ID that names no Workspace Panel gets the closest existing IDs and the full list, which
+ * is short, so the caller can correct it without another round trip.
+ */
+function withPanelSuggestions(semantic, request, snap) {
+  const panelId = request?.params?.panelId;
+  const panelsById = snap?.workspace?.panelsById;
+  if (semantic?.reason !== "panelNotFound" || typeof panelId !== "string" || !panelsById) {
+    return semantic;
+  }
+  const availablePanelIds = Object.keys(panelsById);
+  return {
+    ...semantic,
+    details: {
+      ...semantic.details,
+      suggestions: suggestNames(panelId, availablePanelIds),
+      availablePanelIds,
+    },
+  };
+}
+
+/** A UI target ID that names no mounted control gets the closest mounted target IDs. */
+function withUiTargetSuggestions(semantic, request, live) {
+  const target = request?.params?.target ?? request?.params?.control;
+  if (semantic?.reason !== "uiTargetNotFound" || typeof target !== "string") return semantic;
+  let mounted = [];
+  try {
+    mounted = [
+      ...listUiTargets().map(({ id }) => id),
+      ...(live?.().pointerControl?.accessoryTargets?.() ?? []).map(({ id }) => id),
+    ];
+  } catch {
+    return semantic;
+  }
+  const suggestions = suggestNames(target, mounted);
+  if (suggestions.length === 0) return semantic;
+  return { ...semantic, details: { ...semantic.details, suggestions } };
 }
