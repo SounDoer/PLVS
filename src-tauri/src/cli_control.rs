@@ -5708,20 +5708,64 @@ pub fn run_for_instance(command: ControlCommand, instance_id: Option<String>) ->
   ExitCode::from(exit_code)
 }
 
+/// Human-readable text for a control result. JSON keeps raw engine precision; text is for reading,
+/// so it rounds fractions to three decimals and spells units and acronyms as PLVS shows them.
 fn render_control_text(value: &Value) -> String {
+  fn word(word: &str) -> String {
+    match word {
+      "Lufs" => "LUFS",
+      "Dbfs" => "dBFS",
+      "Dbtp" => "dBTP",
+      "Db" => "dB",
+      "Lu" => "LU",
+      "Hz" => "Hz",
+      "Ms" => "ms",
+      "Psr" => "PSR",
+      "Plr" => "PLR",
+      "Rms" => "RMS",
+      "Tp" => "TP",
+      "Id" => "ID",
+      "Ids" => "IDs",
+      "Ui" => "UI",
+      "Url" => "URL",
+      "Vad" => "VAD",
+      "Cli" => "CLI",
+      "Lra" => "LRA",
+      _ => return word.to_string(),
+    }
+    .to_string()
+  }
+
   fn label(key: &str) -> String {
-    let mut output = String::new();
+    let mut words: Vec<String> = Vec::new();
     for (index, character) in key.chars().enumerate() {
-      if index > 0 && character.is_ascii_uppercase() {
-        output.push(' ');
-      }
-      if index == 0 {
-        output.extend(character.to_uppercase());
-      } else {
-        output.push(character);
+      if index == 0 || character.is_ascii_uppercase() {
+        words.push(character.to_uppercase().collect());
+      } else if let Some(current) = words.last_mut() {
+        current.push(character);
       }
     }
-    output
+    words
+      .iter()
+      .map(|current| word(current))
+      .collect::<Vec<_>>()
+      .join(" ")
+  }
+
+  fn number(value: &serde_json::Number) -> String {
+    if value.is_i64() || value.is_u64() {
+      return value.to_string();
+    }
+    let Some(float) = value.as_f64() else {
+      return value.to_string();
+    };
+    let rounded = format!("{float:.3}");
+    let trimmed = rounded.trim_end_matches('0').trim_end_matches('.');
+    if trimmed == "-0" {
+      "0".to_string()
+    } else {
+      trimmed.to_string()
+    }
   }
 
   fn scalar(value: &Value) -> String {
@@ -5729,7 +5773,7 @@ fn render_control_text(value: &Value) -> String {
       Value::Null => "—".to_string(),
       Value::Bool(value) => if *value { "Yes" } else { "No" }.to_string(),
       Value::String(value) => value.clone(),
-      Value::Number(value) => value.to_string(),
+      Value::Number(value) => number(value),
       _ => unreachable!("containers are rendered recursively"),
     }
   }
@@ -5804,6 +5848,7 @@ fn render_control_text(value: &Value) -> String {
   fn render(value: &Value, indent: usize, output: &mut Vec<String>) {
     let padding = " ".repeat(indent);
     match value {
+      Value::Object(fields) if fields.is_empty() => output.push(format!("{padding}(none)")),
       Value::Object(fields) => {
         for (key, value) in fields {
           match value {
@@ -7151,10 +7196,28 @@ mod tests {
     }));
     assert!(text.contains("Revision: 4"));
     assert!(text.contains("Capture Running: Yes"));
-    assert!(text.contains("Integrated Lufs: —"));
-    assert!(text.contains("Id       Name"));
+    assert!(text.contains("Integrated LUFS: —"));
+    assert!(text.contains("ID       Name"));
     assert!(text.contains("default  Automatic"));
     assert!(!text.contains('{'));
+  }
+
+  #[test]
+  fn text_output_rounds_fractions_and_spells_units() {
+    let text = render_control_text(&serde_json::json!({
+      "integratedLufs": -13.547383527573157,
+      "truePeakMaxDbtp": -0.0001,
+      "weights": [0.157, 0.6779999999999999, 0.165],
+      "sampleRateHz": 48000,
+      "plrDb": 13.1,
+      "topology": {}
+    }));
+    assert!(text.contains("Integrated LUFS: -13.547"), "{text}");
+    assert!(text.contains("True Peak Max dBTP: 0"), "{text}");
+    assert!(text.contains("- 0.678"), "{text}");
+    assert!(text.contains("Sample Rate Hz: 48000"), "{text}");
+    assert!(text.contains("PLR dB: 13.1"), "{text}");
+    assert!(text.contains("Topology:\n  (none)"), "{text}");
   }
 
   #[test]

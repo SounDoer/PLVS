@@ -514,7 +514,8 @@ Detailed payloads and behavior are documented in [Agent Control](../agent-contro
 `doctor` defaults to concise human-readable output. Running-app mutations, actions, waits, and
 queries that write files require `--json`; help does not. Other running-app queries accept either
 `--json` or explicit `--format text`. Text mode uses grouped fields and tables for flat collections,
-with no ANSI color. In JSON mode, stdout contains exactly one UTF-8 JSON document followed by a
+with no ANSI color. It rounds fractions to three decimals and writes units as PLVS shows them
+(`LUFS`, `dBFS`, `dBTP`, `LU`); JSON keeps raw precision. In JSON mode, stdout contains exactly one UTF-8 JSON document followed by a
 newline, with no banners, progress text, or ANSI escapes.
 
 Every successful JSON response has:
