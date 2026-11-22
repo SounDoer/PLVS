@@ -444,17 +444,33 @@ export function SettingsContent({
     // The Settings sheet can already be mounted while its CSS entrance animation still puts
     // the control targets outside the WebView viewport.
     const sheet = node?.closest('[data-slot="sheet-content"]');
-    const sliding = sheet
-      ?.getAnimations?.()
-      .some((animation) => animation.pending || animation.playState === "running");
-    if (node && !sliding && focusSection(pending.section)) {
+    const animations = (sheet?.getAnimations?.() ?? []).filter(
+      (animation) => animation.pending || animation.playState === "running"
+    );
+    // A covered WebView can stop its animation clock. Finish the sheet's entrance locally so
+    // semantic navigation can settle without raising or activating the window.
+    if (sheet?.ownerDocument.hidden) {
+      for (const animation of animations) animation.finish();
+    }
+    if (
+      node &&
+      animations.every((animation) => animation.playState === "finished") &&
+      focusSection(pending.section)
+    ) {
       pendingSectionRef.current = null;
       queueMicrotask(pending.resolve);
       return;
     }
     if (Date.now() >= pending.deadline) {
       pendingSectionRef.current = null;
-      pending.reject(createUiNavigationError("uiNotSettled", { kind: "settings" }));
+      pending.reject(
+        createUiNavigationError("uiNotSettled", {
+          kind: "settings",
+          section: pending.section,
+          documentHidden: node?.ownerDocument.hidden,
+          animationStates: animations.map((animation) => animation.playState),
+        })
+      );
       return;
     }
     if (pending.retryScheduled) return;
