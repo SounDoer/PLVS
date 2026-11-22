@@ -15,6 +15,8 @@ const DEVELOPMENT_UPDATE_METHODS = [
   "dev.update.confirm",
   "dev.update.quit",
 ];
+/// Sent by the MCP adapter for the Settings status line; private, but served in every build.
+const MCP_ADAPTER_METHODS = ["mcp.clientSeen"];
 
 describe("Agent Control handler coverage", () => {
   it("has exactly one handler for every wire method a running app serves", () => {
@@ -27,6 +29,7 @@ describe("Agent Control handler coverage", () => {
         ...DEVELOPMENT_FIXTURE_METHODS,
         ...DEVELOPMENT_PERFORMANCE_METHODS,
         ...DEVELOPMENT_UPDATE_METHODS,
+        ...MCP_ADAPTER_METHODS,
       ]),
     ].sort();
     expect(Object.keys(METHOD_TABLE).sort()).toEqual(expected);

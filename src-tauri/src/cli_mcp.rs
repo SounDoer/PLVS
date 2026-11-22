@@ -620,7 +620,57 @@ async fn screenshot(arguments: &JsonObject) -> CallToolResult {
   result
 }
 
-struct PlvsMcp;
+/// How often the adapter tells PLVS which chat app is using it, for the Settings status line.
+const USAGE_REPORT_INTERVAL: Duration = Duration::from_secs(30);
+const MCP_CLIENT_SEEN_METHOD: &str = "mcp.clientSeen";
+const MCP_CLIENT_NAME_MAX_CHARS: usize = 80;
+
+/// The chat app's own name for itself from the MCP handshake, trimmed to what Settings accepts.
+fn client_display_name(title: Option<&str>, name: &str) -> String {
+  let chosen = title
+    .map(str::trim)
+    .filter(|title| !title.is_empty())
+    .unwrap_or_else(|| name.trim());
+  let printable: String = chosen.chars().filter(|c| !c.is_control()).collect();
+  let printable = printable.trim();
+  if printable.is_empty() {
+    "an MCP client".to_string()
+  } else {
+    printable.chars().take(MCP_CLIENT_NAME_MAX_CHARS).collect()
+  }
+}
+
+#[derive(Default)]
+struct PlvsMcp {
+  last_usage_report: std::sync::Mutex<Option<std::time::Instant>>,
+}
+
+impl PlvsMcp {
+  /// Reports usage at most once per interval, in the background: a lost report only delays the
+  /// status line and must never slow or fail the tool call.
+  fn report_usage(&self, context: &RequestContext<RoleServer>, instance: Option<String>) {
+    let now = std::time::Instant::now();
+    {
+      let mut last = self
+        .last_usage_report
+        .lock()
+        .unwrap_or_else(|poisoned| poisoned.into_inner());
+      if last.is_some_and(|at| now.duration_since(at) < USAGE_REPORT_INTERVAL) {
+        return;
+      }
+      *last = Some(now);
+    }
+    let client = context.peer.peer_info().map_or_else(
+      || "an MCP client".to_string(),
+      |info| client_display_name(info.client_info.title.as_deref(), &info.client_info.name),
+    );
+    tokio::spawn(call_blocking(
+      MCP_CLIENT_SEEN_METHOD.to_string(),
+      json!({ "client": client }),
+      instance,
+    ));
+  }
+}
 
 impl ServerHandler for PlvsMcp {
   fn get_info(&self) -> ServerConfig {
@@ -650,6 +700,10 @@ impl ServerHandler for PlvsMcp {
   ) -> Result<CallToolResponse, ErrorData> {
     let arguments = request.arguments.clone().unwrap_or_default();
     let name: Cow<'static, str> = request.name.clone();
+    // The catalogue is answered offline; every other tool reaches the app.
+    if !matches!(ToolKind::from_name(&name), None | Some(ToolKind::Describe)) {
+      self.report_usage(&context, string_arg(&arguments, "instance"));
+    }
     let result = match ToolKind::from_name(&name) {
       None => usage_error(format!("Unknown tool `{name}`.")),
       Some(ToolKind::Describe) => describe(&arguments),
@@ -685,7 +739,7 @@ pub fn run() -> ExitCode {
   };
   // stdout carries the protocol; anything human-readable goes to stderr.
   runtime.block_on(async move {
-    let service = match PlvsMcp.serve(rmcp::transport::stdio()).await {
+    let service = match PlvsMcp::default().serve(rmcp::transport::stdio()).await {
       Ok(service) => service,
       Err(error) => {
         eprintln!("MCP initialization failed: {error}");
@@ -807,5 +861,17 @@ mod tests {
     assert_eq!(server_name("com.soundoer.plvs"), "plvs");
     assert_eq!(server_name("com.soundoer.plvs.preview"), "plvs-preview");
     assert_eq!(server_name("com.soundoer.plvs.dev"), "plvs-dev");
+  }
+
+  #[test]
+  fn client_names_prefer_the_title_and_fit_settings() {
+    assert_eq!(client_display_name(Some("Claude"), "claude-ai"), "Claude");
+    assert_eq!(client_display_name(Some("  "), "codex-mcp"), "codex-mcp");
+    assert_eq!(client_display_name(None, "bad\nname"), "badname");
+    assert_eq!(client_display_name(None, "\n"), "an MCP client");
+    assert_eq!(
+      client_display_name(None, &"x".repeat(200)).chars().count(),
+      MCP_CLIENT_NAME_MAX_CHARS
+    );
   }
 }

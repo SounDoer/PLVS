@@ -140,6 +140,17 @@ Stall accepts only an integer from 100 through 10,000 milliseconds and blocks th
 thread for that bounded interval. Neither method accepts source text or arbitrary evaluation, and
 both remain unavailable outside the dev identity.
 
+### MCP usage report
+
+`plvs-cli mcp` sends a private `mcp.clientSeen` method, at most every 30 seconds while a chat app
+uses it, with one parameter: `client`, the chat app's own name from the MCP handshake (1 to 80
+printable characters). Unlike the `dev.*` methods it is served in every identity, because the
+adapter ships in every build; like them it is absent from the public manifest, capabilities and
+generated reference. The frontend keeps only the last client and time, in memory, for the status
+line under MCP Setup in Settings. It touches no observed domain, so it never advances `revision`,
+and it is never persisted or sent anywhere. The adapter sends it in the background and ignores its
+outcome, so an older app that answers `methodNotFound` changes nothing.
+
 ### `app.capabilities`
 
 The frontend JSON-RPC method and the public CLI result deliberately differ. The frontend returns

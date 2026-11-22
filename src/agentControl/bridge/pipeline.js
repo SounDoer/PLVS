@@ -13,6 +13,7 @@ import {
   isDevelopmentUpdateMethod,
   normalizeDevelopmentUpdateRequest,
 } from "../developmentUpdateProtocol.js";
+import { isMcpUsageMethod, normalizeMcpUsageRequest } from "../mcpUsageProtocol.js";
 import { agentControlRpcError, normalizeAgentControlRequest } from "../protocol.js";
 import { WorkspaceLayoutError } from "../../workspace/workspaceLayout.js";
 import { isCommitNotObserved, persistUnobservedCommit, semanticFailure } from "./failures.js";
@@ -84,7 +85,9 @@ export function createRequestProcessor({
         ? normalizeDevelopmentPerformanceRequest(rawRequest)
         : developmentUpdateRequest
           ? normalizeDevelopmentUpdateRequest(rawRequest)
-          : normalizeAgentControlRequest(rawRequest);
+          : isMcpUsageMethod(rawRequest?.method)
+            ? normalizeMcpUsageRequest(rawRequest)
+            : normalizeAgentControlRequest(rawRequest);
     const requestId =
       normalized.ok && normalized.request.id
         ? normalized.request.id
