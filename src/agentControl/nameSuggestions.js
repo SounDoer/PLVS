@@ -63,7 +63,13 @@ export function suggestNames(input, candidates) {
     scored.push({ candidate, score });
   }
   scored.sort((a, b) => a.score - b.score || a.candidate.localeCompare(b.candidate));
-  return scored.slice(0, MAX_SUGGESTIONS).map(({ candidate }) => candidate);
+  // A clearly better match hides the weaker ones: "signalPresnt" means signalPresent, not also
+  // signalAbsent, which is merely within the typo allowance.
+  const best = scored[0]?.score ?? 0;
+  return scored
+    .filter(({ score }) => score <= best + 1)
+    .slice(0, MAX_SUGGESTIONS)
+    .map(({ candidate }) => candidate);
 }
 
 function isRecord(value) {

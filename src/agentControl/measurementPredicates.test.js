@@ -95,12 +95,79 @@ describe("predicate input mistakes", () => {
       path: "$.params.predicate.predicate",
       message: 'The input is the predicate itself: remove the "predicate" wrapper.',
     });
-    expect(normalizeMeasurementPredicate({ kind: "signalPresnt" }).message).toBe(
-      "kind must be signalPresent, metricAvailable, or metricThreshold. Did you mean signalPresent?"
+    expect(normalizeMeasurementPredicate({ kind: "signalPresnt" }).message).toMatch(
+      /^kind must be signalPresent, signalAbsent, .*\. Did you mean signalPresent\?$/
     );
     expect(
       normalizeMeasurementPredicate({ kind: "metricAvailable", metric: "loudness.integrated" })
         .message
     ).toBe("metric is not supported for metricAvailable. Did you mean loudness.integratedLufs?");
+  });
+});
+
+describe("silence, channel and Loudness Profile predicates", () => {
+  const measurement = (channels, overall = "ok") => ({
+    sample: { freshness: "fresh" },
+    levels: { channels },
+    profile: { overall },
+  });
+  const L = (peakDbfs, rmsDbfs = peakDbfs - 6) => ({ index: 0, label: "L", peakDbfs, rmsDbfs });
+  const R = (peakDbfs, rmsDbfs = peakDbfs - 6) => ({ index: 1, label: "R", peakDbfs, rmsDbfs });
+
+  it("waits for every channel to fall to the signal floor", () => {
+    const { predicate } = normalizeMeasurementPredicate({ kind: "signalAbsent", holdMs: 2000 });
+    expect(predicate).toEqual({ kind: "signalAbsent", holdMs: 2000 });
+    expect(measurementPredicateMatches(measurement([L(-95), R(null)]), predicate)).toBe(true);
+    expect(measurementPredicateMatches(measurement([L(-95), R(-40)]), predicate)).toBe(false);
+    expect(measurementPredicateMatches(measurement([]), predicate)).toBe(false);
+  });
+
+  it("compares one channel's peak or RMS by its label", () => {
+    const { predicate } = normalizeMeasurementPredicate({
+      kind: "channelThreshold",
+      channel: "R",
+      metric: "peakDbfs",
+      operator: "above",
+      value: -6,
+    });
+    expect(predicate).toEqual({
+      kind: "channelThreshold",
+      channel: "R",
+      metric: "peakDbfs",
+      operator: "above",
+      value: -6,
+      holdMs: 0,
+    });
+    expect(measurementPredicateMatches(measurement([L(-1), R(-12)]), predicate)).toBe(false);
+    expect(measurementPredicateMatches(measurement([L(-12), R(-3)]), predicate)).toBe(true);
+    expect(measurementPredicateMatches(measurement([L(-3)]), predicate)).toBe(false);
+    expect(
+      normalizeMeasurementPredicate({ kind: "channelThreshold", channel: "L", metric: "peak" })
+        .message
+    ).toBe("metric is not supported for channelThreshold. Did you mean peakDbfs?");
+  });
+
+  it("matches a Loudness Profile status exactly or at a severity", () => {
+    const exact = normalizeMeasurementPredicate({
+      kind: "profileStatus",
+      status: "warn",
+    }).predicate;
+    const severe = normalizeMeasurementPredicate({
+      kind: "profileStatus",
+      status: "warn",
+      operator: "atOrAbove",
+    }).predicate;
+    expect(measurementPredicateMatches(measurement([L(-20)], "warn"), exact)).toBe(true);
+    expect(measurementPredicateMatches(measurement([L(-20)], "fail"), exact)).toBe(false);
+    expect(measurementPredicateMatches(measurement([L(-20)], "fail"), severe)).toBe(true);
+    expect(measurementPredicateMatches(measurement([L(-20)], "pending"), severe)).toBe(false);
+    expect(measurementPredicateMatches(measurement([L(-20)], "off"), severe)).toBe(false);
+    expect(
+      normalizeMeasurementPredicate({ kind: "profileStatus", status: "off", operator: "atOrAbove" })
+        .ok
+    ).toBe(false);
+    expect(
+      normalizeMeasurementPredicate({ kind: "profileStatus", status: "warn", operator: "below" }).ok
+    ).toBe(false);
   });
 });

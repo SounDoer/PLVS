@@ -1776,7 +1776,18 @@
             "properties": {
               "kind": {
                 "type": "string",
-                "enum": ["signalPresent", "metricAvailable", "metricThreshold"]
+                "enum": [
+                  "signalPresent",
+                  "signalAbsent",
+                  "metricAvailable",
+                  "metricThreshold",
+                  "channelThreshold",
+                  "profileStatus"
+                ]
+              },
+              "channel": {
+                "type": "string",
+                "description": "Channel label, 1 to 32 characters, as levels.channels reports it."
               },
               "metric": {
                 "type": "string",
@@ -1798,7 +1809,9 @@
                   "dialogue.coveragePercent",
                   "dialogue.loudnessLufs",
                   "dialogue.rangeLu",
-                  "dialogue.loudnessToDialogueRatioLu"
+                  "dialogue.loudnessToDialogueRatioLu",
+                  "peakDbfs",
+                  "rmsDbfs"
                 ]
               },
               "operator": {
@@ -1807,6 +1820,10 @@
               },
               "value": {
                 "type": "number"
+              },
+              "status": {
+                "type": "string",
+                "enum": ["off", "ok", "pending", "warn", "fail"]
               },
               "holdMs": {
                 "type": "integer",

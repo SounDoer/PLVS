@@ -130,6 +130,13 @@ Signal present uses the same -90 dBFS signal floor as PLVS correlation readiness
 { "kind": "signalPresent" }
 ```
 
+Signal absent waits until every channel is at or below that floor, for example for the end of a
+programme. Like the threshold kinds it accepts `holdMs`, so a pause can be told from the end:
+
+```json
+{ "kind": "signalAbsent", "holdMs": 2000 }
+```
+
 Metric availability waits for a named public scalar to become non-null:
 
 ```json
@@ -154,6 +161,29 @@ check rebuilds the snapshot so a sample that became stale cannot satisfy the con
 returns `outcome: "condition"`, the normalized predicate, `matchedImmediately`, and `measurement`.
 Timeout uses the existing public `timeout` error and exit code 5, with the predicate and latest LIVE
 identity in error details.
+
+A channel threshold compares one channel's `peakDbfs` or `rmsDbfs`, named by the exact label
+`levels.channels` reports (the GUI's auto or custom label). It never matches while no channel has
+that label:
+
+```json
+{
+  "kind": "channelThreshold",
+  "channel": "R",
+  "metric": "peakDbfs",
+  "operator": "above",
+  "value": -6
+}
+```
+
+A profile status wait matches `profile.overall`, one of `off`, `ok`, `pending`, `warn` and `fail`.
+With `"operator": "atOrAbove"` it also matches a more severe status, in the order
+`ok < pending < warn < fail`; `off` is then not accepted as the status. Channel thresholds and
+profile status waits accept `holdMs` too:
+
+```json
+{ "kind": "profileStatus", "status": "warn", "operator": "atOrAbove" }
+```
 
 Supported availability paths are the named scalar fields under `levels.truePeak`, `loudness`,
 `stereo`, and `dialogue` published by `measurement inspect`. Thresholds exclude the boolean
