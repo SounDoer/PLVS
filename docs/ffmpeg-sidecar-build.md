@@ -47,7 +47,10 @@ only:
 
 - the `file` and `pipe` protocols;
 - MOV, Matroska, WAV, AIFF, FLAC, MP3, Ogg, AAC, AC-3, E-AC-3, DTS, and W64 demuxers;
-- AAC/AAC-LATM, AC-3, E-AC-3, DTS (`dca`), Opus, Vorbis, FLAC, MP3, ALAC, and required PCM decoders;
+- AAC/AAC-LATM, AC-3, E-AC-3, DTS (`dca`), Opus, Vorbis, FLAC, MP3, ALAC, and PCM decoders in
+  both byte orders: little-endian for WAV/W64 and big-endian (plus signed 8-bit) for AIFF and the
+  uncompressed PCM common in MOV exports. A demuxer whose PCM decoders are missing still probes
+  successfully and then fails at decode, so enabling a container means enabling its PCM variants;
 - `aresample`, plus the PCM float encoder/muxer needed to stream f32le samples to PLVS.
 
 No external codec library is linked. `--enable-static --disable-shared` folds FFmpeg's own internal
@@ -63,7 +66,8 @@ not shipped.
 ## Verification
 
 The sidecar workflow creates deterministic audio, encodes representative AAC, AC-3, E-AC-3, DTS,
-Opus, Vorbis, FLAC, MP3, ALAC, and 24-bit PCM fixtures with a full build, and verifies that both the
+Opus, Vorbis, FLAC, MP3, ALAC, 24-bit WAV PCM, big-endian AIFF PCM (8/16/24/32-bit integer and
+32/64-bit float), and 24-bit MOV PCM fixtures with a full build, and verifies that both the
 candidate `ffprobe` and `ffmpeg` can inspect and decode them. It also records the reported license,
 configuration, toolchain, dependency list, and hashes.
 

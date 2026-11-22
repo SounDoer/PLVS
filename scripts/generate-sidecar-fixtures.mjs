@@ -49,6 +49,14 @@ const fixtures = [
   ["libmp3lame", "mp3", []],
   ["alac", "m4a", []],
   ["pcm_s24le", "wav", []],
+  // AIFF stores PCM big-endian, as does uncompressed PCM in many MOV exports.
+  ["pcm_s8", "aiff", []],
+  ["pcm_s16be", "aiff", []],
+  ["pcm_s24be", "aiff", []],
+  ["pcm_s32be", "aiff", []],
+  ["pcm_f32be", "aiff", []],
+  ["pcm_f64be", "aiff", []],
+  ["pcm_s24be", "mov", []],
 ];
 for (const [codec, extension, extra] of fixtures) {
   const result = spawnSync(

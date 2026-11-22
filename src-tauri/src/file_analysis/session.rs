@@ -14,7 +14,8 @@ use crate::dsp::channel_layouts::ChannelSelection;
 use crate::dsp::speech::VadEngineKind;
 use crate::engine::MeterPipeline;
 use crate::file_analysis::ffmpeg::decode::{
-  build_decode_args, bytes_to_f32_le_into, parse_out_time_us,
+  build_decode_args, bytes_to_f32_le_into, decode_failure_message, parse_missing_decoder,
+  parse_out_time_us, DECODE_FAILURE,
 };
 use crate::file_analysis::ffmpeg::locate::locate_sidecar;
 use crate::file_analysis::probe::{probe_file_with_process, probe_identified_media_file};
@@ -456,11 +457,15 @@ fn analyze_file_with_process(
   let stderr_thread = thread::spawn(move || {
     use std::io::BufRead;
     let reader = std::io::BufReader::new(stderr);
+    let mut missing_decoder = None;
     for line in reader.lines().map_while(Result::ok) {
       if let Some(us) = parse_out_time_us(&line) {
         progress_us.store(us, std::sync::atomic::Ordering::Relaxed);
+      } else if missing_decoder.is_none() {
+        missing_decoder = parse_missing_decoder(&line);
       }
     }
+    missing_decoder
   });
 
   let mut pipeline = if config.deterministic_spectral_time {
@@ -534,12 +539,19 @@ fn analyze_file_with_process(
       return Ok(false);
     }
     if !status.success() {
-      return Err("ffmpeg failed to decode the audio track".to_string());
+      return Err(DECODE_FAILURE.to_string());
     }
     Ok(true)
   })();
   drop(child);
-  let _ = stderr_thread.join();
+  let missing_decoder = stderr_thread.join().ok().flatten();
+  let decode = decode.map_err(|err| {
+    if err == DECODE_FAILURE {
+      decode_failure_message(missing_decoder.as_deref())
+    } else {
+      err
+    }
+  });
   if !decode? {
     return Ok(None);
   }

@@ -41,6 +41,27 @@ pub fn parse_out_time_us(line: &str) -> Option<u64> {
   line.trim().strip_prefix("out_time_us=")?.parse().ok()
 }
 
+/// Generic error for an FFmpeg decode process that exited unsuccessfully.
+pub const DECODE_FAILURE: &str = "ffmpeg failed to decode the audio track";
+
+/// Extract the codec name from FFmpeg's missing-decoder diagnostic, e.g.
+/// `[aist#0:0/pcm_s24be @ 0x…] Decoding requested, but no decoder found for: pcm_s24be`.
+/// The trimmed sidecar can demux formats whose codec it was not built to decode.
+pub fn parse_missing_decoder(line: &str) -> Option<String> {
+  let (_, codec) = line.split_once("no decoder found for:")?;
+  let codec = codec.trim();
+  (!codec.is_empty() && codec.len() <= 64).then(|| codec.to_string())
+}
+
+/// User-facing error for an unsuccessful decode, naming the codec when FFmpeg reported that the
+/// bundled build has no decoder for it.
+pub fn decode_failure_message(missing_decoder: Option<&str>) -> String {
+  match missing_decoder {
+    Some(codec) => format!("This audio codec is not supported: {codec}"),
+    None => DECODE_FAILURE.to_string(),
+  }
+}
+
 /// Convert a little-endian f32 byte slice to samples, dropping any trailing partial sample. The
 /// caller is responsible for carrying the remainder bytes (`len % 4`) into the next read.
 pub fn bytes_to_f32_le_into(bytes: &[u8], out: &mut Vec<f32>) {
@@ -65,6 +86,25 @@ fn bytes_to_f32_le(bytes: &[u8]) -> Vec<f32> {
 #[cfg(test)]
 mod tests {
   use super::*;
+
+  #[test]
+  fn names_the_codec_ffmpeg_cannot_decode() {
+    let line =
+      "[aist#0:0/pcm_s24be @ 0x142612c50] Decoding requested, but no decoder found for: pcm_s24be";
+    let codec = parse_missing_decoder(line);
+    assert_eq!(codec.as_deref(), Some("pcm_s24be"));
+    assert_eq!(
+      decode_failure_message(codec.as_deref()),
+      "This audio codec is not supported: pcm_s24be"
+    );
+  }
+
+  #[test]
+  fn keeps_the_generic_decode_error_without_a_codec_diagnostic() {
+    assert_eq!(parse_missing_decoder("out_time_us=1000"), None);
+    assert_eq!(parse_missing_decoder("no decoder found for:   "), None);
+    assert_eq!(decode_failure_message(None), DECODE_FAILURE);
+  }
 
   #[test]
   fn builds_decode_args_for_selected_track() {

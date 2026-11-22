@@ -28,7 +28,7 @@ esac
   "${extra[@]}" \
   --enable-filter=aresample --enable-protocol=file,pipe \
   --enable-demuxer=mov,matroska,wav,aiff,flac,mp3,ogg,aac,ac3,eac3,dts,w64 \
-  --enable-decoder=aac,aac_latm,ac3,eac3,dca,opus,vorbis,flac,mp3,alac,pcm_s16le,pcm_s24le,pcm_s32le,pcm_f32le,pcm_f64le,pcm_u8 \
+  --enable-decoder=aac,aac_latm,ac3,eac3,dca,opus,vorbis,flac,mp3,alac,pcm_s16le,pcm_s24le,pcm_s32le,pcm_f32le,pcm_f64le,pcm_u8,pcm_s8,pcm_s16be,pcm_s24be,pcm_s32be,pcm_f32be,pcm_f64be \
   --enable-encoder=pcm_f32le --enable-muxer=pcm_f32le
 make -j"${JOBS:-8}"
 if [ "$platform" = windows ]; then

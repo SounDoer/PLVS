@@ -7,7 +7,9 @@ use std::thread;
 use std::os::windows::process::CommandExt;
 
 use crate::dsp::summary_meter::SummaryMeter;
-use crate::file_analysis::ffmpeg::decode::{build_decode_args, bytes_to_f32_le_into};
+use crate::file_analysis::ffmpeg::decode::{
+  build_decode_args, bytes_to_f32_le_into, decode_failure_message, parse_missing_decoder,
+};
 use crate::file_analysis::probe::probe_identified_media_file;
 use crate::file_analysis::types::{FileAnalysisProbeResult, FileAnalysisSummaryMetrics};
 use crate::sidecar::locate_sidecar;
@@ -144,6 +146,9 @@ pub fn analyze_file_track_to_summary_with_layout(
   let stderr_thread = thread::spawn(move || {
     let mut sink = Vec::new();
     let _ = stderr.read_to_end(&mut sink);
+    String::from_utf8_lossy(&sink)
+      .lines()
+      .find_map(parse_missing_decoder)
   });
 
   let measured_roles = match layout_id {
@@ -188,9 +193,9 @@ pub fn analyze_file_track_to_summary_with_layout(
   let status = child
     .wait()
     .map_err(|err| format!("ffmpeg did not exit cleanly: {err}"))?;
-  let _ = stderr_thread.join();
+  let missing_decoder = stderr_thread.join().ok().flatten();
   if !status.success() {
-    return Err("ffmpeg failed to decode the audio track".to_string());
+    return Err(decode_failure_message(missing_decoder.as_deref()));
   }
 
   pcm_chunker.flush(&mut meter);
