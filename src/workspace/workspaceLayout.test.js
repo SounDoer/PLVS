@@ -95,6 +95,25 @@ describe("serializeWorkspaceLayout", () => {
     expect(layout.children[2]).not.toHaveProperty("weights");
   });
 
+  it("reports weights without the float noise of hand-moved dividers", () => {
+    const current = workspace({
+      tree: {
+        type: "split",
+        direction: "h",
+        sizes: [0.157, null, 0.165],
+        children: [
+          { type: "leaf", tabs: ["levelMeter"], activeTab: "levelMeter" },
+          { type: "leaf", tabs: ["spectrum"], activeTab: "spectrum" },
+          { type: "leaf", tabs: ["stats"], activeTab: "stats" },
+        ],
+      },
+    });
+    expect(1 - 0.157 - 0.165).toBe(0.6779999999999999);
+    expect(
+      /** @type {Record<string, unknown>} */ (serializeWorkspaceLayout(current)).weights
+    ).toEqual([0.157, 0.678, 0.165]);
+  });
+
   it("round-trips a production-like tree without leaking internal panel state", () => {
     const current = workspace({
       tree: {

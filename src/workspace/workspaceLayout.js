@@ -66,9 +66,12 @@ function effectivePublicWeights(sizes, childCount) {
   const flexibleWeight =
     flexibleCount > 0 && fixedTotal < 1 ? (1 - fixedTotal) / flexibleCount : MIN_PUBLIC_WEIGHT;
 
+  // Weights are relative and normalized on input, so four decimals lose nothing a caller can see
+  // and drop the float noise of dividers moved by hand (0.6779999999999999).
   const weights = sizes.map((size) => {
-    if (size === null) return flexibleWeight;
-    return Number.isFinite(size) && size > 0 ? size : MIN_PUBLIC_WEIGHT;
+    const weight =
+      size === null ? flexibleWeight : Number.isFinite(size) && size > 0 ? size : MIN_PUBLIC_WEIGHT;
+    return Math.max(MIN_PUBLIC_WEIGHT, Math.round(weight * 10000) / 10000);
   });
 
   return weights.every((weight) => weight === weights[0]) ? undefined : weights;
