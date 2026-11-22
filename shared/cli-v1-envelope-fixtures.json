@@ -43,7 +43,7 @@
       "ok": false,
       "error": {
         "code": "unknownCommand",
-        "message": "Unknown command: capture"
+        "message": "Unknown command: capture. Try: plvs-cli --help"
       }
     }
   },
