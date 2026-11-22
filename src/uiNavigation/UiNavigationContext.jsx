@@ -95,10 +95,24 @@ export function UiNavigationProvider({
   const reportUiStatus = useCallback((items) => {
     statusRef.current = items;
   }, []);
+  // Every registration under a key, oldest first; `targetsRef` holds the newest. One panel can be
+  // mounted twice at once -- in its leaf and in the Fullscreen overlay -- and when the overlay goes,
+  // the leaf's registration has to come back rather than leave the key empty.
+  const targetStacksRef = useRef(new Map());
   const registerUiTarget = useCallback((kind, controllerRef) => {
+    const stack = targetStacksRef.current.get(kind) ?? [];
+    stack.push(controllerRef);
+    targetStacksRef.current.set(kind, stack);
     targetsRef.current.set(kind, controllerRef);
     return () => {
-      if (targetsRef.current.get(kind) === controllerRef) targetsRef.current.delete(kind);
+      const index = stack.lastIndexOf(controllerRef);
+      if (index >= 0) stack.splice(index, 1);
+      if (stack.length > 0) {
+        targetsRef.current.set(kind, stack[stack.length - 1]);
+      } else {
+        targetStacksRef.current.delete(kind);
+        targetsRef.current.delete(kind);
+      }
     };
   }, []);
   const enqueueAction = useCallback((action) => {

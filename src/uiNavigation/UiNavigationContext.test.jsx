@@ -204,6 +204,37 @@ describe("UiNavigationProvider", () => {
     expect(run).toHaveBeenCalledOnce();
   });
 
+  it("restores the earlier registration when a second mount of the same target goes", () => {
+    const leaf = { name: "leaf" };
+    const overlay = { name: "overlay" };
+    /** @type {any} */
+    let navigation = null;
+    function Target({ controller }) {
+      useUiNavigationTarget("panelGestures", "spectrum", controller);
+      return null;
+    }
+    function Probe() {
+      navigation = useUiNavigation();
+      return null;
+    }
+    const tree = (overlayMounted) =>
+      wrapper({
+        children: (
+          <>
+            <Target controller={leaf} />
+            {overlayMounted ? <Target controller={overlay} /> : null}
+            <Probe />
+          </>
+        ),
+      });
+    const { rerender } = render(tree(false));
+    expect(navigation.getPanelGestures("spectrum")).toBe(leaf);
+    rerender(tree(true));
+    expect(navigation.getPanelGestures("spectrum")).toBe(overlay);
+    rerender(tree(false));
+    expect(navigation.getPanelGestures("spectrum")).toBe(leaf);
+  });
+
   it("tracks the live window form and visibility owned by the app", () => {
     const { result, rerender } = renderHook(
       ({ form, visible }) => {
