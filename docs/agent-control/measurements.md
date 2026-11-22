@@ -79,7 +79,10 @@ open for future layouts.
 
 For a received frame whose channel peaks are all at or below the signal floor, unavailable level
 and loudness metrics use `belowSignalFloor`; `notReady` is reserved for audible warm-up or an
-otherwise valid metric that has not produced a finite value yet.
+otherwise valid metric that has not produced a finite value yet. As in the Stats readout, a
+loudness or True Peak value that rounds to -100.0 or lower is read as silence and reported as null:
+filter state decaying after silence or Stop can otherwise leave meaningless values such as
+-1832 LUFS. PSR, PLR and the Loudness-to-Dialogue Ratio are then not derived from it.
 
 The `profile` object evaluates the effective Loudness Profile through the app's shared evaluator.
 Its mode is `off`, `saved`, or `preview`; an open editor draft therefore produces the same preview

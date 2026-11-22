@@ -234,6 +234,39 @@ describe("Measurement Control", () => {
     expect(warmingUp.unavailable["loudness.shortTermLufs"]).toBe("notReady");
   });
 
+  it("reads decayed near-silence values as silence, as the Stats readout does", () => {
+    const stopped = inspect({
+      record: record({
+        audio: {
+          peakDb: [-Infinity, -Infinity],
+          rmsDb: [-Infinity, -Infinity],
+          momentary: -1832.09,
+          shortTerm: -99.96,
+          truePeakL: -1500,
+          truePeakR: -1500,
+          tpMax: -30.1,
+          integrated: -30.2,
+        },
+      }),
+    });
+    expect(stopped.loudness.momentaryLufs).toBeNull();
+    expect(stopped.unavailable["loudness.momentaryLufs"]).toBe("belowSignalFloor");
+    // Rounds to -100.0 on screen, so it is floored too.
+    expect(stopped.loudness.shortTermLufs).toBeNull();
+    expect(stopped.levels.truePeak.leftDbtp).toBeNull();
+    // PSR is not derived from a floored Short-term value.
+    expect(stopped.loudness.psrDb).toBeNull();
+    expect(stopped.unavailable["loudness.psrDb"]).toBe("belowSignalFloor");
+    expect(stopped.unavailable["loudness.shortTermLufs"]).toBe("belowSignalFloor");
+    // Real readings, including the session statistics, are unchanged.
+    expect(stopped.loudness.integratedLufs).toBe(-30.2);
+    expect(stopped.levels.truePeak.maxDbtp).toBe(-30.1);
+    expect(stopped.loudness.plrDb).toBeCloseTo(0.1);
+
+    const quiet = inspect({ record: record({ audio: { momentary: -99.9 } }) });
+    expect(quiet.loudness.momentaryLufs).toBe(-99.9);
+  });
+
   it("evaluates the effective saved or preview profile with the canonical evaluator", () => {
     const document = {
       rules: [

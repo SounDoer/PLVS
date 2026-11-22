@@ -1,5 +1,6 @@
 import { loudnessProfileEvaluate } from "../lib/loudnessProfileEvaluate.js";
 import { buildStatsValues, hasCorrelationSignal, STATS_META } from "../lib/statsCatalog.js";
+import { METRIC_NEGATIVE_INFINITY_FLOOR } from "../math/formatMath.js";
 
 export const MEASUREMENT_SCHEMA_VERSION = 2;
 export const MEASUREMENT_FRESHNESS_THRESHOLD_MS = 2000;
@@ -64,6 +65,37 @@ export function buildMeasurementDescription(revision) {
     metrics: MEASUREMENT_METRICS.map((metric) => ({ ...metric })),
     availabilityReasons: [...MEASUREMENT_AVAILABILITY_REASONS],
   };
+}
+
+/** Stats loudness and True Peak fields the GUI shows as "-" at or below its display floor. */
+const FLOORED_AUDIO_FIELDS = Object.freeze([
+  "momentary",
+  "shortTerm",
+  "integrated",
+  "mMax",
+  "stMax",
+  "truePeakL",
+  "truePeakR",
+  "tpMax",
+  "dialogueIntegrated",
+]);
+
+/**
+ * Decaying filter state after silence or Stop leaves finite but meaningless values such as
+ * -1832 LUFS. Read them as silence, matching the Stats readout, so derived values such as PSR and
+ * PLR are not computed from them either.
+ */
+function floorSilence(audio) {
+  const floored = { ...audio };
+  const fields = new Set();
+  for (const field of FLOORED_AUDIO_FIELDS) {
+    const value = floored[field];
+    if (Number.isFinite(value) && Math.round(value * 10) / 10 <= METRIC_NEGATIVE_INFINITY_FLOOR) {
+      floored[field] = -Infinity;
+      fields.add(field);
+    }
+  }
+  return { audio: floored, fields };
 }
 
 /**
@@ -138,7 +170,7 @@ export function buildMeasurementInspection({
   const observed = Number.isFinite(observedAtMs) ? observedAtMs : Date.now();
   const unavailable = {};
   const noSample = !record;
-  const audio = record?.audio ?? {};
+  const { audio, fields: flooredFields } = floorSilence(record?.audio ?? {});
   const stats = buildStatsValues(audio);
   const labels = Array.isArray(channelLabels) ? channelLabels : [];
   const peaks = Array.isArray(audio.peakDb) ? audio.peakDb : [];
@@ -168,28 +200,41 @@ export function buildMeasurementInspection({
     ),
   }));
 
-  const scalar = (/** @type {number} */ value, /** @type {string} */ path) =>
-    finiteOrNull(value, path, missingReason, unavailable);
+  // A value floored as silence is below the signal floor even while other channels still carry
+  // a decaying tail.
+  const scalar = (
+    /** @type {number} */ value,
+    /** @type {string} */ path,
+    /** @type {string[]} */ sources = []
+  ) =>
+    finiteOrNull(
+      value,
+      path,
+      !noSample && sources.some((field) => flooredFields.has(field))
+        ? "belowSignalFloor"
+        : missingReason,
+      unavailable
+    );
   const levels = {
     channels,
     truePeak: {
-      leftDbtp: scalar(audio.truePeakL, "levels.truePeak.leftDbtp"),
-      rightDbtp: scalar(audio.truePeakR, "levels.truePeak.rightDbtp"),
-      maxDbtp: scalar(stats.truePeak, "levels.truePeak.maxDbtp"),
+      leftDbtp: scalar(audio.truePeakL, "levels.truePeak.leftDbtp", ["truePeakL"]),
+      rightDbtp: scalar(audio.truePeakR, "levels.truePeak.rightDbtp", ["truePeakR"]),
+      maxDbtp: scalar(stats.truePeak, "levels.truePeak.maxDbtp", ["tpMax"]),
     },
   };
   const loudness = {
-    momentaryLufs: scalar(stats.momentary, "loudness.momentaryLufs"),
-    shortTermLufs: scalar(stats.shortTerm, "loudness.shortTermLufs"),
-    integratedLufs: scalar(stats.integrated, "loudness.integratedLufs"),
-    momentaryMaxLufs: scalar(stats.momentaryMax, "loudness.momentaryMaxLufs"),
-    shortTermMaxLufs: scalar(stats.shortTermMax, "loudness.shortTermMaxLufs"),
+    momentaryLufs: scalar(stats.momentary, "loudness.momentaryLufs", ["momentary"]),
+    shortTermLufs: scalar(stats.shortTerm, "loudness.shortTermLufs", ["shortTerm"]),
+    integratedLufs: scalar(stats.integrated, "loudness.integratedLufs", ["integrated"]),
+    momentaryMaxLufs: scalar(stats.momentaryMax, "loudness.momentaryMaxLufs", ["mMax"]),
+    shortTermMaxLufs: scalar(stats.shortTermMax, "loudness.shortTermMaxLufs", ["stMax"]),
     rangeLu:
       Number.isFinite(stats.integrated) && Number.isFinite(stats.lra)
         ? stats.lra
         : nullWithReason("loudness.rangeLu", missingReason, unavailable),
-    psrDb: scalar(stats.psr, "loudness.psrDb"),
-    plrDb: scalar(stats.plr, "loudness.plrDb"),
+    psrDb: scalar(stats.psr, "loudness.psrDb", ["tpMax", "shortTerm"]),
+    plrDb: scalar(stats.plr, "loudness.plrDb", ["tpMax", "integrated"]),
   };
 
   // With no Vectorscope open, the engine measures Ch1/Ch2 for Stats.
