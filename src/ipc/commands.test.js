@@ -143,6 +143,7 @@ describe("audio engine command seam", () => {
       deviceId: "default",
       processId: 4242,
       applicationId: null,
+      continueSession: false,
       onFrame: channel,
     });
   });

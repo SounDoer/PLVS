@@ -54,6 +54,13 @@ impl DialogueRangeAccumulator {
   fn value(&self) -> f64 {
     self.observations.value()
   }
+
+  /// Keep every observation, but build no 3 s window from blocks on both sides of a capture gap.
+  fn restart_window(&mut self) {
+    self.recent = [None; RANGE_WINDOW_BLOCKS];
+    self.recent_head = 0;
+    self.block_count = 0;
+  }
 }
 
 /// Accumulates speech-classified loudness blocks for dialogue-gated readouts.
@@ -92,6 +99,11 @@ impl DialogueIntegrator {
     }
     let selected = (is_speech && lufs_from_mean_squares(ms[0], ms[1]) > -70.0).then_some(ms);
     self.range.push(selected);
+  }
+
+  /// Continue after a Live capture gap without a Dialogue Range window spanning it.
+  pub fn restart_window(&mut self) {
+    self.range.restart_window();
   }
 
   /// Dialogue Coverage: dialogue-classified duration over all valid measurement time.
@@ -135,6 +147,27 @@ mod tests {
   fn ms_for_lufs(lufs: f64) -> [f64; 2] {
     let s = 10_f64.powf((lufs + 0.691) / 10.0);
     [s / 2.0, s / 2.0]
+  }
+
+  #[test]
+  fn restarted_range_window_never_spans_a_capture_gap() {
+    let mut continuous = DialogueIntegrator::new();
+    let mut restarted = DialogueIntegrator::new();
+    for integrator in [&mut continuous, &mut restarted] {
+      for _ in 0..40 {
+        integrator.push_block(ms_for_lufs(-20.0), true);
+      }
+    }
+    restarted.restart_window();
+    for integrator in [&mut continuous, &mut restarted] {
+      for _ in 0..29 {
+        integrator.push_block(ms_for_lufs(-40.0), true);
+      }
+    }
+    // Without the restart, a 3 s window mixing both sides of the gap widens the range.
+    assert!(continuous.lra() > 0.0);
+    assert_eq!(restarted.lra(), 0.0);
+    assert_eq!(restarted.integrated(), continuous.integrated());
   }
 
   #[test]

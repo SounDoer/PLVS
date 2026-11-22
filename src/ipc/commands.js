@@ -39,11 +39,16 @@ export function migrateCaptureDeviceId(deviceId) {
   return invoke("migrate_capture_device_id", { deviceId });
 }
 
-/** @param {{ deviceId: string; processId?: number | null; applicationId?: string | null; onFrame: (payload: object) => void }} opts */
+/**
+ * `continueSession` resumes the statistics of the last stopped Live session (Stop then Start of
+ * the same Source); otherwise the engine starts a fresh measurement.
+ * @param {{ deviceId: string; processId?: number | null; applicationId?: string | null; continueSession?: boolean; onFrame: (payload: object) => void }} opts
+ */
 export async function startAudioCapture({
   deviceId,
   processId = null,
   applicationId = null,
+  continueSession = false,
   onFrame,
 }) {
   const onAudio = new Channel();
@@ -64,7 +69,13 @@ export async function startAudioCapture({
       onFrame(frame);
     }
   };
-  await invoke("audio_start", { deviceId, processId, applicationId, onFrame: onAudio });
+  await invoke("audio_start", {
+    deviceId,
+    processId,
+    applicationId,
+    continueSession,
+    onFrame: onAudio,
+  });
   return Object.assign(onAudio, {
     /** @param {"history" | "truePeakMax"} kind @param {() => void} apply @param {object} [rules] */
     async resetMeter(kind, apply, rules) {

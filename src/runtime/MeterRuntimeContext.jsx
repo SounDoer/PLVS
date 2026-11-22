@@ -51,6 +51,8 @@ export function MeterRuntimeProvider({ children }) {
 
   const liveIntakeRef = useRef(null);
   if (liveIntakeRef.current === null) liveIntakeRef.current = new FrameIntake();
+  /** The last stopped Live session the next Start may continue; a Clear discards it. */
+  const liveContinuationRef = useRef(null);
   const liveMeasurementOwnerRef = useRef(null);
   if (liveMeasurementOwnerRef.current === null) {
     liveMeasurementOwnerRef.current = createLiveMeasurementOwner();
@@ -193,6 +195,7 @@ export function MeterRuntimeProvider({ children }) {
   };
   const clearLiveDisplay = () => {
     liveClearPendingRef.current = false;
+    liveContinuationRef.current = null;
     liveIntakeRef.current.reset();
     liveMeasurementOwnerRef.current.clear();
     transport.clearAudioDrop();
@@ -692,6 +695,7 @@ export function MeterRuntimeProvider({ children }) {
     transport,
     routing,
     liveIntakeRef,
+    liveContinuationRef,
     liveMeasurementOwner: liveMeasurementOwnerRef.current,
     audioRef,
     defaultSampleRateRef,

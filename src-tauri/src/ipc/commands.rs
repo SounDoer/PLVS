@@ -234,6 +234,7 @@ pub fn audio_start(
   device_id: String,
   process_id: Option<u32>,
   application_id: Option<String>,
+  continue_session: Option<bool>,
   on_frame: tauri::ipc::Channel<tauri::ipc::InvokeResponseBody>,
   state: State<'_, AppState>,
 ) -> Result<(), String> {
@@ -245,6 +246,15 @@ pub fn audio_start(
       .lock()
       .map_err(|_| "state lock poisoned".to_string())?;
     *source = EngineSource::Stopped;
+  }
+  // Dropping a running Live session above has just stored its statistics, so a fresh start must
+  // discard the carry only after that stop.
+  if continue_session != Some(true) {
+    *state
+      .inner()
+      .live_session_carry
+      .lock()
+      .map_err(|_| "live session lock poisoned".to_string())? = None;
   }
   {
     let mut s = state

@@ -258,6 +258,14 @@ impl IntegratedAccumulator {
     }
   }
 
+  /// Continue the session after a capture gap: keep every gating block measured so far, but do not
+  /// form a 400 ms block from sub-blocks on both sides of the gap.
+  pub(crate) fn restart_window(&mut self) {
+    self.recent = [[0.0; 2]; 4];
+    self.recent_head = 0;
+    self.block_count = 0;
+  }
+
   pub(crate) fn value(&self) -> f64 {
     let (absolute_count, absolute_sum0, absolute_sum1) = self.tree.totals();
     if absolute_count == 0 {
@@ -447,6 +455,25 @@ pub(crate) fn gated_integrated_lufs(sub_blocks: &[[f64; 2]]) -> f64 {
 #[cfg(test)]
 mod tests {
   use super::*;
+
+  #[test]
+  fn restarted_window_keeps_blocks_but_forms_none_across_the_gap() {
+    let loud = [0.01, 0.01];
+    let mut accumulator = IntegratedAccumulator::new();
+    for _ in 0..8 {
+      accumulator.push(loud);
+    }
+    let before = accumulator.value();
+    accumulator.restart_window();
+    assert_eq!(accumulator.value(), before);
+    // Three sub-blocks after the gap form no complete 400 ms block, so nothing new is gated in.
+    for _ in 0..3 {
+      accumulator.push([0.04, 0.04]);
+    }
+    assert_eq!(accumulator.value(), before);
+    accumulator.push([0.04, 0.04]);
+    assert!(accumulator.value() > before);
+  }
 
   #[test]
   fn gating_blocks_are_400ms_running_mean_of_four() {

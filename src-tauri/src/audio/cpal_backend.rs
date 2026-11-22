@@ -788,6 +788,19 @@ pub(crate) fn run_meter_pipeline_bridge_thread(
   let mut pipeline = MeterPipeline::new(sample_rate, channels);
   pipeline.set_source_channel_roles(plan.roles.clone());
   pipeline.enable_async_dialogue();
+  // Stop/Start continues the session statistics; `audio_start` empties the slot when the WebView
+  // asks for a fresh measurement. Taking it also guarantees a carry is never resumed twice.
+  let live_session_carry = app
+    .try_state::<crate::state::AppState>()
+    .map(|s| s.live_session_carry.clone());
+  if let Some(carry) = live_session_carry
+    .as_ref()
+    .and_then(|slot| slot.lock().ok().and_then(|mut carry| carry.take()))
+  {
+    if !pipeline.resume_live_session(carry, sample_rate) {
+      log::info!("Live session statistics restart: the Source format changed while stopped");
+    }
+  }
   let mut recv_tick: u32 = 0;
   loop {
     if delivery.producer_stopped.load(Ordering::Acquire) && delivery.buffers.is_empty() {
@@ -912,6 +925,11 @@ pub(crate) fn run_meter_pipeline_bridge_thread(
     pcm_pool.recycle(floats);
     if should_stop {
       break;
+    }
+  }
+  if let Some(slot) = live_session_carry {
+    if let Ok(mut carry) = slot.lock() {
+      *carry = Some(pipeline.into_live_session_carry(sample_rate));
     }
   }
 }

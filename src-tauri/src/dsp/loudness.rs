@@ -55,7 +55,59 @@ pub struct LoudnessMeter {
   speech_now: bool,
 }
 
+/// Session statistics a stopped Live meter hands to the next Start of the same Source: Integrated
+/// and LRA gating, per-channel peak maxima, and the dialogue worker with its accumulators.
+/// Window state (K-weighting, the M/S rings, true-peak history) is not carried, so Momentary and
+/// Short-term restart after the gap instead of spanning it.
+pub(crate) struct LoudnessSessionCarry {
+  integrated_accumulator: IntegratedAccumulator,
+  lra_accumulator: LraAccumulator,
+  sample_peaks: Vec<f64>,
+  true_peaks: Vec<f64>,
+  dialogue_worker: Option<DialogueWorker>,
+  speech_kind: VadEngineKind,
+  dialogue_detection_error: Option<&'static str>,
+  dialogue_values: Option<(f64, f64, f64)>,
+}
+
 impl LoudnessMeter {
+  /// Move the session statistics out, leaving this meter as a fresh one would start.
+  pub(crate) fn take_session_carry(&mut self) -> LoudnessSessionCarry {
+    LoudnessSessionCarry {
+      integrated_accumulator: std::mem::replace(
+        &mut self.integrated_accumulator,
+        IntegratedAccumulator::new(),
+      ),
+      lra_accumulator: std::mem::replace(&mut self.lra_accumulator, LraAccumulator::new()),
+      sample_peaks: std::mem::replace(&mut self.sample_peaks, vec![0.0; 2]),
+      true_peaks: std::mem::replace(&mut self.true_peaks, vec![0.0; 2]),
+      dialogue_worker: self.dialogue_worker.take(),
+      speech_kind: self.speech_kind,
+      dialogue_detection_error: self.dialogue_detection_error.take(),
+      dialogue_values: self.dialogue_values.replace(empty_dialogue_values()),
+    }
+  }
+
+  /// Continue the statistics of a previous Live session on this freshly built meter. Live uses
+  /// the asynchronous dialogue path, so the inline detector is never part of a carry.
+  pub(crate) fn resume_session(&mut self, carry: LoudnessSessionCarry) {
+    self.integrated_accumulator = carry.integrated_accumulator;
+    self.integrated_accumulator.restart_window();
+    // LRA needs no restart: it reads complete 3 s windows from the M/S ring, which starts empty.
+    self.lra_accumulator = carry.lra_accumulator;
+    self.sample_peaks = carry.sample_peaks;
+    self.true_peaks = carry.true_peaks;
+    self.dialogue = None;
+    self.dialogue_worker = carry.dialogue_worker;
+    if let Some(worker) = self.dialogue_worker.as_mut() {
+      worker.mark_capture_gap();
+    }
+    self.speech_kind = carry.speech_kind;
+    self.dialogue_detection_error = carry.dialogue_detection_error;
+    self.dialogue_values = carry.dialogue_values;
+    self.speech_now = false;
+  }
+
   pub fn new(sample_rate: f64) -> Self {
     let sr = sample_rate;
     let bsz = (sr * 0.1).round() as usize;

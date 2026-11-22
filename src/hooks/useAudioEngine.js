@@ -64,6 +64,7 @@ const CAPTURE_RECOVERY_STABILITY_MS = 2_000;
  *   display: any,
  *   defaultSampleRateRef: { current: any },
  *   measurementOwner?: any,
+ *   continuationRef?: { current: { deviceId: string, format: string, continuable: boolean } | null },
  * }} options
  */
 export function useAudioEngine({
@@ -82,6 +83,7 @@ export function useAudioEngine({
   display,
   defaultSampleRateRef: externalDefaultSampleRateRef,
   measurementOwner = null,
+  continuationRef = null,
 }) {
   const { running, lifecycle, halt, markStarted, markStopped, markStopFailed, recordAudioDrop } =
     transport;
@@ -139,11 +141,20 @@ export function useAudioEngine({
   useEffect(() => {
     if (!running) {
       const stopResult = stopInFlightRef.current;
+      const endedSession = audioRef.current?.mode === "tauri";
       let mounted = true;
       void stopResult
         .then(() => {
           if (!mounted) return;
           if (audioRef.current?.mode === "tauri") audioRef.current = null;
+          // Stop pauses: the next Start of this Source continues the measurement. A failure ends it.
+          if (endedSession && continuationRef) {
+            continuationRef.current = {
+              deviceId: captureDeviceId,
+              format: captureFormatSignature,
+              continuable: lifecycle !== "error",
+            };
+          }
           if (lifecycle !== "error") markStopped?.();
         })
         .catch((error) => {
@@ -153,7 +164,17 @@ export function useAudioEngine({
         mounted = false;
       };
     }
+    const continuation = continuationRef?.current ?? null;
+    if (continuationRef) continuationRef.current = null;
+    const continueSession =
+      continuation?.continuable === true &&
+      continuation.deviceId === captureDeviceId &&
+      continuation.format === captureFormatSignature;
     if (isTauri() && audioRef.current?.mode === "tauri" && !captureDeviceUnavailable) {
+      clearLocalMeterStateForRestart();
+    } else if (continuation && !continueSession && !captureDeviceUnavailable) {
+      // A different Source or format, or a failed session, starts a fresh measurement: the
+      // retained history must not suggest that it continues.
       clearLocalMeterStateForRestart();
     }
     let mounted = true;
@@ -317,6 +338,7 @@ export function useAudioEngine({
             nativeStart = startAudioCapture({
               deviceId: engineDeviceId,
               ...(applicationId ? { applicationId } : {}),
+              continueSession,
               onFrame: applyFrame,
             });
             meter = await nativeStart;

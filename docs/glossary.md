@@ -53,7 +53,7 @@ the UI disagree, the UI on `main` wins and this file is corrected.
 | History Length          | How far back Live history reaches: 30, 60, 120 or 240 minutes                                       | 历史时长         | retention                   |
 | File Mode               | Measuring a local audio file instead of a live Source                                               | 文件模式         |                             |
 | Scrubbing               | Moving through a file's timeline so every panel shows that position                                 | 拖动定位         | seeking                     |
-| Start / Stop            | Starts or stops Live capture                                                                        | 开始 / 停止      |                             |
+| Start / Stop            | Stop pauses Live capture; Start resumes it and continues the stopped measurement                    | 开始 / 停止      |                             |
 | Stopping…               | Live capture is waiting for native shutdown                                                         | 正在停止…        |                             |
 | Clear                   | Discards the current measurement data and begins a fresh measurement                                | 清空             | reset                       |
 | Loudness Profile        | A set of reference lines and warning thresholds for a delivery target                               | 响度配置         | target, spec                |

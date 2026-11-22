@@ -208,6 +208,23 @@ pub struct MeterPipeline {
   dsp_time_override: Option<SpectralDspTime>,
 }
 
+/// What a stopped Live session leaves for the next Start of the same Source. See
+/// [`MeterPipeline::into_live_session_carry`].
+pub(crate) struct LiveSessionCarry {
+  sample_rate: u32,
+  channels: u16,
+  source_channel_roles: Option<Vec<String>>,
+  loudness: crate::dsp::loudness::LoudnessSessionCarry,
+  m_max: f64,
+  st_max: f64,
+  tp_max_db: f64,
+  sample_peak_max_l: f64,
+  sample_peak_max_r: f64,
+  last_channel_selection: Option<ChannelSelection>,
+  last_dialogue_gating: bool,
+  last_dialogue_vad_engine: VadEngineKind,
+}
+
 pub struct PipelineSummary {
   pub integrated_lufs: f64,
   pub lra: f64,
@@ -277,6 +294,48 @@ impl MeterPipeline {
   /// measured PCM published from the same thread (see `dsp::dialogue_worker`).
   pub fn enable_async_dialogue(&mut self) {
     self.loudness.enable_async_dialogue();
+  }
+
+  /// End a Live capture session, keeping only what Stop/Start continues: the session statistics,
+  /// the measurement rules they were measured under, and the format they belong to.
+  pub(crate) fn into_live_session_carry(mut self, sample_rate: u32) -> LiveSessionCarry {
+    LiveSessionCarry {
+      sample_rate,
+      channels: self.channels,
+      source_channel_roles: self.source_channel_roles.take(),
+      loudness: self.loudness.take_session_carry(),
+      m_max: self.m_max,
+      st_max: self.st_max,
+      tp_max_db: self.tp_max_db,
+      sample_peak_max_l: self.sample_peak_max_l,
+      sample_peak_max_r: self.sample_peak_max_r,
+      last_channel_selection: self.last_channel_selection.take(),
+      last_dialogue_gating: self.last_dialogue_gating,
+      last_dialogue_vad_engine: self.last_dialogue_vad_engine,
+    }
+  }
+
+  /// Continue a stopped Live session's statistics on this fresh pipeline. Refuses, leaving the
+  /// pipeline fresh, when the Source format or channel roles differ. Carrying the rules matters:
+  /// a rule that changed while stopped is then detected on the first push and clears as it would
+  /// while running, instead of a fresh pipeline mistaking its defaults for a change.
+  pub(crate) fn resume_live_session(&mut self, carry: LiveSessionCarry, sample_rate: u32) -> bool {
+    if carry.sample_rate != sample_rate
+      || carry.channels != self.channels
+      || carry.source_channel_roles != self.source_channel_roles
+    {
+      return false;
+    }
+    self.loudness.resume_session(carry.loudness);
+    self.m_max = carry.m_max;
+    self.st_max = carry.st_max;
+    self.tp_max_db = carry.tp_max_db;
+    self.sample_peak_max_l = carry.sample_peak_max_l;
+    self.sample_peak_max_r = carry.sample_peak_max_r;
+    self.last_channel_selection = carry.last_channel_selection;
+    self.last_dialogue_gating = carry.last_dialogue_gating;
+    self.last_dialogue_vad_engine = carry.last_dialogue_vad_engine;
+    true
   }
 
   /// Clears peak maxima, loudness/spectrum/vectorscope DSP state, and history accumulators (UI Clear).
@@ -4258,6 +4317,102 @@ mod tests {
     assert!(pipeline.source_selection().is_none());
     pipeline.set_source_channel_roles(Some(vec!["invalid".into(), "L".into()]));
     assert!(pipeline.source_selection().is_none());
+  }
+
+  fn stereo_tone(frames: usize, gain: f32) -> Vec<f32> {
+    (0..frames)
+      .flat_map(|i| {
+        let sample = (2.0 * std::f64::consts::PI * 1_000.0 * i as f64 / 48_000.0).sin() as f32;
+        [sample * gain, sample * gain]
+      })
+      .collect()
+  }
+
+  #[test]
+  fn resumed_live_session_continues_statistics_but_restarts_windows() {
+    let mut stopped = MeterPipeline::new(48_000, 2);
+    let tone = stereo_tone(4_800, 0.25);
+    for _ in 0..40 {
+      push_pcm_no_requests(&mut stopped, &tone, None, false);
+    }
+    let before = stopped.summary_metrics();
+    assert!(before.integrated_lufs.is_finite());
+    let carry = stopped.into_live_session_carry(48_000);
+
+    let mut resumed = MeterPipeline::new(48_000, 2);
+    assert!(resumed.resume_live_session(carry, 48_000));
+    let silence = vec![0.0_f32; 9_600];
+    for _ in 0..10 {
+      push_pcm_no_requests(&mut resumed, &silence, None, false);
+    }
+    let after = resumed.summary_metrics();
+    // Silence is below the absolute gate, so the continued Integrated and maxima are unchanged.
+    assert!((after.integrated_lufs - before.integrated_lufs).abs() < 1e-9);
+    assert!((after.m_max_lufs - before.m_max_lufs).abs() < 1e-9);
+    assert!((after.st_max_lufs - before.st_max_lufs).abs() < 1e-9);
+    assert!((after.true_peak_max_dbtp - before.true_peak_max_dbtp).abs() < 1e-9);
+    // Momentary covers only the new session: two seconds of silence, not the tone before the gap.
+    let momentary = resumed
+      .last_loudness
+      .as_ref()
+      .map(|block| block.momentary)
+      .unwrap();
+    assert!(!momentary.is_finite() || momentary < -70.0);
+  }
+
+  #[test]
+  fn resumed_live_session_keeps_rules_so_an_unchanged_selection_does_not_clear() {
+    let selection = ChannelSelection::from_roles(vec!["L".into(), "R".into()]).unwrap();
+    let mut stopped = MeterPipeline::new(48_000, 2);
+    let tone = stereo_tone(4_800, 0.25);
+    for _ in 0..40 {
+      push_pcm_no_requests(&mut stopped, &tone, Some(selection.clone()), false);
+    }
+    let before = stopped.summary_metrics().integrated_lufs;
+    let carry = stopped.into_live_session_carry(48_000);
+
+    let mut resumed = MeterPipeline::new(48_000, 2);
+    assert!(resumed.resume_live_session(carry, 48_000));
+    for _ in 0..5 {
+      push_pcm_no_requests(
+        &mut resumed,
+        &vec![0.0; 9_600],
+        Some(selection.clone()),
+        false,
+      );
+    }
+    assert!((resumed.summary_metrics().integrated_lufs - before).abs() < 1e-9);
+
+    // A selection that changed while stopped clears exactly as it would while running.
+    let mut stopped = resumed;
+    let carry = std::mem::replace(&mut stopped, MeterPipeline::new(48_000, 2))
+      .into_live_session_carry(48_000);
+    let mut changed = MeterPipeline::new(48_000, 2);
+    assert!(changed.resume_live_session(carry, 48_000));
+    let swapped = ChannelSelection::from_roles(vec!["R".into(), "L".into()]).unwrap();
+    push_pcm_no_requests(&mut changed, &vec![0.0; 9_600], Some(swapped), false);
+    assert_eq!(changed.m_max, f64::NEG_INFINITY);
+    assert!(!changed.summary_metrics().integrated_lufs.is_finite());
+  }
+
+  #[test]
+  fn live_session_carry_refuses_a_different_source_format() {
+    let tone = stereo_tone(4_800, 0.25);
+    for (sample_rate, channels, roles) in [
+      (44_100, 2, None),
+      (48_000, 1, None),
+      (48_000, 2, Some(vec!["R".to_string(), "L".to_string()])),
+    ] {
+      let mut stopped = MeterPipeline::new(48_000, 2);
+      for _ in 0..20 {
+        push_pcm_no_requests(&mut stopped, &tone, None, false);
+      }
+      let carry = stopped.into_live_session_carry(48_000);
+      let mut next = MeterPipeline::new(sample_rate, channels);
+      next.set_source_channel_roles(roles);
+      assert!(!next.resume_live_session(carry, sample_rate));
+      assert_eq!(next.m_max, f64::NEG_INFINITY);
+    }
   }
 
   #[test]

@@ -94,6 +94,10 @@ pub struct AppState {
   /// Worker-side fan-out for bounded consumers of the current Live source PCM. File analysis never
   /// publishes here.
   pub measured_pcm: Arc<MeasuredPcmSubscriptions>,
+  /// Statistics of the last stopped Live session. The meter bridge stores them when it ends and
+  /// resumes them on the next start only when `audio_start` asks to continue the session.
+  pub(crate) live_session_carry:
+    Arc<Mutex<Option<crate::engine::meter_pipeline::LiveSessionCarry>>>,
 }
 
 impl Default for AppState {
@@ -108,6 +112,7 @@ impl Default for AppState {
       dialogue_gating_enabled: Arc::new(Mutex::new(false)),
       dialogue_vad_engine: Arc::new(Mutex::new(VadEngineKind::default())),
       measured_pcm: Arc::new(MeasuredPcmSubscriptions::default()),
+      live_session_carry: Arc::new(Mutex::new(None)),
     }
   }
 }

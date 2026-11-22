@@ -20,6 +20,7 @@ export function MeterRuntimeEngines({
     transport,
     routing,
     liveIntakeRef,
+    liveContinuationRef,
     liveMeasurementOwner,
     audioRef,
     defaultSampleRateRef,
@@ -71,6 +72,7 @@ export function MeterRuntimeEngines({
     transport,
     display,
     measurementOwner: liveMeasurementOwner,
+    continuationRef: liveContinuationRef,
   });
 
   return null;

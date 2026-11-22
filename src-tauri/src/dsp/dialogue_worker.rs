@@ -39,6 +39,8 @@ struct DialogueJob {
   pcm: Vec<f32>,
   channels: u16,
   mean_square: [f64; 2],
+  /// The first block after a Live capture gap.
+  after_gap: bool,
 }
 
 /// Detector, fusion and integrator for one dialogue measurement, shared by the inline path and
@@ -67,6 +69,12 @@ impl DialogueSession {
 
   pub(crate) fn error(&self) -> Option<&'static str> {
     self.error
+  }
+
+  /// A Live capture gap: accumulated dialogue statistics continue, windows restart. The detector
+  /// keeps its short context; it settles again within a block or two of new audio.
+  pub(crate) fn restart_window(&mut self) {
+    self.integrator.restart_window();
   }
 
   pub(crate) fn push_interleaved(&mut self, interleaved: &[f32], channels: u16) {
@@ -130,6 +138,7 @@ pub(crate) struct DialogueWorker {
   cancelled: Arc<AtomicBool>,
   block_pcm: Vec<f32>,
   overloaded: bool,
+  gap_pending: bool,
   #[cfg(test)]
   outstanding: usize,
 }
@@ -171,6 +180,9 @@ impl DialogueWorker {
           if worker_cancelled.load(Ordering::Acquire) {
             break;
           }
+          if job.after_gap {
+            session.restart_window();
+          }
           session.push_interleaved(&job.pcm, job.channels);
           let outcome = session.settle_block(job.mean_square);
           if outcome_tx.send(outcome).is_err() {
@@ -187,6 +199,7 @@ impl DialogueWorker {
       cancelled,
       block_pcm: Vec::new(),
       overloaded: false,
+      gap_pending: false,
       #[cfg(test)]
       outstanding: 0,
     })
@@ -202,6 +215,13 @@ impl DialogueWorker {
     let (release, start) = mpsc::sync_channel(1);
     Self::spawn_gated(sample_rate, kind, channels, None, Some(start))
       .map(|worker| (worker, release))
+  }
+
+  /// Marks a Live capture gap: drop the unfinished block from before it and tell the worker to
+  /// restart its windows with the next block.
+  pub(crate) fn mark_capture_gap(&mut self) {
+    self.block_pcm.clear();
+    self.gap_pending = true;
   }
 
   /// Adds the part of the current 100 ms block that just arrived.
@@ -224,6 +244,7 @@ impl DialogueWorker {
       pcm,
       channels,
       mean_square,
+      after_gap: std::mem::take(&mut self.gap_pending),
     }) {
       Ok(()) => {
         #[cfg(test)]

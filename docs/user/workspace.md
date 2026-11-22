@@ -75,9 +75,16 @@ status entry. It names the highest-priority condition and shows a count when sev
 Hover for a short explanation; click for the full list, including affected readings and available
 actions. Click outside or press Escape to close the list. Resolved conditions disappear; the list
 is not a notification history. The footer keeps Source, Loudness and Preset information.
+**Stop** pauses a Live measurement and **Start** continues it. Integrated loudness, Loudness Range,
+the maxima and the dialogue readouts keep accumulating, so a break, or a visit to File Mode, does
+not cost the time already measured. Momentary and Short-term readings begin again from the new
+audio rather than spanning the pause. Start begins a fresh measurement instead when the Source or
+its format changed while stopped, or when the previous capture ended with an error.
+
 During a Live measurement, **Clear** waits for the audio engine to reset the measurement before
-clearing the displayed history. After stopping, **Clear** can still remove the retained history.
-If clearing the Live measurement fails, the history stays visible and you can retry **Clear**.
+clearing the displayed history. After stopping, **Clear** removes the retained history, and the
+next **Start** begins a fresh measurement. If clearing the Live measurement fails, the history
+stays visible and you can retry **Clear**.
 
 In Dock, the toolbar button in the right control column shows a status icon while closed. Open the
 toolbar to see the summary, then click it for the same list in a floating window toward the inside

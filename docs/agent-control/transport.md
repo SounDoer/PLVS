@@ -75,7 +75,10 @@ names a policy, not a device row; `device inspect` reports the route it currentl
 Agent Control completion follows the native engine acknowledgement rather than the GUI's current
 optimistic `running` boolean.
 
-`live start` selects LIVE, retains prior LIVE data, and succeeds only after device resolution,
+`live start` selects LIVE and continues the stopped measurement: Integrated, LRA, maxima and
+dialogue statistics keep accumulating, while Momentary and Short-term restart with the new audio.
+It begins a fresh measurement instead after `live clear`, after a failed capture, or when the
+Source or its format changed while stopped. It succeeds only after device resolution,
 capture startup, and frame-channel readiness. Running is a no-op; starting/stopping returns
 `transitionInProgress`. It does not change a historical viewport. If FILE analysis is active, start
 requires `--allow-stop-file-analysis`, stops that analysis while retaining partial results, and

@@ -610,6 +610,100 @@ describe("useAudioEngine", () => {
     expect(transport.markStarted).not.toHaveBeenCalled();
   });
 
+  describe("Stop and Start of the same Source", () => {
+    const transportFor = (running, lifecycle = running ? "running" : "stopped") => ({
+      running,
+      lifecycle,
+      halt: vi.fn(),
+      markStarted: vi.fn(),
+      markStopped: vi.fn(),
+      markStopFailed: vi.fn(),
+    });
+    const baseProps = (continuationRef) => ({
+      continuationRef,
+      captureDeviceId: "lb-main",
+      captureFormatSignature: "2:48000",
+      intake: { reset: vi.fn() },
+      setAudio: vi.fn(),
+      raiseNotice: vi.fn(),
+      halt: vi.fn(),
+      setSelectedOffset: vi.fn(),
+      resetTimer: vi.fn(),
+      setShowClock: vi.fn(),
+      transport: transportFor(true),
+    });
+
+    async function runThenStop(props, stoppedLifecycle = "stopped") {
+      const view = renderHook((p) => useHarness(p), { initialProps: props });
+      await waitFor(() => expect(startAudioCapture).toHaveBeenCalledOnce());
+      expect(startAudioCapture).toHaveBeenLastCalledWith(
+        expect.objectContaining({ continueSession: false })
+      );
+      view.rerender({ ...props, transport: transportFor(false, stoppedLifecycle) });
+      await waitFor(() => expect(props.continuationRef.current).not.toBeNull());
+      return view;
+    }
+
+    it("continues the measurement and its history", async () => {
+      const props = baseProps({ current: null });
+      const { rerender } = await runThenStop(props);
+      expect(props.continuationRef.current).toEqual({
+        deviceId: "lb-main",
+        format: "2:48000",
+        continuable: true,
+      });
+
+      rerender({ ...props, transport: transportFor(true) });
+      await waitFor(() => expect(startAudioCapture).toHaveBeenCalledTimes(2));
+      expect(startAudioCapture).toHaveBeenLastCalledWith(
+        expect.objectContaining({ deviceId: "lb-main", continueSession: true })
+      );
+      expect(props.intake.reset).not.toHaveBeenCalled();
+      expect(props.continuationRef.current).toBeNull();
+    });
+
+    it("starts fresh, history included, when the Source changed while stopped", async () => {
+      vi.mocked(listAudioDevices).mockResolvedValue([
+        { id: "lb-main", label: "Speakers", isSystemOutputMonitor: true, channels: 2 },
+        { id: "lb-other", label: "Headphones", isSystemOutputMonitor: true, channels: 2 },
+      ]);
+      const props = baseProps({ current: null });
+      const { rerender } = await runThenStop(props);
+
+      rerender({ ...props, captureDeviceId: "lb-other", transport: transportFor(true) });
+      await waitFor(() => expect(startAudioCapture).toHaveBeenCalledTimes(2));
+      expect(startAudioCapture).toHaveBeenLastCalledWith(
+        expect.objectContaining({ deviceId: "lb-other", continueSession: false })
+      );
+      expect(props.intake.reset).toHaveBeenCalledOnce();
+    });
+
+    it("starts fresh after a failure ends the session", async () => {
+      const props = baseProps({ current: null });
+      const { rerender } = await runThenStop(props, "error");
+      expect(props.continuationRef.current?.continuable).toBe(false);
+
+      rerender({ ...props, transport: transportFor(true) });
+      await waitFor(() => expect(startAudioCapture).toHaveBeenCalledTimes(2));
+      expect(startAudioCapture).toHaveBeenLastCalledWith(
+        expect.objectContaining({ continueSession: false })
+      );
+      expect(props.intake.reset).toHaveBeenCalledOnce();
+    });
+
+    it("starts fresh after a Clear while stopped discarded the session", async () => {
+      const props = baseProps({ current: null });
+      const { rerender } = await runThenStop(props);
+      props.continuationRef.current = null;
+
+      rerender({ ...props, transport: transportFor(true) });
+      await waitFor(() => expect(startAudioCapture).toHaveBeenCalledTimes(2));
+      expect(startAudioCapture).toHaveBeenLastCalledWith(
+        expect.objectContaining({ continueSession: false })
+      );
+    });
+  });
+
   it("does not start capture while Live is stopped", async () => {
     renderHook(() =>
       useHarness({

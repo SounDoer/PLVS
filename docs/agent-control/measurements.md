@@ -21,7 +21,8 @@ data; use `measurement inspect` for readings.
 
 - `currentFrame` — the native frame identified by `sample.sequence`;
 - `liveWindow` — a rolling window ending at that frame;
-- `liveSession` — accumulated since the current LIVE session or clear;
+- `liveSession` — accumulated over the LIVE measurement. Stop and Start continue it; a clear, a
+  failed capture, or a Source or format change while stopped begins a new one;
 - `derived` — calculated from values in the same sample;
 - `evaluation` — Loudness Profile interpretation of the same sample.
 
@@ -30,9 +31,11 @@ data; use `measurement inspect` for readings.
 The pair `source.sessionGeneration` and `sample.sequence` identifies the numeric sample.
 `sessionGeneration` is process-local and advances after a new LIVE capture session succeeds and
 after an explicit LIVE clear. It is not persisted and is independent of the Agent Control global
-`revision`.
+`revision`. A new generation does not by itself mean the `liveSession` values restarted: Start
+after Stop opens a new capture session that continues the same measurement.
 
-`sample.elapsedMs` is measurement elapsed time from the native frame, not an epoch timestamp.
+`sample.elapsedMs` is elapsed time of the current capture session from the native frame, not an
+epoch timestamp; it restarts at each Start.
 `receivedAt` is when that complete frame reached the frontend. At query time, `ageMs` is calculated
 from the single `observedAt` timestamp.
 
