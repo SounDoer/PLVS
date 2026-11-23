@@ -607,8 +607,7 @@ fn measure_aligned_stereo(
   }
 
   let common_start = start[0].max(start[1]);
-  let overlap = pcm.map(|samples| samples.chunks_exact(2));
-  let [first, second] = overlap;
+  let [first, second] = pcm.map(|samples| samples.as_chunks::<2>().0.iter());
   // Subtract the common epoch before rounding to the nearest frame, keeping the calculation exact.
   let offset = |qpc| {
     let ticks = u128::from(common_start - qpc);
