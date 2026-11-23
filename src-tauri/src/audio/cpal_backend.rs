@@ -56,6 +56,7 @@ const STREAM_ERROR_INVALIDATED: u8 = 2;
 const STREAM_ERROR_OUTPUT_IN_USE: u8 = 3;
 const AUDCLNT_E_NOT_INITIALIZED: i32 = 0x8889_0001_u32 as i32;
 const AUDCLNT_E_WRONG_ENDPOINT_TYPE: i32 = 0x8889_0003_u32 as i32;
+const AUDCLNT_E_DEVICE_INVALIDATED: i32 = 0x8889_0004_u32 as i32;
 const AUDCLNT_E_DEVICE_IN_USE: i32 = 0x8889_000A_u32 as i32;
 
 const OUTPUT_IN_USE_MESSAGE: &str = "Capture unavailable: another app has exclusive use \
@@ -110,8 +111,18 @@ fn stream_error_code(kind: cpal::ErrorKind) -> u8 {
   }
 }
 
-fn store_stream_error(flag: &AtomicU8, error: &cpal::Error) {
-  let code = stream_error_code(error.kind());
+fn store_stream_error(flag: &AtomicU8, error: &cpal::Error, wasapi_loopback: bool) {
+  // WASAPI invalidates both the capture client and its silence output during an endpoint
+  // reconfiguration. CPAL maps that HRESULT to DeviceNotAvailable even when the endpoint
+  // remains present. Let the recovery path check whether the selected endpoint can be reopened.
+  let code = if wasapi_loopback
+    && error.kind() == cpal::ErrorKind::DeviceNotAvailable
+    && error.message().and_then(wasapi_os_error) == Some(AUDCLNT_E_DEVICE_INVALIDATED)
+  {
+    STREAM_ERROR_INVALIDATED
+  } else {
+    stream_error_code(error.kind())
+  };
   if code != STREAM_ERROR_NONE {
     flag.store(code, Ordering::Relaxed);
   }
@@ -122,7 +133,7 @@ fn record_stream_error(
   wasapi_loopback: bool,
 ) -> impl FnMut(cpal::Error) + Send + 'static {
   move |error| {
-    store_stream_error(&flag, &error);
+    store_stream_error(&flag, &error, wasapi_loopback);
     if wasapi_loopback {
       store_output_in_use(&flag, &error);
     }
@@ -262,10 +273,10 @@ pub(crate) fn emit_capture_failure(app: &AppHandle, error: &str, reason: Option<
 #[cfg(test)]
 mod capture_watch_tests {
   use super::{
-    capture_stall_message, loopback_start_error, record_stream_error, stream_error_code,
-    wait_for_first_activity_or_stop, wait_for_stop_or_stall, StallWatch, OUTPUT_IN_USE_MESSAGE,
-    STREAM_ERROR_DEVICE_UNAVAILABLE, STREAM_ERROR_INVALIDATED, STREAM_ERROR_NONE,
-    STREAM_ERROR_OUTPUT_IN_USE,
+    capture_stall_message, loopback_start_error, record_stream_error, store_stream_error,
+    stream_error_code, wait_for_first_activity_or_stop, wait_for_stop_or_stall, StallWatch,
+    OUTPUT_IN_USE_MESSAGE, STREAM_ERROR_DEVICE_UNAVAILABLE, STREAM_ERROR_INVALIDATED,
+    STREAM_ERROR_NONE, STREAM_ERROR_OUTPUT_IN_USE,
   };
   use std::sync::atomic::{AtomicU64, AtomicU8, Ordering};
   use std::sync::Arc;
@@ -399,6 +410,30 @@ mod capture_watch_tests {
 
     report(cpal::ErrorKind::DeviceNotAvailable.into());
     report(error());
+    assert_eq!(
+      flag.load(Ordering::Relaxed),
+      STREAM_ERROR_DEVICE_UNAVAILABLE
+    );
+  }
+
+  #[test]
+  fn wasapi_device_invalidation_allows_loopback_recovery_from_either_stream() {
+    let capture_error = cpal::Error::with_message(
+      cpal::ErrorKind::DeviceNotAvailable,
+      "OS Error -2004287484 (FormatMessageW() returned error 317) (os error -2004287484)",
+    );
+    let silence_error = cpal::Error::with_message(
+      cpal::ErrorKind::DeviceNotAvailable,
+      "Failed to get current padding: OS Error -2004287484 (FormatMessageW() returned error 317) (os error -2004287484)",
+    );
+    let flag = Arc::new(AtomicU8::new(STREAM_ERROR_NONE));
+
+    store_stream_error(&flag, &silence_error, true);
+    assert_eq!(flag.load(Ordering::Relaxed), STREAM_ERROR_INVALIDATED);
+    record_stream_error(flag.clone(), true)(capture_error.clone());
+    assert_eq!(flag.load(Ordering::Relaxed), STREAM_ERROR_INVALIDATED);
+
+    record_stream_error(flag.clone(), false)(capture_error);
     assert_eq!(
       flag.load(Ordering::Relaxed),
       STREAM_ERROR_DEVICE_UNAVAILABLE
@@ -1155,7 +1190,7 @@ pub(crate) fn create_silence_output_stream(
         }
       },
       move |error| {
-        store_stream_error(&stream_error, &error);
+        store_stream_error(&stream_error, &error, cfg!(target_os = "windows"));
         store_output_in_use(&stream_error, &error);
         log::error!("silence stream error: {error}");
       },

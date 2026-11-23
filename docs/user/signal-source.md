@@ -45,7 +45,9 @@ On Windows, a complete L/R stereo mix supplied by the audio engine can be monito
 the output retains a surround configuration that includes L/R, such as during spatial sound
 changes. PLVS measures the supplied mix rather than reconstructing separate surround channels.
 If a Spatial Sound change invalidates the live system playback stream, PLVS attempts to reopen
-the output and starts a fresh measurement when capture resumes.
+the output and starts a fresh measurement when capture resumes. If Windows invalidates the
+replacement stream during another change, PLVS waits briefly before retrying, then shows an error
+if the stream keeps failing.
 
 ## Encoded and spatial audio
 

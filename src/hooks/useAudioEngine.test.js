@@ -322,8 +322,12 @@ describe("useAudioEngine", () => {
     });
   });
 
-  it("rebuilds an invalidated device stream once and clears the Live measurement", async () => {
+  it.each([
+    ["default", "deviceDisconnected"],
+    ["lb-main", "deviceInvalidated"],
+  ])("rebuilds %s once on %s and clears the Live measurement", async (deviceId, reason) => {
     const props = {
+      captureDeviceId: deviceId,
       intake: { reset: vi.fn(), pushFrame: vi.fn() },
       setAudio: vi.fn(),
       raiseNotice: vi.fn(),
@@ -342,11 +346,15 @@ describe("useAudioEngine", () => {
       engineEvents.state({
         state: "error",
         error: "Capture stopped: the audio device is no longer available.",
-        reason: "deviceDisconnected",
+        reason,
       })
     );
 
-    await waitFor(() => expect(startAudioCapture).toHaveBeenCalledOnce());
+    await waitFor(() =>
+      expect(startAudioCapture).toHaveBeenCalledExactlyOnceWith(
+        expect.objectContaining({ deviceId })
+      )
+    );
     expect(stopAudioCapture).toHaveBeenCalledOnce();
     expect(props.halt).not.toHaveBeenCalled();
     expect(props.intake.reset).toHaveBeenCalledOnce();
@@ -361,7 +369,7 @@ describe("useAudioEngine", () => {
     );
   });
 
-  it.each(["native event", "inventory change", "native enumeration"])(
+  it.each(["native event", "inventory change", "native enumeration", "recovery enumeration"])(
     "halts an exact capture after a %s reports that its source disconnected",
     async (signal) => {
       const props = {
@@ -388,6 +396,9 @@ describe("useAudioEngine", () => {
       } else if (signal === "native enumeration") {
         vi.mocked(listAudioDevices).mockResolvedValue([{ id: "lb-other" }]);
         rerender({ ...props, captureFormatSignature: "" });
+      } else if (signal === "recovery enumeration") {
+        vi.mocked(listAudioDevices).mockResolvedValue([{ id: "lb-other" }]);
+        act(() => engineEvents.state({ state: "error", reason: "deviceInvalidated" }));
       } else {
         act(() => engineEvents.state({ state: "error", reason: "deviceDisconnected" }));
       }
@@ -407,48 +418,71 @@ describe("useAudioEngine", () => {
     }
   );
 
-  it("does not loop when the replacement stream invalidates before delivering a frame", async () => {
-    const props = {
-      intake: { reset: vi.fn() },
-      setAudio: vi.fn(),
-      raiseNotice: vi.fn(),
-      halt: vi.fn(),
-      setSelectedOffset: vi.fn(),
-      resetTimer: vi.fn(),
-      stopTimer: vi.fn(),
-      setShowClock: vi.fn(),
-    };
-    renderHook((p) => useHarness(p), { initialProps: props });
-    await waitFor(() => expect(startAudioCapture).toHaveBeenCalledOnce());
-    vi.clearAllMocks();
+  it.each(["exhausted", "cancelled"])(
+    "bounds rapid invalidation retries when %s",
+    async (ending) => {
+      const props = {
+        captureDeviceId: "lb-main",
+        intake: { reset: vi.fn(), pushFrame: vi.fn() },
+        setAudio: vi.fn(),
+        raiseNotice: vi.fn(),
+        halt: vi.fn(),
+        setSelectedOffset: vi.fn(),
+        resetTimer: vi.fn(),
+        stopTimer: vi.fn(),
+        setShowClock: vi.fn(),
+      };
+      const { unmount } = renderHook((p) => useHarness(p), { initialProps: props });
+      await waitFor(() => expect(startAudioCapture).toHaveBeenCalledOnce());
+      vi.clearAllMocks();
 
-    act(() =>
-      engineEvents.state({
-        state: "error",
-        error: "first invalidation",
-        reason: "deviceInvalidated",
-      })
-    );
-    await waitFor(() => expect(startAudioCapture).toHaveBeenCalledOnce());
+      const invalidate = () =>
+        engineEvents.state({
+          state: "error",
+          error: "stream invalidated",
+          reason: "deviceInvalidated",
+        });
+      act(invalidate);
+      await waitFor(() => expect(startAudioCapture).toHaveBeenCalledOnce());
+      const recoveredFrame = vi.mocked(startAudioCapture).mock.calls[0][0].onFrame;
+      act(() => recoveredFrame({ seq: 0, peakDb: [-12], rmsDb: [-24] }));
 
-    act(() =>
-      engineEvents.state({
-        state: "error",
-        error: "replacement invalidated",
-        reason: "deviceInvalidated",
-      })
-    );
-    expect(props.halt).toHaveBeenCalledWith(
-      expect.objectContaining({ message: "replacement invalidated" })
-    );
-    expect(startAudioCapture).toHaveBeenCalledOnce();
-    expect(props.raiseNotice).toHaveBeenCalledWith(
-      "error",
-      "Error: replacement invalidated",
-      undefined,
-      { requiresAttention: true, helpTopic: "audio-capture" }
-    );
-  });
+      act(() => {
+        invalidate();
+        invalidate();
+      });
+      expect(props.halt).not.toHaveBeenCalled();
+      expect(startAudioCapture).toHaveBeenCalledOnce();
+      await waitFor(() => expect(startAudioCapture).toHaveBeenCalledTimes(2));
+
+      act(invalidate);
+      expect(startAudioCapture).toHaveBeenCalledTimes(2);
+      if (ending === "cancelled") {
+        unmount();
+        await act(() => new Promise((resolve) => setTimeout(resolve, 650)));
+        expect(startAudioCapture).toHaveBeenCalledTimes(2);
+        expect(props.halt).not.toHaveBeenCalled();
+        return;
+      }
+      await waitFor(() => expect(startAudioCapture).toHaveBeenCalledTimes(3));
+      expect(startAudioCapture).toHaveBeenLastCalledWith(
+        expect.objectContaining({ deviceId: "lb-main" })
+      );
+      expect(props.halt).not.toHaveBeenCalled();
+
+      act(invalidate);
+      expect(props.halt).toHaveBeenCalledWith(
+        expect.objectContaining({ message: "stream invalidated" })
+      );
+      expect(startAudioCapture).toHaveBeenCalledTimes(3);
+      expect(props.raiseNotice).toHaveBeenCalledWith(
+        "error",
+        "Error: stream invalidated",
+        undefined,
+        { requiresAttention: true, helpTopic: "audio-capture" }
+      );
+    }
+  );
 
   it("records audio the engine dropped before analysis", async () => {
     const props = {

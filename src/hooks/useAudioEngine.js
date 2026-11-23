@@ -44,6 +44,8 @@ const CLEARED_AUDIO_STATE = {
 };
 
 const CAPTURE_RECOVERY_STABILITY_MS = 2_000;
+const CAPTURE_INVALIDATION_RETRY_LIMIT = 3;
+const CAPTURE_INVALIDATION_RETRY_STEP_MS = 300;
 
 /**
  * @param {{
@@ -103,7 +105,7 @@ export function useAudioEngine({
   const histMaxSamplesRef = useRef(histMaxSamples);
   const visualMaxSamplesRef = useRef(visualMaxSamples);
   const [recoveryRevision, setRecoveryRevision] = useState(0);
-  const recoveryAvailableRef = useRef(true);
+  const recoveryAttemptsRef = useRef(0);
   const recoveryPendingRef = useRef(false);
   const recoveryRearmAtRef = useRef(0);
 
@@ -113,11 +115,10 @@ export function useAudioEngine({
   }, [histMaxSamples, visualMaxSamples]);
 
   // A normal transport/device/configuration transition starts a new recovery budget. An automatic
-  // recovery changes only `recoveryRevision`, so an immediately-invalid replacement stream cannot
-  // loop forever. The budget is armed again only after that replacement has delivered healthy
-  // frames for a short stability window.
+  // recovery changes only `recoveryRevision`. The budget resets after the replacement has delivered
+  // healthy frames for a short stability window.
   useEffect(() => {
-    recoveryAvailableRef.current = true;
+    recoveryAttemptsRef.current = 0;
     recoveryPendingRef.current = false;
     recoveryRearmAtRef.current = 0;
   }, [running, captureDeviceId, captureFormatSignature]);
@@ -179,6 +180,8 @@ export function useAudioEngine({
     }
     let mounted = true;
     let disconnected = false;
+    let recoveryScheduled = false;
+    let recoveryTimer;
     let nativeStart = null;
     let meter = null;
     const unsubs = [];
@@ -264,17 +267,13 @@ export function useAudioEngine({
               ),
           });
           const applyFrame = (f) => {
-            if (!mounted || disconnected) return;
+            if (!mounted || disconnected || recoveryScheduled) return;
             if (recoveryPendingRef.current) {
               recoveryPendingRef.current = false;
               recoveryRearmAtRef.current = Date.now() + CAPTURE_RECOVERY_STABILITY_MS;
               raiseNotice("info", "Audio configuration changed — measurement restarted");
-            } else if (
-              !recoveryAvailableRef.current &&
-              recoveryRearmAtRef.current > 0 &&
-              Date.now() >= recoveryRearmAtRef.current
-            ) {
-              recoveryAvailableRef.current = true;
+            } else if (recoveryRearmAtRef.current > 0 && Date.now() >= recoveryRearmAtRef.current) {
+              recoveryAttemptsRef.current = 0;
               recoveryRearmAtRef.current = 0;
             }
             baseApply(f);
@@ -289,22 +288,29 @@ export function useAudioEngine({
           // later (stall, device loss). Without this the UI keeps showing LIVE over a frozen meter.
           unsubs.push(
             await onEngineStateChanged((payload) => {
-              if (!mounted || disconnected || payload?.state !== "error") return;
+              if (!mounted || disconnected || recoveryScheduled || payload?.state !== "error")
+                return;
               meter?.closeMeterResets();
               if (payload.reason === "deviceDisconnected" && !isAutomatic && !applicationId) {
                 stopForDisconnectedSource();
                 return;
               }
               const message = payload.error || "Audio capture stopped";
+              const invalidated = payload.reason === "deviceInvalidated";
+              const retryLimit = invalidated ? CAPTURE_INVALIDATION_RETRY_LIMIT : 1;
               if (
-                (payload.reason === "deviceInvalidated" ||
-                  payload.reason === "deviceDisconnected") &&
-                recoveryAvailableRef.current
+                (invalidated || payload.reason === "deviceDisconnected") &&
+                recoveryAttemptsRef.current < retryLimit
               ) {
-                recoveryAvailableRef.current = false;
+                // Give Windows progressively more time to settle if it invalidates the replacement.
+                const delay = recoveryAttemptsRef.current * CAPTURE_INVALIDATION_RETRY_STEP_MS;
+                recoveryAttemptsRef.current += 1;
                 recoveryPendingRef.current = true;
                 recoveryRearmAtRef.current = 0;
-                setRecoveryRevision((revision) => revision + 1);
+                recoveryScheduled = true;
+                const restart = () => setRecoveryRevision((revision) => revision + 1);
+                if (delay === 0) restart();
+                else recoveryTimer = window.setTimeout(restart, delay);
                 return;
               }
               halt(new Error(message));
@@ -349,7 +355,7 @@ export function useAudioEngine({
             measurementOwner?.abortSession();
             throw error;
           }
-          if (!mounted || disconnected) {
+          if (!mounted || disconnected || recoveryScheduled) {
             meter?.closeMeterResets();
             releaseListeners();
             measurementOwner?.abortSession();
@@ -373,7 +379,7 @@ export function useAudioEngine({
         );
       } catch (err) {
         releaseListeners();
-        if (!mounted || disconnected) return;
+        if (!mounted || disconnected || recoveryScheduled) return;
         halt(err);
         setSelectedOffset(-1);
         raiseNotice("error", `Error: ${err?.message || "Audio unavailable"}`, undefined, {
@@ -385,6 +391,7 @@ export function useAudioEngine({
     init();
     return () => {
       mounted = false;
+      window.clearTimeout(recoveryTimer);
       meter?.closeMeterResets();
       releaseListeners();
       if (nativeStart) {
