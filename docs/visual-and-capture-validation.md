@@ -305,6 +305,41 @@ npm run soak:desktop -- --scenario heavy # desktop UI/audio/resource soak; 30 mi
 npm run verify:loudness-reference  # loudness meters against FFmpeg ebur128; needs a full FFmpeg (PLVS_REFERENCE_FFMPEG or PATH)
 ```
 
+### File layouts and official audio references
+
+`smoke:file-analysis` runs on the Windows, macOS, and Linux Preview and stable build jobs. It
+stages the checksum-verified FFmpeg sidecars and generates its WAVs in a temporary directory.
+The multichannel cases check per-channel peaks and speaker roles through the File session and
+file summary paths. They cover both 5.1 masks, 7.1 and 7.1 Wide, 7.1.4, a 12-channel WAV
+without a layout, and a 16-channel WAV with an explicit 9.1.6 selection.
+
+Run the official reference check locally when changing file metering, loudness, or channel
+mapping. Acquire the original files from the publishers under their terms. Arrange them under a
+local media directory as follows:
+
+| Relative path                                                          | Source                                                                                             |
+| ---------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------- |
+| `loudness/ebu/ebu-loudness-test-setv05.zip`                            | [EBU Loudness Test Set v5.0](https://tech.ebu.ch/publications/ebu_loudness_test_set)               |
+| `loudness/itu-r/R11020000010011ZIPM.zip` and `R11020000010012ZIPM.zip` | [ITU-R BS.2217](https://www.itu.int/oth/R1102000001/en), the −23 LKFS LFE and left-surround checks |
+| `channel-layouts/ebu/channels_7_1_4_adm_bsldet.wav`                    | [EBU QC Channel-based 7.1.4](https://qc.ebu.io/testmaterials/62/)                                  |
+
+```sh
+cargo build --manifest-path src-tauri/Cargo.toml --profile harness --bin plvs --features capture-harness
+npm run verify:official-audio -- "/path/to/test-media"
+```
+
+The command extracts only the WAVs it uses and checks four representative EBU loudness cases,
+the two ITU-R channel checks, and all 12 decoded channels in the EBU ADM WAV. The ADM check
+expects the layout to be unknown with the bundled decoder. The loudness cases use the published
+EBU tolerances and a 0.1 LUFS comparison margin for the ITU-R left-surround reference. The
+official corpus is an opt-in local input with no CI or release-job dependency.
+
+### Capture hardware and soak evidence
+
+The self-hosted capture jobs run the rig's generated stereo signal. Weekly soak comparison
+reads the tracked numeric baselines in `fixtures/capture-soak-baselines/`. HDMI Atmos checks
+still require a compatible playback route and a receiver that reports its input format.
+
 The capture rig exists once per machine, so `smoke:capture`, `soak:capture` and the multi-instance
 runs take an exclusive lease, `plvs-capture-rig.lock` in one shared directory per machine
 (`%ProgramData%\PLVS`, `/Users/Shared/PLVS` or `/var/tmp/plvs`), before starting the test tone.

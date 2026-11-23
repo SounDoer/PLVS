@@ -666,23 +666,43 @@ mod tests {
 
   /// Write a minimal PCM16 little-endian WAV so ffmpeg can probe/decode a deterministic fixture
   /// without checking a binary asset into the repo.
-  fn write_pcm16_wav(path: &Path, sample_rate: u32, channels: u16, samples: &[i16]) {
+  fn write_pcm16_wav(
+    path: &Path,
+    sample_rate: u32,
+    channels: u16,
+    samples: &[i16],
+    channel_mask: Option<u32>,
+  ) {
     let bytes_per_sample = 2_u32;
     let block_align = channels as u32 * bytes_per_sample;
     let byte_rate = sample_rate * block_align;
     let data_len = samples.len() as u32 * bytes_per_sample;
-    let mut buf = Vec::with_capacity(44 + data_len as usize);
+    let (format_size, format_tag) = match channel_mask {
+      Some(_) => (40_u32, 0xfffe_u16),
+      None => (16_u32, 1_u16),
+    };
+    let riff_size = 20 + format_size + data_len;
+    let mut buf = Vec::with_capacity((8 + riff_size) as usize);
     buf.extend_from_slice(b"RIFF");
-    buf.extend_from_slice(&(36 + data_len).to_le_bytes());
+    buf.extend_from_slice(&riff_size.to_le_bytes());
     buf.extend_from_slice(b"WAVE");
     buf.extend_from_slice(b"fmt ");
-    buf.extend_from_slice(&16_u32.to_le_bytes());
-    buf.extend_from_slice(&1_u16.to_le_bytes());
+    buf.extend_from_slice(&format_size.to_le_bytes());
+    buf.extend_from_slice(&format_tag.to_le_bytes());
     buf.extend_from_slice(&channels.to_le_bytes());
     buf.extend_from_slice(&sample_rate.to_le_bytes());
     buf.extend_from_slice(&byte_rate.to_le_bytes());
     buf.extend_from_slice(&(block_align as u16).to_le_bytes());
     buf.extend_from_slice(&16_u16.to_le_bytes());
+    if let Some(channel_mask) = channel_mask {
+      buf.extend_from_slice(&22_u16.to_le_bytes()); // Extension size.
+      buf.extend_from_slice(&16_u16.to_le_bytes()); // Valid bits per sample.
+      buf.extend_from_slice(&channel_mask.to_le_bytes());
+      // KSDATAFORMAT_SUBTYPE_PCM in the WAV GUID byte order.
+      buf.extend_from_slice(&[
+        1, 0, 0, 0, 0, 0, 0x10, 0, 0x80, 0, 0, 0xaa, 0, 0x38, 0x9b, 0x71,
+      ]);
+    }
     buf.extend_from_slice(b"data");
     buf.extend_from_slice(&data_len.to_le_bytes());
     for sample in samples {
@@ -698,11 +718,21 @@ mod tests {
 
   impl TempWav {
     fn new(name: &str, sample_rate: u32, channels: u16, samples: &[i16]) -> Self {
+      Self::with_channel_mask(name, sample_rate, channels, samples, None)
+    }
+
+    fn with_channel_mask(
+      name: &str,
+      sample_rate: u32,
+      channels: u16,
+      samples: &[i16],
+      channel_mask: Option<u32>,
+    ) -> Self {
       static COUNTER: AtomicU32 = AtomicU32::new(0);
       let id = COUNTER.fetch_add(1, Ordering::Relaxed);
       let mut path = std::env::temp_dir();
       path.push(format!("plvs_{}_{}_{}.wav", name, std::process::id(), id));
-      write_pcm16_wav(&path, sample_rate, channels, samples);
+      write_pcm16_wav(&path, sample_rate, channels, samples, channel_mask);
       Self { path }
     }
 
@@ -1720,6 +1750,120 @@ mod tests {
       gui.channel_peaks[7].true_peak_max_dbtp,
       Some(gui.true_peak_max_dbtp)
     );
+  }
+
+  #[test]
+  fn wav_layouts_preserve_speaker_roles_and_channel_peaks_on_both_decode_paths() {
+    if !crate::file_analysis::ffmpeg::locate::locate_sidecar("ffmpeg").exists() {
+      eprintln!("skipping: ffmpeg sidecar not present");
+      return;
+    }
+
+    // Native masks in WAVEFORMATEXTENSIBLE order, plus a 16-channel file with an explicit
+    // PLVS selection. The WAV mask cannot express the complete 9.1.6 speaker set.
+    let cases = [
+      (
+        "5.1",
+        Some(0x3f),
+        None,
+        ["L", "R", "C", "LFE", "Ls", "Rs"].as_slice(),
+      ),
+      (
+        "5.1",
+        Some(0x60f),
+        None,
+        ["L", "R", "C", "LFE", "Ls", "Rs"].as_slice(),
+      ),
+      (
+        "7.1",
+        Some(0x63f),
+        None,
+        ["L", "R", "C", "LFE", "Lb", "Rb", "Ls", "Rs"].as_slice(),
+      ),
+      (
+        "7.1-wide",
+        Some(0xff),
+        None,
+        ["L", "R", "C", "LFE", "Ls", "Rs", "Lc", "Rc"].as_slice(),
+      ),
+      (
+        "7.1.4",
+        Some(0x2d63f),
+        None,
+        [
+          "L", "R", "C", "LFE", "Lb", "Rb", "Ls", "Rs", "Ltf", "Rtf", "Ltr", "Rtr",
+        ]
+        .as_slice(),
+      ),
+      ("unknown", None, None, [].as_slice()),
+      (
+        "9.1.6",
+        None,
+        Some("9.1.6"),
+        [
+          "L", "R", "C", "LFE", "Lb", "Rb", "Lw", "Rw", "Ls", "Rs", "Ltf", "Rtf", "Ltr", "Rtr",
+          "Ltm", "Rtm",
+        ]
+        .as_slice(),
+      ),
+    ];
+    for (layout, mask, selection, roles) in cases {
+      let known = !roles.is_empty();
+      let channels = if known { roles.len() } else { 12 };
+      let mut pcm = vec![0_i16; 4096 * channels];
+      let amplitudes: Vec<i16> = (1..=channels as i16)
+        .map(|channel| channel * 1024)
+        .collect();
+      for (channel, &amplitude) in amplitudes.iter().enumerate() {
+        // Distinct peaks reveal any channel swaps even when every channel survives the decode.
+        pcm[(1024 + channel) * channels + channel] = amplitude;
+      }
+      let expected_roles = known.then(|| {
+        roles
+          .iter()
+          .map(|role| (*role).to_owned())
+          .collect::<Vec<_>>()
+      });
+      let mut config = default_config();
+      if let Some(selection) = selection {
+        config.channel_selection = Some(
+          ChannelSelection::from_roles(
+            crate::dsp::channel_layouts::roles_for_layout(selection)
+              .unwrap()
+              .to_vec(),
+          )
+          .unwrap(),
+        );
+      }
+      let fixture = TempWav::with_channel_mask(layout, 48_000, channels as u16, &pcm, mask);
+      let path = fixture.path_str();
+      let (_, gui) = analyze_file_core(&path, None, &config, |_| Ok(()), |_| {}, || false)
+        .unwrap()
+        .unwrap();
+      let cli = analyze_file_track_to_summary_with_layout(&path, None, selection)
+        .unwrap()
+        .summary;
+
+      for (entry_point, summary) in [("GUI", gui), ("CLI", cli)] {
+        let case = format!("{entry_point} {layout} mask {mask:?}");
+        assert_eq!(summary.channels as usize, channels, "{case}");
+        assert_eq!(summary.loudness_layout, layout, "{case}");
+        assert_eq!(summary.loudness_layout_known, known, "{case}");
+        assert_eq!(summary.channel_roles, expected_roles, "{case}");
+        assert_eq!(summary.channel_peaks.len(), channels, "{case}");
+        for (channel, (peak, amplitude)) in
+          summary.channel_peaks.iter().zip(&amplitudes).enumerate()
+        {
+          let expected_db = 20.0 * (f64::from(*amplitude) / 32768.0).log10();
+          let actual_db = peak.sample_peak_max_db.expect("channel peak");
+          assert!(
+            (actual_db - expected_db).abs() < 1e-9,
+            "{case} channel {}: expected {expected_db}, got {actual_db}",
+            channel + 1
+          );
+        }
+      }
+    }
   }
 
   #[test]
