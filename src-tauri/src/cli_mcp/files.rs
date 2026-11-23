@@ -296,6 +296,11 @@ mod tests {
   use crate::cli_manifest::command_by_id;
   use serde_json::json;
 
+  #[cfg(windows)]
+  const TEST_HOME: &str = r"C:\Users\someone";
+  #[cfg(not(windows))]
+  const TEST_HOME: &str = "/home/someone";
+
   fn scratch(name: &str) -> PathBuf {
     let directory =
       std::env::temp_dir().join(format!("plvs-mcp-files-{name}-{}", std::process::id()));
@@ -306,10 +311,14 @@ mod tests {
 
   #[test]
   fn paths_expand_home_and_must_be_absolute() {
-    let home = Path::new("/Users/someone");
+    let home = Path::new(TEST_HOME);
     assert_eq!(
       absolute_path("~/Music/mix.wav", home).unwrap(),
       home.join("Music/mix.wav")
+    );
+    assert_eq!(
+      absolute_path(r"~\mix.wav", home).unwrap(),
+      home.join("mix.wav")
     );
     assert_eq!(absolute_path("~", home).unwrap(), home);
     assert!(absolute_path("mix.wav", home).is_err());
@@ -365,18 +374,19 @@ mod tests {
 
   #[test]
   fn batch_paths_become_absolute_and_relative_ones_are_refused() {
-    let home = Path::new("/Users/someone");
+    let home = Path::new(TEST_HOME);
     let entry = command_by_id("transport.file.batch.enqueue").unwrap();
-    let mut params = json!({ "paths": ["~/a.wav", "/b.wav"] });
+    let absolute = home.join("b.wav");
+    let mut params = json!({ "paths": ["~/a.wav", absolute] });
     normalize_audio_paths(entry, &mut params, home).unwrap();
-    assert_eq!(params["paths"], json!(["/Users/someone/a.wav", "/b.wav"]));
+    assert_eq!(params["paths"], json!([home.join("a.wav"), absolute]));
     let mut relative = json!({ "paths": ["a.wav"] });
     assert!(normalize_audio_paths(entry, &mut relative, home).is_err());
   }
 
   #[test]
   fn outputs_stay_inline_unless_asked_except_csv_and_recordings() {
-    let home = Path::new("/Users/someone");
+    let home = Path::new(TEST_HOME);
     let export = output_spec("theme.export", &json!({ "pack": {} })).unwrap();
     assert!(!export.always);
     assert_eq!(
