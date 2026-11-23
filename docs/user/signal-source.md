@@ -33,9 +33,8 @@ that monitor is unavailable, capture reports an error instead of switching to a 
 Physical inputs use the same audio service. Direct ALSA capture and per-application capture are not
 yet supported on Linux. See [Getting Started](getting-started.md#linux) for the Linux package.
 
-ASIO drivers bypass the Windows audio mixer, so loopback cannot hear them. Set your DAW's audio
-system to WASAPI, or route an ASIO setup through a virtual audio cable such as VB-Cable to a
-WASAPI-visible device.
+ASIO drivers bypass the Windows audio mixer, so loopback cannot hear them. See
+[DAW playback on Windows](#daw-playback-on-windows) for ways to measure a DAW.
 
 System output monitoring follows the system's speaker configuration: Stereo shows and measures two
 channels, while 5.1 shows and measures six, even if the interface exposes additional device tracks.
@@ -59,7 +58,7 @@ channel per configured speaker.
 PLVS cannot measure audio that never passes through the system mix as PCM:
 
 - ASIO and WASAPI exclusive-mode playback on Windows, for both system playback and Application
-  sources.
+  sources. See [DAW playback on Windows](#daw-playback-on-windows).
 - Dolby Atmos, DTS or other encoded streams sent unchanged to a receiver over HDMI or S/PDIF. The
   receiver decodes them, so the computer holds no speaker channels to meter. On Windows such
   playback usually takes the output exclusively and PLVS reports that
@@ -83,6 +82,26 @@ Meter one running audio application instead of the complete system mix.
 PLVS recognises the application again when it restarts and reconnects to it.
 While the selected application is unavailable, Sources and the Tray keep the application
 selection and show **Selected Application Unavailable**.
+
+## DAW playback on Windows
+
+A DAW that plays through an ASIO driver, or through WASAPI in exclusive mode, sends its audio
+straight to the interface without passing through the Windows audio mixer. PLVS cannot hear that
+audio from the output, and selecting the DAW under **Applications** shows silence. Use one of these
+routes instead:
+
+- **WASAPI shared mode.** Set the DAW's audio system to WASAPI or Windows Audio with exclusive
+  mode turned off. PLVS can then measure the output or the DAW as an Application source. Latency
+  is usually higher than with ASIO.
+- **The interface's loopback input.** Many professional audio interfaces can return their
+  playback mix as an extra recording input, often named Loopback. Turn it on in the interface's
+  control software if needed, then select it under **Inputs** in **Sources**. The DAW keeps
+  using ASIO.
+- **A virtual audio device.** Send the DAW's output to a virtual device that Windows can see,
+  such as VB-Cable or VoiceMeeter's virtual ASIO driver, and select that device in **Sources**.
+
+On macOS, DAWs play through Core Audio, so system playback and Application sources can measure
+them without extra routing.
 
 ## Long source lists
 

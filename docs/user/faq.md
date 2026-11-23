@@ -9,9 +9,10 @@ you hear.
 
 ## Why can't PLVS hear my ASIO interface?
 
-ASIO bypasses the Windows audio mixer, so loopback capture cannot intercept it. Switch your DAW to
-WASAPI, or route through a virtual audio cable to a WASAPI-visible device. See
-[Signal Source](signal-source.md).
+ASIO, like WASAPI exclusive mode, bypasses the Windows audio mixer, so loopback capture cannot
+intercept it. Switch your DAW to WASAPI shared mode, select your interface's loopback input under
+**Inputs** if it has one, or route through a virtual audio device. See
+[DAW playback on Windows](signal-source.md#daw-playback-on-windows).
 
 ## Can PLVS measure Dolby Atmos or spatial audio?
 
