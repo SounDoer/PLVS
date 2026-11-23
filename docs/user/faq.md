@@ -13,6 +13,13 @@ ASIO bypasses the Windows audio mixer, so loopback capture cannot intercept it. 
 WASAPI, or route through a virtual audio cable to a WASAPI-visible device. See
 [Signal Source](signal-source.md).
 
+## Can PLVS measure Dolby Atmos or spatial audio?
+
+When the computer renders it, yes: PLVS measures the resulting PCM mix, such as the stereo output
+of a headphone mode or the channels of a multichannel speaker configuration. When a player sends
+the encoded Dolby Atmos or DTS stream unchanged to a receiver, there is no PCM on the computer to
+measure. See [Signal Source](signal-source.md#encoded-and-spatial-audio).
+
 ## Can I export the metered data, like CSV?
 
 [File Mode](file-mode.md#statistics-csv) exports whole-file statistics for selected results as CSV.

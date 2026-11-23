@@ -48,6 +48,25 @@ changes. PLVS measures the supplied mix rather than reconstructing separate surr
 If a Spatial Sound change invalidates the live system playback stream, PLVS attempts to reopen
 the output and starts a fresh measurement when capture resumes.
 
+## Encoded and spatial audio
+
+PLVS measures the PCM audio that the operating system delivers to the selected output. Spatial
+audio that is rendered on the computer is measured as that rendered result: for example Apple
+Music spatial audio, Windows Sonic or Dolby Atmos for Headphones, or a player that decodes Dolby
+Atmos to 5.1 or 7.1. Headphone modes produce a stereo mix; a multichannel output receives one
+channel per configured speaker.
+
+PLVS cannot measure audio that never passes through the system mix as PCM:
+
+- ASIO and WASAPI exclusive-mode playback on Windows, for both system playback and Application
+  sources.
+- Dolby Atmos, DTS or other encoded streams sent unchanged to a receiver over HDMI or S/PDIF. The
+  receiver decodes them, so the computer holds no speaker channels to meter. On Windows such
+  playback usually takes the output exclusively and PLVS reports that
+  [another app has exclusive use of the output](troubleshooting.md#output-in-use).
+- Individual audio objects. PLVS meters speaker channels and does not decode or render object
+  or scene-based audio.
+
 ## Physical input
 
 Monitor a microphone or line input directly.
