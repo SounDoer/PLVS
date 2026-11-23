@@ -45,6 +45,8 @@ configuration starts a fresh measurement. See [Multichannel](multichannel.md).
 On Windows, a complete L/R stereo mix supplied by the audio engine can be monitored even when
 the output retains a surround configuration that includes L/R, such as during spatial sound
 changes. PLVS measures the supplied mix rather than reconstructing separate surround channels.
+If a Spatial Sound change invalidates the live system playback stream, PLVS attempts to reopen
+the output and starts a fresh measurement when capture resumes.
 
 ## Physical input
 
