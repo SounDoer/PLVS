@@ -70,6 +70,7 @@ pub struct ProcessLoopbackProbeResult {
 struct PacketPosition {
   device_frame: u64,
   qpc_100ns: u64,
+  captured_frame: u64,
 }
 
 /// Evidence for comparing independently opened streams without using callback arrival time.
@@ -79,13 +80,22 @@ pub struct ProcessLoopbackTiming {
   packet_count: u64,
   discontinuity_packets: u64,
   invalid_timestamp_packets: u64,
-  non_monotonic_packets: u64,
+  non_advancing_device_frames: u64,
+  non_advancing_qpc: u64,
+  max_qpc_frame_error_ms: f64,
   first: Option<PacketPosition>,
   last: Option<PacketPosition>,
 }
 
 impl ProcessLoopbackTiming {
-  fn record(&mut self, device_frame: u64, qpc_100ns: u64, flags: u32) {
+  fn record(
+    &mut self,
+    device_frame: u64,
+    qpc_100ns: u64,
+    captured_frame: u64,
+    sample_rate: u32,
+    flags: u32,
+  ) {
     self.packet_count += 1;
     if flags & AUDCLNT_BUFFERFLAGS_DATA_DISCONTINUITY.0 as u32 != 0 {
       self.discontinuity_packets += 1;
@@ -95,17 +105,22 @@ impl ProcessLoopbackTiming {
       return;
     }
 
-    if self
-      .last
-      .is_some_and(|last| qpc_100ns <= last.qpc_100ns || device_frame <= last.device_frame)
-    {
-      self.non_monotonic_packets += 1;
+    if let Some(last) = self.last {
+      self.non_advancing_device_frames += u64::from(device_frame <= last.device_frame);
+      self.non_advancing_qpc += u64::from(qpc_100ns <= last.qpc_100ns);
     }
     let position = PacketPosition {
       device_frame,
       qpc_100ns,
+      captured_frame,
     };
-    self.first.get_or_insert(position);
+    let first = self.first.get_or_insert(position);
+    let qpc_elapsed_ms = (i128::from(qpc_100ns) - i128::from(first.qpc_100ns)) as f64 / 10_000.0;
+    let pcm_elapsed_ms =
+      (captured_frame - first.captured_frame) as f64 * 1_000.0 / f64::from(sample_rate);
+    self.max_qpc_frame_error_ms = self
+      .max_qpc_frame_error_ms
+      .max((qpc_elapsed_ms - pcm_elapsed_ms).abs());
     self.last = Some(position);
   }
 }
@@ -594,7 +609,7 @@ pub fn capture_process_to_summary_with_format(
         if frames == 0 {
           break;
         }
-        timing.record(device_frame, qpc_100ns, flags);
+        timing.record(device_frame, qpc_100ns, captured_frames, sample_rate, flags);
 
         let sample_count = frames as usize * channels as usize;
         if (flags & AUDCLNT_BUFFERFLAGS_SILENT.0 as u32) != 0 {
@@ -648,22 +663,32 @@ mod tests {
   #[test]
   fn probe_distinguishes_timestamp_errors_from_discontinuities() {
     let mut timing = ProcessLoopbackTiming::default();
-    timing.record(0, 0, 0);
+    timing.record(0, 0, 0, 48_000, 0);
     timing.record(
-      480,
+      0,
       100_000,
+      480,
+      48_000,
       AUDCLNT_BUFFERFLAGS_DATA_DISCONTINUITY.0 as u32,
     );
-    timing.record(960, 900_000, AUDCLNT_BUFFERFLAGS_TIMESTAMP_ERROR.0 as u32);
-    timing.record(1_440, 300_000, 0);
-    timing.record(1_920, 300_000, 0);
+    timing.record(
+      0,
+      900_000,
+      960,
+      48_000,
+      AUDCLNT_BUFFERFLAGS_TIMESTAMP_ERROR.0 as u32,
+    );
+    timing.record(0, 300_000, 1_440, 48_000, 0);
+    timing.record(0, 300_000, 1_920, 48_000, 0);
 
     assert_eq!(timing.packet_count, 5);
     assert_eq!(timing.discontinuity_packets, 1);
     assert_eq!(timing.invalid_timestamp_packets, 2);
-    assert_eq!(timing.non_monotonic_packets, 1);
-    assert_eq!(timing.first.unwrap().device_frame, 480);
-    assert_eq!(timing.last.unwrap().device_frame, 1_920);
+    assert_eq!(timing.non_advancing_device_frames, 2);
+    assert_eq!(timing.non_advancing_qpc, 1);
+    assert_eq!(timing.first.unwrap().captured_frame, 480);
+    assert_eq!(timing.last.unwrap().captured_frame, 1_920);
+    assert_eq!(timing.max_qpc_frame_error_ms, 10.0);
   }
 
   #[test]
