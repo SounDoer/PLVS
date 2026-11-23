@@ -59,7 +59,11 @@ describe("pre-commit command selection", () => {
   });
 
   it("formats the index while preserving partially and fully unstaged edits", () => {
-    const cwd = mkdtempSync(join(tmpdir(), "plvs-pre-commit-"));
+    // This fixture links the checkout's node_modules. Keep the Windows junction
+    // on the checkout volume so it also works when TEMP is on another drive.
+    const fixtureRoot = process.platform === "win32" ? resolve("artifacts") : tmpdir();
+    mkdirSync(fixtureRoot, { recursive: true });
+    const cwd = mkdtempSync(join(fixtureRoot, "plvs-pre-commit-"));
     const git = (...args) => execFileSync("git", args, { cwd, encoding: "utf8" });
     try {
       git("init", "--quiet");

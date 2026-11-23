@@ -1,5 +1,5 @@
-import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
-import { join, relative } from "node:path";
+import { copyFile, mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { dirname, join } from "node:path";
 import { tmpdir } from "node:os";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import {
@@ -8,7 +8,8 @@ import {
 } from "./dialogue-benchmark-fixtures.mjs";
 
 const ROOT = process.cwd();
-const MANIFEST = join(ROOT, "fixtures/dialogue-benchmark/manifest.json");
+const FIXTURES = join(ROOT, "fixtures/dialogue-benchmark");
+const MANIFEST = join(FIXTURES, "manifest.json");
 
 describe("dialogue benchmark fixtures", () => {
   let directory;
@@ -49,11 +50,13 @@ describe("dialogue benchmark fixtures", () => {
   async function modifiedManifest(mutate) {
     const manifest = JSON.parse(await readFile(MANIFEST, "utf8"));
     for (const source of manifest.sources) {
-      source.path = relative(directory, join(ROOT, "fixtures/dialogue-benchmark", source.path));
-      source.canonicalPcm.path = relative(
-        directory,
-        join(ROOT, "fixtures/dialogue-benchmark", source.canonicalPcm.path)
-      );
+      // Keep the manifest paths relative even when the checkout and temp directory
+      // are on different Windows drives.
+      for (const input of [source.path, source.canonicalPcm.path]) {
+        const copy = join(directory, input);
+        await mkdir(dirname(copy), { recursive: true });
+        await copyFile(join(FIXTURES, input), copy);
+      }
     }
     mutate(manifest);
     const path = join(directory, "manifest.json");
