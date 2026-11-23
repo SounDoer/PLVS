@@ -53,7 +53,54 @@ const CAPTURE_WATCH_POLL: Duration = Duration::from_millis(250);
 const STREAM_ERROR_NONE: u8 = 0;
 const STREAM_ERROR_DEVICE_UNAVAILABLE: u8 = 1;
 const STREAM_ERROR_INVALIDATED: u8 = 2;
+const STREAM_ERROR_OUTPUT_IN_USE: u8 = 3;
+const AUDCLNT_E_NOT_INITIALIZED: i32 = 0x8889_0001_u32 as i32;
 const AUDCLNT_E_WRONG_ENDPOINT_TYPE: i32 = 0x8889_0003_u32 as i32;
+const AUDCLNT_E_DEVICE_IN_USE: i32 = 0x8889_000A_u32 as i32;
+
+const OUTPUT_IN_USE_MESSAGE: &str = "Capture unavailable: another app has exclusive use \
+  of this output, for example to send Dolby Atmos to a receiver. Stop that playback, then select \
+  Start.";
+
+/// CPAL exposes WASAPI HRESULTs only in the message's ` (os error N)` suffix.
+fn wasapi_os_error(message: &str) -> Option<i32> {
+  message
+    .strip_suffix(')')
+    .and_then(|message| message.rsplit_once(" (os error "))
+    .and_then(|(_, code)| code.parse::<i32>().ok())
+}
+
+/// While an app holds the endpoint exclusively (encoded passthrough such as Dolby Atmos), shared
+/// loopback initialization fails with either HRESULT; a running stream reports DEVICE_IN_USE.
+fn is_output_in_use_error(message: &str) -> bool {
+  matches!(
+    wasapi_os_error(message),
+    Some(AUDCLNT_E_NOT_INITIALIZED | AUDCLNT_E_DEVICE_IN_USE)
+  )
+}
+
+/// Replaces a loopback start failure caused by exclusive output use with a readable message and
+/// records the cause so the failure event carries a structured reason.
+fn loopback_start_error(message: String, wasapi_loopback: bool, flag: &AtomicU8) -> String {
+  if wasapi_loopback && is_output_in_use_error(&message) {
+    log::warn!("loopback start refused while the output is in use: {message}");
+    flag.store(STREAM_ERROR_OUTPUT_IN_USE, Ordering::Relaxed);
+    OUTPUT_IN_USE_MESSAGE.into()
+  } else {
+    message
+  }
+}
+
+fn store_output_in_use(flag: &AtomicU8, error: &cpal::Error) {
+  if error.message().and_then(wasapi_os_error) == Some(AUDCLNT_E_DEVICE_IN_USE) {
+    let _ = flag.compare_exchange(
+      STREAM_ERROR_NONE,
+      STREAM_ERROR_OUTPUT_IN_USE,
+      Ordering::Relaxed,
+      Ordering::Relaxed,
+    );
+  }
+}
 
 fn stream_error_code(kind: cpal::ErrorKind) -> u8 {
   match kind {
@@ -76,16 +123,14 @@ fn record_stream_error(
 ) -> impl FnMut(cpal::Error) + Send + 'static {
   move |error| {
     store_stream_error(&flag, &error);
+    if wasapi_loopback {
+      store_output_in_use(&flag, &error);
+    }
     // Spatial Sound can invalidate a running loopback stream with this HRESULT. CPAL reports it
     // as UnsupportedOperation and exposes the native code only in the message's os error suffix.
     if wasapi_loopback
       && error.kind() == cpal::ErrorKind::UnsupportedOperation
-      && error
-        .message()
-        .and_then(|message| message.strip_suffix(')'))
-        .and_then(|message| message.rsplit_once(" (os error "))
-        .and_then(|(_, code)| code.parse::<i32>().ok())
-        == Some(AUDCLNT_E_WRONG_ENDPOINT_TYPE)
+      && error.message().and_then(wasapi_os_error) == Some(AUDCLNT_E_WRONG_ENDPOINT_TYPE)
     {
       // Keep an explicit disconnection reported by the silence output stream.
       let _ = flag.compare_exchange(
@@ -105,6 +150,7 @@ pub(crate) fn capture_stall_message(stream_error: u8) -> String {
       "Capture stopped: the audio device is no longer available.".into()
     }
     STREAM_ERROR_INVALIDATED => "Capture stopped: the system invalidated the audio stream.".into(),
+    STREAM_ERROR_OUTPUT_IN_USE => OUTPUT_IN_USE_MESSAGE.into(),
     _ => format!(
       "Capture stopped: no audio received for {} s.",
       CAPTURE_STALL_TIMEOUT.as_secs()
@@ -216,9 +262,10 @@ pub(crate) fn emit_capture_failure(app: &AppHandle, error: &str, reason: Option<
 #[cfg(test)]
 mod capture_watch_tests {
   use super::{
-    capture_stall_message, record_stream_error, stream_error_code, wait_for_first_activity_or_stop,
-    wait_for_stop_or_stall, StallWatch, STREAM_ERROR_DEVICE_UNAVAILABLE, STREAM_ERROR_INVALIDATED,
-    STREAM_ERROR_NONE,
+    capture_stall_message, loopback_start_error, record_stream_error, stream_error_code,
+    wait_for_first_activity_or_stop, wait_for_stop_or_stall, StallWatch, OUTPUT_IN_USE_MESSAGE,
+    STREAM_ERROR_DEVICE_UNAVAILABLE, STREAM_ERROR_INVALIDATED, STREAM_ERROR_NONE,
+    STREAM_ERROR_OUTPUT_IN_USE,
   };
   use std::sync::atomic::{AtomicU64, AtomicU8, Ordering};
   use std::sync::Arc;
@@ -359,6 +406,58 @@ mod capture_watch_tests {
   }
 
   #[test]
+  fn device_in_use_names_exclusive_output_use_only_for_loopback_capture() {
+    let error = || {
+      cpal::Error::with_message(
+        cpal::ErrorKind::DeviceBusy,
+        "OS Error -2004287478 (FormatMessageW() returned error 317) (os error -2004287478)",
+      )
+    };
+    let flag = Arc::new(AtomicU8::new(STREAM_ERROR_NONE));
+    record_stream_error(flag.clone(), false)(error());
+    assert_eq!(flag.load(Ordering::Relaxed), STREAM_ERROR_NONE);
+
+    record_stream_error(flag.clone(), true)(error());
+    assert_eq!(flag.load(Ordering::Relaxed), STREAM_ERROR_OUTPUT_IN_USE);
+    assert_eq!(
+      capture_stall_message(STREAM_ERROR_OUTPUT_IN_USE),
+      OUTPUT_IN_USE_MESSAGE
+    );
+
+    let (_stop_tx, stop_rx) = std::sync::mpsc::channel::<()>();
+    assert_eq!(
+      wait_for_stop_or_stall(&stop_rx, None, &flag),
+      Err(OUTPUT_IN_USE_MESSAGE.into())
+    );
+  }
+
+  #[test]
+  fn loopback_start_refused_by_exclusive_output_use_is_readable() {
+    let not_initialized = "Failed to initialize audio client: OS Error -2004287487 \
+      (FormatMessageW() returned error 317) (os error -2004287487)";
+    let flag = AtomicU8::new(STREAM_ERROR_NONE);
+    assert_eq!(
+      loopback_start_error(not_initialized.into(), false, &flag),
+      not_initialized
+    );
+    assert_eq!(flag.load(Ordering::Relaxed), STREAM_ERROR_NONE);
+
+    let unsupported = "Failed to initialize audio client: OS Error -2004287480 \
+      (FormatMessageW() returned error 317) (os error -2004287480)";
+    assert_eq!(
+      loopback_start_error(unsupported.into(), true, &flag),
+      unsupported
+    );
+    assert_eq!(flag.load(Ordering::Relaxed), STREAM_ERROR_NONE);
+
+    assert_eq!(
+      loopback_start_error(not_initialized.into(), true, &flag),
+      OUTPUT_IN_USE_MESSAGE
+    );
+    assert_eq!(flag.load(Ordering::Relaxed), STREAM_ERROR_OUTPUT_IN_USE);
+  }
+
+  #[test]
   fn fatal_stream_error_stops_even_when_callback_stalls_are_not_watched() {
     let (_stop_tx, stop_rx) = std::sync::mpsc::channel::<()>();
     let error = AtomicU8::new(STREAM_ERROR_INVALIDATED);
@@ -487,6 +586,7 @@ impl CaptureSession {
             error.reason().or(match error_code {
               STREAM_ERROR_DEVICE_UNAVAILABLE => Some("deviceDisconnected"),
               STREAM_ERROR_INVALIDATED => Some("deviceInvalidated"),
+              STREAM_ERROR_OUTPUT_IN_USE => Some("outputInUse"),
               _ => None,
             }),
           );
@@ -1056,6 +1156,7 @@ pub(crate) fn create_silence_output_stream(
       },
       move |error| {
         store_stream_error(&stream_error, &error);
+        store_output_in_use(&stream_error, &error);
         log::error!("silence stream error: {error}");
       },
       None,
@@ -1164,6 +1265,9 @@ where
     PcmCallbackForwarder::new(delivery.producer(), pcm_pool.clone(), dropped_for_callbacks);
   let activity = forwarder.activity();
   let on_error = record_stream_error(stream_error.clone(), wasapi_loopback);
+  let start_error = |error: &dyn std::fmt::Display| {
+    loopback_start_error(error.to_string(), wasapi_loopback, &stream_error)
+  };
   let stream = match supported.sample_format() {
     SampleFormat::F32 => device
       .build_input_stream(
@@ -1174,7 +1278,7 @@ where
         on_error,
         None,
       )
-      .map_err(|e| e.to_string())?,
+      .map_err(|e| start_error(&e))?,
     SampleFormat::I16 => device
       .build_input_stream(
         stream_config,
@@ -1184,7 +1288,7 @@ where
         on_error,
         None,
       )
-      .map_err(|e| e.to_string())?,
+      .map_err(|e| start_error(&e))?,
     SampleFormat::U16 => device
       .build_input_stream(
         stream_config,
@@ -1194,7 +1298,7 @@ where
         on_error,
         None,
       )
-      .map_err(|e| e.to_string())?,
+      .map_err(|e| start_error(&e))?,
     f => {
       return Err(format!("Unsupported sample format: {f:?}"));
     }
@@ -1209,7 +1313,7 @@ where
     drop(stream);
     delivery.stop_producer();
     let _ = consumer_thread.join();
-    return Err(error.to_string());
+    return Err(start_error(&error));
   }
   // Loopback without the silence stream legitimately stops calling back while nothing plays, so
   // only then is a quiet stream not evidence of failure.

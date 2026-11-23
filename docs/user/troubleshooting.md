@@ -36,6 +36,17 @@ another in **Sources**, then select **Start**. For application capture, confirm
 the app is still running and playing audio. For more platform-specific checks,
 see [Signal Source](signal-source.md).
 
+## <span id="output-in-use"></span> Another app has exclusive use of the output
+
+On Windows, an app can take a playback device for itself instead of sending audio through the
+system mix. Players that send encoded audio such as Dolby Atmos or DTS to a receiver over HDMI
+often do this, for example Dolby Access demos. While that playback runs, Windows does not let PLVS
+capture the output, with or without spatial sound. The receiver usually shows the encoded format
+instead of PCM.
+
+Stop that playback, or switch the player to PCM or multichannel PCM output, then select **Start**.
+Other apps on the same output can be measured again once the exclusive playback stops.
+
 ## <span id="audio-dropped"></span> Audio was dropped
 
 Some audio did not reach the analyzer. Integrated Loudness, Loudness Range

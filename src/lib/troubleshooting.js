@@ -1,6 +1,7 @@
 const topics = new Set([
   "system-output-speaker-layout",
   "audio-capture",
+  "output-in-use",
   "audio-dropped",
   "channel-layout-unknown",
   "channel-layout-inferred",

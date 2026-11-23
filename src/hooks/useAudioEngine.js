@@ -315,7 +315,9 @@ export function useAudioEngine({
                 helpTopic:
                   payload.reason === "systemSpeakerLayout"
                     ? "system-output-speaker-layout"
-                    : "audio-capture",
+                    : payload.reason === "outputInUse"
+                      ? "output-in-use"
+                      : "audio-capture",
               });
             })
           );

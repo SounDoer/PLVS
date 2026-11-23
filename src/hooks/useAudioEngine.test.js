@@ -292,6 +292,7 @@ describe("useAudioEngine", () => {
   it.each([
     [undefined, "audio-capture"],
     ["systemSpeakerLayout", "system-output-speaker-layout"],
+    ["outputInUse", "output-in-use"],
   ])("halts LIVE and chooses the help topic for %s", async (failureReason, helpTopic) => {
     const props = {
       intake: { reset: vi.fn() },
