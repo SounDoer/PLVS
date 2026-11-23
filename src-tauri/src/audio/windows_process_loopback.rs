@@ -9,13 +9,15 @@ use std::sync::atomic::AtomicU64;
 use std::sync::{mpsc, Arc};
 use std::time::{Duration, Instant};
 
+use serde::Serialize;
 use tauri::AppHandle;
 use windows::core::{implement, IUnknown, Interface, Ref};
 use windows::Win32::Foundation::{CloseHandle, WAIT_OBJECT_0, WAIT_TIMEOUT};
 use windows::Win32::Media::Audio::{
   ActivateAudioInterfaceAsync, IActivateAudioInterfaceAsyncOperation,
   IActivateAudioInterfaceCompletionHandler, IActivateAudioInterfaceCompletionHandler_Impl,
-  IAudioCaptureClient, IAudioClient, AUDCLNT_BUFFERFLAGS_SILENT, AUDCLNT_SHAREMODE_SHARED,
+  IAudioCaptureClient, IAudioClient, AUDCLNT_BUFFERFLAGS_DATA_DISCONTINUITY,
+  AUDCLNT_BUFFERFLAGS_SILENT, AUDCLNT_BUFFERFLAGS_TIMESTAMP_ERROR, AUDCLNT_SHAREMODE_SHARED,
   AUDCLNT_STREAMFLAGS_AUTOCONVERTPCM, AUDCLNT_STREAMFLAGS_EVENTCALLBACK,
   AUDCLNT_STREAMFLAGS_LOOPBACK, AUDCLNT_STREAMFLAGS_SRC_DEFAULT_QUALITY,
   AUDIOCLIENT_ACTIVATION_PARAMS, AUDIOCLIENT_ACTIVATION_PARAMS_0,
@@ -59,6 +61,53 @@ pub struct ProcessLoopbackProbeResult {
   pub silent_frames: u64,
   pub channel_peak_dbfs: Vec<f64>,
   pub metrics: SummaryMetrics,
+  pub timing: ProcessLoopbackTiming,
+}
+
+/// First-frame positions on the stream clock and the machine-wide QPC clock.
+#[derive(Debug, Clone, Copy, Serialize)]
+#[serde(rename_all = "camelCase")]
+struct PacketPosition {
+  device_frame: u64,
+  qpc_100ns: u64,
+}
+
+/// Evidence for comparing independently opened streams without using callback arrival time.
+#[derive(Debug, Default, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ProcessLoopbackTiming {
+  packet_count: u64,
+  discontinuity_packets: u64,
+  invalid_timestamp_packets: u64,
+  non_monotonic_packets: u64,
+  first: Option<PacketPosition>,
+  last: Option<PacketPosition>,
+}
+
+impl ProcessLoopbackTiming {
+  fn record(&mut self, device_frame: u64, qpc_100ns: u64, flags: u32) {
+    self.packet_count += 1;
+    if flags & AUDCLNT_BUFFERFLAGS_DATA_DISCONTINUITY.0 as u32 != 0 {
+      self.discontinuity_packets += 1;
+    }
+    if flags & AUDCLNT_BUFFERFLAGS_TIMESTAMP_ERROR.0 as u32 != 0 || qpc_100ns == 0 {
+      self.invalid_timestamp_packets += 1;
+      return;
+    }
+
+    if self
+      .last
+      .is_some_and(|last| qpc_100ns <= last.qpc_100ns || device_frame <= last.device_frame)
+    {
+      self.non_monotonic_packets += 1;
+    }
+    let position = PacketPosition {
+      device_frame,
+      qpc_100ns,
+    };
+    self.first.get_or_insert(position);
+    self.last = Some(position);
+  }
 }
 
 #[implement(IActivateAudioInterfaceCompletionHandler)]
@@ -503,6 +552,7 @@ pub fn capture_process_to_summary_with_format(
   let mut channel_peaks = vec![0.0f64; usize::from(channels)];
   let mut captured_frames = 0u64;
   let mut silent_frames = 0u64;
+  let mut timing = ProcessLoopbackTiming::default();
   let deadline = Instant::now() + duration;
   unsafe { audio_client.Start() }
     .map_err(|error| format!("IAudioClient::Start failed: {error}"))?;
@@ -529,8 +579,22 @@ pub fn capture_process_to_summary_with_format(
         let mut data = std::ptr::null_mut();
         let mut frames = 0u32;
         let mut flags = 0u32;
-        unsafe { capture_client.GetBuffer(&mut data, &mut frames, &mut flags, None, None) }
-          .map_err(|error| format!("GetBuffer failed: {error}"))?;
+        let mut device_frame = 0u64;
+        let mut qpc_100ns = 0u64;
+        unsafe {
+          capture_client.GetBuffer(
+            &mut data,
+            &mut frames,
+            &mut flags,
+            Some(&mut device_frame),
+            Some(&mut qpc_100ns),
+          )
+        }
+        .map_err(|error| format!("GetBuffer failed: {error}"))?;
+        if frames == 0 {
+          break;
+        }
+        timing.record(device_frame, qpc_100ns, flags);
 
         let sample_count = frames as usize * channels as usize;
         if (flags & AUDCLNT_BUFFERFLAGS_SILENT.0 as u32) != 0 {
@@ -567,16 +631,40 @@ pub fn capture_process_to_summary_with_format(
     silent_frames,
     channel_peak_dbfs: channel_peaks.into_iter().map(db_from_linear).collect(),
     metrics: meter.finish(),
+    timing,
   })
 }
 
 #[cfg(test)]
 mod tests {
-  use super::{capture_format, ActivationPayload, CaptureFormat};
+  use super::{capture_format, ActivationPayload, CaptureFormat, ProcessLoopbackTiming};
   use windows::Win32::Media::Audio::{
-    AUDIOCLIENT_ACTIVATION_TYPE_PROCESS_LOOPBACK, PROCESS_LOOPBACK_MODE_INCLUDE_TARGET_PROCESS_TREE,
+    AUDCLNT_BUFFERFLAGS_DATA_DISCONTINUITY, AUDCLNT_BUFFERFLAGS_TIMESTAMP_ERROR,
+    AUDIOCLIENT_ACTIVATION_TYPE_PROCESS_LOOPBACK,
+    PROCESS_LOOPBACK_MODE_INCLUDE_TARGET_PROCESS_TREE,
   };
   use windows::Win32::System::Variant::VT_BLOB;
+
+  #[test]
+  fn probe_distinguishes_timestamp_errors_from_discontinuities() {
+    let mut timing = ProcessLoopbackTiming::default();
+    timing.record(0, 0, 0);
+    timing.record(
+      480,
+      100_000,
+      AUDCLNT_BUFFERFLAGS_DATA_DISCONTINUITY.0 as u32,
+    );
+    timing.record(960, 900_000, AUDCLNT_BUFFERFLAGS_TIMESTAMP_ERROR.0 as u32);
+    timing.record(1_440, 300_000, 0);
+    timing.record(1_920, 300_000, 0);
+
+    assert_eq!(timing.packet_count, 5);
+    assert_eq!(timing.discontinuity_packets, 1);
+    assert_eq!(timing.invalid_timestamp_packets, 2);
+    assert_eq!(timing.non_monotonic_packets, 1);
+    assert_eq!(timing.first.unwrap().device_frame, 480);
+    assert_eq!(timing.last.unwrap().device_frame, 1_920);
+  }
 
   #[test]
   fn activation_blob_targets_the_requested_process_tree() {
