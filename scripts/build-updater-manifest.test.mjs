@@ -17,7 +17,7 @@ describe("build-updater-manifest", () => {
       winFile,
       JSON.stringify({
         platform: "windows-x86_64",
-        url: "https://github.com/SounDoer/PLVS/releases/download/v0.7.0/PLVS-v0.7.0-x64-setup.nsis.zip",
+        url: "https://github.com/SounDoer/PLVS/releases/download/v0.7.0/PLVS_0.7.0_x64-setup.exe",
         signature: "sig-win",
       })
     );
@@ -44,7 +44,7 @@ describe("build-updater-manifest", () => {
     expect(manifest.notes).toBe("Release notes\n");
     expect(manifest.platforms["windows-x86_64"]).toEqual({
       signature: "sig-win",
-      url: "https://github.com/SounDoer/PLVS/releases/download/v0.7.0/PLVS-v0.7.0-x64-setup.nsis.zip",
+      url: "https://github.com/SounDoer/PLVS/releases/download/v0.7.0/PLVS_0.7.0_x64-setup.exe",
     });
     expect(manifest.platforms["darwin-aarch64"].signature).toBe("sig-mac");
     expect(typeof manifest.pub_date).toBe("string");

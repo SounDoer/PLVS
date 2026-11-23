@@ -37,7 +37,7 @@ repository = "https://github.com/tauri-apps/plugins-workspace"
 
 [package.metadata.docs.rs]
 no-default-features = true
-features = ["zip"]
+features = ["appimage-archive"]
 
 [package.metadata.platforms.support.windows]
 level = "full"
@@ -63,7 +63,7 @@ notes = ""
 default = [
     "rustls-tls",
     "system-proxy",
-    "zip",
+    "appimage-archive",
 ]
 native-tls = ["reqwest/native-tls"]
 native-tls-vendored = ["reqwest/native-tls-vendored"]
@@ -72,8 +72,7 @@ rustls-tls = [
     "dep:rustls",
 ]
 system-proxy = ["reqwest/system-proxy"]
-zip = [
-    "dep:zip",
+appimage-archive = [
     "dep:tar",
     "dep:flate2",
 ]
@@ -191,8 +190,3 @@ features = [
     "Win32_UI_WindowsAndMessaging",
     "Win32_UI_Shell",
 ]
-
-[target.'cfg(target_os = "windows")'.dependencies.zip]
-version = "4"
-optional = true
-default-features = false

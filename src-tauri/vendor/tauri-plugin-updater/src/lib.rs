@@ -8,7 +8,7 @@
 //!
 //! ## Cargo features
 //!
-//! - **zip** *(enabled by default)*: Adds support for compressed updater bundles from Tauri v1.
+//! - **appimage-archive** *(enabled by default)*: Adds support for compressed Linux AppImage updater bundles.
 //! - **rustls-tls** *(enabled by default)*: Enables TLS functionality provided by `rustls`.
 //! - **native-tls**: Enables TLS functionality provided by `native-tls`.
 //! - **native-tls-vendored**: Enables the `vendored` feature of `native-tls`.

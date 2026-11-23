@@ -11,11 +11,14 @@ Local changes in `src/updater.rs`:
 - Add `Update::verify_cached` and `Update::install_verified` to reauthenticate persisted bytes.
   The existing `install` API still has upstream behavior for same-process downloads.
 - Add Windows-only `install_waited_verified` for the external helper. It accepts only NSIS,
-  reuses upstream extraction and arguments, explicitly supplies the installation directory as
+  reuses native installer staging and arguments, explicitly supplies the installation directory as
   the final `/D=` argument, disables installer relaunch, and waits for the installer process.
   The spawn callback records process identity before waiting; even a callback failure waits for
   the installer to finish before returning. PLVS retains the cross-process startup fence for
   this entire call and owns relaunch and failure reporting.
+- Stage signed Windows MSI and NSIS installers directly. PLVS publishes a signed NSIS executable for
+  automatic Windows updates, so the vendored plugin drops the legacy Windows ZIP reader and crate.
+  Linux AppImage archive handling has its own feature, and macOS still extracts signed tarballs.
 
 No JavaScript API additions. The application owns cache persistence, cancellation, startup
 coordination, and the user-confirmation boundary. Keep this patch small and replace it with an

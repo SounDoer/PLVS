@@ -48,10 +48,6 @@
       "license": "MIT OR Apache-2.0",
       "noticeSha256": "af5501f23edf2f4d1050173b49e8fccae0e1c5255a5be09cb5b12a2d60dbafef"
     },
-    "rust:arbitrary@1.4.2": {
-      "license": "MIT OR Apache-2.0",
-      "noticeSha256": "00d36f7f29365d2eddb9d071049f1468b7ea5f06f10a68353deaabc13851548f"
-    },
     "rust:arboard@3.6.1": {
       "license": "MIT OR Apache-2.0",
       "noticeSha256": "579d43806d8f22b2d1f51b17ba763adc21d1b095f108a606d881756cdb760c1a"
@@ -433,10 +429,6 @@
     "rust:deranged@0.5.8": {
       "license": "MIT OR Apache-2.0",
       "noticeSha256": "c7349d70e899844e361e2b8e981a6c7c587674d1d370d62a7d0cb8432f78f369"
-    },
-    "rust:derive_arbitrary@1.4.2": {
-      "license": "MIT OR Apache-2.0",
-      "noticeSha256": "00d36f7f29365d2eddb9d071049f1468b7ea5f06f10a68353deaabc13851548f"
     },
     "rust:derive_more@2.1.1": {
       "license": "MIT",
@@ -1829,7 +1821,7 @@
       "license": "Apache-2.0 WITH LLVM-exception OR Apache-2.0 OR MIT",
       "noticeSha256": "2722bc06006b2e754f368af5473f2821a6e22d2323de5eb80f1ced2b89e7918c"
     },
-    "rust:rustls@0.23.43": {
+    "rust:rustls@0.23.46": {
       "license": "Apache-2.0 OR ISC OR MIT",
       "noticeSha256": "31ce95410921b9e6df868385ca238ad8c9929e3a4058d46428592ec7b9c5f554"
     },
@@ -2821,10 +2813,6 @@
     "rust:zerovec-derive@0.11.6": {
       "license": "Unicode-3.0",
       "noticeSha256": "014fc74c644d81eab373ff3973f9f7c972bb860ec5ec07408a4fff61a38aee4d"
-    },
-    "rust:zip@4.6.1": {
-      "license": "MIT",
-      "noticeSha256": "8749bdc5f231a0c9cdc90dd77a84ff6524386a1e803acc8c1b4775bc8c18f447"
     },
     "rust:zlib-rs@0.6.7": {
       "license": "Zlib",
