@@ -1,10 +1,11 @@
 #!/usr/bin/env node
 
 import { spawn, spawnSync } from "node:child_process";
-import { mkdirSync, writeFileSync } from "node:fs";
+import { once } from "node:events";
+import { existsSync, mkdirSync, writeFileSync } from "node:fs";
 import { rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
-import { dirname, join } from "node:path";
+import { dirname, join, resolve } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import {
   RigError,
@@ -12,10 +13,12 @@ import {
   harnessArgs,
   locateHarness,
   resolveCaptureRoute,
+  resolveRenderEndpointId,
   runCli,
   startPlayer,
   stopPlayer,
   synthesizeSignal,
+  withCaptureRig,
 } from "./capture-rig.mjs";
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
@@ -91,7 +94,7 @@ export function judgeSoakSamples(series, { warmupSeconds = 60, driftLimitDb = 0.
 }
 
 function parsePositive(name, fallback) {
-  const index = process.argv.indexOf(`--${name}`);
+  const index = process.argv.lastIndexOf(`--${name}`);
   if (index === -1) return fallback;
   const value = Number(process.argv[index + 1]);
   if (!Number.isFinite(value) || value <= 0) throw new RigError(`--${name} must be positive.`);
@@ -229,6 +232,11 @@ export async function runConcurrentCapture({
 
 async function main() {
   try {
+    const probeIndex = process.argv.indexOf("--process-timing-probe");
+    if (probeIndex !== -1) {
+      await runProcessTimingProbe(probeIndex);
+      return;
+    }
     const count = parsePositive("instances", 2);
     const seconds = parsePositive("seconds", 15);
     const every = process.argv.includes("--every") ? parsePositive("every", 10) : null;
@@ -254,6 +262,54 @@ async function main() {
     console.error(`${error instanceof RigError ? "RIG" : "ERROR"} ${error.message}`);
     process.exitCode = 2;
   }
+}
+
+async function runProcessTimingProbe(index) {
+  if (process.platform !== "win32") throw new RigError("Process timing requires Windows.");
+  const executable = process.argv[index + 1];
+  if (!executable || executable.startsWith("--") || !existsSync(resolve(executable))) {
+    throw new RigError("Pass the built process_loopback_probe.exe after --process-timing-probe.");
+  }
+  const seconds = parsePositive("seconds", 15);
+  if (!Number.isSafeInteger(seconds)) throw new RigError("--seconds must be an integer.");
+  const wav = join(tmpdir(), `plvs-process-timing-${process.pid}.wav`);
+  const reportPath = await withCaptureRig(
+    async () => {
+      const players = [];
+      try {
+        const endpoint = resolveRenderEndpointId();
+        await synthesizeSignal(wav, { seconds: seconds + 15 });
+        for (let player = 0; player < 2; player += 1) {
+          const child = await startPlayer(endpoint, wav, { independent: true });
+          players.push(child);
+          if (child.pid === undefined) await once(child, "spawn");
+        }
+        await new Promise((settled) => setTimeout(settled, SETTLE_MS));
+        if (players.some((player) => player.exitCode !== null)) {
+          throw new RigError("A test player exited before capture began.");
+        }
+        const [first, second] = players.map((player) => String(player.pid));
+        const probe = runCli(resolve(executable), [first, String(seconds), "--with-pid", second]);
+        const report = parseJsonLines(probe.stdout).at(-1);
+        if (probe.status !== 0 || report?.streams?.length !== 2) {
+          throw new RigError(`Process timing probe failed: ${probe.stderr.trim() || "no report"}`);
+        }
+        const directory = join(ROOT, "artifacts", "capture", `process-timing-${Date.now()}`);
+        mkdirSync(directory, { recursive: true });
+        const path = join(directory, "report.json");
+        writeFileSync(path, `${JSON.stringify(report, null, 2)}\n`);
+        if (report.streams.some((stream) => !Number.isFinite(stream.integratedLufs))) {
+          throw new RigError(`A process capture was silent. Report: ${path}`);
+        }
+        return path;
+      } finally {
+        for (const player of players) stopPlayer(player, { keepLease: true });
+        await rm(wav, { force: true });
+      }
+    },
+    { wait: process.argv.includes("--wait") }
+  );
+  console.log(`Windows process timing report: ${reportPath}`);
 }
 
 if (process.argv[1] && pathToFileURL(process.argv[1]).href === import.meta.url) await main();

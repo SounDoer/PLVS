@@ -525,7 +525,7 @@ export function playerArgs(
   playerTarget,
   wavPath,
   platform = process.platform,
-  { loop = true } = {}
+  { loop = true, independent = false } = {}
 ) {
   const common = [
     "--intf",
@@ -534,7 +534,13 @@ export function playerArgs(
     ...(loop ? ["--loop"] : ["--no-loop", "--no-repeat", "--play-and-exit"]),
   ];
   if (platform === "win32") {
-    return [...common, "--aout=mmdevice", `--mmdevice-audio-device=${playerTarget}`, wavPath];
+    return [
+      ...common,
+      ...(independent ? ["--no-one-instance", "--no-one-instance-when-started-from-file"] : []),
+      "--aout=mmdevice",
+      `--mmdevice-audio-device=${playerTarget}`,
+      wavPath,
+    ];
   }
   if (platform === "darwin") {
     // The app launcher reads vlcrc by default. A saved auhal-volume changes the
@@ -617,7 +623,11 @@ export function resolveLinuxCaptureRoute({
   };
 }
 
-export async function startPlayer(playerTarget, wavPath, { wait = false, loop = true } = {}) {
+export async function startPlayer(
+  playerTarget,
+  wavPath,
+  { wait = false, loop = true, independent = false } = {}
+) {
   await takeRig({ wait });
   if (process.platform === "linux") {
     if (!existsSync("/usr/bin/paplay")) {
@@ -633,11 +643,15 @@ export async function startPlayer(playerTarget, wavPath, { wait = false, loop = 
     );
   }
   const vlc = locateVlc();
-  const child = spawn(vlc, playerArgs(playerTarget, wavPath, process.platform, { loop }), {
-    detached: false,
-    stdio: "ignore",
-    windowsHide: true,
-  });
+  const child = spawn(
+    vlc,
+    playerArgs(playerTarget, wavPath, process.platform, { loop, independent }),
+    {
+      detached: false,
+      stdio: "ignore",
+      windowsHide: true,
+    }
+  );
   return child;
 }
 
