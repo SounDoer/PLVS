@@ -28,6 +28,7 @@ import {
 import { settingsActionArguments, optimisticSettingsValue } from "../settingsTransport.js";
 import { useAccessoryKeyboardShortcuts } from "./useAccessoryKeyboardShortcuts.js";
 import { useAccessoryTargetReport } from "./useAccessoryTargetReport.js";
+import { MCP_SETUP_COPY_TARGET } from "../../agentControl/settingsSurfaceCatalog.js";
 
 const SETTINGS_ACK_TIMEOUT_MS = 10_000;
 const SETTINGS_ACTION_TIMEOUT_MS = 30_000;
@@ -328,6 +329,8 @@ function SettingsSession({ surface, payload, model, send: sendToMain, onError })
     const execute = async () => {
       if (request.kind === "target") {
         const controller = targets.current.get(request.key)?.current;
+        if (request.method === "run" && request.key !== MCP_SETUP_COPY_TARGET)
+          throw new Error("The requested Settings action is unavailable.");
         if (!controller?.[request.method])
           throw new Error("The requested Settings control is unavailable.");
         await controller[request.method](request.target);

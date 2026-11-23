@@ -11,6 +11,7 @@ import {
 import { useBlockingEditors } from "../hooks/BlockingEditorsContext.jsx";
 import { useUiSurfaceScopeActive } from "./uiSurfaceScope.jsx";
 import { holdNavigationSurfaces } from "./navigationHold.js";
+import { MCP_SETUP_COPY_TARGET } from "../agentControl/settingsSurfaceCatalog.js";
 import {
   createUiNavigationState,
   createUiNavigationError,
@@ -652,6 +653,14 @@ export function UiNavigationProvider({
         }
         const statusAction = target.startsWith("status-");
         const top = surfaces.filter((surface) => surface.kind !== "status").at(-1);
+        if (target === MCP_SETUP_COPY_TARGET) {
+          const copy = targetsRef.current.get(target)?.current;
+          if (top?.kind !== "settings" || top.target.section !== "agent-control" || !copy?.run) {
+            throw createUiNavigationError("uiTargetNotVisible", { control: target });
+          }
+          await copy.run();
+          return { copied: true };
+        }
         if (statusAction && (top?.kind !== "toolbarMenu" || top.target.menu !== "status")) {
           throw createUiNavigationError("uiTargetNotVisible", { target });
         }
@@ -864,7 +873,7 @@ export function useUiNavigationTarget(kind, targetOrController, maybeController 
   const controllerRef = useRef(controller);
   controllerRef.current = controller;
   useEffect(() => {
-    if (!registry) return undefined;
+    if (!registry || !key) return undefined;
     return registry.registerUiTarget(key, controllerRef);
   }, [key, registry]);
 }

@@ -12,8 +12,9 @@ and need no MCP setup.
 ## Setting it up
 
 1. Open **Settings** and turn on **Agent Control**.
-2. Under **MCP Setup**, copy the entry. It names this installation's `plvs-cli` and the argument
-   `mcp`, for example:
+2. Under **MCP Setup**, copy the prompt and send it to an agent that can register local MCP
+   servers. It asks the agent to register this installation and verify it with a read-only call.
+   The included JSON names this installation's `plvs-cli` and the argument `mcp`, for example:
 
    ```json
    {
@@ -26,16 +27,16 @@ and need no MCP setup.
    }
    ```
 
-3. Add it to your chat app as a local MCP server, then restart the app if it asks you to.
+3. To set up the connection manually, use the JSON from the prompt to add a local MCP server.
+   Start a new conversation or restart the chat app if prompted.
    - Apps with an MCP configuration file that uses `mcpServers` (Claude Desktop, for example) take
      the entry as it is, merged into that file.
    - Apps with a form for adding a local or "stdio" server take the same two values: the command
      path and the argument `mcp`.
    - A few apps name the outer key differently or use another file format; the command path and the
      argument `mcp` stay the same.
-   - Agents that can edit their own configuration can be asked to add the entry for you.
-4. Ask the chat app anything about PLVS. The line under **MCP Setup** then changes from "Not used
-   yet" to the app's name and the time it last used PLVS.
+4. Ask the chat app anything about PLVS. After the first MCP call, a line under **MCP Setup** shows
+   the app's name and when it last used PLVS.
 
 You register the entry once. Turning **Agent Control** off stops every chat app and terminal agent
 until you turn it on again; nothing needs to be removed. Only desktop apps can reach PLVS this way:

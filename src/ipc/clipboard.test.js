@@ -4,15 +4,39 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 const mocks = vi.hoisted(() => ({
   isTauri: vi.fn(),
   readText: vi.fn(),
+  writeText: vi.fn(),
 }));
 
 vi.mock("./env.js", () => ({ isTauri: mocks.isTauri }));
-vi.mock("@tauri-apps/plugin-clipboard-manager", () => ({ readText: mocks.readText }));
+vi.mock("@tauri-apps/plugin-clipboard-manager", () => ({
+  readText: mocks.readText,
+  writeText: mocks.writeText,
+}));
 
-import { readClipboardText } from "./clipboard.js";
+import { readClipboardText, writeClipboardText } from "./clipboard.js";
 
 beforeEach(() => {
   vi.clearAllMocks();
+});
+
+describe("writeClipboardText", () => {
+  it.each([true, false])(
+    "uses the native plugin only in the desktop shell (%s)",
+    async (desktop) => {
+      mocks.isTauri.mockReturnValue(desktop);
+      const webWrite = vi.fn().mockResolvedValue(undefined);
+      Object.defineProperty(navigator, "clipboard", {
+        configurable: true,
+        value: { writeText: webWrite },
+      });
+
+      await writeClipboardText("MCP setup text");
+      expect(desktop ? mocks.writeText : webWrite).toHaveBeenCalledExactlyOnceWith(
+        "MCP setup text"
+      );
+      expect(desktop ? webWrite : mocks.writeText).not.toHaveBeenCalled();
+    }
+  );
 });
 
 describe("readClipboardText", () => {

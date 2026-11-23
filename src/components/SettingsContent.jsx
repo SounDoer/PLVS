@@ -26,7 +26,7 @@ import { INTERFACE_SIZE_OPTIONS } from "@/settings/defaults.js";
 import { ThemePicker } from "./ThemePicker.jsx";
 import { SharesetsBrowseButton } from "./SharesetsBrowseButton.jsx";
 import { DOCS_URL, RELEASES_INDEX_URL, SHARESETS_URL } from "../ipc/openExternal.js";
-import { CopyableTextBlock } from "./CopyableTextBlock.jsx";
+import { CopyableTextBlock, CopyTextButton } from "./CopyableTextBlock.jsx";
 import { McpUsageStatus } from "./McpUsageStatus.jsx";
 import { UpdatePreferencesSettings } from "./UpdatePreferencesControls.jsx";
 import {
@@ -39,6 +39,13 @@ import { useUiNavigationTarget, useUiSurface } from "@/uiNavigation/UiNavigation
 import { UI_SETTINGS_SECTIONS, createUiNavigationError } from "@/uiNavigation/uiNavigationModel.js";
 import { useDropdownNavigation } from "@/uiNavigation/useDropdownNavigation.js";
 import { IconAction } from "@/components/ui/icon-action";
+import { MCP_SETUP_COPY_TARGET } from "../agentControl/settingsSurfaceCatalog.js";
+import { writeClipboardText } from "../ipc/clipboard.js";
+
+const MCP_SETUP_PROMPT = `Please connect to the PLVS app running on this computer using the local MCP configuration below.
+Check whether a server with the same name is already registered. Reuse it if its command, arguments, and any supplied environment variables match. If the configuration differs, ask me before changing it. If no matching server is registered and your environment supports local MCP registration, add it using the supplied configuration.
+Once the connection is available, use a read-only PLVS MCP tool to inspect the running app and report the revision it returns. If your environment cannot register local MCP servers, or if a restart or new conversation is required, tell me which steps are complete and what I need to do next.`;
+
 // Serves terminal agents (plvs-cli) and chat apps (the PLVS MCP tools) alike.
 const AGENT_CONTROL_PROMPT_STARTER =
   "Use PLVS’s built-in Agent Control: the PLVS MCP tools if they are connected, otherwise the `plvs-cli` command. First inspect the available capabilities and current app state, then help me...";
@@ -1101,9 +1108,15 @@ export function SettingsContent({
                 </div>
               ) : null}
               {agentControlEnabled && agentControlMcpSetup ? (
-                <div className="flex flex-col gap-1 px-2">
-                  <span className={ROW_LABEL_CLASS}>MCP Setup</span>
-                  <CopyableTextBlock value={agentControlMcpSetup} ariaLabel="copy mcp setup" />
+                <div>
+                  <SettingsRow label="MCP Setup">
+                    <CopyTextButton
+                      value={`${MCP_SETUP_PROMPT}\n\`\`\`json\n${agentControlMcpSetup}\n\`\`\``}
+                      ariaLabel="copy mcp setup"
+                      uiTarget={MCP_SETUP_COPY_TARGET}
+                      writeText={writeClipboardText}
+                    />
+                  </SettingsRow>
                   <McpUsageStatus />
                 </div>
               ) : null}

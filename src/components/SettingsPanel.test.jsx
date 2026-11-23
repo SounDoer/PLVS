@@ -7,7 +7,10 @@ import { BUILTIN_THEMES_V2 } from "../theme/builtinThemesV2.js";
 import { BlockingEditorsProvider } from "../hooks/BlockingEditorsContext.jsx";
 import { UiNavigationProvider, useUiNavigation } from "../uiNavigation/UiNavigationContext.jsx";
 import { DEFAULT_KEYBOARD_SHORTCUTS } from "../data/keyboardShortcutActions.js";
-import { SETTINGS_SURFACE_CONTROLS } from "../agentControl/settingsSurfaceCatalog.js";
+import {
+  MCP_SETUP_COPY_TARGET,
+  SETTINGS_SURFACE_CONTROLS,
+} from "../agentControl/settingsSurfaceCatalog.js";
 import { recordMcpUsage, resetMcpUsage } from "../agentControl/mcpUsage.js";
 
 const CUSTOM_THEME = {
@@ -170,7 +173,7 @@ describe("SettingsPanel", () => {
         hasUpdate
         latestVersion="0.23.5"
         updatePreferences={{ autoCheck: true, autoDownload: false }}
-        agentControlStatus={{ supported: true, cliInstalled: true, enabled: false }}
+        agentControlStatus={{ supported: true, cliInstalled: true, enabled: true, mcpSetup: "{}" }}
       />
     );
     // Shortcut rows are targeted per action, channel roles per channel, and the File controls live
@@ -629,8 +632,11 @@ describe("SettingsPanel", () => {
         agentControlStatus={{ ...status, enabled: true, listening: true }}
       />
     );
-    expect(screen.getByRole("textbox", { name: "copy mcp setup text" }).textContent).toBe(mcpSetup);
-    expect(screen.getByText("Not used yet")).toBeTruthy();
+    const mcpCopy = screen.getByRole("button", { name: "copy mcp setup" });
+    expect(mcpCopy.textContent).toBe("");
+    expect(screen.queryByRole("textbox", { name: "copy mcp setup text" })).toBeNull();
+    expect(screen.queryByText(mcpSetup)).toBeNull();
+    expect(screen.queryByText("Not used yet")).toBeNull();
     const labels = screen
       .getAllByText(/^(MCP Setup|Prompt Starter)$/)
       .map((node) => node.textContent);
@@ -638,7 +644,125 @@ describe("SettingsPanel", () => {
 
     act(() => recordMcpUsage("Claude"));
     expect(screen.getByText("Last used by Claude just now")).toBeTruthy();
-    resetMcpUsage();
+    act(() => resetMcpUsage());
+    expect(screen.queryByText(/Last used by/)).toBeNull();
+  });
+
+  it.each([
+    ["plvs", "/Applications/PLVS.app/Contents/MacOS/plvs-cli", undefined],
+    [
+      "plvs-dev",
+      "E:\\PLVS\\src-tauri\\target\\debug\\plvs-cli.exe",
+      { PLVS_TEST_IDENTITY_ROOT: "E:\\PLVS\\.dev-data\\multi-instance" },
+    ],
+    ["plvs-preview", "/usr/bin/plvs-preview-cli", undefined],
+  ])("copies the setup prompt and preserves the %s registration", async (name, command, env) => {
+    const configuration = { mcpServers: { [name]: { command, args: ["mcp"], env } } };
+    const mcpSetup = JSON.stringify(configuration, null, 2);
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    const previousClipboard = Object.getOwnPropertyDescriptor(navigator, "clipboard");
+    Object.defineProperty(navigator, "clipboard", { configurable: true, value: { writeText } });
+
+    try {
+      render(
+        <SettingsPanel
+          {...BASE_PROPS}
+          agentControlStatus={{
+            supported: true,
+            enabled: true,
+            listening: true,
+            cliInstalled: true,
+            mcpSetup,
+          }}
+        />
+      );
+
+      const copy = screen.getByRole("button", { name: "copy mcp setup" });
+      fireEvent.click(copy);
+      await waitFor(() => expect(copy.getAttribute("data-copy-state")).toBe("copied"));
+      expect(writeText).toHaveBeenCalledOnce();
+      const [copied] = writeText.mock.calls[0];
+      expect(copied).toMatch(/^Please connect to the PLVS app running on this computer/);
+      expect(copied).toContain("command, arguments, and any supplied environment variables match");
+      expect(copied).toContain("use a read-only PLVS MCP tool");
+      expect(copied).not.toContain("\n\n");
+      expect(copied.endsWith(`\n\`\`\`json\n${mcpSetup}\n\`\`\``)).toBe(true);
+    } finally {
+      if (previousClipboard) Object.defineProperty(navigator, "clipboard", previousClipboard);
+      else Reflect.deleteProperty(navigator, "clipboard");
+    }
+  });
+
+  it("copies MCP Setup through its named action only from the active section", async () => {
+    /** @type {any} */
+    let navigation;
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    const previousClipboard = Object.getOwnPropertyDescriptor(navigator, "clipboard");
+    Object.defineProperty(navigator, "clipboard", { configurable: true, value: { writeText } });
+
+    function Harness() {
+      navigation = useUiNavigation();
+      return (
+        <SettingsPanel
+          {...BASE_PROPS}
+          agentControlStatus={{
+            supported: true,
+            enabled: true,
+            listening: true,
+            cliInstalled: true,
+            mcpSetup: '{"mcpServers":{"plvs":{"command":"/opt/plvs-cli","args":["mcp"]}}}',
+          }}
+        />
+      );
+    }
+
+    try {
+      render(
+        <BlockingEditorsProvider>
+          <UiNavigationProvider getRevision={() => 7}>
+            <Harness />
+          </UiNavigationProvider>
+        </BlockingEditorsProvider>
+      );
+      const tokens = () => ({ expectedRevision: 7, expectedUiGeneration: navigation.uiGeneration });
+      const copySetup = (expected = tokens()) =>
+        navigation.runNamedAction({ target: MCP_SETUP_COPY_TARGET, ...expected });
+      await expect(copySetup()).rejects.toMatchObject({ reason: "uiTargetNotVisible" });
+      expect(writeText).not.toHaveBeenCalled();
+
+      const stale = tokens();
+      let opened;
+      await act(async () => {
+        opened = navigation.showSettings({ section: "agent-control", ...tokens() });
+        await Promise.resolve();
+      });
+      await opened;
+      await expect(copySetup(stale)).rejects.toMatchObject({ reason: "uiGenerationConflict" });
+      expect(writeText).not.toHaveBeenCalled();
+
+      await act(async () => {
+        await expect(copySetup()).resolves.toEqual({ copied: true });
+      });
+      const button = screen.getByRole("button", { name: "copy mcp setup" });
+      expect(writeText).toHaveBeenCalledOnce();
+      const [agentCopy] = writeText.mock.calls[0];
+      expect(button.getAttribute("data-copy-state")).toBe("copied");
+      await act(async () => fireEvent.click(button));
+      expect(writeText).toHaveBeenCalledTimes(2);
+      expect(writeText).toHaveBeenLastCalledWith(agentCopy);
+
+      writeText.mockRejectedValueOnce(new Error("clipboard busy"));
+      await act(async () => {
+        await expect(copySetup()).rejects.toMatchObject({
+          reason: "uiActionUnavailable",
+          message: "Could not write to the system clipboard.",
+          details: { action: "copy", control: MCP_SETUP_COPY_TARGET },
+        });
+      });
+    } finally {
+      if (previousClipboard) Object.defineProperty(navigator, "clipboard", previousClipboard);
+      else Reflect.deleteProperty(navigator, "clipboard");
+    }
   });
 
   it("omits MCP Setup when the CLI is not installed", () => {

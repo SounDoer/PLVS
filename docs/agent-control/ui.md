@@ -101,7 +101,7 @@ Every CLI request is scoped to one Agent Control instance. With several workbenc
 `instances` and the global `--instance <instance-id>` option. Surface IDs and UI generations belong
 only to that selected instance and must not be reused with another workbench.
 
-## Status actions and fixed help destinations
+## Status actions, fixed help destinations, and MCP Setup
 
 Use `ui inspect` to read the current Status entries, then open the Status toolbar menu.
 Run `ui action --target <id>` with the revision and UI generation returned by the open
@@ -116,6 +116,13 @@ Fixed help destinations are `help:docs`, `help:releases`, `help:sharesets`, and
 `help:dialogue-detector`. The last uses the current Dialogue Detection setting. They
 can be opened directly. A successful external action returns the URL accepted by the
 system opener. Browser rendering and scrolling are outside the command result.
+
+To copy the full **MCP Setup** prompt and JSON, first open `ui show settings --section agent-control`.
+Use `ui action --target setting:agentControl.copyMcpSetup` with the current revision and UI
+generation. This runs the Settings copy button in either window form, writes to the system clipboard,
+and returns `copied: true` on success. The action requires **MCP Setup** to be available in the
+active section. The revision and UI generation stay the same. If the clipboard write fails, the
+command reports `uiActionUnavailable` with a clipboard error message.
 
 ## Two concurrency tokens
 

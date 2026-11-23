@@ -644,7 +644,7 @@ None.
 
 ## `ui.action`
 
-Run a named Status action or open a fixed help destination.
+Run a named Status action, open a fixed help destination, or copy MCP Setup.
 
 - CLI path: `ui action`
 - Execution: `runningApp`; operation: `action`

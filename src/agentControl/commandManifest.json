@@ -818,7 +818,7 @@
       "family": "ui",
       "path": ["ui", "action"],
       "usage": "plvs-cli ui action --target <target-id> --expected-revision <n> --expected-ui-generation <n> --json",
-      "summary": "Run a named Status action or open a fixed help destination.",
+      "summary": "Run a named Status action, open a fixed help destination, or copy MCP Setup.",
       "execution": "runningApp",
       "operation": "action",
       "wireMethod": "ui.action",

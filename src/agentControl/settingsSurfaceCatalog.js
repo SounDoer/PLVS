@@ -1,3 +1,5 @@
+export const MCP_SETUP_COPY_TARGET = "setting:agentControl.copyMcpSetup";
+
 /**
  * Every user-operable Settings control and public File preference have explicit owners.
  * Settings Control exposes entries owned by `settings`. Other owners point to their existing
@@ -32,6 +34,7 @@ export const SETTINGS_SURFACE_CONTROLS = Object.freeze([
   { id: "transfer.configurationImport", owner: "configuration" },
   { id: "transfer.configurationReset", owner: "configuration" },
   { id: "agentControl.enabled", owner: "userOnly", reason: "permissionBoundary" },
+  { id: "agentControl.copyMcpSetup", owner: "ui" },
   { id: "updates.autoCheck", owner: "settings", field: "updates" },
   { id: "updates.autoDownload", owner: "settings", field: "updates" },
   { id: "updates.askToSendCrashReports", owner: "settings", field: "askToSendCrashReports" },

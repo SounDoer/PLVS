@@ -1,0 +1,7 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "settings-clipboard",
+  "description": "Lets MCP Setup copy text from either Settings presentation",
+  "windows": ["main", "dock-settings"],
+  "permissions": ["clipboard-manager:allow-write-text"]
+}

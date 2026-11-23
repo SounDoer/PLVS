@@ -20,6 +20,7 @@ import {
 } from "../uiNavigation/uiNavigationModel.js";
 import { useUiSurfaceRegistry } from "../uiNavigation/UiNavigationContext.jsx";
 import { useOptionalEditorDraftRegistry } from "../agentControl/EditorDraftContext.jsx";
+import { MCP_SETUP_COPY_TARGET } from "../agentControl/settingsSurfaceCatalog.js";
 
 const REMOTE_KINDS = new Set([
   "settings",
@@ -124,6 +125,14 @@ export function useDockSettingsWindow(options) {
         );
       }
       for (const key of snapshot.targets ?? []) {
+        if (key === MCP_SETUP_COPY_TARGET && surface === "dock-settings") {
+          registrations.current.push(
+            registry.registerUiTarget(key, {
+              current: { run: () => requestUi("target", key, "run") },
+            })
+          );
+          continue;
+        }
         if (!key.startsWith("dropdown:")) continue;
         registrations.current.push(
           registry.registerUiTarget(key, {
@@ -140,7 +149,7 @@ export function useDockSettingsWindow(options) {
         );
       }
     },
-    [clearRegistry, drafts, registry, requestUi]
+    [clearRegistry, drafts, registry, requestUi, surface]
   );
 
   const dispatch = useRef(null);

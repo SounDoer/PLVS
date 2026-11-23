@@ -22,7 +22,7 @@ describe("default Tauri capabilities", () => {
     expect(capability.permissions).toContain("dialog:allow-save");
   });
 
-  it("allows only native clipboard text reads for pasting shared Themes", () => {
+  it("keeps native clipboard text reads for pasting shared Themes in the main capability", () => {
     const clipboard = capability.permissions.filter(
       (permission) => typeof permission === "string" && permission.startsWith("clipboard-manager:")
     );
@@ -40,6 +40,14 @@ describe("default Tauri capabilities", () => {
     expect(capability.windows).toEqual(["main"]);
     expect(accessoryCapability.windows).not.toContain("main");
   });
+});
+
+it("grants native clipboard text writes only to the two Settings hosts", () => {
+  const settingsClipboard = JSON.parse(
+    readFileSync(join(currentDir, "settings-clipboard.json"), "utf8")
+  );
+  expect(settingsClipboard.windows).toEqual(["main", "dock-settings"]);
+  expect(settingsClipboard.permissions).toEqual(["clipboard-manager:allow-write-text"]);
 });
 
 describe("Dock accessory Tauri capabilities", () => {
