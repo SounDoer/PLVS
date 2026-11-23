@@ -66,8 +66,11 @@ const MACOS_AUDIO_PROBE = join(ROOT, "scripts", "macos", "core-audio-output.swif
 /** The rig is unusable: not a code signal. Callers map this to exit 2. */
 export class RigError extends Error {}
 
-export async function synthesizeSignal(path, { seconds = SIGNAL.seconds } = {}) {
-  const { sampleRateHz, freqHz, peakLDb, peakRDb } = SIGNAL;
+export async function synthesizeSignal(
+  path,
+  { seconds = SIGNAL.seconds, peakLDb = SIGNAL.peakLDb, peakRDb = SIGNAL.peakRDb } = {}
+) {
+  const { sampleRateHz, freqHz } = SIGNAL;
   const ampL = 10 ** (peakLDb / 20);
   const ampR = 10 ** (peakRDb / 20);
   const frames = Math.round(sampleRateHz * seconds);

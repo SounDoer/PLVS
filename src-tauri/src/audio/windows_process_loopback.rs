@@ -531,6 +531,124 @@ pub fn capture_process_to_summary_with_format(
   sample_rate: u32,
   channels: u16,
 ) -> Result<ProcessLoopbackProbeResult, String> {
+  capture_process_probe(process_id, duration, sample_rate, channels, |_| {})
+}
+
+/// Probe two 48 kHz stereo streams and measure their aligned, overlapping PCM.
+pub fn capture_stereo_mix_probe(
+  process_ids: [u32; 2],
+  seconds: u64,
+) -> Result<
+  (
+    [ProcessLoopbackProbeResult; 2],
+    Result<MixProbeMeasurement, String>,
+  ),
+  String,
+> {
+  if !(1..=60).contains(&seconds) {
+    return Err("mix probe duration must be between 1 and 60 seconds".to_string());
+  }
+  let capture = |pid| {
+    let mut samples = Vec::new();
+    let report = capture_process_probe(
+      pid,
+      Duration::from_secs(seconds),
+      DEFAULT_SAMPLE_RATE,
+      DEFAULT_CHANNELS,
+      |packet| samples.extend_from_slice(packet),
+    )?;
+    Ok::<_, String>((report, samples))
+  };
+
+  let ((left_report, left), (right_report, right)) = std::thread::scope(|scope| {
+    let second = scope.spawn(|| capture(process_ids[1]));
+    let first = capture(process_ids[0]);
+    let second = second
+      .join()
+      .map_err(|_| "second capture thread panicked")?;
+    Ok::<_, String>((first?, second?))
+  })?;
+  let mixed =
+    measure_aligned_stereo([(&left_report.timing, &left), (&right_report.timing, &right)]);
+  Ok(([left_report, right_report], mixed))
+}
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct MixProbeMeasurement {
+  compared_frames: usize,
+  integrated_lufs: f64,
+  true_peak_max_dbtp: f64,
+  sample_peak_max_l_db: f64,
+  sample_peak_max_r_db: f64,
+}
+
+fn measure_aligned_stereo(
+  streams: [(&ProcessLoopbackTiming, &[f32]); 2],
+) -> Result<MixProbeMeasurement, String> {
+  let mut start = [0; 2];
+  let mut pcm = [&[][..]; 2];
+  for (index, (timing, samples)) in streams.into_iter().enumerate() {
+    let first = timing.first.ok_or("capture has no valid QPC anchor")?;
+    // This probe only sums contiguous captures. Live capture will need to handle gaps and drift.
+    let half_frame_ms = 500.0 / f64::from(DEFAULT_SAMPLE_RATE);
+    if timing.discontinuity_packets > 0
+      || timing.invalid_timestamp_packets > 0
+      || timing.non_advancing_qpc > 0
+      || timing.max_qpc_frame_error_ms > half_frame_ms
+    {
+      return Err(format!(
+        "capture {} does not have a contiguous PCM clock",
+        index + 1
+      ));
+    }
+    start[index] = first.qpc_100ns;
+    pcm[index] = samples;
+  }
+
+  let common_start = start[0].max(start[1]);
+  let overlap = pcm.map(|samples| samples.chunks_exact(2));
+  let [first, second] = overlap;
+  // Subtract the common epoch before rounding to the nearest frame, keeping the calculation exact.
+  let offset = |qpc| {
+    let ticks = u128::from(common_start - qpc);
+    ((ticks * u128::from(DEFAULT_SAMPLE_RATE) + 5_000_000) / 10_000_000) as usize
+  };
+  let first = first.skip(offset(start[0]));
+  let second = second.skip(offset(start[1]));
+  let compared_frames = first.len().min(second.len());
+  if compared_frames == 0 {
+    return Err("captures did not overlap".to_string());
+  }
+
+  let mut meter = SummaryMeter::new(DEFAULT_SAMPLE_RATE, DEFAULT_CHANNELS);
+  const BLOCK_SAMPLES: usize = 1024;
+  let mut block = Vec::with_capacity(BLOCK_SAMPLES);
+  for (a, b) in first.zip(second) {
+    block.extend_from_slice(&[a[0] + b[0], a[1] + b[1]]);
+    if block.len() == BLOCK_SAMPLES {
+      meter.push_interleaved(&block);
+      block.clear();
+    }
+  }
+  meter.push_interleaved(&block);
+  let metrics = meter.finish();
+  Ok(MixProbeMeasurement {
+    compared_frames,
+    integrated_lufs: metrics.integrated_lufs,
+    true_peak_max_dbtp: metrics.true_peak_max_dbtp,
+    sample_peak_max_l_db: metrics.sample_peak_max_l_db,
+    sample_peak_max_r_db: metrics.sample_peak_max_r_db,
+  })
+}
+
+fn capture_process_probe(
+  process_id: u32,
+  duration: Duration,
+  sample_rate: u32,
+  channels: u16,
+  mut on_pcm: impl FnMut(&[f32]),
+) -> Result<ProcessLoopbackProbeResult, String> {
   if process_id == 0 {
     return Err("process id must be non-zero".to_string());
   }
@@ -615,6 +733,7 @@ pub fn capture_process_to_summary_with_format(
         if (flags & AUDCLNT_BUFFERFLAGS_SILENT.0 as u32) != 0 {
           silent_samples.resize(sample_count, 0.0);
           meter.push_interleaved(&silent_samples);
+          on_pcm(&silent_samples);
           silent_frames += u64::from(frames);
         } else {
           let samples = unsafe { std::slice::from_raw_parts(data.cast::<f32>(), sample_count) };
@@ -624,6 +743,7 @@ pub fn capture_process_to_summary_with_format(
             }
           }
           meter.push_interleaved(samples);
+          on_pcm(samples);
         }
         captured_frames += u64::from(frames);
         unsafe { capture_client.ReleaseBuffer(frames) }
@@ -652,13 +772,33 @@ pub fn capture_process_to_summary_with_format(
 
 #[cfg(test)]
 mod tests {
-  use super::{capture_format, ActivationPayload, CaptureFormat, ProcessLoopbackTiming};
+  use super::{
+    capture_format, measure_aligned_stereo, ActivationPayload, CaptureFormat, ProcessLoopbackTiming,
+  };
   use windows::Win32::Media::Audio::{
     AUDCLNT_BUFFERFLAGS_DATA_DISCONTINUITY, AUDCLNT_BUFFERFLAGS_TIMESTAMP_ERROR,
     AUDIOCLIENT_ACTIVATION_TYPE_PROCESS_LOOPBACK,
     PROCESS_LOOPBACK_MODE_INCLUDE_TARGET_PROCESS_TREE,
   };
   use windows::Win32::System::Variant::VT_BLOB;
+
+  #[test]
+  fn mix_probe_aligns_offset_packets_and_preserves_over_range_peaks() {
+    let mut early = ProcessLoopbackTiming::default();
+    early.record(0, 100_000, 0, 48_000, 0);
+    let mut late = ProcessLoopbackTiming::default();
+    late.record(0, 100_208, 0, 48_000, 0);
+
+    let mix = measure_aligned_stereo([
+      (&early, &[0.0, 0.0, 0.75, 0.25]),
+      (&late, &[0.75, -0.25, 0.0, 0.0]),
+    ])
+    .unwrap();
+
+    assert_eq!(mix.compared_frames, 1);
+    assert!((mix.sample_peak_max_l_db - 20.0 * 1.5_f64.log10()).abs() < 0.000_001);
+    assert!(!mix.sample_peak_max_r_db.is_finite());
+  }
 
   #[test]
   fn probe_distinguishes_timestamp_errors_from_discontinuities() {

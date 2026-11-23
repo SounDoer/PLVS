@@ -9,6 +9,7 @@ import { dirname, join, resolve } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import {
   RigError,
+  SIGNAL,
   compareMetrics,
   harnessArgs,
   locateHarness,
@@ -272,15 +273,23 @@ async function runProcessTimingProbe(index) {
   }
   const seconds = parsePositive("seconds", 15);
   if (!Number.isSafeInteger(seconds)) throw new RigError("--seconds must be an integer.");
+  const measureMix = process.argv.includes("--measure-mix");
+  if (measureMix && seconds > 60) throw new RigError("Mix measurement accepts up to 60 seconds.");
   const wav = join(tmpdir(), `plvs-process-timing-${process.pid}.wav`);
+  const secondWav = measureMix ? join(tmpdir(), `plvs-process-mix-right-${process.pid}.wav`) : wav;
   const reportPath = await withCaptureRig(
     async () => {
       const players = [];
       try {
         const endpoint = resolveRenderEndpointId();
-        await synthesizeSignal(wav, { seconds: seconds + 15 });
-        for (let player = 0; player < 2; player += 1) {
-          const child = await startPlayer(endpoint, wav, { independent: true });
+        await synthesizeSignal(wav, {
+          seconds: seconds + 15,
+          ...(measureMix ? { peakRDb: -Infinity } : {}),
+        });
+        if (measureMix)
+          await synthesizeSignal(secondWav, { seconds: seconds + 15, peakLDb: -Infinity });
+        for (const file of [wav, secondWav]) {
+          const child = await startPlayer(endpoint, file, { independent: true });
           players.push(child);
           if (child.pid === undefined) await once(child, "spawn");
         }
@@ -289,7 +298,13 @@ async function runProcessTimingProbe(index) {
           throw new RigError("A test player exited before capture began.");
         }
         const [first, second] = players.map((player) => String(player.pid));
-        const probe = runCli(resolve(executable), [first, String(seconds), "--with-pid", second]);
+        const probe = runCli(resolve(executable), [
+          first,
+          String(seconds),
+          "--with-pid",
+          second,
+          ...(measureMix ? ["--mix"] : []),
+        ]);
         const report = parseJsonLines(probe.stdout).at(-1);
         if (probe.status !== 0 || report?.streams?.length !== 2) {
           throw new RigError(`Process timing probe failed: ${probe.stderr.trim() || "no report"}`);
@@ -301,10 +316,40 @@ async function runProcessTimingProbe(index) {
         if (report.streams.some((stream) => !Number.isFinite(stream.integratedLufs))) {
           throw new RigError(`A process capture was silent. Report: ${path}`);
         }
+        if (measureMix) {
+          const [left, right] = report.streams;
+          const mixed = report.mix?.Ok;
+          if (!mixed)
+            throw new RigError(`Mix could not be measured: ${report.mix?.Err}. Report: ${path}`);
+          if (left.samplePeakMaxRDb !== null || right.samplePeakMaxLDb !== null) {
+            throw new RigError(
+              `The process captures did not isolate the two test signals. Report: ${path}`
+            );
+          }
+          const expected = {
+            integratedLufs:
+              10 * Math.log10(10 ** (left.integratedLufs / 10) + 10 ** (right.integratedLufs / 10)),
+            samplePeakMaxLDb: SIGNAL.peakLDb,
+            samplePeakMaxRDb: SIGNAL.peakRDb,
+          };
+          const comparison = compareMetrics(expected, mixed);
+          if (!comparison.ok)
+            throw new Error(
+              `Mix readings differ: ${JSON.stringify(comparison.failures)}. Report: ${path}`
+            );
+          const expectedTruePeak = Math.max(left.truePeakMaxDbtp, right.truePeakMaxDbtp);
+          if (
+            !Number.isFinite(mixed.truePeakMaxDbtp) ||
+            Math.abs(mixed.truePeakMaxDbtp - expectedTruePeak) > 0.2
+          ) {
+            throw new Error(`Mix True Peak differs from the isolated captures. Report: ${path}`);
+          }
+        }
         return path;
       } finally {
         for (const player of players) stopPlayer(player, { keepLease: true });
         await rm(wav, { force: true });
+        if (measureMix) await rm(secondWav, { force: true });
       }
     },
     { wait: process.argv.includes("--wait") }

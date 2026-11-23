@@ -3,11 +3,12 @@ fn main() -> Result<(), String> {
   use std::time::Duration;
 
   use app_lib::{
-    capture_process_to_summary_with_format, list_capture_applications, ProcessLoopbackProbeResult,
+    capture_process_to_summary_with_format, capture_stereo_mix_probe, list_capture_applications,
+    ProcessLoopbackProbeResult,
   };
   use serde_json::json;
 
-  const USAGE: &str = "usage: process_loopback_probe <pid> [seconds] [--channels <n>] [--sample-rate <hz>] [--with-pid <pid>] [--json]";
+  const USAGE: &str = "usage: process_loopback_probe <pid> [seconds] [--channels <n>] [--sample-rate <hz>] [--with-pid <pid> [--mix]] [--json]";
 
   fn json_report(result: &ProcessLoopbackProbeResult) -> serde_json::Value {
     json!({
@@ -50,6 +51,7 @@ fn main() -> Result<(), String> {
   let mut json_output = false;
   let mut seconds_arg = None;
   let mut second_pid = None;
+  let mut mix = false;
   let mut channels = 2u16;
   let mut sample_rate = 48_000u32;
   let mut index = 0;
@@ -82,6 +84,10 @@ fn main() -> Result<(), String> {
         second_pid = Some(pid);
         index += 2;
       }
+      "--mix" => {
+        mix = true;
+        index += 1;
+      }
       value if seconds_arg.is_none() => {
         seconds_arg = Some(value.to_string());
         index += 1;
@@ -97,6 +103,19 @@ fn main() -> Result<(), String> {
   let capture = |pid| {
     capture_process_to_summary_with_format(pid, Duration::from_secs(seconds), sample_rate, channels)
   };
+  if mix {
+    let second_pid = second_pid.ok_or("--mix requires --with-pid")?;
+    if sample_rate != 48_000 || channels != 2 {
+      return Err("--mix requires 48 kHz stereo".to_string());
+    }
+    let ([first, second], measurement) =
+      capture_stereo_mix_probe([process_id, second_pid], seconds)?;
+    println!(
+      "{}",
+      json!({"streams": [json_report(&first), json_report(&second)], "mix": measurement})
+    );
+    return Ok(());
+  }
   if let Some(second_pid) = second_pid {
     let (first, second) = std::thread::scope(|scope| {
       let second = scope.spawn(|| capture(second_pid));

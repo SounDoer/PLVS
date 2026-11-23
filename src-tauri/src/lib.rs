@@ -70,7 +70,8 @@ pub use audio::windows_capture_apps::{list_capture_applications, CaptureApplicat
 #[cfg(target_os = "windows")]
 pub use audio::windows_process_loopback::{
   capture_process_to_summary, capture_process_to_summary_with_channels,
-  capture_process_to_summary_with_format, ProcessLoopbackProbeResult, ProcessLoopbackTiming,
+  capture_process_to_summary_with_format, capture_stereo_mix_probe, MixProbeMeasurement,
+  ProcessLoopbackProbeResult, ProcessLoopbackTiming,
 };
 pub use audio::{
   AppAudioBackend, AudioCapture, AudioCaptureSession, DeviceInfo, MeasuredPcmReceiver,
