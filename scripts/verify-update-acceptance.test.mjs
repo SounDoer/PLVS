@@ -1,6 +1,6 @@
-import { mkdirSync, utimesSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, rmSync, utimesSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
 import path from "node:path";
-import process from "node:process";
 import { describe, expect, it } from "vitest";
 
 import { parseVerifyArguments, selectRunDirectory } from "./verify-update-acceptance.mjs";
@@ -10,8 +10,9 @@ describe("update acceptance verifier", () => {
     expect(parseVerifyArguments(["artifacts/root", "--run", "run-1"]).runId).toBe("run-1");
   });
 
-  it("selects the newest completed run", () => {
-    const root = path.join(process.cwd(), "artifacts", `verify-fixture-${process.pid}`);
+  it("selects the newest completed run", ({ onTestFinished }) => {
+    const root = mkdtempSync(path.join(tmpdir(), "plvs-verify-fixture-"));
+    onTestFinished(() => rmSync(root, { recursive: true, force: true }));
     const older = path.join(root, "runs", "older");
     const newer = path.join(root, "runs", "newer");
     mkdirSync(older, { recursive: true });
