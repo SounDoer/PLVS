@@ -25,7 +25,7 @@ describe("UpdateDialog", () => {
   });
 
   it("renders the version and basic Markdown without rendering raw HTML", () => {
-    const { container } = render(
+    render(
       <UpdateDialog
         {...BASE_PROPS}
         releaseNotes={"### Fixed\n- Safer updates\n\n<span data-unsafe>unsafe</span>"}
@@ -35,7 +35,7 @@ describe("UpdateDialog", () => {
     expect(screen.getByText("What's new since v0.9.4")).toBeTruthy();
     expect(screen.getByRole("heading", { name: "Fixed" })).toBeTruthy();
     expect(screen.getByText("Safer updates")).toBeTruthy();
-    expect(container.querySelector("[data-unsafe]")).toBeNull();
+    expect(screen.getByRole("dialog").querySelector("[data-unsafe]")).toBeNull();
   });
 
   it("shows a neutral heading when the installed version is unknown", () => {
@@ -55,6 +55,63 @@ describe("UpdateDialog", () => {
 
     fireEvent.click(screen.getByRole("link", { name: "Full notes" }));
     expect(openExternalUrl).toHaveBeenCalledWith("https://example.com/release");
+  });
+
+  it("preserves release-note formatting, reference links, and entity decoding", () => {
+    const openExternalUrl = vi.fn();
+    render(
+      <UpdateDialog
+        {...BASE_PROPS}
+        releaseNotes={[
+          "### Fixed",
+          "",
+          "3. **File &amp; Live** use `Ready`.",
+          "   - See [the guide][guide].",
+          "",
+          "> _Note:_ applies after restart.",
+          "",
+          "```text",
+          "<unchanged>",
+          "```",
+          "",
+          '[guide]: https://example.com/guide?a=1&amp;b=2 "Guide"',
+        ].join("\n")}
+        openExternalUrl={openExternalUrl}
+      />
+    );
+
+    const dialog = screen.getByRole("dialog");
+    expect(dialog.querySelector("ol")?.start).toBe(3);
+    expect(dialog.querySelector("ol ul")).toBeTruthy();
+    expect(dialog.querySelector("strong")?.textContent).toBe("File & Live");
+    expect(dialog.querySelector("blockquote em")?.textContent).toBe("Note:");
+    expect(dialog.querySelector("pre code.language-text")?.textContent).toBe("<unchanged>\n");
+    const guide = screen.getByRole("link", { name: "the guide" });
+    fireEvent.click(guide);
+    expect(openExternalUrl).toHaveBeenCalledWith("https://example.com/guide?a=1&b=2");
+  });
+
+  it("does not activate raw HTML, inline scripts, or unsafe Markdown URLs", () => {
+    const openExternalUrl = vi.fn();
+    render(
+      <UpdateDialog
+        {...BASE_PROPS}
+        releaseNotes={[
+          '<img src="https://example.com/raw.png" onerror="void 0">',
+          "",
+          "<script>void 0</script>",
+          "",
+          "[Link](javascript&#58;void%200) and ![Image](data:text/html,raw)",
+        ].join("\n")}
+        openExternalUrl={openExternalUrl}
+      />
+    );
+
+    expect(screen.getByRole("dialog").querySelector("script, img[src], [onerror]")).toBeNull();
+    const label = screen.getByText("Link");
+    expect(label.hasAttribute("href")).toBe(false);
+    fireEvent.click(label);
+    expect(openExternalUrl).not.toHaveBeenCalled();
   });
 
   it("cancels without confirming", () => {
