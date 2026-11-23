@@ -87,7 +87,7 @@ export default defineConfig({
       if (p === "darwin" || p === "linux" || p === "android" || p === "ios") return "safari16";
       return undefined;
     })(),
-    minify: process.env.TAURI_DEBUG ? false : "esbuild",
+    minify: !process.env.TAURI_DEBUG,
     // PLVS_BUILD_SOURCEMAP is for profiling, and is deliberately not TAURI_DEBUG: that one also
     // turns minification off, which changes the very shape being measured. This keeps the shipped
     // code exactly as it ships and only emits the map beside it, so a recorded frame can be named

@@ -19,13 +19,10 @@
  *
  * Run: node scripts/waveform-render-benchmark.mjs
  */
-import { mkdtempSync, writeFileSync } from "node:fs";
-import { tmpdir } from "node:os";
-import { join } from "node:path";
 import { performance } from "node:perf_hooks";
 import { fileURLToPath, pathToFileURL } from "node:url";
 
-import { build } from "esbuild";
+import { createServer } from "vite";
 
 /** `drawWaveformCanvas` reads one CSS token, the stroke width. */
 function installDomStubs() {
@@ -37,42 +34,31 @@ function installDomStubs() {
 }
 installDomStubs();
 
-const repoRoot = fileURLToPath(new URL("..", import.meta.url));
-
 /**
- * `drawWaveformCanvas` lives in a `.jsx` module behind the `@` alias, which Node cannot load and
- * this benchmark must not restructure the app to work around. esbuild resolves both, once, before
- * the clock starts; the bundling cost is not part of any measurement.
+ * Load the painter with the project's JSX and alias resolution before timing begins.
+ * Vite's module runner evaluates it in this process against the DOM stubs above.
  */
 async function loadPainter() {
-  const outDir = mkdtempSync(join(tmpdir(), "plvs-waveform-bench-"));
-  const entry = join(outDir, "entry.mjs");
-  const outfile = join(outDir, "bundle.mjs");
-  writeFileSync(
-    entry,
-    'export { drawWaveformCanvas } from "@/components/panels/WaveformPanel.jsx";\n'
-  );
-  await build({
-    entryPoints: [entry],
-    outfile,
-    bundle: true,
-    format: "esm",
-    platform: "node",
-    logLevel: "error",
-    alias: { "@": join(repoRoot, "src") },
-    loader: { ".jsx": "jsx" },
-    jsx: "automatic",
+  const server = await createServer({
+    root: fileURLToPath(new URL("..", import.meta.url)),
+    appType: "custom",
+    logLevel: "warn",
+    server: { middlewareMode: true, ws: false, watch: null },
+    optimizeDeps: { noDiscovery: true },
   });
-  return import(pathToFileURL(outfile).href);
+  try {
+    return await server.environments.ssr.runner.import("/src/components/panels/WaveformPanel.jsx");
+  } finally {
+    await server.close();
+  }
 }
 
 const { sliceWaveformSubHistory, sliceWaveformSubHistoryFromIndex } =
   await import("../src/math/waveformMath.js");
 const { WaveformHistoryIndex } = await import("../src/math/waveformHistoryIndex.js");
 const { LoudnessHistorySlab } = await import("../src/lib/LoudnessHistorySlab.js");
-const { sliceSpectralWaveformMetrics, parseCssRgb, waveformFrequencyRgb } = await import(
-  "../src/math/spectralWaveformMath.js"
-);
+const { sliceSpectralWaveformMetrics, parseCssRgb, waveformFrequencyRgb } =
+  await import("../src/math/spectralWaveformMath.js");
 const { DEFAULT_WAVEFORM_CANVAS_COLORS } = await import("../src/theme/themeCanvasSelectors.js");
 const { drawWaveformCanvas } = await loadPainter();
 
