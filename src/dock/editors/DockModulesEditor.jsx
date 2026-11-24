@@ -8,10 +8,9 @@ import {
 } from "../../components/ManagementRow.jsx";
 import { AddButton } from "../../components/AddButton.jsx";
 import { TruncatingLabel } from "../../components/TruncatingLabel.jsx";
-import { cn } from "../../lib/utils.js";
 import { MODULE_REGISTRY } from "../../workspace/registry.jsx";
 import { resolvePanelDisplayName } from "../../workspace/panelInstances.js";
-import { usePointerReorder, reorderIdsAtPointer } from "../../hooks/usePointerReorder.js";
+import { SortableList } from "@/components/ui/sortable-list.jsx";
 import {
   DOCK_PANEL_MODULE_IDS,
   dockModuleIdForPanelModuleId,
@@ -25,13 +24,10 @@ import { MenuRow } from "@/components/ui/row";
 
 const DOCK_ONLY_PANEL_META = {};
 
-export const reorderDockModulesAtPointer = reorderIdsAtPointer;
-
 function DockModuleRow({
   panel,
   title,
-  dragging,
-  onDragStart,
+  handle,
   onRename,
   onRemove,
   onHover,
@@ -90,16 +86,11 @@ function DockModuleRow({
   return (
     <div
       data-testid={`dock-panel-row-${panel.id}`}
-      className={cn(MANAGEMENT_ROW_CLASS, dragging && "z-10 ring-1 ring-primary")}
+      className={MANAGEMENT_ROW_CLASS}
       onMouseEnter={() => onHover?.(panel.id)}
       onMouseLeave={() => onHover?.(null)}
     >
-      <DragHandle
-        aria-label={`Reorder ${title}`}
-        onPointerDown={(event) => onDragStart(panel.id, event)}
-        dragging={dragging}
-        className="-ml-1"
-      />
+      <DragHandle aria-label={`Reorder ${title}`} {...handle} className="-ml-1" />
       {def?.Icon ? (
         <span className="flex shrink-0 text-muted-foreground">
           <def.Icon className="size-[1.25em]" />
@@ -190,10 +181,6 @@ export function DockModulesEditor({
     [modules, panels]
   );
   const panelIds = useMemo(() => panelList.map((panel) => panel.id), [panelList]);
-  const { containerRef, orderedIds, draggingId, startDrag } = usePointerReorder(
-    panelIds,
-    onReorder
-  );
   const [adding, setAdding] = useState(false);
 
   useEffect(() => () => onHover?.(null), [onHover]);
@@ -202,8 +189,7 @@ export function DockModulesEditor({
     () => new Map(panelList.map((panel) => [panel.id, panel])),
     [panelList]
   );
-  const orderedPanels = orderedIds.map((id) => panelsById.get(id)).filter(Boolean);
-  const displayState = buildDisplayState(orderedPanels);
+  const displayState = buildDisplayState(panelList);
 
   if (adding) {
     return (
@@ -236,30 +222,25 @@ export function DockModulesEditor({
   return (
     <DockEditorShell title="Panels">
       <div className="flex min-h-full flex-col p-1">
-        {orderedPanels.length ? (
-          <div
-            ref={containerRef}
+        {panelList.length ? (
+          <SortableList
+            ids={panelIds}
+            onReorder={onReorder}
             data-testid="dock-module-order-list"
-            // `grid-cols-1` (= minmax(0,1fr)) constrains the column to the panel width; a bare grid
-            // sizes its implicit auto column to the longest name and overflows the max-w cap, so the
-            // row `truncate` never kicks in and a long module name bursts the panel.
             className="grid grid-cols-1 gap-0"
-          >
-            {orderedPanels.map((panel) => (
+            renderRow={(id, _index, handle) => (
               <DockModuleRow
-                key={panel.id}
-                panel={panel}
-                title={resolveDockPanelDisplayName(displayState, panel.id)}
-                dragging={draggingId === panel.id}
-                onDragStart={startDrag}
+                panel={panelsById.get(id)}
+                title={resolveDockPanelDisplayName(displayState, id)}
+                handle={handle}
                 onRename={onRename}
                 onRemove={onRemove}
                 onHover={onHover}
                 onOpenSettings={onOpenSettings}
                 vectorscopeSettingsAvailable={vectorscopeSettingsAvailable}
               />
-            ))}
-          </div>
+            )}
+          />
         ) : (
           <p className="px-2 py-3 text-xs text-muted-foreground">No modules</p>
         )}

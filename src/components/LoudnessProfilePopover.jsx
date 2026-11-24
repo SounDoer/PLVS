@@ -7,7 +7,7 @@ import { TruncatingLabel } from "@/components/TruncatingLabel.jsx";
 import { Button } from "@/components/ui/button";
 import { POPOVER_HEADER_CLASS, POPOVER_TITLE_CLASS } from "@/components/ui/surfaceStyles.js";
 import { cn } from "@/lib/utils";
-import { usePointerReorder } from "@/hooks/usePointerReorder.js";
+import { SortableList } from "@/components/ui/sortable-list.jsx";
 import { LOUDNESS_PROFILE_OFF, profileSelectionId } from "@/lib/loudnessProfileCatalog.js";
 import { listMissingPreferredMetrics } from "@/lib/loudnessProfileMissing.js";
 import { STATS_META } from "@/lib/statsCatalog.js";
@@ -73,15 +73,10 @@ export function LoudnessProfilePopoverContent({
   const missingIds = stats ? listMissingPreferredMetrics(document, stats.visibleIds) : [];
 
   const profileIds = useMemo(() => profiles.map((entry) => entry.id), [profiles]);
-  const { containerRef, orderedIds, draggingId, startDrag } = usePointerReorder(
-    profileIds,
-    (nextIds) => reorderProfiles?.(nextIds)
-  );
   const profilesById = useMemo(
     () => new Map(profiles.map((entry) => [entry.id, entry])),
     [profiles]
   );
-  const orderedProfiles = orderedIds.map((id) => profilesById.get(id)).filter(Boolean);
 
   return (
     <>
@@ -108,24 +103,16 @@ export function LoudnessProfilePopoverContent({
         </RowAction>
       </div>
 
-      <div ref={containerRef} className="grid grid-cols-1 gap-0">
-        {orderedProfiles.map((entry) => {
+      <SortableList
+        ids={profileIds}
+        onReorder={reorderProfiles}
+        className="grid grid-cols-1 gap-0"
+        renderRow={(id, _index, handle) => {
+          const entry = profilesById.get(id);
           const selection = profileSelectionId(entry.id);
           return (
-            <div
-              key={entry.id}
-              data-ui-target={`loudness-profile:${entry.id}`}
-              className={cn(
-                ROW_CLASS,
-                "group",
-                draggingId === entry.id && "z-10 ring-1 ring-primary"
-              )}
-            >
-              <DragHandle
-                aria-label={`Reorder ${entry.name}`}
-                onPointerDown={(event) => startDrag(entry.id, event)}
-                dragging={draggingId === entry.id}
-              />
+            <div data-ui-target={`loudness-profile:${entry.id}`} className={cn(ROW_CLASS, "group")}>
+              <DragHandle aria-label={`Reorder ${entry.name}`} {...handle} />
               <RowAction
                 aria-label={`Use ${entry.name}`}
                 aria-pressed={active === selection}
@@ -176,8 +163,8 @@ export function LoudnessProfilePopoverContent({
               ) : null}
             </div>
           );
-        })}
-      </div>
+        }}
+      />
 
       {manageable ? (
         <div className="px-2 py-1">

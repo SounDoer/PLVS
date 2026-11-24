@@ -23,6 +23,7 @@ vi.mock("framer-motion", () => ({
     Item: ({ children, className }) => <div className={className}>{children}</div>,
   },
   useDragControls: () => ({ start: () => {} }),
+  useReducedMotion: () => false,
 }));
 
 describe("ModulesPopoverContent", () => {

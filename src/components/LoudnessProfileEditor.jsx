@@ -14,7 +14,7 @@ import {
 } from "@/components/ui/select";
 import { useFloatingPanelDrag } from "@/hooks/useFloatingPanelDrag.js";
 import { cn } from "@/lib/utils";
-import { usePointerReorder } from "@/hooks/usePointerReorder.js";
+import { SortableList } from "@/components/ui/sortable-list.jsx";
 import {
   RULEABLE_METRIC_IDS,
   createEmptyRule,
@@ -37,17 +37,10 @@ const DEFAULT_RULE_METRIC = "integrated";
 const TRIGGER_CLASS = "gap-1";
 const CONTENT_CLASS = "[&_[data-slot=select-item]]:pr-8";
 
-/// Reference's row and the rule list are two separate grid instances -- the rule list needs its own
-/// bounding box for the drag-reorder row-height math (see `usePointerReorder`), which Reference must
-/// stay outside of since it can never be dragged. Splitting them means every column but the flexible
-/// metric one needs an explicit, shared width instead of per-instance `auto` sizing, or the two grids
-/// would compute different column widths and the value/unit columns would stop lining up between them.
-// `relative`: the dragging-row overlay in RuleRow is an absolutely-positioned grid child that
-// tracks its row via `grid-row`/`grid-column`, and that only resolves against the grid's own
-// track boundaries when the grid itself is the containing block -- without `relative` here it
-// falls back to the nearest positioned ancestor, sizing itself to whatever box that happens to be.
+// Motion moves each rule as a row. Repeat the same column widths in each row and in Reference
+// so controls stay aligned even though every row has its own grid.
 const GRID_TEMPLATE_CLASS =
-  "relative grid grid-cols-[auto_minmax(0,1fr)_auto_auto_auto_auto_auto] items-center gap-x-1 gap-y-1 text-[length:var(--ui-fs-control)]";
+  "grid grid-cols-[auto_minmax(0,1fr)_auto_auto_auto_auto_auto] items-center gap-x-1 text-[length:var(--ui-fs-control)]";
 const GRIP_COL_CLASS = "w-5";
 // Both selects hold their label plus the chevron, and both scale: the text and
 // the icon follow --ui-fs-control while the trigger's padding and gap stay in
@@ -180,40 +173,16 @@ function MetricSelect({ position, rule, onPatch }) {
 }
 
 /// One rule: `metric  op  value  severity`. Reads as the breach sentence it is -- "True Peak above
-/// −1 → Fail" -- so which side breaches is never in doubt. The row is `display:contents`: its seven
-/// cells drop into the shared grid in RuleList so every column lines up across rows.
+/// −1 → Fail" -- so which side breaches is never in doubt.
 ///
 /// `position` is the row's on-screen order (1-based), not its index in the rules array -- the two
 /// diverge the moment a drag reorders the list, and every aria-label reads as what the user sees.
-function RuleRow({ position, rule, dragging, onDragStart, onPatch, onRemove }) {
+function RuleRow({ position, rule, handle, onPatch, onRemove }) {
   const meta = STATS_META[rule.metricId];
 
   return (
-    <div className="contents">
-      {/* The row itself has no box to ring -- `display:contents` drops the seven cells straight
-          into the shared grid. `absolute` is load-bearing, not decoration: a normal grid item
-          spanning every column would reserve that whole row for itself, and the seven real cells
-          -- auto-placed, not explicitly positioned -- would get pushed into the row below rather
-          than share it. Absolutely-positioned grid children keep their `grid-row`/`grid-column` as
-          a positioning reference (a real part of the Grid spec) but are dropped from layout, so
-          this overlay tracks the row without ever competing with it for space.
-          The row-end line is explicit (`position + 1`), not `auto`: `auto` means "span one track"
-          for a normal item, but for an abspos one it resolves to the far edge of the grid instead,
-          which stretched this to the bottom of the whole list the one time it was left implicit. */}
-      {dragging && (
-        <div
-          aria-hidden="true"
-          style={{ gridRow: `${position} / ${position + 1}`, gridColumn: "1 / -1" }}
-          className="pointer-events-none absolute inset-0 rounded-md ring-1 ring-primary"
-        />
-      )}
-
-      <DragHandle
-        aria-label={`Reorder rule ${position}`}
-        onPointerDown={onDragStart}
-        dragging={dragging}
-        className={cn(GRIP_COL_CLASS, "-ml-1")}
-      />
+    <div className={GRID_TEMPLATE_CLASS}>
+      <DragHandle aria-label={`Reorder rule ${position}`} {...handle} className="-ml-1" />
 
       <MetricSelect position={position} rule={rule} onPatch={onPatch} />
 
@@ -406,7 +375,7 @@ export function LoudnessProfileEditor({
   }
 
   /// Reordering is cosmetic -- `loudnessProfileEvaluate` takes the worst fired rule regardless of
-  /// array order -- so the ids `usePointerReorder` tracks are just the rules array's own positions
+  /// array order -- so the ids are just the rules array's own positions
   /// ("0", "1", ...), not a stable identity carried across renders the way a real id would be.
   function reorderRules(nextIds) {
     if (onReorderRules) {
@@ -421,17 +390,6 @@ export function LoudnessProfileEditor({
   }
 
   const ruleIds = rules.map((_, i) => String(i));
-  const {
-    containerRef: ruleListRef,
-    orderedIds,
-    draggingId,
-    startDrag,
-  } = usePointerReorder(ruleIds, reorderRules);
-  // `orderedIds` lags `ruleIds` by a tick when it changes for a reason other than a drag (the hook
-  // debounces every resync, drag or not -- see its own comment) -- so an add/remove must render
-  // straight from `ruleIds` or the new/removed row would flash in a render late. Mid-drag, though,
-  // `orderedIds` is the only thing carrying the live reorder the pointer is producing.
-  const displayRuleIds = draggingId ? orderedIds : ruleIds;
 
   function handleCancel() {
     if (onDismiss) {
@@ -560,27 +518,26 @@ export function LoudnessProfileEditor({
           </div>
 
           {rules.length > 0 ? (
-            <div
-              ref={ruleListRef}
+            <SortableList
+              ids={ruleIds}
+              onReorder={reorderRules}
+              positionalIds
               data-testid="loudness-rule-order-list"
-              className={GRID_TEMPLATE_CLASS}
-            >
-              {displayRuleIds.map((id, position) => {
+              className="grid grid-cols-1 gap-1"
+              renderRow={(id, position, handle) => {
                 const rule = rules[Number(id)];
                 if (!rule) return null;
                 return (
                   <RuleRow
-                    key={id}
                     position={position + 1}
                     rule={rule}
-                    dragging={draggingId === id}
-                    onDragStart={(event) => startDrag(id, event)}
+                    handle={handle}
                     onPatch={(patch) => patchRule(Number(id), patch)}
                     onRemove={() => removeRule(Number(id))}
                   />
                 );
-              })}
-            </div>
+              }}
+            />
           ) : (
             <p className="px-1 py-1 text-[length:var(--ui-fs-caption)] text-muted-foreground">
               No rules — this profile does not judge any metrics.

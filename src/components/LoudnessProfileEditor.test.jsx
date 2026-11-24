@@ -3,14 +3,13 @@ import { describe, expect, it, vi } from "vitest";
 import { act, fireEvent, render, screen } from "@testing-library/react";
 import { LoudnessProfileEditor } from "./LoudnessProfileEditor.jsx";
 
-// jsdom has no PointerEvent constructor; a MouseEvent carrying a pointerId is what usePointerReorder
-// reads (see usePointerReorder.dom.test.jsx, which this mirrors).
-function pointerEvent(type, init = {}) {
-  const { pointerId = 1, ...rest } = init;
-  const event = new window.MouseEvent(type, { bubbles: true, ...rest });
-  Object.defineProperty(event, "pointerId", { value: pointerId });
-  return event;
-}
+const sortable = vi.hoisted(() => ({ onReorder: null }));
+vi.mock("./ui/sortable-list.jsx", () => ({
+  SortableList: ({ ids, onReorder, renderRow }) => {
+    sortable.onReorder = onReorder;
+    return ids.map((id, index) => <div key={id}>{renderRow(id, index, {})}</div>);
+  },
+}));
 
 const threeRuleDocument = (overrides = {}) => ({
   id: "draft",
@@ -241,16 +240,10 @@ describe("LoudnessProfileEditor", () => {
     expect(next.rules.some((r) => r.metricId === "truePeak")).toBe(false);
   });
 
-  it("reorders rules by dragging a grip handle, without changing evaluation-relevant fields", () => {
+  it("applies the reordered rule positions without changing evaluation-relevant fields", () => {
     const props = renderEditor();
-    const container = screen.getByTestId("loudness-rule-order-list");
-    // Three 40px rows starting at the viewport top, matching usePointerReorder.dom.test.jsx.
-    container.getBoundingClientRect = () => /** @type {DOMRect} */ ({ top: 0, height: 120 });
-
-    const grip = screen.getByRole("button", { name: "Reorder rule 3" });
-    act(() => grip.dispatchEvent(pointerEvent("pointerdown")));
-    act(() => window.dispatchEvent(pointerEvent("pointermove", { clientY: 10 })));
-    act(() => window.dispatchEvent(pointerEvent("pointerup", { clientY: 10 })));
+    expect(screen.getByRole("button", { name: "Reorder rule 3" })).toBeTruthy();
+    act(() => sortable.onReorder(["2", "0", "1"]));
 
     expect(props.onEdit).toHaveBeenCalledTimes(1);
     const next = appliedDocument(props);
@@ -263,13 +256,7 @@ describe("LoudnessProfileEditor", () => {
 
   it("re-renders with the dragged order applied, aria-labels following the new positions", () => {
     const props = renderEditor();
-    const container = screen.getByTestId("loudness-rule-order-list");
-    container.getBoundingClientRect = () => /** @type {DOMRect} */ ({ top: 0, height: 120 });
-
-    const grip = screen.getByRole("button", { name: "Reorder rule 3" });
-    act(() => grip.dispatchEvent(pointerEvent("pointerdown")));
-    act(() => window.dispatchEvent(pointerEvent("pointermove", { clientY: 10 })));
-    act(() => window.dispatchEvent(pointerEvent("pointerup", { clientY: 10 })));
+    act(() => sortable.onReorder(["2", "0", "1"]));
     const moved = appliedDocument(props);
 
     render(<LoudnessProfileEditor {...props} draft={{ ...props.draft, document: moved }} />);

@@ -1,6 +1,6 @@
 import { useState } from "react";
-import { GripVertical } from "lucide-react";
-import { Reorder, useDragControls } from "framer-motion";
+import { DragHandle } from "@/components/ui/drag-handle";
+import { SortableList } from "@/components/ui/sortable-list.jsx";
 
 import { normalizePanelControls } from "@/lib/panelControls.js";
 import { STATS_OPTIONS } from "@/lib/statsCatalog.js";
@@ -16,35 +16,6 @@ import {
   visibleSummary,
 } from "./SettingsWidgets.jsx";
 
-function SortableStatRow({ id, label, checked, onToggle }) {
-  const controls = useDragControls();
-  return (
-    <Reorder.Item
-      value={id}
-      dragListener={false}
-      dragControls={controls}
-      className="group flex min-h-[var(--ui-control-h)] items-center gap-1 rounded-xs px-1 hover:bg-ui-hover"
-    >
-      <span
-        aria-hidden="true"
-        onPointerDown={(event) => controls.start(event)}
-        className="flex cursor-grab touch-none items-center text-muted-foreground group-hover:text-foreground"
-      >
-        <GripVertical className="size-3.5" />
-      </span>
-      <SettingsOptionRow
-        role="checkbox"
-        aria-checked={checked}
-        className="min-w-0 flex-1 px-1 hover:bg-transparent"
-        checked={checked}
-        onClick={() => onToggle(id)}
-      >
-        {label}
-      </SettingsOptionRow>
-    </Reorder.Item>
-  );
-}
-
 export function SortableStatsList({
   label,
   options,
@@ -55,26 +26,31 @@ export function SortableStatsList({
 }) {
   const labelById = new Map(options.map((option) => [option.id, option.label]));
   return (
-    <div className="flex flex-col gap-0">
-      <Reorder.Group
-        axis="y"
-        values={orderedIds}
-        onReorder={onReorder}
-        role="group"
-        aria-label={label}
-        className="flex select-none flex-col gap-0"
-      >
-        {orderedIds.map((id) => (
-          <SortableStatRow
-            key={id}
-            id={id}
-            label={labelById.get(id) ?? id}
-            checked={selectedIds.includes(id)}
-            onToggle={onToggle}
-          />
-        ))}
-      </Reorder.Group>
-    </div>
+    <SortableList
+      ids={orderedIds}
+      onReorder={onReorder}
+      role="group"
+      aria-label={label}
+      className="flex select-none flex-col gap-0"
+      renderRow={(id, _index, handle) => {
+        const name = labelById.get(id) ?? id;
+        const checked = selectedIds.includes(id);
+        return (
+          <div className="flex min-h-[var(--ui-control-h)] items-center gap-1 rounded-xs px-1 hover:bg-ui-hover">
+            <DragHandle aria-label={`Reorder ${name}`} {...handle} />
+            <SettingsOptionRow
+              role="checkbox"
+              aria-checked={checked}
+              className="min-w-0 flex-1 px-1 hover:bg-transparent"
+              checked={checked}
+              onClick={() => onToggle(id)}
+            >
+              {name}
+            </SettingsOptionRow>
+          </div>
+        );
+      }}
+    />
   );
 }
 

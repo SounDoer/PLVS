@@ -1,7 +1,7 @@
 /** @vitest-environment jsdom */
 import { fireEvent, render, screen, within } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
-import { DockModulesEditor, reorderDockModulesAtPointer } from "./DockModulesEditor.jsx";
+import { DockModulesEditor } from "./DockModulesEditor.jsx";
 
 const BASE_PROPS = {
   modules: ["level", "spectrum"],
@@ -78,15 +78,6 @@ describe("DockModulesEditor", () => {
     fireEvent.mouseLeave(row);
     expect(onHover).toHaveBeenNthCalledWith(1, "spectrum");
     expect(onHover).toHaveBeenNthCalledWith(2, null);
-  });
-
-  it("derives pointer-drag order from the row under the pointer", () => {
-    expect(
-      reorderDockModulesAtPointer(["level", "spectrum"], "level", 95, {
-        top: 40,
-        height: 72,
-      })
-    ).toEqual(["spectrum", "level"]);
   });
 
   it("opens settings only for modules with controls", () => {

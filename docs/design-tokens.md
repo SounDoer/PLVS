@@ -345,6 +345,10 @@ Reduced motion makes CSS transitions and animations effectively instant in `inde
 disables the indeterminate update animation. Entry delays remain. The Level Meter spring reads
 the system preference separately.
 
+Use `SortableList` and `DragHandle` for vertical list reordering. The pressed row immediately uses
+a one-pixel Primary ring. Motion animates the dragged row and its neighbors, and the list applies
+the pointer's final order on release. Reduced motion makes the layout transition instant.
+
 `src/components/ui/motionContract.test.js` rejects `transition-colors`, `transition-all`,
 `transition-shadow`, an opacity transition outside the tooltip, and any `duration-*` utility
 outside the correlation marker.

@@ -6,7 +6,7 @@ import { MANAGEMENT_ROW_ACTIONS_CLASS, ManagementIconAction } from "@/components
 import { TruncatingLabel } from "@/components/TruncatingLabel.jsx";
 import { POPOVER_HEADER_CLASS, POPOVER_TITLE_CLASS } from "@/components/ui/surfaceStyles.js";
 import { cn } from "@/lib/utils";
-import { usePointerReorder } from "@/hooks/usePointerReorder.js";
+import { SortableList } from "@/components/ui/sortable-list.jsx";
 import { DragHandle } from "@/components/ui/drag-handle";
 import { RowAction } from "@/components/ui/row";
 import { SharesetsBrowseButton } from "./SharesetsBrowseButton.jsx";
@@ -48,15 +48,10 @@ export function PresetsPopoverContent({
     presets.list.length === 0 ? "Name your first preset" : "New preset name";
 
   const presetIds = useMemo(() => presets.list.map((preset) => preset.id), [presets.list]);
-  const { containerRef, orderedIds, draggingId, startDrag } = usePointerReorder(
-    presetIds,
-    (nextIds) => presets.reorder?.(nextIds)
-  );
   const presetsById = useMemo(
     () => new Map(presets.list.map((preset) => [preset.id, preset])),
     [presets.list]
   );
-  const orderedList = orderedIds.map((id) => presetsById.get(id)).filter(Boolean);
 
   // The controller rejects rather than returning false when blocked, and blocked is the only
   // rejection these produce here; the dock's proxy returns nothing at all. Neither is worth an
@@ -130,13 +125,17 @@ export function PresetsPopoverContent({
         // `grid-cols-1` (= minmax(0,1fr)) constrains the column to the popover width; a bare grid
         // makes an implicit auto column that sizes to the longest name and overflows the max-w cap,
         // so `truncate` on the rows never kicks in.
-        <div ref={containerRef} className="grid grid-cols-1 gap-0 p-1">
-          {orderedList.map((preset) => {
+        <SortableList
+          ids={presetIds}
+          onReorder={presets.reorder}
+          className="grid grid-cols-1 gap-0 p-1"
+          renderRow={(id, _index, handle) => {
+            const preset = presetsById.get(id);
             const isActive = preset.id === presets.activeId;
             const isDirty = isActive && presets.dirty === true;
             const isEditing = preset.id === editingId;
             return (
-              <div key={preset.id} className="group">
+              <div className="group">
                 {isEditing ? (
                   <div className="flex items-center gap-1 rounded-xs px-2 py-1">
                     <input
@@ -172,16 +171,9 @@ export function PresetsPopoverContent({
                 ) : (
                   <div
                     data-ui-target={`preset:${preset.id}`}
-                    className={cn(
-                      "flex min-h-[var(--ui-row-h)] items-center gap-1 rounded-xs text-[length:var(--ui-fs-control)] hover:bg-ui-hover focus-within:bg-ui-hover",
-                      draggingId === preset.id && "z-10 ring-1 ring-primary"
-                    )}
+                    className="flex min-h-[var(--ui-row-h)] items-center gap-1 rounded-xs text-[length:var(--ui-fs-control)] hover:bg-ui-hover focus-within:bg-ui-hover"
                   >
-                    <DragHandle
-                      aria-label={`Reorder ${preset.name}`}
-                      onPointerDown={(event) => startDrag(preset.id, event)}
-                      dragging={draggingId === preset.id}
-                    />
+                    <DragHandle aria-label={`Reorder ${preset.name}`} {...handle} />
                     <RowAction
                       aria-label={`Apply preset ${preset.name}`}
                       onClick={() => runPresetAction(presets.apply(preset.id))}
@@ -262,8 +254,8 @@ export function PresetsPopoverContent({
                 )}
               </div>
             );
-          })}
-        </div>
+          }}
+        />
       ) : null}
 
       {blocked ? (
