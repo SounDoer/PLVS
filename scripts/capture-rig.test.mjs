@@ -287,6 +287,21 @@ describe("cross-platform capture route", () => {
     ]);
   });
 
+  it("exposes a Windows fixture as a separate visible app on the test endpoint", () => {
+    const args = captureRig.playerArgs("endpoint", "signal.wav", "win32", {
+      independent: true,
+      visible: true,
+    });
+    expect(args.slice(0, 2)).toEqual(["--intf", "qt"]);
+    expect(args).toEqual(
+      expect.arrayContaining([
+        "--ignore-config",
+        "--no-one-instance",
+        "--mmdevice-audio-device=endpoint",
+      ])
+    );
+  });
+
   it.each(["win32", "darwin"])("plays a continuous soak file once on %s", (platform) => {
     const args = captureRig.playerArgs("target", "signal.wav", platform, { loop: false });
     expect(args).toEqual(expect.arrayContaining(["--no-loop", "--no-repeat", "--play-and-exit"]));

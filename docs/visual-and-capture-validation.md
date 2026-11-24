@@ -346,6 +346,12 @@ Use `--measure-mix-input` in place of `--measure-mix-phase` to combine one playe
 tone with the right input channel of VB-Cable. A different player supplies the right-channel tone.
 The checks cover clock alignment and the mono input's contribution to both output channels.
 
+For a live test with a physical input, run
+`npm run smoke:capture:multi -- --hold-mix-input-fixture --seconds 600 --wait`.
+The fixture holds the rig lease and opens an independent VLC window that plays a left-only tone
+to VB-Cable. Select VLC and the physical input in a Mix, then use the right-channel readings to
+observe the physical input. Press Enter in the fixture terminal to stop VLC and release the lease.
+
 The self-hosted capture jobs run the rig's generated stereo signal. Weekly soak comparison
 reads the tracked numeric baselines in `fixtures/capture-soak-baselines/`. HDMI Atmos checks
 still require a compatible playback route and a receiver that reports its input format.

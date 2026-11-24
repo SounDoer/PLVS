@@ -536,17 +536,18 @@ export function playerArgs(
   playerTarget,
   wavPath,
   platform = process.platform,
-  { loop = true, independent = false } = {}
+  { loop = true, independent = false, visible = false } = {}
 ) {
   const common = [
     "--intf",
-    "dummy",
+    visible ? "qt" : "dummy",
     "--no-video",
     ...(loop ? ["--loop"] : ["--no-loop", "--no-repeat", "--play-and-exit"]),
   ];
   if (platform === "win32") {
     return [
       ...common,
+      ...(visible ? ["--ignore-config"] : []),
       ...(independent ? ["--no-one-instance", "--no-one-instance-when-started-from-file"] : []),
       "--aout=mmdevice",
       `--mmdevice-audio-device=${playerTarget}`,
@@ -637,7 +638,7 @@ export function resolveLinuxCaptureRoute({
 export async function startPlayer(
   playerTarget,
   wavPath,
-  { wait = false, loop = true, independent = false } = {}
+  { wait = false, loop = true, independent = false, visible = false } = {}
 ) {
   await takeRig({ wait });
   if (process.platform === "linux") {
@@ -656,11 +657,11 @@ export async function startPlayer(
   const vlc = locateVlc();
   const child = spawn(
     vlc,
-    playerArgs(playerTarget, wavPath, process.platform, { loop, independent }),
+    playerArgs(playerTarget, wavPath, process.platform, { loop, independent, visible }),
     {
       detached: false,
       stdio: "ignore",
-      windowsHide: true,
+      windowsHide: !visible,
     }
   );
   return child;

@@ -235,8 +235,54 @@ export async function runConcurrentCapture({
   }
 }
 
+async function holdMixInputFixture() {
+  if (process.platform !== "win32") throw new RigError("The mixed-input fixture requires Windows.");
+  const seconds = parsePositive("seconds", 15);
+  if (seconds > 900) throw new RigError("The mixed-input fixture accepts up to 900 seconds.");
+  const wav = join(tmpdir(), `plvs-input-mix-${process.pid}.wav`);
+  await withCaptureRig(
+    async () => {
+      let player;
+      try {
+        await synthesizeSignal(wav, { seconds: seconds + 15, peakRDb: -Infinity });
+        player = await startPlayer(resolveRenderEndpointId(), wav, {
+          independent: true,
+          visible: true,
+        });
+        if (player.pid === undefined) await once(player, "spawn");
+        console.log(`Mix fixture: VLC process ${player.pid}; left-only tone routed to VB-Cable.`);
+        await new Promise((resolve) => {
+          const finish = () => {
+            clearTimeout(timer);
+            player.off("exit", finish);
+            process.stdin.off("data", finish);
+            process.off("SIGINT", finish);
+            process.off("SIGTERM", finish);
+            process.stdin.pause();
+            resolve();
+          };
+          const timer = setTimeout(finish, seconds * 1000);
+          player.once("exit", finish);
+          process.stdin.once("data", finish);
+          process.once("SIGINT", finish);
+          process.once("SIGTERM", finish);
+          process.stdin.resume();
+        });
+      } finally {
+        stopPlayer(player, { keepLease: true });
+        await rm(wav, { force: true });
+      }
+    },
+    { wait: process.argv.includes("--wait") }
+  );
+}
+
 async function main() {
   try {
+    if (process.argv.includes("--hold-mix-input-fixture")) {
+      await holdMixInputFixture();
+      return;
+    }
     const probeIndex = process.argv.indexOf("--process-timing-probe");
     if (probeIndex !== -1) {
       await runProcessTimingProbe(probeIndex);
