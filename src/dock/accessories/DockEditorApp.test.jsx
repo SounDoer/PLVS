@@ -77,6 +77,32 @@ describe("DockEditorApp window behavior", () => {
     client.action = action;
   });
 
+  it("selects a saved Mix from Dock Sources", () => {
+    const mix = {
+      id: "mix-00112233-4455-6677-8899-aabbccddeeff",
+      name: "Playback Mix",
+      members: [
+        { id: "app-00112233445566778899aabbccddeeff", label: "Player" },
+        { id: "app-fedcba98765432100123456789abcdef", label: "Browser" },
+      ],
+    };
+    client.payload = {
+      ...PRESETS_PAYLOAD,
+      view: "device",
+      device: {
+        sourceMixes: { supported: true, list: [mix] },
+        captureApplications: [mix.members[0]],
+      },
+    };
+    render(<DockEditorApp />);
+    fireEvent.click(screen.getByRole("button", { name: /Mixes/ }));
+    expect(screen.getByText("1 Source Unavailable")).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "Add Mix" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "manage Playback Mix" })).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: mix.name }));
+    expect(action).toHaveBeenCalledWith("select-device", { deviceId: mix.id });
+  });
+
   it("closes when the accessory window loses focus", async () => {
     render(<DockEditorApp />);
 

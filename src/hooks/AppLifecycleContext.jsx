@@ -76,6 +76,7 @@ export function AppLifecycleProvider({ children }) {
     audioOutputs,
     audioInputs,
     captureApplications,
+    sourceMixes,
     safeAudioDeviceId,
     defaultOutputLabel,
     onSelectCaptureDevice,
@@ -185,6 +186,9 @@ export function AppLifecycleProvider({ children }) {
   const sourceBusy =
     ["starting", "stopping"].includes(meterRuntime.liveLifecycle) ||
     meterRuntime.liveDeviceTransition !== null;
+  const trayMixes = sourceMixes?.supported
+    ? sourceMixes.list.map(({ id, name }) => ({ id, label: name }))
+    : [];
   useInstanceIdentity({
     sourceLabel: sourceDisplayName,
     running,
@@ -192,6 +196,7 @@ export function AppLifecycleProvider({ children }) {
       audioOutputs: audioOutputs.map(({ id, label }) => ({ id, label })),
       audioInputs: audioInputs.map(({ id, label }) => ({ id, label })),
       captureApplications: captureApplications.map(({ id, label }) => ({ id, label })),
+      sourceMixes: trayMixes,
       safeAudioDeviceId,
       defaultOutputLabel,
       sourceBusy,
@@ -253,6 +258,7 @@ export function AppLifecycleProvider({ children }) {
     audioOutputs,
     audioInputs,
     captureApplications,
+    sourceMixes: trayMixes,
     safeAudioDeviceId,
     defaultOutputLabel,
     sourceBusy,

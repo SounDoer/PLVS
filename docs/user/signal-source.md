@@ -110,6 +110,8 @@ them without extra routing.
 In the normal window, choose **Add Mix** at the bottom of **Sources** and select at least two
 applications. PLVS generates a name from the selection. Use the pencil to enter your own name.
 **Save** adds the Mix under **Mixes** and selects it for the current Workbench.
+You can also select a saved Mix under **Mixes** in the Dock toolbar's **Sources** menu or in the
+system Tray's **Source** submenu for your Workbench.
 
 PLVS sums the selected application audio into one stereo signal for measurement. If one application
 exits, capture can continue with the others while PLVS waits for it to return. The Mix row shows

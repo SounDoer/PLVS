@@ -12,6 +12,21 @@ export const DOCK_VIEW_BY_TOOLBAR_MENU = Object.freeze({
   status: "status",
 });
 
+export function sourceMixSelectionChoice(mix, selectedSourceId, selectSource, closeMenu) {
+  const id = `select:${mix.id}`;
+  return {
+    id,
+    label: mix.name,
+    selected: mix.id === selectedSourceId,
+    run: async () => {
+      if (!(await selectSource?.(mix.id))) {
+        throw createUiNavigationError("uiActionUnavailable", { choice: id });
+      }
+      closeMenu();
+    },
+  };
+}
+
 /**
  * Which toolbar menu is open in the normal window, and the `ui show toolbar-menu` target for both
  * window forms. The state lives above the header because Auto-hide Controls unmounts the header
@@ -86,18 +101,9 @@ export function useToolbarMenuNavigation({
             },
           },
           ...sourceMixes.list.flatMap((mix) => [
-            {
-              id: `select:${mix.id}`,
-              label: mix.name,
-              selected: mix.id === selectedSourceId,
-              run: async () => {
-                if (!(await selectSource?.(mix.id)))
-                  throw createUiNavigationError("uiActionUnavailable", {
-                    choice: `select:${mix.id}`,
-                  });
-                changeMenu("sources", false);
-              },
-            },
+            sourceMixSelectionChoice(mix, selectedSourceId, selectSource, () =>
+              changeMenu("sources", false)
+            ),
             {
               id: `edit:${mix.id}`,
               label: `Edit ${mix.name}`,

@@ -59,7 +59,8 @@ the button opens, anchored to that button, with `presentation: "dock"`. Sources 
 does. Select sources, presets, and profiles through their owning families when available.
 
 On Windows, the normal-window Sources surface declares Mix choices through `ui inspect`. Use its
-`add-mix`, `edit:<mix-id>`, or `select:<mix-id>` choice with `ui decide`. The `sourceMixEditor`
+`add-mix`, `edit:<mix-id>`, or `select:<mix-id>` choice with `ui decide`. The Dock Sources surface
+also exposes `select:<mix-id>` for each saved Mix. The normal-window `sourceMixEditor`
 surface exposes `toggle:<application-id>` choices with their selection state, then `save` and
 `cancel`. Save is available once at least two applications are selected. Use the latest surface ID,
 revision and UI generation for each decision. These choices run the same handlers as the editor

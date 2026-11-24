@@ -53,6 +53,7 @@ import { dialogueVadEngineOption } from "../lib/dialogueVadEngines.js";
 import { useDevelopmentEventFixtureAdapter } from "../dev/DevelopmentEventFixturesContext.jsx";
 import { developmentStatusItems } from "../dev/developmentStatusFixtureData.js";
 import { createUiNavigationError } from "../uiNavigation/uiNavigationModel.js";
+import { sourceMixSelectionChoice } from "../uiNavigation/useToolbarMenuNavigation.js";
 import {
   configurationRestartStatus,
   reloadAfterProfileChange,
@@ -312,6 +313,14 @@ export function DockAccessoriesProvider({ children }) {
     supportedActions: ["close"],
     target: { menu: dockMenu, presentation: "dock" },
     onClose: () => dockAccessoryVisibility.closeEditor(dockAccessoryVisibility.editorView),
+    choices:
+      dockMenu === "sources" && sourceMixes?.supported
+        ? sourceMixes.list.map((mix) =>
+            sourceMixSelectionChoice(mix, safeAudioDeviceId, onSelectCaptureDevice, () =>
+              dockAccessoryVisibility.closeEditor("device")
+            )
+          )
+        : undefined,
   });
   useUiNavigationTarget("dockToolbar", {
     show: () => {
@@ -576,7 +585,13 @@ export function DockAccessoriesProvider({ children }) {
       aboveFullScreen,
       hideAxesAndLabels: presentation.dock.hideAxesAndLabels,
       dockSurfaceOpacity: view.dockSurfaceOpacity,
-      device: { audioOutputs, audioInputs, captureApplications, safeAudioDeviceId },
+      device: {
+        audioOutputs,
+        audioInputs,
+        captureApplications,
+        safeAudioDeviceId,
+        sourceMixes: sourceMixes?.supported ? { supported: true, list: sourceMixes.list } : null,
+      },
       panels: dockLayout.panels,
       panelsById: dockLayout.panelsById,
       panelOrder: dockLayout.panelOrder,
@@ -619,6 +634,8 @@ export function DockAccessoriesProvider({ children }) {
       audioInputs,
       captureApplications,
       safeAudioDeviceId,
+      sourceMixes?.supported,
+      sourceMixes?.list,
       dockAccessoryVisibility.editorView,
       dockEdge,
       workspaceState.axisViewports.frequency,

@@ -672,6 +672,7 @@ describe("useTray", () => {
   });
 
   it("routes a peer's Source, Preset, Settings and Hide to that peer", async () => {
+    const peerMix = { id: "mix-00112233-4455-6677-8899-aabbccddeeff", label: "Peer Mix" };
     window.__PLVS_INITIAL_STATE__ = { instanceId: "owner" };
     invoke.mockResolvedValue([
       { instanceId: "owner", displayName: "Owner", captureStatus: "stopped", visible: true },
@@ -684,6 +685,7 @@ describe("useTray", () => {
           audioOutputs: [{ id: "peer-output", label: "Peer Output" }],
           audioInputs: [],
           captureApplications: [],
+          sourceMixes: [peerMix],
           safeAudioDeviceId: "peer-output",
           defaultOutputLabel: "",
           sourceBusy: false,
@@ -697,12 +699,14 @@ describe("useTray", () => {
     renderHook(() => useTray(defaultProps));
     await act(async () => {});
     findText(checkItemOptions(), "Peer Output").action();
+    findText(checkItemOptions(), peerMix.label).action();
     findText(checkItemOptions(), "Peer Preset").action();
     const peer = findText(submenuOptions(), "Peer");
     peer.items.find((item) => item.text === "Settings…").action();
     peer.items.find((item) => item.text === "Hide").action();
     expect(coordination.issue.mock.calls).toEqual([
       ["peer", "selectSource", "peer-output"],
+      ["peer", "selectSource", peerMix.id],
       ["peer", "applyPreset", "peer-preset"],
       ["peer", "settings", null],
       ["peer", "hide", null],
@@ -1057,6 +1061,35 @@ describe("useTray", () => {
       enabled: false,
     });
     expect(findText(checkItemOptions(), "Automatic")).toMatchObject({ checked: false });
+  });
+
+  it("lists a saved Mix, checks it when selected, and updates after removal", async () => {
+    const mix = { id: "mix-00112233-4455-6677-8899-aabbccddeeff", label: "Playback (Stereo)" };
+    const onSelectSource = vi.fn();
+    const { rerender } = renderHook(
+      ({ sourceMixes }) =>
+        useTray({ ...defaultProps, onSelectSource, safeAudioDeviceId: mix.id, sourceMixes }),
+      { initialProps: { sourceMixes: [mix] } }
+    );
+    await act(async () => {});
+
+    expect(findText(submenuOptions(), "Source: Mix · Playback (Stereo)")).toBeTruthy();
+    expect(findText(menuItemOptions(), "Mixes")).toMatchObject({ enabled: false });
+    const item = findText(checkItemOptions(), mix.label);
+    expect(item).toMatchObject({ checked: true });
+    item.action();
+    expect(onSelectSource).toHaveBeenCalledWith(mix.id);
+
+    const sourceMenu = await createdHandleForText(
+      vi.mocked(Submenu.new),
+      "Source: Mix · Playback (Stereo)"
+    );
+    rerender({ sourceMixes: [] });
+    await act(async () => {});
+    expect(sourceMenu.setText).toHaveBeenLastCalledWith("Source: Mix · Unavailable");
+    expect(findText(menuItemOptions(), "Selected Mix Unavailable")).toMatchObject({
+      enabled: false,
+    });
   });
 
   it("builds the Presets submenu with the active preset checked and dirty marked", async () => {

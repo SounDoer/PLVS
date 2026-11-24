@@ -11,6 +11,7 @@ import {
   formatAudioDeviceLabel,
   isUnavailableApplicationSource,
 } from "../lib/audioDeviceLabels.js";
+import { isSourceMixId } from "../lib/sourceMixes.js";
 import {
   clearCurrentTrayIcon,
   closeTrayIcon,
@@ -45,11 +46,16 @@ function sourceLabelFor({
   audioOutputs,
   audioInputs,
   captureApplications,
+  sourceMixes,
   defaultOutputLabel,
 }) {
   if (safeAudioDeviceId === "default") {
     const label = defaultOutputLabel ? menuDeviceText(defaultOutputLabel) : "Automatic";
     return `Output · ${label}`;
+  }
+  if (isSourceMixId(safeAudioDeviceId)) {
+    const mix = sourceMixes.find(({ id }) => id === safeAudioDeviceId);
+    return `Mix · ${mix?.label ?? "Unavailable"}`;
   }
   const application = captureApplications.find((candidate) => candidate.id === safeAudioDeviceId);
   if (application) return `Application · ${application.label}`;
@@ -101,20 +107,25 @@ function sourceDefinitions(cfg, prefix) {
       menuItem(`${prefix}:application-unavailable`, "Selected Application Unavailable", null, false)
     );
   }
-  for (const [group, sources] of [
-    ["Output", cfg.audioOutputs],
-    ["Input", cfg.audioInputs],
-    ["Applications", cfg.captureApplications],
+  if (
+    isSourceMixId(cfg.safeAudioDeviceId) &&
+    !cfg.sourceMixes.some(({ id }) => id === cfg.safeAudioDeviceId)
+  ) {
+    items.push(menuItem(`${prefix}:mix-unavailable`, "Selected Mix Unavailable", null, false));
+  }
+  for (const [group, sources, formatLabel] of [
+    ["Mixes", cfg.sourceMixes, (label) => label],
+    ["Output", cfg.audioOutputs, menuDeviceText],
+    ["Input", cfg.audioInputs, menuDeviceText],
+    ["Applications", cfg.captureApplications, (label) => label],
   ]) {
     if (!sources.length) continue;
     items.push(separator(`${prefix}:${group}:separator`));
     items.push(menuItem(`${prefix}:${group}:header`, group, null, false));
     for (const source of sources)
       items.push({
-        ...menuItem(
-          `${prefix}:source:${source.id}`,
-          group === "Applications" ? source.label : menuDeviceText(source.label),
-          () => cfg.onSelectSource(source.id)
+        ...menuItem(`${prefix}:source:${source.id}`, formatLabel(source.label), () =>
+          cfg.onSelectSource(source.id)
         ),
         kind: "check",
         checked: cfg.safeAudioDeviceId === source.id,
@@ -169,6 +180,7 @@ function peerInputs(instance, cfg) {
     audioOutputs: [],
     audioInputs: [],
     captureApplications: [],
+    sourceMixes: [],
     safeAudioDeviceId: "default",
     defaultOutputLabel: "",
     sourceBusy: true,
@@ -263,6 +275,7 @@ function menuDefinitions(cfg) {
  *   audioOutputs?: any[],
  *   audioInputs?: any[],
  *   captureApplications?: any[],
+ *   sourceMixes?: { id: string, label: string }[],
  *   safeAudioDeviceId?: string,
  *   defaultOutputLabel?: string,
  *   sourceBusy?: boolean,
@@ -283,6 +296,7 @@ export function useTray({
   audioOutputs = [],
   audioInputs = [],
   captureApplications = [],
+  sourceMixes = [],
   safeAudioDeviceId = "default",
   defaultOutputLabel = "",
   sourceBusy = false,
@@ -474,6 +488,7 @@ export function useTray({
     audioOutputs,
     audioInputs,
     captureApplications,
+    sourceMixes,
     safeAudioDeviceId,
     defaultOutputLabel,
     sourceBusy,
@@ -492,6 +507,7 @@ export function useTray({
     outputs: audioOutputs.map(({ id, label }) => [id, label]),
     inputs: audioInputs.map(({ id, label }) => [id, label]),
     applications: captureApplications.map(({ id, label }) => [id, label]),
+    mixes: sourceMixes.map(({ id, label }) => [id, label]),
   });
 
   const menuConfig = useCallback(

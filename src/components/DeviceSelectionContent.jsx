@@ -150,6 +150,7 @@ export function DeviceSelectionContent({
   const selectedInputSummary = selectedDeviceSummary(audioInputs, safeAudioDeviceId);
   const selectedApplication = selectedApplicationSummary(captureApplications, safeAudioDeviceId);
   const selectedMix = sourceMixes?.list.find((mix) => mix.id === safeAudioDeviceId);
+  const canManageMixes = sourceMixes?.supported && sourceMixes.open && sourceMixes.remove;
   const available = new Set(captureApplications.map(({ id }) => id));
 
   return (
@@ -201,22 +202,24 @@ export function DeviceSelectionContent({
                       onSelect={() => onSelect(mix.id)}
                     />
                   </div>
-                  <Popover>
-                    <PopoverTrigger asChild>
-                      <IconAction aria-label={`manage ${mix.name}`}>
-                        <Ellipsis className="size-[length:var(--ui-icon-management-action)]" />
-                      </IconAction>
-                    </PopoverTrigger>
-                    <PopoverContent align="end" className="w-auto p-1">
-                      <MenuRow onClick={() => sourceMixes.open(mix)}>Edit</MenuRow>
-                      <InlineConfirm
-                        confirmLabel={`delete ${mix.name}`}
-                        cancelLabel="cancel deletion"
-                        onConfirm={() => void sourceMixes.remove(mix)}
-                        trigger={(arm) => <MenuRow onClick={arm}>Delete</MenuRow>}
-                      />
-                    </PopoverContent>
-                  </Popover>
+                  {canManageMixes ? (
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <IconAction aria-label={`manage ${mix.name}`}>
+                          <Ellipsis className="size-[length:var(--ui-icon-management-action)]" />
+                        </IconAction>
+                      </PopoverTrigger>
+                      <PopoverContent align="end" className="w-auto p-1">
+                        <MenuRow onClick={() => sourceMixes.open(mix)}>Edit</MenuRow>
+                        <InlineConfirm
+                          confirmLabel={`delete ${mix.name}`}
+                          cancelLabel="cancel deletion"
+                          onConfirm={() => void sourceMixes.remove(mix)}
+                          trigger={(arm) => <MenuRow onClick={arm}>Delete</MenuRow>}
+                        />
+                      </PopoverContent>
+                    </Popover>
+                  ) : null}
                 </div>
               );
             })}
@@ -286,7 +289,7 @@ export function DeviceSelectionContent({
           </SourceSection>
         ) : null}
       </div>
-      {sourceMixes?.supported ? (
+      {canManageMixes ? (
         <div className="shrink-0 px-2 py-1">
           <AddButton label="Add Mix" onClick={() => sourceMixes.open()} />
         </div>
