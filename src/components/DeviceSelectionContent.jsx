@@ -1,41 +1,56 @@
 import { useState } from "react";
-import { ChevronRight, Ellipsis } from "lucide-react";
+import { ChevronRight, Pencil, Trash2 } from "lucide-react";
 import {
   formatAudioDeviceLabel,
   isUnavailableApplicationSource,
 } from "../lib/audioDeviceLabels.js";
 import { cn } from "../lib/utils.js";
-import { MenuRow } from "./ui/row";
+import { MenuRow, RowAction } from "./ui/row";
 import { AddButton } from "./AddButton.jsx";
-import { IconAction } from "./ui/icon-action";
-import { Popover, PopoverContent, PopoverTrigger } from "./ui/popover";
 import { InlineConfirm } from "./InlineConfirm.jsx";
+import {
+  MANAGEMENT_ROW_ACTIONS_CLASS,
+  MANAGEMENT_ROW_CLASS,
+  ManagementIconAction,
+} from "./ManagementRow.jsx";
 import { isSourceMixId } from "../lib/sourceMixes.js";
 import { useUiNavigationTarget, useUiSurface } from "../uiNavigation/UiNavigationContext.jsx";
 
-/** @param {{ primary: string, secondary?: string, selected: boolean, onSelect: (...args: any[]) => any, ariaLabel: string, uiTarget?: string }} props */
-function SourceRow({ primary, secondary, selected, onSelect, ariaLabel, uiTarget }) {
-  return (
-    <MenuRow
+const SOURCE_LEADING_CLASS = "grid w-[1em] shrink-0 place-items-center";
+
+/** @param {{ primary: string, secondary?: string, selected: boolean, onSelect: (...args: any[]) => any, ariaLabel: string, uiTarget?: string, actions?: import("react").ReactNode }} props */
+function SourceRow({ primary, secondary, selected, onSelect, ariaLabel, uiTarget, actions }) {
+  const Row = actions ? RowAction : MenuRow;
+  const row = (
+    <Row
       aria-label={ariaLabel}
       aria-current={selected ? "true" : undefined}
       data-ui-target={uiTarget}
       onClick={onSelect}
+      className={actions ? "py-1" : undefined}
     >
-      <span
-        aria-hidden="true"
-        className={cn(
-          "size-1.5 shrink-0 rounded-full border",
-          selected ? "border-primary bg-primary" : "border-muted-foreground bg-transparent"
-        )}
-      />
+      <span aria-hidden="true" className={SOURCE_LEADING_CLASS}>
+        <span
+          className={cn(
+            "size-1.5 rounded-full border",
+            selected ? "border-primary bg-primary" : "border-muted-foreground bg-transparent"
+          )}
+        />
+      </span>
       <span className="min-w-0 flex-1">
         <span className="block truncate text-foreground">{primary}</span>
         {secondary ? (
           <span className="mt-0 block truncate text-muted-foreground">{secondary}</span>
         ) : null}
       </span>
-    </MenuRow>
+    </Row>
+  );
+  if (!actions) return row;
+  return (
+    <div className={MANAGEMENT_ROW_CLASS}>
+      {row}
+      <span className={MANAGEMENT_ROW_ACTIONS_CLASS}>{actions}</span>
+    </div>
   );
 }
 
@@ -87,30 +102,26 @@ function SourceSection({ id, group, label, count, open, onOpenChange, selectedSu
         aria-expanded={open}
         aria-controls={id}
         onClick={() => onOpenChange(!open)}
-        className="gap-1"
       >
-        <ChevronRight
-          aria-hidden="true"
-          className={cn(
-            "size-[1em] shrink-0 text-muted-foreground transition-transform",
-            open && "rotate-90"
-          )}
-        />
-        <span className="min-w-0 flex-1">
-          <span className="flex items-center gap-1 font-medium text-muted-foreground">
-            {label}
-            {selectedSummary ? (
-              <span aria-hidden="true" className="size-1.5 shrink-0 rounded-full bg-primary" />
-            ) : null}
-          </span>
-          {selectedSummary ? (
-            <span className="mt-0 block truncate text-[length:var(--ui-fs-caption)] text-muted-foreground">
+        <span aria-hidden="true" className={SOURCE_LEADING_CLASS}>
+          <ChevronRight
+            className={cn(
+              "size-[1em] text-muted-foreground transition-transform",
+              open && "rotate-90"
+            )}
+          />
+        </span>
+        <span className="shrink-0 font-medium text-muted-foreground">{label}</span>
+        {!open && selectedSummary ? (
+          <>
+            <span aria-hidden="true" className="size-1.5 shrink-0 rounded-full bg-primary" />
+            <span className="min-w-0 truncate text-foreground">
               {selectedSummary}
               <span className="sr-only">, selected</span>
             </span>
-          ) : null}
-        </span>
-        <span className="shrink-0 text-[length:var(--ui-fs-caption)] tabular-nums text-muted-foreground">
+          </>
+        ) : null}
+        <span className="ml-auto shrink-0 text-[length:var(--ui-fs-caption)] tabular-nums text-muted-foreground">
           {count}
         </span>
       </MenuRow>
@@ -118,7 +129,7 @@ function SourceSection({ id, group, label, count, open, onOpenChange, selectedSu
         id={id}
         aria-hidden={open ? undefined : true}
         inert={!open}
-        className={cn("pl-3", !open && "pointer-events-none h-0 overflow-hidden opacity-0")}
+        className={cn(!open && "pointer-events-none h-0 overflow-hidden opacity-0")}
       >
         {children}
       </div>
@@ -192,35 +203,45 @@ export function DeviceSelectionContent({
                 ? `${unavailable} ${unavailable === 1 ? "Source" : "Sources"} Unavailable`
                 : `${mix.members.length} Sources · Stereo`;
               return (
-                <div key={mix.id} className="flex items-center gap-1">
-                  <div className="min-w-0 flex-1">
-                    <SourceRow
-                      ariaLabel={mix.name}
-                      primary={mix.name}
-                      secondary={count}
-                      selected={mix.id === safeAudioDeviceId}
-                      onSelect={() => onSelect(mix.id)}
-                    />
-                  </div>
-                  {canManageMixes ? (
-                    <Popover>
-                      <PopoverTrigger asChild>
-                        <IconAction aria-label={`manage ${mix.name}`}>
-                          <Ellipsis className="size-[length:var(--ui-icon-management-action)]" />
-                        </IconAction>
-                      </PopoverTrigger>
-                      <PopoverContent align="end" className="w-auto p-1">
-                        <MenuRow onClick={() => sourceMixes.open(mix)}>Edit</MenuRow>
-                        <InlineConfirm
-                          confirmLabel={`delete ${mix.name}`}
-                          cancelLabel="cancel deletion"
-                          onConfirm={() => void sourceMixes.remove(mix)}
-                          trigger={(arm) => <MenuRow onClick={arm}>Delete</MenuRow>}
+                <SourceRow
+                  key={mix.id}
+                  uiTarget={`source:${mix.id}`}
+                  ariaLabel={mix.name}
+                  primary={mix.name}
+                  secondary={count}
+                  selected={mix.id === safeAudioDeviceId}
+                  onSelect={() => onSelect(mix.id)}
+                  actions={
+                    canManageMixes ? (
+                      <>
+                        <ManagementIconAction
+                          label={`edit ${mix.name}`}
+                          tip="Edit"
+                          icon={
+                            <Pencil className="size-[length:var(--ui-icon-management-action)]" />
+                          }
+                          onClick={() => sourceMixes.open(mix)}
                         />
-                      </PopoverContent>
-                    </Popover>
-                  ) : null}
-                </div>
+                        <InlineConfirm
+                          confirmLabel={`confirm delete ${mix.name}`}
+                          cancelLabel={`cancel delete ${mix.name}`}
+                          onConfirm={() => void sourceMixes.remove(mix)}
+                          trigger={(arm) => (
+                            <ManagementIconAction
+                              label={`delete ${mix.name}`}
+                              tip="Delete"
+                              icon={
+                                <Trash2 className="size-[length:var(--ui-icon-management-action)]" />
+                              }
+                              onClick={() => arm()}
+                              className="hover:text-destructive"
+                            />
+                          )}
+                        />
+                      </>
+                    ) : null
+                  }
+                />
               );
             })}
           </SourceSection>

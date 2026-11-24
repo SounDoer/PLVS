@@ -18,7 +18,7 @@ rectangle in CSS pixels relative to the main WebView; see [UI Navigation](ui.md)
 | `toolbar`                                   | `transport`, `clear`, `sources`, `open-file`, `loudness-profile`, `panels`, `views`, `presets`, `settings`, `status`             |
 | `panel`                                     | `panel:<panelId>` and its parts `settings`, `help`, `pin`, `fullscreen`, `close`, `body`, `history`, plus `panel:<panelId>:tab`  |
 | `panel-control`                             | `panel-control:<panelId>:<control>`, one per Panel Settings row; a dropdown row names its trigger                                |
-| `source-group`, `source`                    | Sources groups `output`, `input`, `applications`; `source:<deviceId>` rows as `device list` reports them, and `source:default`   |
+| `source-group`, `source`                    | Sources groups `mixes`, `output`, `input`, `applications`; `source:<deviceId>`, `source:<mixId>`, and `source:default` rows      |
 | `panels-menu`, `add-panel`                  | `panels-menu:<panelId>` rows and `panels-menu:add`; `add-panel:<moduleId>` in the Add Panel list                                 |
 | `preset`, `presets-menu`                    | `preset:<presetId>` rows; `presets-menu:name` and `presets-menu:add`                                                             |
 | `loudness-profile`, `loudness-profile-menu` | `loudness-profile:<profileId>` and `loudness-profile:off` rows; `loudness-profile-menu:add`                                      |

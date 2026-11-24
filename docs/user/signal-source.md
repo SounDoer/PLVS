@@ -120,7 +120,8 @@ members missing from the application list. Applications with no current audio ca
 Measurement** indicates that Integrated and Max include the incomplete intervals. Clear or a new
 measurement clears that indication.
 
-Use the row menu to edit or delete a Mix. Changing the members of the active Mix starts a new
+In the normal window, hover over or focus a Mix row to reveal its Edit and Delete controls.
+Changing the members of the active Mix starts a new
 measurement. Renaming it keeps the current measurement. Saved mixes are available to Workbenches
 on the same installation. Each Workbench remembers its own Source selection independently of Presets.
 

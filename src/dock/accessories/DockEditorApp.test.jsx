@@ -98,7 +98,8 @@ describe("DockEditorApp window behavior", () => {
     fireEvent.click(screen.getByRole("button", { name: /Mixes/ }));
     expect(screen.getByText("1 Source Unavailable")).toBeTruthy();
     expect(screen.queryByRole("button", { name: "Add Mix" })).toBeNull();
-    expect(screen.queryByRole("button", { name: "manage Playback Mix" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "edit Playback Mix" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "delete Playback Mix" })).toBeNull();
     fireEvent.click(screen.getByRole("button", { name: mix.name }));
     expect(action).toHaveBeenCalledWith("select-device", { deviceId: mix.id });
   });
