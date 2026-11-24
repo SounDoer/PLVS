@@ -13,6 +13,13 @@ use super::device::DeviceInfo;
 use crate::dsp::speech::VadEngineKind;
 use crate::ipc::types::FrameSubscribers;
 
+/// One explicitly selected endpoint and its zero-based mono or stereo channels.
+#[derive(serde::Deserialize)]
+pub struct MixInput {
+  pub id: String,
+  pub channels: Vec<u16>,
+}
+
 /// One PCM buffer from the device; channel count is never hard-coded to stereo.
 #[derive(Clone, Debug, PartialEq)]
 pub struct PcmFrame {

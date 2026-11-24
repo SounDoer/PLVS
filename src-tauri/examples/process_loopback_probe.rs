@@ -3,12 +3,12 @@ fn main() -> Result<(), String> {
   use std::time::Duration;
 
   use app_lib::{
-    capture_process_to_summary_with_format, capture_stereo_mix_probe, list_capture_applications,
-    ProcessLoopbackProbeResult,
+    capture_input_mix_probe, capture_process_to_summary_with_format, capture_stereo_mix_probe,
+    list_capture_applications, ProcessLoopbackProbeResult,
   };
   use serde_json::json;
 
-  const USAGE: &str = "usage: process_loopback_probe <pid> [seconds] [--channels <n>] [--sample-rate <hz>] [--with-pid <pid> [--mix [--restart-parent-pid <pid>]]] [--json]";
+  const USAGE: &str = "usage: process_loopback_probe <pid> [seconds] [--channels <n>] [--sample-rate <hz>] [--with-pid <pid> [--mix [--restart-parent-pid <pid>]]] [--mix-input <capture-label>] [--json]";
 
   fn json_report(result: &ProcessLoopbackProbeResult) -> serde_json::Value {
     json!({
@@ -53,6 +53,7 @@ fn main() -> Result<(), String> {
   let mut second_pid = None;
   let mut restart_parent_pid = None;
   let mut mix = false;
+  let mut mix_input = None;
   let mut channels = 2u16;
   let mut sample_rate = 48_000u32;
   let mut index = 0;
@@ -89,6 +90,10 @@ fn main() -> Result<(), String> {
         mix = true;
         index += 1;
       }
+      "--mix-input" if mix_input.is_none() => {
+        mix_input = Some(rest.get(index + 1).ok_or(USAGE)?.as_str());
+        index += 2;
+      }
       "--restart-parent-pid" if restart_parent_pid.is_none() => {
         let pid = rest
           .get(index + 1)
@@ -113,6 +118,22 @@ fn main() -> Result<(), String> {
   let capture = |pid| {
     capture_process_to_summary_with_format(pid, Duration::from_secs(seconds), sample_rate, channels)
   };
+  if let Some(input) = mix_input {
+    if mix
+      || second_pid.is_some()
+      || restart_parent_pid.is_some()
+      || channels != 2
+      || sample_rate != 48_000
+    {
+      return Err("--mix-input requires one application and the default stereo format".into());
+    }
+    let (app, measurement) = capture_input_mix_probe(process_id, input, seconds)?;
+    println!(
+      "{}",
+      json!({ "streams": [json_report(&app)], "mix": { "Ok": measurement } })
+    );
+    return Ok(());
+  }
   if restart_parent_pid.is_some() && !mix {
     return Err("--restart-parent-pid requires --mix".into());
   }

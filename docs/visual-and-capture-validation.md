@@ -342,6 +342,10 @@ to capture two independent players with left-channel tones at 1,000 and 1,001 Hz
 the probe check the near-in-phase peak above 0 dBFS and the near-opposite-phase dip without aligning
 player start times. The dip uses only 10 ms windows with both sources present.
 
+Use `--measure-mix-input` in place of `--measure-mix-phase` to combine one player's left-channel
+tone with the right input channel of VB-Cable. A different player supplies the right-channel tone.
+The checks cover clock alignment and the mono input's contribution to both output channels.
+
 The self-hosted capture jobs run the rig's generated stereo signal. Weekly soak comparison
 reads the tracked numeric baselines in `fixtures/capture-soak-baselines/`. HDMI Atmos checks
 still require a compatible playback route and a receiver that reports its input format.

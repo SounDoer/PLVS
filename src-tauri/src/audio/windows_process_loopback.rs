@@ -5,15 +5,17 @@ use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::sync::{mpsc, Arc};
 use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
+use cpal::traits::DeviceTrait;
 use serde::Serialize;
 use tauri::{AppHandle, Emitter};
-use windows::core::{implement, IUnknown, Interface, Ref, HRESULT};
+use windows::core::{implement, IUnknown, Interface, Ref, HRESULT, PCWSTR};
 use windows::Win32::Foundation::{CloseHandle, ERROR_NO_MORE_FILES, WAIT_OBJECT_0, WAIT_TIMEOUT};
 use windows::Win32::Media::Audio::{
   ActivateAudioInterfaceAsync, IActivateAudioInterfaceAsyncOperation,
   IActivateAudioInterfaceCompletionHandler, IActivateAudioInterfaceCompletionHandler_Impl,
-  IAudioCaptureClient, IAudioClient, AUDCLNT_BUFFERFLAGS_DATA_DISCONTINUITY,
-  AUDCLNT_BUFFERFLAGS_SILENT, AUDCLNT_BUFFERFLAGS_TIMESTAMP_ERROR, AUDCLNT_SHAREMODE_SHARED,
+  IAudioCaptureClient, IAudioClient, IMMDeviceEnumerator, MMDeviceEnumerator,
+  AUDCLNT_BUFFERFLAGS_DATA_DISCONTINUITY, AUDCLNT_BUFFERFLAGS_SILENT,
+  AUDCLNT_BUFFERFLAGS_TIMESTAMP_ERROR, AUDCLNT_SHAREMODE_SHARED,
   AUDCLNT_STREAMFLAGS_AUTOCONVERTPCM, AUDCLNT_STREAMFLAGS_EVENTCALLBACK,
   AUDCLNT_STREAMFLAGS_LOOPBACK, AUDCLNT_STREAMFLAGS_SRC_DEFAULT_QUALITY,
   AUDIOCLIENT_ACTIVATION_PARAMS, AUDIOCLIENT_ACTIVATION_PARAMS_0,
@@ -24,7 +26,10 @@ use windows::Win32::Media::Audio::{
 use windows::Win32::System::Com::StructuredStorage::{
   PROPVARIANT, PROPVARIANT_0, PROPVARIANT_0_0, PROPVARIANT_0_0_0,
 };
-use windows::Win32::System::Com::{CoInitializeEx, CoUninitialize, BLOB, COINIT_MULTITHREADED};
+use windows::Win32::System::Com::{
+  CoCreateInstance, CoInitializeEx, CoTaskMemFree, CoUninitialize, BLOB, CLSCTX_ALL,
+  COINIT_MULTITHREADED,
+};
 use windows::Win32::System::Diagnostics::ToolHelp::{
   CreateToolhelp32Snapshot, Process32FirstW, Process32NextW, PROCESSENTRY32W, TH32CS_SNAPPROCESS,
 };
@@ -33,7 +38,7 @@ use windows::Win32::System::Threading::{
 };
 use windows::Win32::System::Variant::VT_BLOB;
 
-use super::capture::{AudioCaptureSession, MeasuredPcmSubscriptions, MeterResetRequest};
+use super::capture::{AudioCaptureSession, MeasuredPcmSubscriptions, MeterResetRequest, MixInput};
 use super::cpal_backend::{
   emit_capture_failure, pooled_pcm_buffer_capacity, run_meter_pipeline_bridge_thread,
   PcmBufferPool, PcmCallbackForwarder, PcmDeliveryQueue, PCM_QUEUE_CAP,
@@ -283,6 +288,10 @@ fn capture_format(sample_rate: u32, channels: u16) -> Result<CaptureFormat, Stri
   }
   let mask = channel_mask(channels)
     .ok_or_else(|| format!("unsupported probe channel count: {channels} (use 1, 2, 6, or 8)"))?;
+  Ok(float_capture_format(sample_rate, channels, mask))
+}
+
+fn float_capture_format(sample_rate: u32, channels: u16, mask: u32) -> CaptureFormat {
   let block_align = channels * (BITS_PER_SAMPLE / 8);
   let base = WAVEFORMATEX {
     wFormatTag: if channels <= 2 {
@@ -298,16 +307,16 @@ fn capture_format(sample_rate: u32, channels: u16) -> Result<CaptureFormat, Stri
     cbSize: if channels <= 2 { 0 } else { 22 },
   };
   if channels <= 2 {
-    Ok(CaptureFormat::Basic(base))
+    CaptureFormat::Basic(base)
   } else {
-    Ok(CaptureFormat::Extensible(WAVEFORMATEXTENSIBLE {
+    CaptureFormat::Extensible(WAVEFORMATEXTENSIBLE {
       Format: base,
       Samples: WAVEFORMATEXTENSIBLE_0 {
         wValidBitsPerSample: BITS_PER_SAMPLE,
       },
       dwChannelMask: mask,
       SubFormat: KSDATAFORMAT_SUBTYPE_IEEE_FLOAT,
-    }))
+    })
   }
 }
 
@@ -319,7 +328,7 @@ fn db_from_linear(value: f64) -> f64 {
   }
 }
 
-fn drain_process_packets(
+fn drain_capture_packets(
   capture_client: &IAudioCaptureClient,
   channels: u16,
   timestamped: bool,
@@ -385,17 +394,40 @@ fn run_process_stream(
   sample_rate: u32,
   channels: u16,
   timestamped: bool,
-  mut stopped: impl FnMut() -> bool,
+  stopped: impl FnMut() -> bool,
   on_start: impl FnOnce(),
-  mut on_pcm: impl FnMut(PacketTiming, &[f32]),
+  on_pcm: impl FnMut(PacketTiming, &[f32]),
 ) -> Result<(), String> {
   let _com = ComApartment::initialize()?;
   let audio_client = activate_process_audio_client(process_id)?;
   let format = capture_format(sample_rate, channels)?;
+  run_wasapi_stream(
+    audio_client,
+    &format,
+    channels,
+    AUDCLNT_STREAMFLAGS_LOOPBACK,
+    timestamped,
+    stopped,
+    on_start,
+    on_pcm,
+  )
+}
+
+#[allow(clippy::too_many_arguments)]
+fn run_wasapi_stream(
+  audio_client: IAudioClient,
+  format: &CaptureFormat,
+  channels: u16,
+  flags: u32,
+  timestamped: bool,
+  mut stopped: impl FnMut() -> bool,
+  on_start: impl FnOnce(),
+  mut on_pcm: impl FnMut(PacketTiming, &[f32]),
+) -> Result<(), String> {
   unsafe {
     audio_client.Initialize(
       AUDCLNT_SHAREMODE_SHARED,
-      AUDCLNT_STREAMFLAGS_LOOPBACK
+      flags
         | AUDCLNT_STREAMFLAGS_EVENTCALLBACK
         | AUDCLNT_STREAMFLAGS_AUTOCONVERTPCM
         | AUDCLNT_STREAMFLAGS_SRC_DEFAULT_QUALITY,
@@ -417,9 +449,13 @@ fn run_process_stream(
   on_start();
 
   let mut silent_samples = Vec::new();
+  let mut last_input_packet = Instant::now();
   let capture_result = loop {
     if stopped() {
       break Ok(());
+    }
+    if flags == 0 && last_input_packet.elapsed() >= Duration::from_secs(2) {
+      break Err("input stopped delivering audio packets".into());
     }
     let wait = unsafe { WaitForSingleObject(event.0, 100) };
     if wait == WAIT_TIMEOUT {
@@ -428,11 +464,16 @@ fn run_process_stream(
     if wait != WAIT_OBJECT_0 {
       break Err(format!("WaitForSingleObject failed with status {}", wait.0));
     }
-    if let Err(error) = drain_process_packets(
+    if let Err(error) = drain_capture_packets(
       &capture_client,
       channels,
       timestamped,
-      &mut on_pcm,
+      &mut |timing, pcm| {
+        if flags == 0 {
+          last_input_packet = Instant::now();
+        }
+        on_pcm(timing, pcm);
+      },
       &mut silent_samples,
     ) {
       break Err(error);
@@ -468,7 +509,7 @@ impl AudioCaptureSession for ProcessLoopbackSession {
 
 pub enum ProcessCaptureSource {
   Single(u32),
-  Mix(Vec<String>),
+  Mix(Vec<String>, Option<MixInput>),
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -537,8 +578,9 @@ pub fn start_process_session(
             forwarder.forward_f32(pcm);
           },
         ),
-        ProcessCaptureSource::Mix(applications) => run_live_mix(
+        ProcessCaptureSource::Mix(applications, input) => run_live_mix(
           applications,
+          input,
           stop_rx,
           &dropped_chunks,
           &failure_app,
@@ -565,18 +607,21 @@ pub fn start_process_session(
 
 fn run_live_mix(
   applications: Vec<String>,
+  input: Option<MixInput>,
   stop_rx: mpsc::Receiver<()>,
   dropped: &AtomicU64,
   app: &AppHandle,
   mut on_pcm: impl FnMut(&[f32]),
 ) -> Result<(), String> {
   let stopping = AtomicBool::new(false);
-  let readiness: Vec<_> = applications
+  let member_ids = applications
     .iter()
-    .map(|_| AtomicBool::new(false))
-    .collect();
+    .map(String::as_str)
+    .chain(input.iter().map(|input| input.id.as_str()))
+    .collect::<Vec<_>>();
+  let readiness: Vec<_> = member_ids.iter().map(|_| AtomicBool::new(false)).collect();
   std::thread::scope(|scope| {
-    let member_count = applications.len();
+    let member_count = member_ids.len();
     let (tx, rx) = mpsc::sync_channel(16 * member_count);
     for (member, app_id) in applications.iter().enumerate() {
       let tx = tx.clone();
@@ -592,6 +637,21 @@ fn run_live_mix(
         return Err(format!("could not start mix capture: {error}"));
       }
     }
+    if let Some(input) = &input {
+      let tx = tx.clone();
+      let stopping = &stopping;
+      let member = applications.len();
+      let available = &readiness[member];
+      if let Err(error) = std::thread::Builder::new()
+        .name("mix-input-capture".into())
+        .spawn_scoped(scope, move || {
+          capture_mix_input(input, member, &tx, stopping, available, dropped)
+        })
+      {
+        stopping.store(true, Ordering::Relaxed);
+        return Err(format!("could not start mix input capture: {error}"));
+      }
+    }
     drop(tx);
     let mut last_report = Instant::now();
     let mut last_unavailable = None;
@@ -602,11 +662,11 @@ fn run_live_mix(
       || {
         if matches!(stop_rx.try_recv(), Err(mpsc::TryRecvError::Empty)) {
           if last_report.elapsed() >= Duration::from_millis(250) {
-            let unavailable: Vec<_> = applications
+            let unavailable: Vec<_> = member_ids
               .iter()
               .zip(&readiness)
               .filter(|(_, ready)| !ready.load(Ordering::Relaxed))
-              .map(|(id, _)| id.as_str())
+              .map(|(&id, _)| id)
               .collect();
             let partial_at = partial_at.take();
             if last_unavailable.as_ref() != Some(&unavailable) || partial_at.is_some() {
@@ -657,6 +717,124 @@ struct MixCaptureStatus<'a> {
   partial_at: Option<u64>,
 }
 
+fn open_mix_input(input: &MixInput) -> Result<(IAudioClient, CaptureFormat, u16), String> {
+  let (device, _) = super::device_enum::resolve_device(&input.id)?;
+  let endpoint = device.id().map_err(|error| error.to_string())?;
+  let id: Vec<u16> = endpoint.id().encode_utf16().chain(Some(0)).collect();
+  let (client, channels, mask) = unsafe {
+    let enumerator: IMMDeviceEnumerator =
+      CoCreateInstance(&MMDeviceEnumerator, None, CLSCTX_ALL).map_err(|error| error.to_string())?;
+    let device = enumerator
+      .GetDevice(PCWSTR(id.as_ptr()))
+      .map_err(|error| error.to_string())?;
+    let client: IAudioClient = device
+      .Activate(CLSCTX_ALL, None)
+      .map_err(|error| error.to_string())?;
+    let format = client.GetMixFormat().map_err(|error| error.to_string())?;
+    if format.is_null() {
+      return Err("input returned no mix format".into());
+    }
+    let channels = (*format).nChannels;
+    let mask = if (*format).wFormatTag == WAVE_FORMAT_EXTENSIBLE && (*format).cbSize >= 22 {
+      std::ptr::addr_of!((*format.cast::<WAVEFORMATEXTENSIBLE>()).dwChannelMask).read_unaligned()
+    } else {
+      channel_mask(channels).unwrap_or(0)
+    };
+    CoTaskMemFree(Some(format.cast()));
+    (client, channels, mask)
+  };
+  if channels == 0
+    || channels > 256
+    || !(1..=2).contains(&input.channels.len())
+    || input.channels.iter().any(|&channel| channel >= channels)
+  {
+    return Err("selected input channels are unavailable".into());
+  }
+  Ok((
+    client,
+    float_capture_format(DEFAULT_SAMPLE_RATE, channels, mask),
+    channels,
+  ))
+}
+
+fn capture_mix_input(
+  input: &MixInput,
+  member: usize,
+  tx: &mpsc::SyncSender<MixPacket>,
+  stopping: &AtomicBool,
+  available: &AtomicBool,
+  dropped: &AtomicU64,
+) {
+  let stopped = || stopping.load(Ordering::Relaxed);
+  while !stopped() {
+    let result = run_mix_input_stream(
+      input,
+      member,
+      &mut |packet| tx.try_send(packet).is_ok(),
+      dropped,
+      stopped,
+      || available.store(true, Ordering::Relaxed),
+    );
+    available.store(false, Ordering::Relaxed);
+    if let Err(error) = result {
+      log::debug!("Mix input capture interrupted: {error}");
+    }
+    wait_for_mix_retry(stopping);
+  }
+}
+
+fn run_mix_input_stream(
+  input: &MixInput,
+  member: usize,
+  send: &mut impl FnMut(MixPacket) -> bool,
+  dropped: &AtomicU64,
+  stopped: impl FnMut() -> bool,
+  on_start: impl FnOnce(),
+) -> Result<(), String> {
+  let _com = ComApartment::initialize()?;
+  let (client, format, channels) = open_mix_input(input)?;
+  let mut pending: Option<MixPacket> = None;
+  run_wasapi_stream(
+    client,
+    &format,
+    channels,
+    0,
+    true,
+    stopped,
+    on_start,
+    |timing, pcm| {
+      let next = timing.has_qpc().then(|| MixPacket {
+        member,
+        qpc: timing.qpc,
+        end_qpc: None,
+        frames: pcm
+          .chunks_exact(usize::from(channels))
+          .map(|frame| mix_input_stereo_frame(frame, &input.channels))
+          .collect(),
+      });
+      if let Some(mut previous) = std::mem::replace(&mut pending, next) {
+        if timing.has_qpc() && timing.flags & AUDCLNT_BUFFERFLAGS_DATA_DISCONTINUITY.0 as u32 == 0 {
+          previous.end_qpc = Some(timing.qpc);
+        }
+        if !send(previous) {
+          dropped.fetch_add(1, Ordering::Relaxed);
+        }
+      }
+      if !timing.has_qpc() {
+        dropped.fetch_add(1, Ordering::Relaxed);
+      }
+    },
+  )
+}
+
+fn mix_input_stereo_frame(frame: &[f32], channels: &[u16]) -> [f32; 2] {
+  let left = frame[usize::from(channels[0])];
+  match channels.get(1) {
+    Some(&right) => [left, frame[usize::from(right)]],
+    None => [left * std::f32::consts::FRAC_1_SQRT_2; 2],
+  }
+}
+
 fn capture_live_member(
   member: usize,
   app_id: &str,
@@ -693,12 +871,16 @@ fn capture_live_member(
       }
     }
     // Retry a missing or failed member without resetting the mix worker or its meter.
-    for _ in 0..5 {
-      if stopped() {
-        return;
-      }
-      std::thread::sleep(Duration::from_millis(100));
+    wait_for_mix_retry(stopping);
+  }
+}
+
+fn wait_for_mix_retry(stopping: &AtomicBool) {
+  for _ in 0..5 {
+    if stopping.load(Ordering::Relaxed) {
+      return;
     }
+    std::thread::sleep(Duration::from_millis(100));
   }
 }
 
@@ -815,6 +997,61 @@ pub fn capture_stereo_mix_probe(
   })
 }
 
+/// Exercise the desktop input reader and app loopback together on the leased Windows rig.
+pub fn capture_input_mix_probe(
+  process_id: u32,
+  input_label: &str,
+  seconds: u64,
+) -> Result<(ProcessLoopbackProbeResult, MixProbeMeasurement), String> {
+  if !(1..=60).contains(&seconds) {
+    return Err("mix probe duration must be between 1 and 60 seconds".into());
+  }
+  let input = MixInput {
+    id: super::device_enum::resolve_device_id_by_substring(input_label)?,
+    channels: vec![1],
+  };
+  let dropped = AtomicU64::new(0);
+  let duration = Duration::from_secs(seconds);
+  let deadline = Instant::now() + duration;
+  std::thread::scope(|scope| {
+    let (tx, rx) = mpsc::sync_channel(32);
+    let app_tx = tx.clone();
+    let dropped = &dropped;
+    let app = scope.spawn(move || {
+      capture_process_probe(
+        process_id,
+        duration,
+        DEFAULT_SAMPLE_RATE,
+        DEFAULT_CHANNELS,
+        None,
+        |timing, pcm| {
+          if !queue_mix_packet(&app_tx, 0, timing, pcm) {
+            dropped.fetch_add(1, Ordering::Relaxed);
+          }
+        },
+      )
+    });
+    let device = scope.spawn(move || {
+      run_mix_input_stream(
+        &input,
+        1,
+        &mut |packet| tx.try_send(packet).is_ok(),
+        dropped,
+        || Instant::now() >= deadline,
+        || {},
+      )
+    });
+    let measured = measure_streaming_stereo(rx);
+    let application = app
+      .join()
+      .map_err(|_| "application probe thread panicked")??;
+    device.join().map_err(|_| "input probe thread panicked")??;
+    let mut measurement = measured?;
+    measurement.dropped_packets += dropped.load(Ordering::Relaxed) as usize;
+    Ok((application, measurement))
+  })
+}
+
 // The rig uses windowless players. Restrict discovery to its launcher so an unrelated
 // desktop application with the same executable cannot be picked up by the probe.
 fn wait_for_rig_replacement(
@@ -875,6 +1112,7 @@ pub struct StereoMixProbeResult {
 struct MixPacket {
   member: usize,
   qpc: u64,
+  end_qpc: Option<u64>,
   frames: Vec<[f32; 2]>,
 }
 
@@ -889,6 +1127,7 @@ fn queue_mix_packet(
       .try_send(MixPacket {
         member,
         qpc: timing.qpc,
+        end_qpc: None,
         frames: Vec::from(pcm.as_chunks::<2>().0),
       })
       .is_ok()
@@ -980,6 +1219,7 @@ fn run_mix_timeline(
   // The larger ring absorbs bursts without permitting unbounded accumulation.
   let mut timeline = StereoMixTimeline::new(member_count, RATE / 2);
   let mut block = [[0.0; 2]; RATE / 100];
+  let mut adjusted = Vec::new();
   let first = loop {
     if stopped() {
       return false;
@@ -991,17 +1231,25 @@ fn run_mix_timeline(
     }
   };
   let epoch = first.qpc;
+  let frame_at = |qpc| {
+    let ticks = i128::from(qpc) - i128::from(epoch);
+    let scaled = ticks * RATE as i128;
+    ((scaled + scaled.signum() * 5_000_000) / 10_000_000) as i64
+  };
   let started = Instant::now();
   let mut observed_end = 0;
   let mut pending = Ok(first);
 
   loop {
     if let Ok(packet) = &pending {
-      let ticks = i128::from(packet.qpc) - i128::from(epoch);
-      let scaled = ticks * RATE as i128;
-      let position = ((scaled + scaled.signum() * 5_000_000) / 10_000_000) as i64;
-      if timeline.push(packet.member, position, &packet.frames) {
-        observed_end = observed_end.max(position + packet.frames.len() as i64);
+      let position = frame_at(packet.qpc);
+      let frames = packet
+        .end_qpc
+        .and_then(|end| usize::try_from(frame_at(end) - position).ok())
+        .and_then(|len| adjust_input_clock(&packet.frames, len, &mut adjusted))
+        .unwrap_or(&packet.frames);
+      if timeline.push(packet.member, position, frames) {
+        observed_end = observed_end.max(position + frames.len() as i64);
       } else {
         on_drop();
       }
@@ -1025,6 +1273,35 @@ fn run_mix_timeline(
     pending = rx.recv_timeout(POLL);
   }
   true
+}
+
+// WASAPI handles nominal sample-rate conversion. Move the input packet boundary to match
+// its measured clock, within a small allowance. A larger timestamp jump is a real gap.
+fn adjust_input_clock<'a>(
+  frames: &[[f32; 2]],
+  length: usize,
+  output: &'a mut Vec<[f32; 2]>,
+) -> Option<&'a [[f32; 2]]> {
+  if length < 2
+    || frames.len() < 2
+    || length == frames.len()
+    || length.abs_diff(frames.len()) > 2 + frames.len() / 200
+  {
+    return None;
+  }
+  output.clear();
+  let step = (frames.len() - 1) as f64 / (length - 1) as f64;
+  output.extend((0..length).map(|index| {
+    let at = index as f64 * step;
+    let lower = at as usize;
+    let upper = (lower + 1).min(frames.len() - 1);
+    let fraction = (at - lower as f64) as f32;
+    std::array::from_fn(|channel| {
+      let value = frames[lower][channel];
+      value + fraction * (frames[upper][channel] - value)
+    })
+  }));
+  Some(output)
 }
 
 fn capture_process_probe(
@@ -1126,12 +1403,14 @@ mod tests {
     tx.send(MixPacket {
       member: 0,
       qpc: 100_000,
+      end_qpc: None,
       frames: vec![[0.0, 0.0], [0.75, 0.25]],
     })
     .unwrap();
     tx.send(MixPacket {
       member: 1,
       qpc: 100_208,
+      end_qpc: None,
       frames: vec![[0.75, -0.25], [0.0, 0.0]],
     })
     .unwrap();
@@ -1143,6 +1422,27 @@ mod tests {
     assert_eq!(mix.partial_frames, 2);
     assert!((mix.sample_peak_max_l_db - 20.0 * 1.5_f64.log10()).abs() < 0.000_001);
     assert!(!mix.sample_peak_max_r_db.is_finite());
+  }
+
+  #[test]
+  fn mix_input_maps_selected_channels_without_folding_in_other_channels() {
+    let frame = [0.25, 1.0, -0.5];
+    assert_eq!(super::mix_input_stereo_frame(&frame, &[0, 2]), [0.25, -0.5]);
+    assert_eq!(
+      super::mix_input_stereo_frame(&frame, &[1]),
+      [std::f32::consts::FRAC_1_SQRT_2; 2]
+    );
+  }
+
+  #[test]
+  fn small_input_clock_correction_stretches_pcm_but_large_gaps_stay_gaps() {
+    let frames = [[0.0, 1.0], [1.0, 0.0]];
+    let mut adjusted = Vec::new();
+    assert_eq!(
+      super::adjust_input_clock(&frames, 3, &mut adjusted).unwrap(),
+      [[0.0, 1.0], [0.5, 0.5], [1.0, 0.0]]
+    );
+    assert!(super::adjust_input_clock(&frames, 10, &mut adjusted).is_none());
   }
 
   #[test]

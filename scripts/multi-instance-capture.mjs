@@ -280,8 +280,14 @@ async function runProcessTimingProbe(index) {
   const measureMix = process.argv.includes("--measure-mix");
   if (measureMix && seconds > 60) throw new RigError("Mix measurement accepts up to 60 seconds.");
   const measurePhase = process.argv.includes("--measure-mix-phase");
+  const measureInput = process.argv.includes("--measure-mix-input");
   const restartMember = process.argv.includes("--restart-mix-member");
   const dropMember = restartMember || process.argv.includes("--drop-mix-member");
+  if (measureInput && (!measureMix || measurePhase || dropMember || seconds < 4)) {
+    throw new RigError(
+      "--measure-mix-input requires --measure-mix for at least 4 seconds on its own."
+    );
+  }
   if (measurePhase && (!measureMix || dropMember || seconds < 4)) {
     throw new RigError(
       "--measure-mix-phase requires --measure-mix for at least 4 seconds without a member exit."
@@ -316,6 +322,7 @@ async function runProcessTimingProbe(index) {
               ? SETTLE_MS / 1000 + seconds / (restartMember ? 3 : 2)
               : seconds + 15,
             peakLDb: -Infinity,
+            ...(measureInput ? { freqHz: SIGNAL.freqHz + 1 } : {}),
             ...(measurePhase
               ? { peakLDb: phasePeak, peakRDb: -Infinity, freqHz: SIGNAL.freqHz + 1 }
               : {}),
@@ -343,9 +350,9 @@ async function runProcessTimingProbe(index) {
         const args = [
           first,
           String(seconds),
-          "--with-pid",
-          second,
-          ...(measureMix ? ["--mix"] : []),
+          ...(measureInput
+            ? ["--mix-input", "CABLE Output"]
+            : ["--with-pid", second, ...(measureMix ? ["--mix"] : [])]),
           ...(restartMember ? ["--restart-parent-pid", String(process.pid)] : []),
         ];
         const [probe, replacementPid] = restartMember
@@ -362,7 +369,7 @@ async function runProcessTimingProbe(index) {
             })
           : [runCli(resolve(executable), args), null];
         const report = parseJsonLines(probe.stdout).at(-1);
-        if (probe.status !== 0 || report?.streams?.length !== 2) {
+        if (probe.status !== 0 || report?.streams?.length !== (measureInput ? 1 : 2)) {
           throw new RigError(`Process timing probe failed: ${probe.stderr.trim() || "no report"}`);
         }
         const directory = join(ROOT, "artifacts", "capture", `process-timing-${Date.now()}`);
@@ -371,6 +378,28 @@ async function runProcessTimingProbe(index) {
         writeFileSync(path, `${JSON.stringify(report, null, 2)}\n`);
         if (report.streams.some((stream) => !Number.isFinite(stream.integratedLufs))) {
           throw new RigError(`A process capture was silent. Report: ${path}`);
+        }
+        if (measureInput) {
+          const [application] = report.streams;
+          const mixed = report.mix?.Ok;
+          const monoPeak = SIGNAL.peakRDb - 20 * Math.log10(Math.SQRT2);
+          const leftPeak = 20 * Math.log10(10 ** (SIGNAL.peakLDb / 20) + 10 ** (monoPeak / 20));
+          if (
+            !mixed ||
+            mixed.droppedPackets !== 0 ||
+            mixed.comparedFrames < (seconds - 1) * SIGNAL.sampleRateHz ||
+            mixed.partialFrames + mixed.emptyFrames > SIGNAL.sampleRateHz ||
+            application.samplePeakMaxRDb !== null ||
+            !Number.isFinite(mixed.samplePeakMaxRDb) ||
+            Math.abs(mixed.samplePeakMaxRDb - monoPeak) > 0.2 ||
+            !Number.isFinite(mixed.samplePeakMaxLDb) ||
+            Math.abs(mixed.samplePeakMaxLDb - leftPeak) > 0.2
+          ) {
+            throw new Error(
+              `The app and input mix did not match the test signals. Report: ${path}`
+            );
+          }
+          return path;
         }
         if (measureMix) {
           const [left, right] = report.streams;
