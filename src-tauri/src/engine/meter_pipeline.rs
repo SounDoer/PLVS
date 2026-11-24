@@ -7,8 +7,8 @@ use crate::dsp::channel_layouts::ChannelSelection;
 use crate::dsp::channel_weights::standard_layout_name;
 use crate::dsp::loudness::LoudnessBlock;
 use crate::dsp::peak::{
-  sample_peak_db_interleaved, sample_peak_db_mono, sample_peak_db_per_channel_interleaved,
-  RmsWindow,
+  fold_sample_peak_abs_per_channel_interleaved, linear_peak_to_db, sample_peak_db_interleaved,
+  sample_peak_db_mono, RmsWindow,
 };
 #[cfg(test)]
 use crate::dsp::shared_spectral_engine::{RuntimeConsumerSnapshot, SpectralCheckpointTime};
@@ -180,6 +180,10 @@ pub struct MeterPipeline {
   tp_max_db: f64,
   sample_peak_max_l: f64,
   sample_peak_max_r: f64,
+  /// Per-channel linear sample peak of every buffer since the last emitted frame. The Level Meter
+  /// shows `peak_db` without a hold, so a transient in a buffer that did not trigger a frame would
+  /// otherwise never reach it. Sized once from `channels`; reset to zero on each emit.
+  frame_peak_abs: Vec<f64>,
   rms_window: RmsWindow,
   t0: Instant,
   last_frame_emit: Instant,
@@ -266,6 +270,7 @@ impl MeterPipeline {
       tp_max_db: f64::NEG_INFINITY,
       sample_peak_max_l: f64::NEG_INFINITY,
       sample_peak_max_r: f64::NEG_INFINITY,
+      frame_peak_abs: vec![0.0; channels.max(1) as usize],
       rms_window: RmsWindow::new(sample_rate, channels, RMS_WINDOW_MS),
       t0: Instant::now(),
       last_frame_emit: Instant::now(),
@@ -347,6 +352,7 @@ impl MeterPipeline {
     self.tp_max_db = f64::NEG_INFINITY;
     self.sample_peak_max_l = f64::NEG_INFINITY;
     self.sample_peak_max_r = f64::NEG_INFINITY;
+    self.frame_peak_abs.fill(0.0);
     self.rms_window.reset();
     self.loudness.reset();
     self.shared_spectral_runtime.reset();
@@ -996,6 +1002,7 @@ impl MeterPipeline {
     if sr.is_finite() {
       self.sample_peak_max_r = self.sample_peak_max_r.max(sr);
     }
+    fold_sample_peak_abs_per_channel_interleaved(interleaved, &mut self.frame_peak_abs);
 
     // In file mode, queue visual ticks instead of emitting them inline. Gate by MEDIA time, not wall
     // clock (offline decode runs far faster than real time; see apply_loudness_block). The batch is
@@ -1076,7 +1083,13 @@ impl MeterPipeline {
       .map(|(_, _, _, side_to_mid_db)| side_to_mid_db)
       .unwrap_or(f64::NEG_INFINITY);
 
-    let peak_db = sample_peak_db_per_channel_interleaved(interleaved, ch);
+    let peak_db: Vec<f64> = self
+      .frame_peak_abs
+      .iter()
+      .copied()
+      .map(linear_peak_to_db)
+      .collect();
+    self.frame_peak_abs.fill(0.0);
     let rms_db = self.rms_window.db_per_channel();
 
     let dialogue_integrated = lb
@@ -2800,6 +2813,80 @@ mod tests {
     assert_eq!(
       pipeline.shared_runtime_lifecycle_for_test().total_fft_count,
       0
+    );
+  }
+
+  /// The Level Meter shows each frame's `peak_db` directly, with no peak hold. Capture buffers
+  /// arrive faster than the 16 ms frame cadence, so a frame must report the largest sample of
+  /// every buffer since the previous frame, not only of the buffer that happened to trigger it.
+  #[test]
+  fn frame_peak_covers_buffers_pushed_between_frames() {
+    let sr = 48_000_u32;
+    let buffer_frames = 480; // 10 ms
+    let expire = |pipeline: &mut MeterPipeline| {
+      pipeline.last_frame_emit = instant_ago(Duration::from_millis(FRAME_EMIT_MS as u64 + 1));
+    };
+    let quiet = vec![0.01_f32; buffer_frames * 2];
+    let mut transient = quiet.clone();
+    transient[100 * 2] = 1.0; // L
+    transient[200 * 2 + 1] = -0.5; // R
+
+    let mut pipeline = MeterPipeline::new(sr, 2);
+    expire(&mut pipeline);
+    assert!(push_pcm_no_requests(&mut pipeline, &quiet, None, false).is_some());
+    assert!(
+      push_pcm_no_requests(&mut pipeline, &transient, None, false).is_none(),
+      "the transient buffer must land between frames for this test to mean anything"
+    );
+    expire(&mut pipeline);
+    let frame = push_pcm_no_requests(&mut pipeline, &quiet, None, false).expect("frame");
+    assert!(frame.peak_db[0].abs() < 1e-9, "L peak {:?}", frame.peak_db);
+    assert!(
+      (frame.peak_db[1] - 20.0 * 0.5_f64.log10()).abs() < 1e-9,
+      "R peak {:?}",
+      frame.peak_db
+    );
+
+    // The running maximum restarts with each frame.
+    expire(&mut pipeline);
+    let frame = push_pcm_no_requests(&mut pipeline, &quiet, None, false).expect("frame");
+    let quiet_db = 20.0 * 0.01_f32.abs().log10() as f64;
+    for peak in &frame.peak_db {
+      assert!((peak - quiet_db).abs() < 1e-6, "peak {:?}", frame.peak_db);
+    }
+
+    // Mono takes the same path.
+    let mut pipeline = MeterPipeline::new(sr, 1);
+    let quiet = vec![0.01_f32; buffer_frames];
+    let mut transient = quiet.clone();
+    transient[100] = -1.0;
+    expire(&mut pipeline);
+    assert!(push_pcm_no_requests(&mut pipeline, &quiet, None, false).is_some());
+    assert!(push_pcm_no_requests(&mut pipeline, &transient, None, false).is_none());
+    expire(&mut pipeline);
+    let frame = push_pcm_no_requests(&mut pipeline, &quiet, None, false).expect("frame");
+    assert!(
+      frame.peak_db[0].abs() < 1e-9,
+      "mono peak {:?}",
+      frame.peak_db
+    );
+  }
+
+  #[test]
+  fn file_mode_frame_peak_covers_buffers_decoded_between_frames() {
+    let sr = 48_000_u32;
+    let mut pipeline = MeterPipeline::new_for_file(sr, 2);
+    let quiet = vec![0.01_f32; 480 * 2];
+    let mut transient = quiet.clone();
+    transient[7 * 2 + 1] = 0.9;
+    assert!(push_pcm_no_requests(&mut pipeline, &quiet, None, false).is_some());
+    assert!(push_pcm_no_requests(&mut pipeline, &transient, None, false).is_none());
+    pipeline.last_frame_emit = instant_ago(Duration::from_millis(FRAME_EMIT_MS as u64 + 1));
+    let frame = push_pcm_no_requests(&mut pipeline, &quiet, None, false).expect("frame");
+    assert!(
+      (frame.peak_db[1] - 20.0 * 0.9_f32.log10() as f64).abs() < 1e-6,
+      "R peak {:?}",
+      frame.peak_db
     );
   }
 

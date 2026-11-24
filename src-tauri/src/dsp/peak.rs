@@ -120,41 +120,42 @@ pub fn sample_peak_db_mono(mono: &[f32]) -> (f64, f64) {
   (d, d)
 }
 
-/// Interleaved PCM: `channels` samples per frame; returns per-channel sample peaks (dBFS).
-pub fn sample_peak_db_per_channel_interleaved(interleaved: &[f32], channels: u16) -> Vec<f64> {
-  let ch = channels.max(1) as usize;
-  if ch == 1 {
-    let (d, _) = sample_peak_db_mono(interleaved);
-    return vec![d];
+/// Raises each `max_abs[c]` to the largest absolute sample of channel `c` in `interleaved`, whose
+/// frames hold `max_abs.len()` samples. Allocation-free, so a caller can keep one running maximum
+/// across many buffers.
+pub fn fold_sample_peak_abs_per_channel_interleaved(interleaved: &[f32], max_abs: &mut [f64]) {
+  let ch = max_abs.len();
+  if ch == 0 {
+    return;
   }
-
-  let frames = interleaved.len() / ch;
-  let mut max_abs: Vec<f64> = vec![0.0; ch];
-  for i in 0..frames {
-    let base = i * ch;
-    for c in 0..ch {
-      let a = interleaved[base + c].abs() as f64;
-      if a > max_abs[c] {
-        max_abs[c] = a;
+  for frame in interleaved.chunks_exact(ch) {
+    for (m, &s) in max_abs.iter_mut().zip(frame) {
+      let a = s.abs() as f64;
+      if a > *m {
+        *m = a;
       }
     }
   }
+}
 
-  max_abs
-    .into_iter()
-    .map(|m| {
-      if m > 0.0 {
-        20.0 * m.log10()
-      } else {
-        f64::NEG_INFINITY
-      }
-    })
-    .collect()
+/// Linear absolute peak to dBFS; silence is negative infinity.
+pub fn linear_peak_to_db(m: f64) -> f64 {
+  if m > 0.0 {
+    20.0 * m.log10()
+  } else {
+    f64::NEG_INFINITY
+  }
 }
 
 #[cfg(test)]
 mod tests {
   use super::*;
+
+  fn per_channel_peaks_db(interleaved: &[f32], channels: usize) -> Vec<f64> {
+    let mut max_abs = vec![0.0_f64; channels];
+    fold_sample_peak_abs_per_channel_interleaved(interleaved, &mut max_abs);
+    max_abs.into_iter().map(linear_peak_to_db).collect()
+  }
 
   #[test]
   fn interleaved_stereo_uses_lr_pairs() {
@@ -191,7 +192,7 @@ mod tests {
   fn per_channel_peaks_match_stereo_lr() {
     let interleaved = [0.5_f32, -0.25, 0.1, 0.9];
     let (l, r) = sample_peak_db_interleaved(&interleaved, 2);
-    let v = sample_peak_db_per_channel_interleaved(&interleaved, 2);
+    let v = per_channel_peaks_db(&interleaved, 2);
     assert_eq!(v.len(), 2);
     assert!((v[0] - l).abs() < 1e-5);
     assert!((v[1] - r).abs() < 1e-5);
@@ -201,7 +202,7 @@ mod tests {
   fn per_channel_peaks_include_all_channels() {
     // frame0: (L,R,C,LFE) have distinct peaks; frame1 is zeros
     let interleaved = [0.1_f32, 0.2, 0.3, 0.4, 0.0, 0.0, 0.0, 0.0];
-    let v = sample_peak_db_per_channel_interleaved(&interleaved, 4);
+    let v = per_channel_peaks_db(&interleaved, 4);
     assert_eq!(v.len(), 4);
     let e0 = 20.0 * 0.1_f64.log10();
     let e1 = 20.0 * 0.2_f64.log10();
