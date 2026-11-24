@@ -1,8 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { execFileSync } from "node:child_process";
+import { execFileSync, spawnSync } from "node:child_process";
 import { mkdirSync, mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
 import { commandPlanForPaths, runPreCommit } from "./pre-commit.mjs";
 
 describe("pre-commit command selection", () => {
@@ -44,6 +45,66 @@ describe("pre-commit command selection", () => {
     expect(command.args).toContain("metadata");
     expect(command.args).toContain("--locked");
     expect(command.args).not.toContain("update");
+  });
+
+  it("rejects a stale Cargo lockfile and accepts the refreshed one", () => {
+    const cwd = mkdtempSync(join(tmpdir(), "plvs-pre-commit-cargo-"));
+    const manifest = "src-tauri/Cargo.toml";
+    const lockfile = join(cwd, "src-tauri", "Cargo.lock");
+    const hook = fileURLToPath(new URL("./pre-commit.mjs", import.meta.url));
+    const git = (...args) => execFileSync("git", args, { cwd });
+    const refreshLock = () =>
+      execFileSync("cargo", ["generate-lockfile", "--offline", "--manifest-path", manifest], {
+        cwd,
+        stdio: "pipe",
+      });
+    const checkLock = () =>
+      spawnSync(process.execPath, [hook], {
+        cwd,
+        encoding: "utf8",
+        env: { ...process.env, CARGO_NET_OFFLINE: "true" },
+      });
+
+    try {
+      git("init", "--quiet");
+      git("config", "core.autocrlf", "false");
+      for (const [path, name] of [
+        ["src-tauri", "fixture-app"],
+        ["src-tauri/helper", "fixture-helper"],
+      ]) {
+        const crate = join(cwd, path);
+        mkdirSync(join(crate, "src"), { recursive: true });
+        writeFileSync(
+          join(crate, "Cargo.toml"),
+          `[package]\nname = "${name}"\nversion = "0.1.0"\nedition = "2021"\n`
+        );
+        writeFileSync(join(crate, "src", "lib.rs"), "");
+      }
+      refreshLock();
+      const originalLock = readFileSync(lockfile, "utf8");
+      const appManifest = join(cwd, manifest);
+      writeFileSync(
+        appManifest,
+        readFileSync(appManifest, "utf8") +
+          '\n[dependencies]\nfixture-helper = { path = "helper" }\n'
+      );
+      git("add", manifest);
+
+      const stale = checkLock();
+      expect(stale.status).not.toBe(0);
+      expect(stale.stderr).toMatch(/Cargo\.lock.*--locked/s);
+      expect(readFileSync(lockfile, "utf8")).toBe(originalLock);
+
+      refreshLock();
+      git("add", "src-tauri/Cargo.lock");
+      const refreshedLock = readFileSync(lockfile, "utf8");
+      expect(refreshedLock).toContain('name = "fixture-helper"');
+      const current = checkLock();
+      expect(current.status, current.stderr).toBe(0);
+      expect(readFileSync(lockfile, "utf8")).toBe(refreshedLock);
+    } finally {
+      rmSync(cwd, { recursive: true, force: true });
+    }
   });
 
   it("deduplicates commands for a mixed staged change", () => {

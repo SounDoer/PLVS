@@ -22,13 +22,13 @@ export function commandPlanForPaths(paths, { nodeExecutable = process.execPath }
     });
   }
   if (files.some((file) => /^src-tauri\/(?:[^/]+\/)*Cargo\.toml$/.test(file))) {
+    // Cargo must resolve dependencies to check the lockfile. --no-deps skips that check.
     commands.push({
       command: "cargo",
       quietStdout: true,
       args: [
         "metadata",
         "--locked",
-        "--no-deps",
         "--format-version",
         "1",
         "--manifest-path",
