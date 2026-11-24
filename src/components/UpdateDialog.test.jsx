@@ -24,7 +24,7 @@ describe("UpdateDialog", () => {
     expect(screen.queryByRole("dialog")).toBeNull();
   });
 
-  it("renders the version and basic Markdown without rendering raw HTML", () => {
+  it("renders the version and actions while loading Markdown, then shows formatted notes", async () => {
     render(
       <UpdateDialog
         {...BASE_PROPS}
@@ -33,7 +33,9 @@ describe("UpdateDialog", () => {
     );
 
     expect(screen.getByText("What's new since v0.9.4")).toBeTruthy();
-    expect(screen.getByRole("heading", { name: "Fixed" })).toBeTruthy();
+    expect(screen.getByRole("status").textContent).toBe("Loading release notes…");
+    expect(screen.getByRole("button", { name: "Update and Restart" })).toBeTruthy();
+    expect(await screen.findByRole("heading", { name: "Fixed" })).toBeTruthy();
     expect(screen.getByText("Safer updates")).toBeTruthy();
     expect(screen.getByRole("dialog").querySelector("[data-unsafe]")).toBeNull();
   });
@@ -43,7 +45,7 @@ describe("UpdateDialog", () => {
     expect(screen.getByText("What's new")).toBeTruthy();
   });
 
-  it("opens Markdown links through the external URL handler", () => {
+  it("opens Markdown links through the external URL handler", async () => {
     const openExternalUrl = vi.fn();
     render(
       <UpdateDialog
@@ -53,11 +55,11 @@ describe("UpdateDialog", () => {
       />
     );
 
-    fireEvent.click(screen.getByRole("link", { name: "Full notes" }));
+    fireEvent.click(await screen.findByRole("link", { name: "Full notes" }));
     expect(openExternalUrl).toHaveBeenCalledWith("https://example.com/release");
   });
 
-  it("preserves release-note formatting, reference links, and entity decoding", () => {
+  it("preserves release-note formatting, reference links, and entity decoding", async () => {
     const openExternalUrl = vi.fn();
     render(
       <UpdateDialog
@@ -80,18 +82,18 @@ describe("UpdateDialog", () => {
       />
     );
 
+    const guide = await screen.findByRole("link", { name: "the guide" });
     const dialog = screen.getByRole("dialog");
     expect(dialog.querySelector("ol")?.start).toBe(3);
     expect(dialog.querySelector("ol ul")).toBeTruthy();
     expect(dialog.querySelector("strong")?.textContent).toBe("File & Live");
     expect(dialog.querySelector("blockquote em")?.textContent).toBe("Note:");
     expect(dialog.querySelector("pre code.language-text")?.textContent).toBe("<unchanged>\n");
-    const guide = screen.getByRole("link", { name: "the guide" });
     fireEvent.click(guide);
     expect(openExternalUrl).toHaveBeenCalledWith("https://example.com/guide?a=1&b=2");
   });
 
-  it("does not activate raw HTML, inline scripts, or unsafe Markdown URLs", () => {
+  it("does not activate raw HTML, inline scripts, or unsafe Markdown URLs", async () => {
     const openExternalUrl = vi.fn();
     render(
       <UpdateDialog
@@ -107,8 +109,8 @@ describe("UpdateDialog", () => {
       />
     );
 
+    const label = await screen.findByText("Link");
     expect(screen.getByRole("dialog").querySelector("script, img[src], [onerror]")).toBeNull();
-    const label = screen.getByText("Link");
     expect(label.hasAttribute("href")).toBe(false);
     fireEvent.click(label);
     expect(openExternalUrl).not.toHaveBeenCalled();

@@ -60,14 +60,22 @@ describe("Dock update details", () => {
     expect(client.action).toHaveBeenCalledWith("update-preferences-save", { key: "setup" });
     expect(screen.queryByRole("button", { name: "Skip" })).toBeNull();
   });
-  it("acknowledges rendered content and confirms only its frozen target", () => {
+  it("exposes actions while notes load and confirms only its frozen target", async () => {
+    client.payload.releaseNotes += "\n\n[Release notes](https://example.com/release)";
     render(<DockUpdateApp />);
     expect(screen.getByText("v2.0.0 · What's new since v1.0.0")).toBeTruthy();
     expect(client.action).toHaveBeenCalledWith("update-ready", { key: "details:a" });
+    expect(screen.getByRole("status").textContent).toBe("Loading release notes…");
     fireEvent.click(screen.getByRole("button", { name: "Update and Restart" }));
     expect(client.action).toHaveBeenCalledWith("update-confirm", {
       key: "details:a",
       targetId: "a",
+    });
+    expect(await screen.findByRole("heading", { name: "Version A" })).toBeTruthy();
+    fireEvent.click(screen.getByRole("link", { name: "Release notes" }));
+    expect(client.action).toHaveBeenCalledWith("update-link", {
+      key: "details:a",
+      url: "https://example.com/release",
     });
   });
   it("stays open on blur and asks to dismiss on idle Escape", () => {

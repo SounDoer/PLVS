@@ -133,8 +133,9 @@ Update preferences are grouped at the bottom of Settings, above version informat
 The question-mark icon beside **Auto Download Updates** explains download availability, the **Auto Check for Updates**
 dependency, and installation confirmation on hover or keyboard focus. The version status row shows
 background download progress, a ready package, or a failed download. A failed replacement download
-does not erase an older verified ready package. Update details identify the selected target version
-independently of the release notes.
+does not erase an older verified ready package. Update details show the selected target version and
+actions while the release notes load. If formatting is unavailable, the notes are shown as plain
+text.
 **Auto Check for Updates** controls startup and twelve-hour checks. **Auto Download Updates** requires checking to be enabled. Turning checking off also turns downloading
 off; turning checking back on leaves downloading off. **Check** remains an explicit action when
 automatic checking is off. With **Auto Download Updates** on, **Check** also downloads a newer

@@ -15,10 +15,10 @@ function props(overrides = {}) {
 }
 
 describe("shared update details", () => {
-  it("renders without a dialog or application provider and skips a ready update without installing", () => {
+  it("renders without a dialog or application provider and skips a ready update without installing", async () => {
     const callbacks = props({ ready: true });
     render(<UpdateDetailsContent {...callbacks} />);
-    expect(screen.getByRole("heading", { name: "Changes" })).toBeTruthy();
+    expect(await screen.findByRole("heading", { name: "Changes" })).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: "Skip This Time" }));
     expect(callbacks.onCancel).toHaveBeenCalledTimes(1);
     expect(callbacks.onConfirm).not.toHaveBeenCalled();

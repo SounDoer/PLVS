@@ -1,6 +1,23 @@
+import { lazy, Suspense } from "react";
 import { Button } from "@/components/ui/button";
 import { DialogDescription, DialogFooter, DialogTitle } from "@/components/ui/dialog";
-import { ReleaseNotesMarkdown } from "./ReleaseNotesMarkdown.jsx";
+
+/** @typedef {import("react").ComponentProps<typeof import("./ReleaseNotesMarkdown.jsx").ReleaseNotesMarkdown>} ReleaseNotesProps */
+
+const ReleaseNotesMarkdown = lazy(loadReleaseNotesMarkdown);
+
+/** @returns {Promise<{ default: import("react").ComponentType<ReleaseNotesProps> }>} */
+function loadReleaseNotesMarkdown() {
+  return import("./ReleaseNotesMarkdown.jsx").then(
+    ({ ReleaseNotesMarkdown }) => ({ default: ReleaseNotesMarkdown }),
+    () => ({ default: PlainReleaseNotes })
+  );
+}
+
+/** @param {{ notes?: string | null }} props */
+function PlainReleaseNotes({ notes }) {
+  return <p className="whitespace-pre-wrap">{notes}</p>;
+}
 
 /** The same heading and version context in both native hosts. */
 export function UpdateDetailsHeader({ ready, targetVersion, currentVersion, accessory = false }) {
@@ -122,7 +139,11 @@ export function UpdateDetailsContent({
         style={accessory ? { maxHeight: 320 } : undefined}
         className="my-3 max-h-[50vh] overflow-y-auto rounded-md border border-border bg-background px-3 py-2 text-[length:var(--ui-fs-control)] text-foreground [&_a]:text-primary [&_a]:underline [&_code]:rounded-xs [&_code]:bg-secondary [&_code]:px-1 [&_h2]:mb-1 [&_h2]:mt-3 [&_h2:first-child]:mt-0 [&_h2]:font-semibold [&_h3]:mb-1 [&_h3]:mt-3 [&_h3]:font-semibold [&_hr]:my-3 [&_hr]:border-border [&_li]:my-0 [&_ol]:list-decimal [&_ol]:pl-5 [&_p]:my-2 [&_pre]:my-2 [&_pre]:overflow-x-auto [&_pre]:rounded-md [&_pre]:bg-secondary [&_pre]:p-2 [&_ul]:list-disc [&_ul]:pl-5"
       >
-        <ReleaseNotesMarkdown notes={releaseNotes} openExternalUrl={openExternalUrl} />
+        {releaseNotes ? (
+          <Suspense fallback={<p role="status">Loading release notes…</p>}>
+            <ReleaseNotesMarkdown notes={releaseNotes} openExternalUrl={openExternalUrl} />
+          </Suspense>
+        ) : null}
       </div>
       {installing || waitingForDownload ? <UpdateDownloadBar progress={downloadProgress} /> : null}
       {error ? (
