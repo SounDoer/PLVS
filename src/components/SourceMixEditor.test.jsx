@@ -100,8 +100,9 @@ it("saves one application with one input and its chosen channel through Agent Co
   };
   await decide("group:input");
   await decide(`input:${mic.id}`);
-  await decide("input-toggle:0");
   expect(screen.getByRole("button", { name: "Save" })).toHaveProperty("disabled", true);
+  await decide("input-toggle:0");
+  expect(screen.getByRole("button", { name: "Save" })).toHaveProperty("disabled", false);
   await decide(`input:${cable.id}`);
   expect(screen.getByRole("button", { name: "Microphone 1 Selected" })).toHaveProperty(
     "type",
@@ -161,28 +162,30 @@ it("requires two members and selects the named Mix only after saving it", async 
   await waitFor(() => expect(onSelect).toHaveBeenCalledWith(mix.id));
 });
 
-it("saves only the checked channels from an input without requiring an application", async () => {
-  const input = { id: `cap-${"3".repeat(32)}`, label: "Interface", channels: 3 };
-  const { ui } = mountEditor(vi.fn(), [input]);
-  const decide = async (choice) => {
-    const state = ui().inspectUi();
-    await act(async () => {
-      await ui().decideSurface({
-        surfaceId: state.surfaces[0].surfaceId,
-        choice,
-        expectedRevision: 3,
-        expectedUiGeneration: state.uiGeneration,
+it.each([{ channels: [0] }, { channels: [0, 2] }])(
+  "saves only the checked input channels without an application ($channels)",
+  async ({ channels }) => {
+    const input = { id: `cap-${"3".repeat(32)}`, label: "Interface", channels: 3 };
+    const { ui } = mountEditor(vi.fn(), [input]);
+    const decide = async (choice) => {
+      const state = ui().inspectUi();
+      await act(async () => {
+        await ui().decideSurface({
+          surfaceId: state.surfaces[0].surfaceId,
+          choice,
+          expectedRevision: 3,
+          expectedUiGeneration: state.uiGeneration,
+        });
       });
+    };
+    await decide("group:input");
+    await decide(`input:${input.id}`);
+    expect(screen.getByRole("button", { name: "Save" })).toHaveProperty("disabled", true);
+    for (const channel of channels) await decide(`input-toggle:${channel}`);
+    await decide("save");
+    expect(vi.mocked(sourceMixesStore.persist).mock.calls[0][0].list[0]).toMatchObject({
+      members: [],
+      input: { id: input.id, channels },
     });
-  };
-  await decide("group:input");
-  await decide(`input:${input.id}`);
-  await decide("input-toggle:0");
-  expect(screen.getByRole("button", { name: "Save" })).toHaveProperty("disabled", true);
-  await decide("input-toggle:2");
-  await decide("save");
-  expect(vi.mocked(sourceMixesStore.persist).mock.calls[0][0].list[0]).toMatchObject({
-    members: [],
-    input: { id: input.id, channels: [0, 2] },
-  });
-});
+  }
+);

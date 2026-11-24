@@ -2,7 +2,6 @@
  * Pure functions for audio engine device resolution.
  * Extracted from useAudioEngine so they can be tested without React or Tauri.
  */
-import { findDeviceSource } from "./channelSources.js";
 
 /**
  * Given the device list from the native engine and a persisted captureDeviceId preference,
@@ -16,7 +15,7 @@ export function resolveDevice(devices, captureDeviceId) {
   const isAutomatic = !captureDeviceId || captureDeviceId === "default";
   if (!isAutomatic) {
     return {
-      device: findDeviceSource(devices, captureDeviceId),
+      device: devices.find((device) => device.id === captureDeviceId) ?? null,
       isAutomatic: false,
     };
   }

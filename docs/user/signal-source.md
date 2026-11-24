@@ -1,7 +1,8 @@
 # Signal Source
 
 Open **Sources** in the toolbar to choose any kind of input — you pick a signal, not an
-underlying API. The footer and system tray show the selected source as
+underlying API. An **Input** or **Output** row selects the device. The footer and system tray
+show the selected source as
 `Output · name`, `Input · name`, or `Application · name`.
 If you make another selection while PLVS is checking a source, the latest selection takes priority.
 If the source switches but PLVS reports a save error, choose that source again to retry saving
@@ -105,21 +106,11 @@ routes instead:
 On macOS, DAWs play through Core Audio, so system playback and Application sources can measure
 them without extra routing.
 
-## Individual channels on Windows
-
-In the normal window or Dock, expand an **Input** or **Output** device in **Sources** with the
-arrow at the end of its row. Hover or focus a collapsed device row to reveal the arrow.
-Select the device row to measure the whole device, or select one channel beneath it for a
-mono measurement. PLVS shows input channels by number and output channels
-by speaker name. Output channels appear when Windows reports a usable speaker layout. Choosing a
-channel changes what PLVS measures. Playback and device routing stay the same.
-
 ## Mixes on Windows
 
 In the normal window, choose **Add Mix** at the bottom of **Sources**. Select two or more
-applications, or expand a device under **Input** and check individual channels. A Mix needs at
-least two sources in total. Each checked application or input channel counts as one source.
-A Mix can use channels from one input device at a time.
+applications, or expand one device under **Input** and check one or more channels. You can also
+combine those channels with applications. A single checked input channel is enough to save.
 PLVS generates a name from the selection. Use the pencil to enter your own name.
 **Save** adds the Mix under **Mixes** and selects it for the current Workbench.
 You can also select a saved Mix under **Mixes** in the Dock toolbar's **Sources** menu or in the

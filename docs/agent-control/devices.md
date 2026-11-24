@@ -61,10 +61,7 @@ System-output rows precede physical or virtual input rows in the GUI's order. Ea
 opaque stable ID, display label, `kind`, `direction`, loopback classification, default sample rate,
 and channel count. Unknown numeric capabilities are `null`. Results contain at most 256 rows and
 each label contains at most 512 Unicode scalar values; `truncated: true` means the internal
-inventory was longer. When Windows exposes selectable channels, a device includes
-`channelSources`, an array of `{ id, label }` choices ordered as in Sources. Pass a channel's
-opaque ID to `device select` to measure only that channel. Inspection reports a channel count of
-one for the selected channel. The parent row's ID continues to select the whole device.
+inventory was longer.
 
 `applications` lists the running applications offered in the Sources menu's Applications group.
 `device list` refreshes them first, as opening Sources does, so an application that has just

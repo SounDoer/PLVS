@@ -582,12 +582,7 @@ impl CaptureSession {
     dialogue_vad_engine: Arc<std::sync::Mutex<VadEngineKind>>,
     measured_pcm: Arc<MeasuredPcmSubscriptions>,
   ) -> Result<Self, String> {
-    #[cfg(target_os = "windows")]
-    let base_id =
-      super::device_id::split_channel_source(device_id).map_or(device_id, |(base, _)| base);
-    #[cfg(not(target_os = "windows"))]
-    let base_id = device_id;
-    let (device, supported) = resolve_device(base_id)?;
+    let (device, supported) = resolve_device(device_id)?;
     let sample_rate = supported.sample_rate();
     let channels = supported.channels();
     let (stop_tx, stop_rx) = std::sync::mpsc::channel::<()>();
@@ -954,7 +949,7 @@ pub(crate) fn run_meter_pipeline_bridge_thread(
   publish_measured_pcm: bool,
   dropped_chunks: Arc<AtomicU64>,
   pcm_pool: PcmBufferPool,
-  monitoring_plan: Option<super::source_layout::MonitoringPlan>,
+  native_layout: Option<super::source_layout::NativeLayout>,
 ) {
   let dropped_worker = dropped_chunks.clone();
   // Shared UI ack counter (see AppState::frame_ack_seq). Cloned once so the loop only does an
@@ -973,8 +968,7 @@ pub(crate) fn run_meter_pipeline_bridge_thread(
     .unwrap_or_else(|| Arc::new(Mutex::new(AnalysisRequests::default())));
   let mut sent_seq: u64 = 0;
   let mut dropped_frames: u64 = 0;
-  let plan =
-    monitoring_plan.unwrap_or_else(|| super::source_layout::MonitoringPlan::new(channels, None));
+  let plan = super::source_layout::MonitoringPlan::new(channels, native_layout);
   let channels = plan.channels();
   let mut projected = Vec::new();
   let mut pipeline = MeterPipeline::new(sample_rate, channels);
@@ -1392,37 +1386,22 @@ fn run_capture_worker(args: RunCaptureArgs) -> Result<(), CaptureWorkerError> {
     stream_error,
   } = args;
   let bridge_dropped = dropped_chunks.clone();
-  #[cfg(target_os = "windows")]
-  let selection = super::device_id::split_channel_source(&device_id);
-  #[cfg(target_os = "windows")]
-  let base_id = selection.map_or(device_id.as_str(), |(base, _)| base);
-  #[cfg(not(target_os = "windows"))]
-  let base_id = device_id.as_str();
-  let output = base_id.is_empty()
-    || base_id == "default"
-    || super::device_id::is_stable_loopback_id(base_id)
-    || super::device_id::parse_legacy_output_index(base_id).is_some();
+  let output = device_id.is_empty()
+    || device_id == "default"
+    || super::device_id::is_stable_loopback_id(&device_id)
+    || super::device_id::parse_legacy_output_index(&device_id).is_some();
   let native_layout = super::source_layout::capture_device_layout(&device, channels, output);
-  let plan = if output {
+  if output {
     super::source_layout::MonitoringPlan::require_system_scope(channels, native_layout.clone())
-      .map_err(CaptureWorkerError::SystemSpeakerLayout)?
-  } else {
-    super::source_layout::MonitoringPlan::new(channels, native_layout)
-  };
-  #[cfg(target_os = "windows")]
-  let plan = if let Some((_, channel)) = selection {
-    plan.select_channel(channel, output)?
-  } else {
-    plan
-  };
-  #[cfg(target_os = "linux")]
-  let reader_plan = plan.clone();
+      .map_err(CaptureWorkerError::SystemSpeakerLayout)?;
+  }
+  let bridge_layout = native_layout.clone();
   #[cfg(target_os = "linux")]
   let reader_measured_pcm = measured_pcm.clone();
 
   run_capture_stream(
     CaptureStreamArgs {
-      device_id: base_id.to_string(),
+      device_id,
       device,
       supported,
       sample_rate,
@@ -1433,7 +1412,10 @@ fn run_capture_worker(args: RunCaptureArgs) -> Result<(), CaptureWorkerError> {
       #[cfg(target_os = "linux")]
       measured_pcm: Some(reader_measured_pcm),
       #[cfg(target_os = "linux")]
-      monitoring_plan: Some(reader_plan),
+      monitoring_plan: Some(super::source_layout::MonitoringPlan::new(
+        channels,
+        native_layout,
+      )),
     },
     move |audio_rx, pool, sample_rate, channels| {
       run_meter_pipeline_bridge_thread(
@@ -1450,7 +1432,7 @@ fn run_capture_worker(args: RunCaptureArgs) -> Result<(), CaptureWorkerError> {
         !cfg!(target_os = "linux"),
         bridge_dropped,
         pool,
-        Some(plan),
+        bridge_layout,
       );
     },
   )

@@ -2,7 +2,6 @@ import {
   MAX_PUBLIC_DEVICE_LABEL_SCALARS,
   MAX_PUBLIC_DEVICE_ROWS,
 } from "../runtime/deviceInventory.js";
-import { deviceChannelChoices, findDeviceSource } from "../lib/channelSources.js";
 
 const APPLICATION_ID = /^app-[0-9a-f]{32}$/;
 
@@ -25,7 +24,7 @@ function runningApplications(snapshot) {
 
 /** Find an exact device or running application among every source the GUI can select. */
 function findSource(snapshot, id) {
-  const device = findDeviceSource(snapshot.allDevices, id);
+  const device = snapshot.allDevices.find((candidate) => candidate.id === id);
   if (device) return device;
   const application = runningApplications(snapshot).find((candidate) => candidate.id === id);
   return application ? applicationRow(application) : null;
@@ -182,13 +181,8 @@ export function buildDeviceList(snapshot) {
           )
         : null,
     },
-    devices: snapshot.devices.map(
-      ({ monitorSignature: _monitorSignature, channelSelectors, ...device }) => ({
-        ...device,
-        ...(channelSelectors?.length
-          ? { channelSources: deviceChannelChoices({ ...device, channelSelectors }) }
-          : {}),
-      })
+    devices: snapshot.devices.map((device) =>
+      Object.fromEntries(Object.entries(device).filter(([key]) => key !== "monitorSignature"))
     ),
     applications: applications.slice(0, MAX_PUBLIC_DEVICE_ROWS).map(applicationRow),
     truncated: snapshot.truncated || applications.length > MAX_PUBLIC_DEVICE_ROWS,

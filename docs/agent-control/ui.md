@@ -64,8 +64,8 @@ also exposes `select:<mix-id>` for each saved Mix. The normal-window `sourceMixE
 surface exposes `group:input` and `group:applications` to expand or collapse a group. In Input,
 `input:<device-id>` expands a device and exposes its `input-toggle:<index>` checkbox choices
 with zero-based indices. Checking a channel from a different input replaces the previous
-input selection. Applications exposes `toggle:<application-id>`. Save requires at least two
-checked applications or channels in total. Use the latest surface ID,
+input selection. Applications exposes `toggle:<application-id>`. Save requires a checked input
+channel or at least two checked applications. Use the latest surface ID,
 revision and UI generation for each decision. These choices run the same handlers as the editor
 controls. The editor's draft name stays private to the UI.
 

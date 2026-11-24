@@ -53,17 +53,9 @@ it("edits and confirms deletion directly on the row without selecting the Mix", 
   expect(select).not.toHaveBeenCalled();
 });
 
-it("selects an individual channel or its whole device from the same source group", () => {
-  const input = {
-    id: `cap-${"3".repeat(32)}`,
-    label: "Interface",
-    channelSelectors: ["1", "2", "3"],
-  };
-  const output = {
-    id: `lb-${"4".repeat(32)}`,
-    label: "Speakers",
-    channelSelectors: ["L", "R", "C"],
-  };
+it("selects whole input and output devices even when they have several channels", () => {
+  const input = { id: `cap-${"3".repeat(32)}`, label: "Interface", channels: 10 };
+  const output = { id: `lb-${"4".repeat(32)}`, label: "Speakers", channels: 6 };
   const onSelect = vi.fn();
   render(
     <DeviceSelectionContent
@@ -74,19 +66,28 @@ it("selects an individual channel or its whole device from the same source group
     />
   );
   fireEvent.click(screen.getByRole("button", { name: /^Input/ }));
-  const expand = screen.getByRole("button", { name: "channels for Interface" });
-  expect(expand.getAttribute("aria-expanded")).toBe("false");
-  fireEvent.click(expand);
-  expect(expand.getAttribute("aria-expanded")).toBe("true");
-  expect(onSelect).not.toHaveBeenCalled();
-  fireEvent.click(screen.getByRole("button", { name: "Interface · Channel 3" }));
-  expect(onSelect).toHaveBeenLastCalledWith(`ch:${input.id}:3`);
   fireEvent.click(screen.getByRole("button", { name: "Interface" }));
   expect(onSelect).toHaveBeenLastCalledWith(input.id);
   fireEvent.click(screen.getByRole("button", { name: /^Output/ }));
-  fireEvent.click(screen.getByRole("button", { name: "channels for Speakers" }));
-  fireEvent.click(screen.getByRole("button", { name: "Speakers · Center" }));
-  expect(onSelect).toHaveBeenLastCalledWith(`ch:${output.id}:C`);
+  fireEvent.click(screen.getByRole("button", { name: "Speakers" }));
+  expect(onSelect).toHaveBeenLastCalledWith(output.id);
+  expect(screen.queryByRole("button", { name: /channels for/ })).toBeNull();
+});
+
+it("uses a singular source count for a one-channel Mix", () => {
+  const input = { id: `cap-${"3".repeat(32)}`, label: "Cable", channels: 2 };
+  const solo = { ...mix, members: [], input: { id: input.id, label: input.label, channels: [0] } };
+  render(
+    <DeviceSelectionContent
+      audioInputs={[input]}
+      safeAudioDeviceId={solo.id}
+      sourceMixes={{ supported: true, list: [solo] }}
+      onSelect={vi.fn()}
+    />
+  );
+  expect(screen.getByRole("button", { name: solo.name }).textContent).toContain(
+    "1 Source · Stereo"
+  );
 });
 
 it("shows single-line application names and reveals distinct window context on focus", () => {

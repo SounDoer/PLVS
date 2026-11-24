@@ -26,21 +26,6 @@ describe("capturePrefs transactional desktop persistence", () => {
     expect(loadStore).not.toHaveBeenCalled();
   });
 
-  it.each([
-    "ch:cap-00112233445566778899aabbccddeeff:3",
-    "ch:lb-00112233445566778899aabbccddeeff:R",
-  ])("keeps a selected channel across a workspace save and load: %s", async (id) => {
-    const { saveCaptureDeviceId, loadCaptureDeviceId } = await import("./capturePrefs.js");
-
-    await saveCaptureDeviceId(id);
-
-    expect(invoke).toHaveBeenCalledWith("persistence_save_workspace_value", {
-      key: "captureDeviceId",
-      value: id,
-    });
-    await expect(loadCaptureDeviceId()).resolves.toBe(id);
-  });
-
   it("normalizes a null Source to Automatic", async () => {
     window.__PLVS_INITIAL_STATE__.captureDeviceId = null;
     const { loadCaptureDeviceId } = await import("./capturePrefs.js");

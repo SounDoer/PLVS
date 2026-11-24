@@ -17,29 +17,12 @@ import {
   ManagementIconAction,
 } from "./ManagementRow.jsx";
 import { isSourceMixId, mixInputAvailable, sourceMixMemberCount } from "../lib/sourceMixes.js";
-import {
-  deviceChannelChoices,
-  findDeviceSource,
-  splitChannelSource,
-} from "../lib/channelSources.js";
-import { IconAction } from "./ui/icon-action";
 import { useUiNavigationTarget, useUiSurface } from "../uiNavigation/UiNavigationContext.jsx";
 
 const SOURCE_LEADING_CLASS = "grid w-[1em] shrink-0 place-items-center";
 
-/** @param {{ primary: string, secondary?: import("react").ReactNode, selected: boolean, onSelect: (...args: any[]) => any, ariaLabel: string, uiTarget?: string, actions?: import("react").ReactNode, showActions?: boolean, stretchActions?: boolean, tip?: string }} props */
-function SourceRow({
-  primary,
-  secondary,
-  selected,
-  onSelect,
-  ariaLabel,
-  uiTarget,
-  actions,
-  showActions,
-  stretchActions,
-  tip,
-}) {
+/** @param {{ primary: string, secondary?: string, selected: boolean, onSelect: (...args: any[]) => any, ariaLabel: string, uiTarget?: string, actions?: import("react").ReactNode, tip?: string }} props */
+function SourceRow({ primary, secondary, selected, onSelect, ariaLabel, uiTarget, actions, tip }) {
   const { anchorRef, showTip, hideTip, tipNode } = useHoverTip({ tip, align: "start" });
   const Row = actions ? RowAction : MenuRow;
   const row = (
@@ -83,98 +66,28 @@ function SourceRow({
   return (
     <div className={MANAGEMENT_ROW_CLASS}>
       {row}
-      <span
-        className={cn(
-          MANAGEMENT_ROW_ACTIONS_CLASS,
-          showActions && "opacity-100",
-          stretchActions && "self-stretch"
-        )}
-      >
-        {actions}
-      </span>
+      <span className={MANAGEMENT_ROW_ACTIONS_CLASS}>{actions}</span>
     </div>
   );
 }
 
 function AudioDeviceOption({ device, selectedId, onSelect }) {
-  const choices = deviceChannelChoices(device);
-  const selectedChannel = choices.find(({ id }) => id === selectedId);
-  const [open, setOpen] = useState(Boolean(selectedChannel));
   const label = formatAudioDeviceLabel(device.label);
-  const listId = `source-channels-${device.id}`;
-  const channelDetail = [
-    choices.length > 0
-      ? `${choices.length} ${choices.length === 1 ? "Channel" : "Channels"}`
-      : null,
-    !open ? selectedChannel?.label : null,
-  ]
-    .filter(Boolean)
-    .join(" · ");
   return (
-    <>
-      <SourceRow
-        uiTarget={`source:${device.id}`}
-        ariaLabel={label.full}
-        primary={label.primary}
-        secondary={
-          channelDetail ? (
-            <span className="flex min-w-0 items-center gap-1">
-              {label.secondary ? (
-                <>
-                  <span className="min-w-0 truncate">{label.secondary}</span>
-                  <span aria-hidden="true">·</span>
-                </>
-              ) : null}
-              <span className="shrink-0">{channelDetail}</span>
-            </span>
-          ) : (
-            label.secondary
-          )
-        }
-        selected={device.id === selectedId}
-        onSelect={() => onSelect(device.id)}
-        showActions={open}
-        stretchActions
-        actions={
-          choices.length > 0 ? (
-            <IconAction
-              className="grid w-10 place-items-center self-stretch"
-              aria-label={`channels for ${label.full}`}
-              aria-expanded={open}
-              aria-controls={listId}
-              onClick={() => setOpen(!open)}
-            >
-              <ChevronRight className={cn("size-[1em]", open && "rotate-90")} />
-            </IconAction>
-          ) : null
-        }
-      />
-      {choices.length > 0 ? (
-        <div id={listId} hidden={!open} className="pl-4">
-          {open &&
-            choices.map((choice) => (
-              <SourceRow
-                key={choice.id}
-                uiTarget={`source:${choice.id}`}
-                ariaLabel={`${label.full} · ${choice.label}`}
-                primary={choice.label}
-                selected={choice.id === selectedId}
-                onSelect={() => onSelect(choice.id)}
-              />
-            ))}
-        </div>
-      ) : null}
-    </>
+    <SourceRow
+      uiTarget={`source:${device.id}`}
+      ariaLabel={label.full}
+      primary={label.primary}
+      secondary={label.secondary}
+      selected={device.id === selectedId}
+      onSelect={() => onSelect(device.id)}
+    />
   );
 }
 
 function selectedDeviceSummary(devices, selectedId) {
-  const selected = findDeviceSource(devices, selectedId);
-  if (!selected) return null;
-  if (selected.channelLabel) {
-    return `${formatAudioDeviceLabel(devices.find(({ id }) => id === selected.parentId).label).primary} · ${selected.channelLabel}`;
-  }
-  return formatAudioDeviceLabel(selected.label).primary;
+  const selected = devices.find(({ id }) => id === selectedId);
+  return selected ? formatAudioDeviceLabel(selected.label).primary : null;
 }
 
 function selectedApplicationSummary(applications, selectedId) {
@@ -250,8 +163,8 @@ export function DeviceSelectionContent({
   onSelect,
 }) {
   const [sourceSectionsOpen, setSourceSectionsOpen] = useState({
-    output: splitChannelSource(safeAudioDeviceId)?.deviceId.startsWith("lb-") ?? false,
-    input: splitChannelSource(safeAudioDeviceId)?.deviceId.startsWith("cap-") ?? false,
+    output: false,
+    input: false,
     applications: false,
     mixes: isSourceMixId(safeAudioDeviceId),
   });
@@ -304,16 +217,16 @@ export function DeviceSelectionContent({
               const unavailable =
                 mix.members.filter(({ id }) => !available.has(id)).length +
                 Number(Boolean(mix.input && !mixInputAvailable(mix.input, audioInputs)));
-              const count = unavailable
-                ? `${unavailable} ${unavailable === 1 ? "Source" : "Sources"} Unavailable`
-                : `${sourceMixMemberCount(mix)} Sources · Stereo`;
+              const members = sourceMixMemberCount(mix);
+              const count = unavailable || members;
+              const detail = `${count} ${count === 1 ? "Source" : "Sources"} ${unavailable ? "Unavailable" : "· Stereo"}`;
               return (
                 <SourceRow
                   key={mix.id}
                   uiTarget={`source:${mix.id}`}
                   ariaLabel={mix.name}
                   primary={mix.name}
-                  secondary={count}
+                  secondary={detail}
                   selected={mix.id === safeAudioDeviceId}
                   onSelect={() => onSelect(mix.id)}
                   actions={

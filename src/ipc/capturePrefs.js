@@ -4,7 +4,6 @@
  */
 import { invoke } from "@tauri-apps/api/core";
 import { isTauri } from "./env.js";
-import { splitChannelSource } from "../lib/channelSources.js";
 import { isSourceMixId } from "../lib/sourceMixes.js";
 
 // Legacy store shared with pluginStoreBackend.js.
@@ -20,7 +19,6 @@ export const LEGACY_CAPTURE_DEVICE_LS_KEY = "plvs.captureDeviceId";
 function validateId(raw) {
   if (raw === "default") return "default";
   if (isSourceMixId(raw)) return raw;
-  if (typeof raw === "string" && splitChannelSource(raw)) return raw;
   if (typeof raw === "string" && /^(lb|cap)-[0-9a-f]{32}$/.test(raw)) return raw;
   if (typeof raw === "string" && /^app-[0-9a-f]{32}$/.test(raw)) return raw;
   if (typeof raw === "string" && /^(in|out):\d+$/.test(raw)) return raw;

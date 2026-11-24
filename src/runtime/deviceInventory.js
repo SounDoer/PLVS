@@ -25,9 +25,6 @@ function normalizeDevice(device) {
     loopback: systemOutput || device.isLoopback === true,
     sampleRateHz: positiveIntegerOrNull(device.defaultSampleRate),
     channelCount: positiveIntegerOrNull(device.channels),
-    ...(Array.isArray(device.channelSelectors) && device.channelSelectors.length
-      ? { channelSelectors: device.channelSelectors }
-      : {}),
     ...(typeof device.monitorSignature === "string"
       ? { monitorSignature: device.monitorSignature }
       : {}),

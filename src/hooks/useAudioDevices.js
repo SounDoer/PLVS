@@ -14,7 +14,6 @@ import {
 import { onDeviceListChanged } from "../ipc/events.js";
 import { isTauri } from "../ipc/env.js";
 import { isSourceMixId, readSourceMixes } from "../lib/sourceMixes.js";
-import { splitChannelSource } from "../lib/channelSources.js";
 import { sourceMixesStore } from "../persistence/index.js";
 
 const APPLICATION_REFRESH_INTERVAL_MS = 2_000;
@@ -381,11 +380,7 @@ export function useAudioDevices({
     if (!isTauri() || !snapshot.inventoryReady || snapshot.requestedId === "default") return;
     // Application IDs are stable identities rather than device endpoints. Preserve an application
     // selection while it is not running so the same selection can rebind to its next PID.
-    if (
-      /^app-[0-9a-f]{32}$/.test(snapshot.requestedId) ||
-      isSourceMixId(snapshot.requestedId) ||
-      splitChannelSource(snapshot.requestedId)
-    )
+    if (/^app-[0-9a-f]{32}$/.test(snapshot.requestedId) || isSourceMixId(snapshot.requestedId))
       return;
     if (
       snapshot.allDevices.some((device) => device.id === snapshot.requestedId) ||
@@ -444,7 +439,6 @@ export function useAudioDevices({
         isLoopback: device.loopback,
         defaultSampleRate: device.sampleRateHz,
         channels: device.channelCount,
-        ...(device.channelSelectors ? { channelSelectors: device.channelSelectors } : {}),
         ...(device.monitorSignature ? { monitorSignature: device.monitorSignature } : {}),
       })),
     [snapshot.allDevices]

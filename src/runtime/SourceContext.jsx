@@ -6,7 +6,6 @@ import { formatAudioDeviceLabel } from "@/lib/audioDeviceLabels.js";
 import { isTauri } from "../ipc/env.js";
 import { isWindows } from "../lib/platform.js";
 import { isSourceMixId } from "../lib/sourceMixes.js";
-import { findDeviceSource } from "../lib/channelSources.js";
 import { usesTransactionalPersistence } from "../persistence/index.js";
 import { useSourceMixes } from "../hooks/useSourceMixes.js";
 import { useMeterDisplayState, useMeterRuntime } from "./MeterRuntimeContext.jsx";
@@ -118,7 +117,7 @@ export function SourceProvider({ children }) {
     if (captureDeviceId === "default") {
       return defaultOutputFormatSig || "";
     }
-    const d = findDeviceSource(audioDevices, captureDeviceId);
+    const d = audioDevices.find(({ id }) => id === captureDeviceId);
     return d
       ? `${d.channels}:${d.defaultSampleRate}${d.monitorSignature ? `|${d.monitorSignature}` : ""}`
       : "";
@@ -150,26 +149,20 @@ export function SourceProvider({ children }) {
     if (application) {
       return { type: "Application", label: application.label };
     }
-    const device = findDeviceSource(audioDevices, captureDeviceId);
+    const device = audioDevices.find(({ id }) => id === captureDeviceId);
     if (!device) return null;
     return {
       type: device.isSystemOutputMonitor ? "Output" : "Input",
-      label: device.parentId
-        ? `${formatAudioDeviceLabel(audioDevices.find(({ id }) => id === device.parentId)?.label ?? device.label).primary} · ${device.channelLabel}`
-        : device.label,
+      label: device.label,
     };
   }, [captureDeviceId, audioDevices, captureApplications, defaultOutputLabel, selectedMix]);
   const sourceDisplayName = useMemo(() => {
     if (!selectedSource) return null;
-    if (
-      selectedSource.type === "Application" ||
-      selectedSource.type === "Mix" ||
-      captureDeviceId.startsWith("ch:")
-    )
+    if (selectedSource.type === "Application" || selectedSource.type === "Mix")
       return selectedSource.label;
     const display = formatAudioDeviceLabel(selectedSource.label);
     return display.secondary || display.primary;
-  }, [selectedSource, captureDeviceId]);
+  }, [selectedSource]);
   // The restart itself is driven by `captureFormatSignature`; this only tells the user why their
   // measurement just started over.
   const previousDefaultOutputLabelRef = useRef(defaultOutputLabel);

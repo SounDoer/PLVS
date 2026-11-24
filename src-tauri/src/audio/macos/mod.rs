@@ -181,7 +181,6 @@ fn list_loopback_rows_macos() -> Result<Vec<DeviceInfo>, String> {
       is_loopback: true,
       default_sample_rate: cfg.sample_rate(),
       channels: plan.channels(),
-      channel_selectors: Vec::new(),
       monitor_signature: Some(signature),
       core_audio_output_uid: core_uid,
     });
@@ -312,7 +311,7 @@ fn run_macos_tap_worker(args: MacosTapWorkerArgs) -> Result<(), CaptureWorkerErr
       "This output combines several devices (an aggregate device), which PLVS cannot measure yet. Select one of the devices it combines.".into(),
     ));
   }
-  let plan = super::source_layout::MonitoringPlan::require_system_scope(channels, native_layout)
+  super::source_layout::MonitoringPlan::require_system_scope(channels, native_layout.clone())
     .map_err(CaptureWorkerError::SystemSpeakerLayout)?;
   let bridge = std::thread::spawn(move || {
     run_meter_pipeline_bridge_thread(
@@ -329,7 +328,7 @@ fn run_macos_tap_worker(args: MacosTapWorkerArgs) -> Result<(), CaptureWorkerErr
       true,
       dropped_for_thread,
       bridge_pool,
-      Some(plan),
+      native_layout,
     );
   });
 

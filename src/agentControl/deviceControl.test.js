@@ -58,30 +58,6 @@ function inventory({ devices = rows(), preview = undefined, previous } = {}) {
 }
 
 describe("Device Control inventory", () => {
-  it("advertises exact channel choices and reports a selected channel as mono", () => {
-    const devices = rows();
-    devices[0] = Object.assign(devices[0], { channelSelectors: ["L", "R"] });
-    const state = inventory({ devices });
-    const deviceId = `ch:${LB}:R`;
-    expect(buildDeviceList(state).devices[0]).toMatchObject({
-      channelCount: 2,
-      channelSources: [
-        { id: `ch:${LB}:L`, label: "Left" },
-        { id: deviceId, label: "Right" },
-      ],
-    });
-    expect(
-      planDeviceSelection(state, { deviceId, expectedGeneration: state.generation })
-    ).toMatchObject({
-      changed: true,
-      issues: [],
-    });
-    expect(buildDeviceInspection({ ...state, requestedId: deviceId }).selection).toMatchObject({
-      available: true,
-      resolved: { id: deviceId, label: "Speakers · Right", channelCount: 1 },
-    });
-  });
-
   it("publishes semantic output/input rows in native GUI order without backend keys", () => {
     const state = inventory();
     expect(buildDeviceList(state)).toEqual({

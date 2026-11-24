@@ -2379,7 +2379,7 @@ fn parse_device_args(args: &[String]) -> Result<ControlCommand, String> {
   }
   if !is_device_id(device_id) {
     return Err(
-      "The device ID must be default or an exact device, application, or channel ID returned by device list."
+      "The device ID must be default or an exact lb-, cap- or app-<32 lowercase hex> ID returned by device list."
         .to_string(),
     );
   }
@@ -2446,7 +2446,7 @@ fn parse_device_args(args: &[String]) -> Result<ControlCommand, String> {
 }
 
 fn is_device_id(value: &str) -> bool {
-  if value == "default" || crate::audio::device_id::split_channel_source(value).is_some() {
+  if value == "default" {
     return true;
   }
   let Some(hex) = value
@@ -8478,15 +8478,6 @@ mod tests {
       request.params["deviceId"],
       "app-0123456789abcdef0123456789abcdef"
     );
-  }
-
-  #[test]
-  fn device_channel_ids_are_validated_before_sending_a_selection() {
-    assert!(is_device_id("ch:lb-0123456789abcdef0123456789abcdef:L"));
-    assert!(is_device_id("ch:cap-0123456789abcdef0123456789abcdef:3"));
-    assert!(!is_device_id("ch:lb-0123456789abcdef0123456789abcdef:3"));
-    assert!(!is_device_id("ch:cap-0123456789abcdef0123456789abcdef:03"));
-    assert!(!is_device_id("ch:cap-0123456789abcdef0123456789abcdef:257"));
   }
 
   #[test]
