@@ -13,7 +13,7 @@ import {
   MANAGEMENT_ROW_CLASS,
   ManagementIconAction,
 } from "./ManagementRow.jsx";
-import { isSourceMixId } from "../lib/sourceMixes.js";
+import { isSourceMixId, mixInputAvailable, sourceMixMembers } from "../lib/sourceMixes.js";
 import { useUiNavigationTarget, useUiSurface } from "../uiNavigation/UiNavigationContext.jsx";
 
 const SOURCE_LEADING_CLASS = "grid w-[1em] shrink-0 place-items-center";
@@ -198,10 +198,12 @@ export function DeviceSelectionContent({
             selectedSummary={selectedMix?.name}
           >
             {sourceMixes.list.map((mix) => {
-              const unavailable = mix.members.filter(({ id }) => !available.has(id)).length;
+              const unavailable =
+                mix.members.filter(({ id }) => !available.has(id)).length +
+                Number(Boolean(mix.input && !mixInputAvailable(mix.input, audioInputs)));
               const count = unavailable
                 ? `${unavailable} ${unavailable === 1 ? "Source" : "Sources"} Unavailable`
-                : `${mix.members.length} Sources · Stereo`;
+                : `${sourceMixMembers(mix).length} Sources · Stereo`;
               return (
                 <SourceRow
                   key={mix.id}

@@ -23,7 +23,7 @@ beforeEach(() => {
   vi.mocked(sourceMixesStore.persist).mockResolvedValue(undefined);
 });
 
-function mountEditor(onSelect = vi.fn()) {
+function mountEditor(onSelect = vi.fn(), inputs = []) {
   let registry;
   let navigation;
   function Harness() {
@@ -31,7 +31,7 @@ function mountEditor(onSelect = vi.fn()) {
     registry = useBlockingEditors();
     navigation = useUiNavigation();
     return owner.draft ? (
-      <SourceMixEditor owner={owner} applications={applications} />
+      <SourceMixEditor owner={owner} applications={applications} inputs={inputs} />
     ) : (
       <button onClick={() => owner.open()}>Add Mix</button>
     );
@@ -79,6 +79,34 @@ it("exposes edit choices with generation checks and keeps the draft name out of 
     await decide("cancel", ui().inspectUi().uiGeneration);
   });
   expect(ui().inspectUi().surfaces).toHaveLength(0);
+});
+
+it("saves one application with one input and its chosen channel through Agent Control", async () => {
+  const cable = { id: `cap-${"3".repeat(32)}`, label: "Cable", channels: 2 };
+  const mic = { id: `cap-${"4".repeat(32)}`, label: "Microphone", channels: 1 };
+  const { ui } = mountEditor(vi.fn(), [mic, cable]);
+  const decide = async (choice) => {
+    const state = ui().inspectUi();
+    await act(async () => {
+      await ui().decideSurface({
+        surfaceId: state.surfaces[0].surfaceId,
+        choice,
+        expectedRevision: 3,
+        expectedUiGeneration: state.uiGeneration,
+      });
+    });
+  };
+  await decide(`input:${mic.id}`);
+  expect(screen.getByRole("button", { name: "Save" }).hasAttribute("disabled")).toBe(true);
+  await decide(`input:${cable.id}`);
+  expect(screen.getByRole("checkbox", { name: "Microphone" })).toHaveProperty("checked", false);
+  await decide(`toggle:${applications[0].id}`);
+  await decide("input-channels:1");
+  await decide("save");
+  expect(vi.mocked(sourceMixesStore.persist).mock.calls[0][0].list[0]).toMatchObject({
+    members: [applications[0]],
+    input: { id: cable.id, label: cable.label, channels: [1] },
+  });
 });
 
 it("blocks scene mutation from an open draft and discards it on Cancel", () => {

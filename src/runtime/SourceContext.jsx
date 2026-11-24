@@ -19,6 +19,7 @@ import { useMeterDisplayState, useMeterRuntime } from "./MeterRuntimeContext.jsx
  *   captureDeviceUnavailable: boolean,
  *   sourceMixes: ReturnType<typeof useSourceMixes>,
  *   mixApplicationIds: string[] | undefined,
+ *   mixInput: { id: string, channels: number[] } | undefined,
  *   selectedSource: { type: string, label: string } | null,
  *   sourceDisplayName: string | null,
  *   footerSourceLabel: string,
@@ -84,6 +85,13 @@ export function SourceProvider({ children }) {
     .sort()
     .join(",");
   const mixApplicationIds = useMemo(() => mixMembers?.split(","), [mixMembers]);
+  const inputSignature = selectedMix?.input
+    ? JSON.stringify({ id: selectedMix.input.id, channels: selectedMix.input.channels })
+    : "";
+  const mixInput = useMemo(
+    () => (inputSignature ? JSON.parse(inputSignature) : undefined),
+    [inputSignature]
+  );
   const editingMix = sourceMixes.draft !== null;
   useEffect(() => {
     if (!editingMix || selectionIsMix || captureDeviceId.startsWith("app-")) return;
@@ -93,7 +101,7 @@ export function SourceProvider({ children }) {
 
   const captureFormatSignature = useMemo(() => {
     if (!isTauri()) return "";
-    if (selectionIsMix) return mixMembers ? `2:48000|${mixMembers}` : "";
+    if (selectionIsMix) return mixMembers ? `2:48000|${mixMembers}|${inputSignature}` : "";
     if (/^app-[0-9a-f]{32}$/.test(captureDeviceId)) {
       const application = captureApplications.find((candidate) => candidate.id === captureDeviceId);
       const processSignature = application?.processIds?.length
@@ -115,6 +123,7 @@ export function SourceProvider({ children }) {
     defaultOutputFormatSig,
     selectionIsMix,
     mixMembers,
+    inputSignature,
   ]);
   const captureDeviceUnavailable = selectionIsMix
     ? !selectedMix
@@ -182,6 +191,7 @@ export function SourceProvider({ children }) {
         captureDeviceUnavailable,
         sourceMixes,
         mixApplicationIds,
+        mixInput,
         selectedSource,
         sourceDisplayName,
         footerSourceLabel,

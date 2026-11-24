@@ -165,6 +165,26 @@ describe("audio engine command seam", () => {
     });
   });
 
+  it("starts a saved Mix with one application and the selected input channels", async () => {
+    const mixApplicationIds = ["app-" + "1".repeat(32)];
+    const mixInput = { id: "cap-" + "2".repeat(32), channels: [1] };
+    const channel = await startAudioCapture({
+      deviceId: "default",
+      mixApplicationIds,
+      mixInput,
+      onFrame: vi.fn(),
+    });
+    expect(invoke).toHaveBeenCalledWith("audio_start", {
+      deviceId: "default",
+      processId: null,
+      applicationId: null,
+      mixApplicationIds,
+      mixInput,
+      continueSession: false,
+      onFrame: channel,
+    });
+  });
+
   it("applies the reset between older and newer frames and waits for its marker", async () => {
     const observed = [];
     const channel = await startAudioCapture({

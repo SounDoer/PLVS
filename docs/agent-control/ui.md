@@ -61,8 +61,10 @@ does. Select sources, presets, and profiles through their owning families when a
 On Windows, the normal-window Sources surface declares Mix choices through `ui inspect`. Use its
 `add-mix`, `edit:<mix-id>`, or `select:<mix-id>` choice with `ui decide`. The Dock Sources surface
 also exposes `select:<mix-id>` for each saved Mix. The normal-window `sourceMixEditor`
-surface exposes `toggle:<application-id>` choices with their selection state, then `save` and
-`cancel`. Save is available once at least two applications are selected. Use the latest surface ID,
+surface exposes `toggle:<application-id>` and `input:<device-id>` choices with their selection
+state. Toggling another input replaces the current input. The available `input-channels:<key>`
+choices carry labels showing the channel numbers and Mono or Stereo. Save requires two
+applications or at least one application and one input. Use the latest surface ID,
 revision and UI generation for each decision. These choices run the same handlers as the editor
 controls. The editor's draft name stays private to the UI.
 

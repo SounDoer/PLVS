@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { sourceMixesStore } from "../persistence/index.js";
-import { readSourceMixes, sourceMixName } from "../lib/sourceMixes.js";
+import { canSaveSourceMix, readSourceMixes, sourceMixName } from "../lib/sourceMixes.js";
 import { useBlockingEditor } from "./BlockingEditorsContext.jsx";
 
 export function useSourceMixes({ supported, onSelect, onError }) {
@@ -31,8 +31,33 @@ export function useSourceMixes({ supported, onSelect, onError }) {
     });
   }
 
+  function toggleInput(device) {
+    setDraft((current) => {
+      if (!current || writing.current) return current;
+      return {
+        ...current,
+        input:
+          current.input?.id === device.id
+            ? null
+            : {
+                id: device.id,
+                label: device.label,
+                channels: device.channels > 1 ? [0, 1] : [0],
+              },
+      };
+    });
+  }
+
+  function selectInputChannels(channels) {
+    setDraft((current) =>
+      current?.input && !writing.current
+        ? { ...current, input: { ...current.input, channels } }
+        : current
+    );
+  }
+
   async function save({ throwOnError = false } = {}) {
-    if (writing.current || !draft || draft.members.length < 2) return;
+    if (writing.current || !draft || !canSaveSourceMix(draft)) return;
     writing.current = true;
     setSaving(true);
     try {
@@ -47,6 +72,7 @@ export function useSourceMixes({ supported, onSelect, onError }) {
         id: draft.id ?? `mix-${crypto.randomUUID()}`,
         name: sourceMixName(draft),
         members: draft.members,
+        ...(draft.input && { input: draft.input }),
       };
       await sourceMixesStore.persist({
         list: draft.id
@@ -88,6 +114,8 @@ export function useSourceMixes({ supported, onSelect, onError }) {
     saving,
     open,
     toggle,
+    toggleInput,
+    selectInputChannels,
     save,
     remove,
     rename: (name) => setDraft((current) => current && { ...current, name }),

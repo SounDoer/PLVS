@@ -1,15 +1,34 @@
 import { useLayoutEffect, useRef, useState } from "react";
 import { Pencil } from "lucide-react";
 import { useFloatingPanelDrag } from "../hooks/useFloatingPanelDrag.js";
-import { sourceMixName } from "../lib/sourceMixes.js";
+import {
+  canSaveSourceMix,
+  isMixInputId,
+  sourceMixMembers,
+  sourceMixName,
+} from "../lib/sourceMixes.js";
 import { useUiSurface } from "../uiNavigation/UiNavigationContext.jsx";
 import { Button } from "./ui/button";
 import { Checkbox } from "./ui/checkbox";
 import { IconAction } from "./ui/icon-action";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./ui/select";
 import { FLOATING_EDITOR_CLASS } from "./ui/surfaceStyles.js";
 
-export function SourceMixEditor({ owner, applications }) {
-  const { draft, saving, rename, cancel, save, toggle } = owner;
+function inputChannelChoices(count) {
+  return [
+    ...Array.from({ length: Math.max(0, count - 1) }, (_, index) => ({
+      channels: [index, index + 1],
+      label: `Channels ${index + 1}–${index + 2} · Stereo`,
+    })),
+    ...Array.from({ length: count }, (_, index) => ({
+      channels: [index],
+      label: `Channel ${index + 1} · Mono`,
+    })),
+  ];
+}
+
+export function SourceMixEditor({ owner, applications, inputs = [] }) {
+  const { draft, saving, rename, cancel, save, toggle, toggleInput, selectInputChannels } = owner;
   const ref = useRef(null);
   const [position, setPosition] = useState(null);
   const [renaming, setRenaming] = useState(false);
@@ -27,6 +46,17 @@ export function SourceMixEditor({ owner, applications }) {
       ].map((member) => [member.id, member])
     ).values(),
   ];
+  const inputDevices = inputs.filter(({ id, channels }) => isMixInputId(id) && channels > 0);
+  const selectedInput = inputDevices.find(({ id }) => id === draft.input?.id);
+  const inputChoices =
+    draft.input && !selectedInput ? [...inputDevices, draft.input] : inputDevices;
+  const channelChoices = inputChannelChoices(Math.min(256, selectedInput?.channels ?? 0));
+  const channelValue = draft.input?.channels.join("-");
+  const selectedChannelsAvailable = channelChoices.some(
+    ({ channels }) => channels.join("-") === channelValue
+  );
+  const canSave = canSaveSourceMix(draft);
+  const memberCount = sourceMixMembers(draft).length;
   useUiSurface({
     kind: "sourceMixEditor",
     origin: "navigable",
@@ -43,10 +73,22 @@ export function SourceMixEditor({ owner, applications }) {
         selected: checked.has(member.id),
         run: () => toggle(member),
       })),
+      ...inputChoices.map((device) => ({
+        id: `input:${device.id}`,
+        label: device.label,
+        selected: device.id === draft.input?.id,
+        run: () => toggleInput(device),
+      })),
+      ...channelChoices.map(({ channels, label }) => ({
+        id: `input-channels:${channels.join("-")}`,
+        label,
+        selected: channels.join("-") === channelValue,
+        run: () => selectInputChannels(channels),
+      })),
       {
         id: "save",
         label: "Save",
-        disabled: draft.members.length < 2,
+        disabled: !canSave,
         run: () => save({ throwOnError: true }),
       },
       { id: "cancel", label: "Cancel", run: cancel },
@@ -104,40 +146,81 @@ export function SourceMixEditor({ owner, applications }) {
           </>
         )}
       </div>
-      <fieldset
-        disabled={saving}
+      <div
+        data-settings-editor-body
         className="min-h-0 overflow-y-auto px-3 py-2 text-[length:var(--ui-fs-control)]"
       >
-        <legend className="pt-2 font-medium text-muted-foreground">Applications</legend>
-        {choices.length === 0 ? (
-          <p className="text-muted-foreground">No Applications Available</p>
-        ) : null}
-        {choices.map((member) => (
-          <label
-            key={member.id}
-            className="flex min-h-[var(--ui-control-h)] cursor-pointer items-center gap-2 rounded-md px-1 hover:bg-ui-hover"
-          >
-            <Checkbox checked={checked.has(member.id)} onChange={() => toggle(member)} />
-            <span className="min-w-0 flex-1 truncate">
-              {available.get(member.id)?.label ?? member.label}
-            </span>
-            {available.has(member.id) ? null : (
-              <span className="text-muted-foreground">Unavailable</span>
-            )}
-          </label>
-        ))}
-      </fieldset>
+        <fieldset disabled={saving}>
+          <legend className="pt-2 font-medium text-muted-foreground">Applications</legend>
+          {choices.length === 0 ? (
+            <p className="text-muted-foreground">No Applications Available</p>
+          ) : null}
+          {choices.map((member) => (
+            <label
+              key={member.id}
+              className="flex min-h-[var(--ui-control-h)] cursor-pointer items-center gap-2 rounded-md px-1 hover:bg-ui-hover"
+            >
+              <Checkbox checked={checked.has(member.id)} onChange={() => toggle(member)} />
+              <span className="min-w-0 flex-1 truncate">
+                {available.get(member.id)?.label ?? member.label}
+              </span>
+              {available.has(member.id) ? null : (
+                <span className="text-muted-foreground">Unavailable</span>
+              )}
+            </label>
+          ))}
+        </fieldset>
+        <fieldset disabled={saving} className="mt-2">
+          <legend className="font-medium text-muted-foreground">Input</legend>
+          {inputChoices.length === 0 ? (
+            <p className="text-muted-foreground">No Inputs Available</p>
+          ) : null}
+          {inputChoices.map((device) => (
+            <label
+              key={device.id}
+              className="flex min-h-[var(--ui-control-h)] cursor-pointer items-center gap-2 rounded-md px-1 hover:bg-ui-hover"
+            >
+              <Checkbox
+                checked={device.id === draft.input?.id}
+                onChange={() => toggleInput(device)}
+              />
+              <span className="min-w-0 flex-1 truncate">{device.label}</span>
+              {typeof device.channels !== "number" && (
+                <span className="text-muted-foreground">Unavailable</span>
+              )}
+            </label>
+          ))}
+          {draft.input && selectedInput && (
+            <Select
+              disabled={saving}
+              value={selectedChannelsAvailable ? channelValue : ""}
+              onValueChange={(value) => selectInputChannels(value.split("-").map(Number))}
+            >
+              <SelectTrigger aria-label="input channels">
+                <SelectValue placeholder="Selected Channels Unavailable" />
+              </SelectTrigger>
+              <SelectContent variant="inline">
+                {channelChoices.map(({ channels, label }) => (
+                  <SelectItem key={channels.join("-")} value={channels.join("-")}>
+                    {label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          )}
+        </fieldset>
+      </div>
       <div className="flex items-center gap-2 border-t border-border px-3 py-2">
         <span
           className="min-w-0 flex-1 text-[length:var(--ui-fs-caption)] text-muted-foreground"
           aria-live="polite"
         >
-          {draft.members.length} {draft.members.length === 1 ? "Source" : "Sources"} Selected
+          {memberCount} {memberCount === 1 ? "Source" : "Sources"} Selected
         </span>
         <Button variant="ghost" disabled={saving} onClick={cancel}>
           Cancel
         </Button>
-        <Button disabled={saving || draft.members.length < 2} onClick={() => void save()}>
+        <Button disabled={saving || !canSave} onClick={() => void save()}>
           Save
         </Button>
       </div>

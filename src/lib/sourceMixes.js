@@ -12,15 +12,49 @@ export function readSourceMixes(store) {
           typeof mix.name === "string" &&
           mix.name.trim() &&
           Array.isArray(mix.members) &&
-          mix.members.length >= 2 &&
-          mix.members.every(
-            (member) => /^app-[0-9a-f]{32}$/.test(member?.id) && typeof member.label === "string"
-          ) &&
-          new Set(mix.members.map(({ id }) => id)).size === mix.members.length
+          canSaveSourceMix(mix)
       )
     : [];
 }
 
+export function isMixInputId(id) {
+  return /^cap-[0-9a-f]{32}$/.test(id);
+}
+
+export function canSaveSourceMix({ members, input }) {
+  return (
+    members.length >= (input ? 1 : 2) &&
+    members.every(
+      (member) => /^app-[0-9a-f]{32}$/.test(member?.id) && typeof member.label === "string"
+    ) &&
+    new Set(members.map(({ id }) => id)).size === members.length &&
+    (input == null ||
+      (isMixInputId(input.id) &&
+        typeof input.label === "string" &&
+        Array.isArray(input.channels) &&
+        [1, 2].includes(input.channels.length) &&
+        input.channels.every(
+          (channel) => Number.isInteger(channel) && channel >= 0 && channel < 256
+        ) &&
+        (input.channels.length === 1 || input.channels[0] < input.channels[1])))
+  );
+}
+
+export function sourceMixMembers(mix) {
+  return mix.input ? [...mix.members, mix.input] : mix.members;
+}
+
+export function mixInputAvailable(input, devices) {
+  const device = devices.find(({ id }) => id === input.id);
+  return Boolean(device && input.channels.every((channel) => channel < device.channels));
+}
+
 export function sourceMixName(draft) {
-  return draft.name.trim() || draft.members.map(({ label }) => label).join(" + ") || "Untitled";
+  return (
+    draft.name.trim() ||
+    sourceMixMembers(draft)
+      .map(({ label }) => label)
+      .join(" + ") ||
+    "Untitled"
+  );
 }

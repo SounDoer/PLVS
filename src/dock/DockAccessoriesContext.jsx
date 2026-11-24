@@ -30,6 +30,7 @@ import {
 import { preparePanelSettingsNavigation } from "../uiNavigation/panelSettingsNavigation.js";
 import { LOUDNESS_PROFILE_OFF } from "../lib/loudnessProfileCatalog.js";
 import { errorDetails } from "../lib/errorDetails.js";
+import { sourceMixMembers } from "../lib/sourceMixes.js";
 import { reportSceneOperationError } from "../lib/sceneOperationNotice.js";
 import { useAppSettings } from "../settings/SettingsContext.jsx";
 import { useDock } from "./DockContext.jsx";
@@ -388,11 +389,11 @@ export function DockAccessoriesProvider({ children }) {
           mixCapture: statusMix
             ? {
                 unavailable: running
-                  ? statusMix.members
+                  ? sourceMixMembers(statusMix)
                       .filter(({ id }) => mixCaptureStatus.unavailable.includes(id))
                       .map(({ label }) => label)
                   : [],
-                total: statusMix.members.length,
+                total: sourceMixMembers(statusMix).length,
                 incomplete: mixCaptureStatus.incomplete,
               }
             : null,

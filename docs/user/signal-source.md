@@ -105,24 +105,28 @@ routes instead:
 On macOS, DAWs play through Core Audio, so system playback and Application sources can measure
 them without extra routing.
 
-## Application mixes on Windows
+## Mixes on Windows
 
-In the normal window, choose **Add Mix** at the bottom of **Sources** and select at least two
-applications. PLVS generates a name from the selection. Use the pencil to enter your own name.
+In the normal window, choose **Add Mix** at the bottom of **Sources**. Select two or more applications,
+or select at least one application and one device under **Input**. For an input, choose one mono
+channel or an adjacent stereo pair. PLVS generates a name from the selection. Use the pencil to enter
+your own name.
 **Save** adds the Mix under **Mixes** and selects it for the current Workbench.
 You can also select a saved Mix under **Mixes** in the Dock toolbar's **Sources** menu or in the
 system Tray's **Source** submenu for your Workbench.
 
-PLVS sums the selected application audio into one stereo signal for measurement. If one application
-exits, capture can continue with the others while PLVS waits for it to return. The Mix row shows
-members missing from the application list. Applications with no current audio can stay selected.
+PLVS sums the sources into one stereo signal for measurement. A mono input goes to both sides at
+−3 dB per side. If the selected input is already audible through an application in the Mix, PLVS
+will count that signal twice. If one source goes away, capture can continue with the others while
+PLVS waits for it to return. The Mix row shows unavailable members. Applications with no current
+audio can stay selected.
 **Status Notices** identifies unavailable members. After they return, **Incomplete Mix
 Measurement** indicates that Integrated and Max include the incomplete intervals. Clear or a new
 measurement clears that indication.
 
 In the normal window, hover over or focus a Mix row to reveal its Edit and Delete controls.
-Changing the members of the active Mix starts a new
-measurement. Renaming it keeps the current measurement. Saved mixes are available to Workbenches
+Changing the members or input channels of the active Mix starts a new measurement. Renaming it
+keeps the current measurement. Saved mixes are available to Workbenches
 on the same installation. Each Workbench remembers its own Source selection independently of Presets.
 
 ## Long source lists

@@ -235,6 +235,7 @@ function AppContent() {
     captureDeviceUnavailable,
     sourceMixes,
     mixApplicationIds,
+    mixInput,
     footerSourceLabel,
   } = useSource();
 
@@ -297,6 +298,7 @@ function AppContent() {
   const runtimeEnginesProps = {
     captureDeviceId,
     mixApplicationIds,
+    mixInput,
     captureFormatSignature,
     captureDeviceUnavailable,
     histMaxSamples,
@@ -590,7 +592,11 @@ function AppContent() {
         }
       >
         {!docked && sourceMixes.draft ? (
-          <SourceMixEditor owner={sourceMixes} applications={captureApplications} />
+          <SourceMixEditor
+            owner={sourceMixes}
+            applications={captureApplications}
+            inputs={audioInputs}
+          />
         ) : null}
         <CloseConfirmDialog
           open={closeDialogOpen}
