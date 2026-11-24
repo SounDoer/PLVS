@@ -2982,10 +2982,6 @@
       "license": "MIT",
       "noticeSha256": "c951f8bf34a69622f3d9c00e1977f40e0d57ab9c16540aea515c8cf6b839251a"
     },
-    "npm:class-variance-authority@0.7.1": {
-      "license": "Apache-2.0",
-      "noticeSha256": "6cff202c3b299af3ebb6c4f576b4fa3f641d20b5cce36aa588b79bafd83eb0bc"
-    },
     "npm:clsx@2.1.1": {
       "license": "MIT",
       "noticeSha256": "41dc3ad87f3479c36155672c53309ee2b838e01dbc9f3cf2b1a835a792e09450"
