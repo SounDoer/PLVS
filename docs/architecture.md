@@ -156,7 +156,8 @@ commands are not exposed to webviews; only the native update commands can instal
 [ADR 0030](https://github.com/SounDoer/PLVS/blob/421b7333059d94f36a41197ae9c7a0de11c96a66/docs/adr/0030-verify-cached-updates-through-updater-adapter.md).
 
 Dock update/setup presentation is an independent `dock-update` accessory with event permissions
-only. Like the toolbar and editor accessories it is not created at startup: its WebView renderer
+only. It loads `dock-update.html`, so its WebView starts without loading the workspace entry point.
+Like the toolbar and editor accessories it is not created at startup: its WebView renderer
 costs about 50 MB, and most sessions never show it. While docked, the main window creates it as soon
 as an update, details or first-launch setup exists, so it is normally ready before a click; Preview
 never creates it. It consumes the main owner's serialized state and semantic actions; it has no updater

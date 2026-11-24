@@ -18,10 +18,15 @@ fn accessory_builder<'a, R: tauri::Runtime, M: Manager<R>>(
   init_script: &str,
 ) -> WebviewWindowBuilder<'a, R, M> {
   // Each accessory's label is also its frontend surface name.
+  let page = if label == DOCK_UPDATE_LABEL {
+    "dock-update.html"
+  } else {
+    "index.html"
+  };
   let builder = WebviewWindowBuilder::new(
     manager,
     label,
-    WebviewUrl::App(format!("index.html?surface={label}").into()),
+    WebviewUrl::App(format!("{page}?surface={label}").into()),
   )
   .title(
     if matches!(label, DOCK_SETTINGS_LABEL | DOCK_AUTHORING_LABEL) {
