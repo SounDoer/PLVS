@@ -102,13 +102,12 @@ function selectedApplicationSummary(applications, selectedId) {
 }
 
 function SourceSection({ id, group, label, count, open, onOpenChange, selectedSummary, children }) {
-  const navigable = group !== "mixes";
   // `ui show source-group` expands a group as clicking its heading does.
-  useUiNavigationTarget(navigable ? `sourceGroup:${group}` : null, {
+  useUiNavigationTarget(`sourceGroup:${group}`, {
     show: () => onOpenChange(true),
   });
   useUiSurface({
-    active: open && navigable,
+    active: open,
     kind: "sourceGroup",
     origin: "navigable",
     blocking: false,

@@ -16,13 +16,19 @@ function changed(mutator) {
 describe("command manifest", () => {
   it("loads one immutable catalog without React or runtime state", () => {
     expect(commandManifest.manifestVersion).toBe(1);
-    expect(commandEntries).toHaveLength(161);
-    expect(runningAppCommandEntries).toHaveLength(155);
+    expect(commandEntries).toHaveLength(164);
+    expect(runningAppCommandEntries).toHaveLength(158);
     expect(Object.isFrozen(commandManifest)).toBe(true);
     expect(Object.isFrozen(commandEntries[0].wireParams)).toBe(true);
   });
 
   it("describes representative public policies", () => {
+    expect(commandEntryById.get("mix.delete")).toMatchObject({
+      featureGate: "sourceMixes",
+      expectedRevision: "required",
+      dryRun: true,
+      risk: "risky",
+    });
     expect(commandEntryById.get("app.capabilities")).toMatchObject({
       path: ["capabilities"],
       execution: "runningApp",

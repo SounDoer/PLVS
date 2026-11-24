@@ -15,8 +15,9 @@ import { commandEntriesForFamily } from "./commandManifest.js";
 import { normalizeMeasurementPredicate } from "./measurementPredicates.js";
 import { WINDOW_OFFSET_MAX, WINDOW_SIZE_MAX, WINDOW_SIZE_MIN } from "./windowControl.js";
 import { isUiTargetId } from "../uiNavigation/uiTargets.js";
+import { isSourceMixId } from "../lib/sourceMixes.js";
 
-const SOURCE_GROUPS = Object.freeze(["output", "input", "applications"]);
+const SOURCE_GROUPS = Object.freeze(["mixes", "output", "input", "applications"]);
 import { POINTER_DURATION_MAX_MS } from "./handlers/pointer.js";
 import { HOLD_SLOW_MAX_MS } from "./handlers/gestures.js";
 import {
@@ -173,16 +174,46 @@ export function normalizeAgentControlRequest(input) {
     return invalidParams("$.params", "Request params must be a plain JSON object.");
   }
 
+  if (["mix.list", "mix.rename", "mix.delete"].includes(input.method)) {
+    const list = input.method === "mix.list";
+    const rename = input.method === "mix.rename";
+    const allowed = new Set(
+      list ? [] : ["mixId", "expectedRevision", "dryRun", ...(rename ? ["name"] : [])]
+    );
+    const field = unknownField(input.params, allowed);
+    if (field) return invalidParams(`$.params.${field}`, `Unknown parameter: ${field}.`);
+    if (!list) {
+      const revisionError = validateExpectedRevision(input.params);
+      if (revisionError) return revisionError;
+      if (!isSourceMixId(input.params.mixId))
+        return invalidParams("$.params.mixId", "mixId must be a saved Mix ID.");
+      if (
+        rename &&
+        (typeof input.params.name !== "string" ||
+          !input.params.name.trim() ||
+          input.params.name.length > 512)
+      )
+        return invalidParams("$.params.name", "name must contain 1 to 512 characters.");
+      if (input.params.dryRun !== undefined && typeof input.params.dryRun !== "boolean")
+        return invalidParams("$.params.dryRun", "dryRun must be a boolean.");
+    }
+    return {
+      ok: true,
+      request: {
+        id: input.id,
+        method: input.method,
+        params: { ...input.params, ...(rename && { name: input.params.name.trim() }) },
+      },
+    };
+  }
+
   if (input.method === "editorDraft.describe" || input.method === "editorDraft.inspect") {
     const allowed =
       input.method === "editorDraft.describe" ? new Set(["kind"]) : new Set(["kind", "surfaceId"]);
     const field = unknownField(input.params, allowed);
     if (field) return invalidParams(`$.params.${field}`, `Unknown parameter: ${field}.`);
-    if (!["theme", "loudness-profile", "feedback", "welcome"].includes(input.params.kind)) {
-      return invalidParams(
-        "$.params.kind",
-        "kind must be theme, loudness-profile, feedback or welcome."
-      );
+    if (!["theme", "loudness-profile", "feedback", "welcome", "mix"].includes(input.params.kind)) {
+      return invalidParams("$.params.kind", "Unknown editor draft kind.");
     }
     if (
       input.method === "editorDraft.inspect" &&
@@ -230,9 +261,13 @@ export function normalizeAgentControlRequest(input) {
     if (field) return invalidParams(`$.params.${field}`, `Unknown parameter: ${field}.`);
     if (
       !["theme", "loudness-profile"].includes(input.params.kind) &&
-      !(input.method === "editorDraft.patch" && ["feedback", "welcome"].includes(input.params.kind))
+      !(
+        input.method === "editorDraft.patch" &&
+        ["feedback", "welcome", "mix"].includes(input.params.kind)
+      ) &&
+      !(input.method === "editorDraft.save" && input.params.kind === "mix")
     ) {
-      return invalidParams("$.params.kind", "kind must be theme or loudness-profile.");
+      return invalidParams("$.params.kind", "Editor draft kind is unavailable for this command.");
     }
     if (!/^ui-[a-z0-9-]{16,60}$/.test(input.params.surfaceId ?? "")) {
       return invalidParams("$.params.surfaceId", "surfaceId must be an exact UI surface ID.");

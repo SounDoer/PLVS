@@ -170,6 +170,7 @@ export function AgentControlBridge() {
     commitCaptureDevice,
     retryCaptureDevicePersistence,
     refreshCaptureApplications,
+    sourceMixes,
   } = useSource();
   const { beginDeviceRestartForControl } = meterRuntime;
   const {
@@ -234,6 +235,7 @@ export function AgentControlBridge() {
       refreshApplications: refreshCaptureApplications,
       beginRestart: beginDeviceRestartForControl,
       runtimeUnavailable: updateBusy,
+      sourceMixes,
     }),
     [
       audioDeviceSnapshot,
@@ -241,6 +243,7 @@ export function AgentControlBridge() {
       captureDeviceId,
       commitCaptureDevice,
       refreshCaptureApplications,
+      sourceMixes,
       retryCaptureDevicePersistence,
       meterRuntime.liveDeviceTransition,
       meterRuntime.liveLifecycle,

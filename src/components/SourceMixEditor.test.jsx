@@ -7,6 +7,12 @@ import { UiNavigationProvider, useUiNavigation } from "../uiNavigation/UiNavigat
 import { SCENE_OPERATIONS } from "../lib/sceneOperations.js";
 import { sourceMixesStore } from "../persistence/index.js";
 import { SourceMixEditor } from "./SourceMixEditor.jsx";
+import {
+  EditorDraftProvider,
+  useEditorDraftRegistry,
+} from "../agentControl/EditorDraftContext.jsx";
+import { planEditorDraftPatch } from "../agentControl/editorDraftControl.js";
+import { publicMixDocument } from "../agentControl/mixDraftControl.js";
 
 vi.mock("../persistence/index.js", () => ({
   sourceMixesStore: { read: vi.fn(), persist: vi.fn(), subscribe: vi.fn(() => () => {}) },
@@ -26,10 +32,12 @@ beforeEach(() => {
 function mountEditor(onSelect = vi.fn(), inputs = [], outputs = []) {
   let registry;
   let navigation;
+  let draftControl;
   function Harness() {
     const owner = useSourceMixes({ supported: true, onSelect, onError: vi.fn() });
     registry = useBlockingEditors();
     navigation = useUiNavigation();
+    draftControl = useEditorDraftRegistry();
     return owner.draft ? (
       <SourceMixEditor
         owner={owner}
@@ -44,13 +52,62 @@ function mountEditor(onSelect = vi.fn(), inputs = [], outputs = []) {
   render(
     <BlockingEditorsProvider>
       <UiNavigationProvider getRevision={() => 3}>
-        <Harness />
+        <EditorDraftProvider>
+          <Harness />
+        </EditorDraftProvider>
       </UiNavigationProvider>
     </BlockingEditorsProvider>
   );
   fireEvent.click(screen.getByRole("button", { name: "Add Mix" }));
-  return { onSelect, scene: () => registry, ui: () => navigation };
+  return { onSelect, scene: () => registry, ui: () => navigation, drafts: () => draftControl };
 }
+
+it("patches a complete named Mix with exact gains atomically and saves through the editor", async () => {
+  const input = { id: `cap-${"3".repeat(32)}`, label: "Microphone", channels: 2 };
+  const { ui, drafts, onSelect } = mountEditor(vi.fn(), [input]);
+  const { surfaceId } = ui().inspectUi().surfaces[0];
+  const before = drafts().inspect("mix", surfaceId);
+  const operations = [
+    { op: "setName", name: "My Mix" },
+    { op: "setRoute", sourceId: input.id, lane: "0", destinations: [{ role: "Ls", gainDb: -2.5 }] },
+    { op: "setFormat", format: "5.1" },
+    { op: "setInputChannels", sourceId: input.id, channels: [0] },
+  ];
+  const invalid = planEditorDraftPatch(
+    "mix",
+    before.document,
+    {
+      operations: [
+        ...operations,
+        { op: "setRoute", sourceId: input.id, lane: "1", destinations: [] },
+      ],
+    },
+    before.inventory
+  );
+  expect(invalid.changed).toBe(false);
+  expect(invalid.document).toBe(before.document);
+  const patch = planEditorDraftPatch("mix", before.document, { operations }, before.inventory);
+  expect(patch.issues).toEqual([]);
+  act(() => drafts().commit("mix", surfaceId, patch.document));
+  const after = drafts().inspect("mix", surfaceId);
+  expect(after.draftGeneration).toBeGreaterThan(before.draftGeneration);
+  expect(after.dirty).toBe(true);
+  expect(publicMixDocument(after.document)).toMatchObject({
+    name: "My Mix",
+    format: "5.1",
+    routes: { [input.id]: { 0: [{ role: "Ls", gainDb: -2.5 }] } },
+  });
+  expect(sourceMixesStore.persist).not.toHaveBeenCalled();
+  expect(() => drafts().save("mix", surfaceId, before.draftGeneration)).toThrow(
+    "draftGenerationConflict"
+  );
+  await act(async () => {
+    const saved = await drafts().save("mix", surfaceId, after.draftGeneration);
+    expect(onSelect).toHaveBeenCalledWith(saved.savedId);
+  });
+  expect(sourceMixesStore.persist).toHaveBeenCalledOnce();
+  expect(ui().inspectUi().surfaces).toHaveLength(0);
+});
 
 it("exposes edit choices with generation checks and keeps the draft name out of inspection", async () => {
   const { ui } = mountEditor();

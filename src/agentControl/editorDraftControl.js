@@ -14,6 +14,11 @@ import {
   validateLoudnessProfileDocument,
 } from "../lib/loudnessProfileLibrary.js";
 import { STATS_META, roundToStatPrecision, statDecimals } from "../lib/statsCatalog.js";
+import {
+  applyMixDraftOperations,
+  MIX_DRAFT_FIELDS,
+  mixDraftOperationTarget,
+} from "./mixDraftControl.js";
 
 const THEME_OPERATIONS = Object.freeze([
   "setName",
@@ -154,6 +159,13 @@ function conflictingTarget(claimed, target) {
 }
 
 function operationTargets(kind, operation) {
+  if (kind === "mix") {
+    const target =
+      typeof operation.op === "string" && Object.hasOwn(MIX_DRAFT_FIELDS, operation.op)
+        ? mixDraftOperationTarget(operation)
+        : null;
+    return target ? [target] : [];
+  }
   const fields = SIMPLE_EDITOR_FIELDS[kind];
   if (fields) return Object.hasOwn(fields, operation.op) ? [operation.op] : [];
   if (kind === "theme") {
@@ -222,6 +234,18 @@ function detectOperationConflicts(kind, operations, issues) {
 }
 
 export function describeEditorDraft(kind) {
+  if (kind === "mix") {
+    return {
+      kind,
+      save: true,
+      history: { undo: false, redo: false },
+      operations: Object.keys(MIX_DRAFT_FIELDS),
+      operationSchemas: Object.fromEntries(
+        Object.entries(MIX_DRAFT_FIELDS).map(([op, fields]) => [op, operationSchema(op, fields)])
+      ),
+      maximumOperations: MAX_PATCH_OPERATIONS,
+    };
+  }
   const fields = SIMPLE_EDITOR_FIELDS[kind];
   if (fields) {
     return {
@@ -519,7 +543,7 @@ function applySimpleEditorOperation(fields, document, operation, index, issues) 
   return { ...document, [field]: operation[field] };
 }
 
-export function planEditorDraftPatch(kind, currentDocument, input) {
+export function planEditorDraftPatch(kind, currentDocument, input, inventory = undefined) {
   const issues = [];
   if (!plainObject(input)) {
     return {
@@ -548,6 +572,32 @@ export function planEditorDraftPatch(kind, currentDocument, input) {
 
   const fields = SIMPLE_EDITOR_FIELDS[kind];
   let next = structuredClone(currentDocument);
+  if (kind === "mix") {
+    input.operations.forEach((operation, index) => {
+      const path = `$.operations[${index}]`;
+      const definition =
+        plainObject(operation) &&
+        typeof operation.op === "string" &&
+        Object.hasOwn(MIX_DRAFT_FIELDS, operation.op)
+          ? MIX_DRAFT_FIELDS[operation.op]
+          : null;
+      if (!definition) issues.push(issue("invalidOperation", path, "Unknown Mix operation."));
+      else {
+        const fields = Object.keys(definition);
+        unknownFields(operation, new Set(["op", ...fields]), path, issues);
+        for (const field of fields) {
+          if (!Object.hasOwn(operation, field))
+            issues.push(issue("missingField", `${path}.${field}`, `${field} is required.`));
+        }
+      }
+    });
+    if (!issues.length) applyMixDraftOperations(next, input.operations, inventory, issues);
+    return {
+      document: issues.length ? currentDocument : next,
+      changed: !issues.length && JSON.stringify(next) !== JSON.stringify(currentDocument),
+      issues,
+    };
+  }
   input.operations.forEach((operation, index) => {
     if (!plainObject(operation)) {
       issues.push(

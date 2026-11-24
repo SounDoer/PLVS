@@ -380,6 +380,10 @@ pub enum ControlCommand {
   DeviceRead {
     method: String,
   },
+  MixCommand {
+    method: String,
+    params: Value,
+  },
   DeviceSelect {
     device_id: String,
     expected_revision: Option<u64>,
@@ -576,6 +580,7 @@ pub fn parse_control_args(args: &[String]) -> Result<ControlCommand, String> {
     [command, rest @ ..] if command == "settings" => return parse_settings_args(rest),
     [command, rest @ ..] if command == "transport" => return parse_transport_args(rest),
     [command, rest @ ..] if command == "device" => return parse_device_args(rest),
+    [command, rest @ ..] if command == "mix" => return parse_mix_args(rest),
     [command, rest @ ..] if command == "dock" => return dock::parse_args(rest),
     [command, rest @ ..] if command == "visual" => return parse_visual_args(rest),
     [command, rest @ ..] if command == "wait" => return parse_wait_args(rest),
@@ -744,7 +749,7 @@ fn parse_editor_draft_args(args: &[String]) -> Result<ControlCommand, String> {
   if let Some((action, kind, surface_id)) = read {
     if !matches!(
       kind.as_str(),
-      "theme" | "loudness-profile" | "feedback" | "welcome"
+      "theme" | "loudness-profile" | "feedback" | "welcome" | "mix"
     ) {
       return Err("Editor draft kind is unavailable for this command.".to_string());
     }
@@ -837,7 +842,8 @@ fn parse_editor_draft_args(args: &[String]) -> Result<ControlCommand, String> {
   }
   let kind = positionals.remove(0);
   if !(matches!(kind.as_str(), "theme" | "loudness-profile")
-    || (matches!(kind.as_str(), "feedback" | "welcome") && action == "patch"))
+    || (matches!(kind.as_str(), "feedback" | "welcome") && action == "patch")
+    || (kind == "mix" && matches!(action.as_str(), "patch" | "save")))
   {
     return Err("Editor draft kind is unavailable for this command.".to_string());
   }
@@ -864,6 +870,54 @@ fn parse_editor_draft_args(args: &[String]) -> Result<ControlCommand, String> {
     expected_revision,
     expected_ui_generation,
     expected_draft_generation,
+  })
+}
+
+fn parse_mix_args(args: &[String]) -> Result<ControlCommand, String> {
+  const USAGE: &str = "Usage: plvs-cli mix <list|rename|delete> ... --json";
+  let Some((action, rest)) = args.split_first() else {
+    return Err(USAGE.into());
+  };
+  if action == "list" && rest == ["--json"] {
+    return Ok(ControlCommand::MixCommand {
+      method: "mix.list".into(),
+      params: serde_json::json!({}),
+    });
+  }
+  if !matches!(action.as_str(), "rename" | "delete") {
+    return Err(USAGE.into());
+  }
+  let mut positionals = Vec::new();
+  let mut revision = None;
+  let mut json = false;
+  let mut dry_run = false;
+  let mut remaining = rest.iter();
+  while let Some(argument) = remaining.next() {
+    match argument.as_str() {
+      "--json" if !json => json = true,
+      "--dry-run" if !dry_run => dry_run = true,
+      "--expected-revision" if revision.is_none() => {
+        revision = Some(parse_ui_safe_integer(remaining.next(), argument)?);
+      }
+      value if value.starts_with("--") => {
+        return Err(format!("Unknown or duplicate option: {value}"))
+      }
+      value => positionals.push(value),
+    }
+  }
+  let expected_revision = revision.ok_or("Mix changes require --expected-revision.")?;
+  let params = match (action.as_str(), positionals.as_slice(), json) {
+    ("rename", [id, name], true) if !id.is_empty() && !name.trim().is_empty() => {
+      serde_json::json!({ "mixId": id, "name": name, "expectedRevision": expected_revision, "dryRun": dry_run })
+    }
+    ("delete", [id], true) if !id.is_empty() => {
+      serde_json::json!({ "mixId": id, "expectedRevision": expected_revision, "dryRun": dry_run })
+    }
+    _ => return Err(USAGE.into()),
+  };
+  Ok(ControlCommand::MixCommand {
+    method: format!("mix.{action}"),
+    params,
   })
 }
 
@@ -978,7 +1032,7 @@ fn parse_ui_safe_integer(raw: Option<&String>, option: &str) -> Result<u64, Stri
 }
 
 fn parse_ui_args(args: &[String]) -> Result<ControlCommand, String> {
-  const USAGE: &str = "Usage:\n  plvs-cli ui inspect <--json|--format text>\n  plvs-cli ui show settings --section <section> --expected-revision <n> --expected-ui-generation <n> --json\n  plvs-cli ui show panel-settings --panel-id <id> --expected-revision <n> --expected-ui-generation <n> --json\n  plvs-cli ui show theme-editor --mode <create|edit|customize|duplicate> [--theme-id <id>] [--page <core|palettes|advanced>] --expected-revision <n> --expected-ui-generation <n> --json\n  plvs-cli ui show loudness-profile-editor --mode <create|edit> [--profile-id <id>] --expected-revision <n> --expected-ui-generation <n> --json\n  plvs-cli ui show feedback --expected-revision <n> --expected-ui-generation <n> --json\n  plvs-cli ui show toolbar-menu --menu <sources|loudness-profile|panels|views|presets|status> --expected-revision <n> --expected-ui-generation <n> --json\n  plvs-cli ui show dock-toolbar --expected-revision <n> --expected-ui-generation <n> --json\n  plvs-cli ui show panel-help --panel-id <id> --expected-revision <n> --expected-ui-generation <n> --json\n  plvs-cli ui show panel-fullscreen --panel-id <id> --expected-revision <n> --expected-ui-generation <n> --json\n  plvs-cli ui show add-panel --expected-revision <n> --expected-ui-generation <n> --json\n  plvs-cli ui show source-group --group <output|input|applications> --expected-revision <n> --expected-ui-generation <n> --json\n  plvs-cli ui show dropdown --control <target-id> --expected-revision <n> --expected-ui-generation <n> --json\n  plvs-cli ui quick-tour <start|next|back> --expected-revision <n> --expected-ui-generation <n> --json\n  plvs-cli ui action --target <target-id> --expected-revision <n> --expected-ui-generation <n> --json\n  plvs-cli ui targets --json\n  plvs-cli ui locate --target <target-id> --json\n  plvs-cli ui decide --surface-id <surface-id> --choice <id> --expected-revision <n> --expected-ui-generation <n> --json [--dry-run]\n  plvs-cli ui close <surface-id> --expected-revision <n> --expected-ui-generation <n> --json\n  plvs-cli ui cancel <surface-id> --expected-revision <n> --expected-ui-generation <n> --json";
+  const USAGE: &str = "Usage:\n  plvs-cli ui inspect <--json|--format text>\n  plvs-cli ui show settings --section <section> --expected-revision <n> --expected-ui-generation <n> --json\n  plvs-cli ui show panel-settings --panel-id <id> --expected-revision <n> --expected-ui-generation <n> --json\n  plvs-cli ui show theme-editor --mode <create|edit|customize|duplicate> [--theme-id <id>] [--page <core|palettes|advanced>] --expected-revision <n> --expected-ui-generation <n> --json\n  plvs-cli ui show loudness-profile-editor --mode <create|edit> [--profile-id <id>] --expected-revision <n> --expected-ui-generation <n> --json\n  plvs-cli ui show feedback --expected-revision <n> --expected-ui-generation <n> --json\n  plvs-cli ui show toolbar-menu --menu <sources|loudness-profile|panels|views|presets|status> --expected-revision <n> --expected-ui-generation <n> --json\n  plvs-cli ui show dock-toolbar --expected-revision <n> --expected-ui-generation <n> --json\n  plvs-cli ui show panel-help --panel-id <id> --expected-revision <n> --expected-ui-generation <n> --json\n  plvs-cli ui show panel-fullscreen --panel-id <id> --expected-revision <n> --expected-ui-generation <n> --json\n  plvs-cli ui show add-panel --expected-revision <n> --expected-ui-generation <n> --json\n  plvs-cli ui show source-group --group <mixes|output|input|applications> --expected-revision <n> --expected-ui-generation <n> --json\n  plvs-cli ui show dropdown --control <target-id> --expected-revision <n> --expected-ui-generation <n> --json\n  plvs-cli ui quick-tour <start|next|back> --expected-revision <n> --expected-ui-generation <n> --json\n  plvs-cli ui action --target <target-id> --expected-revision <n> --expected-ui-generation <n> --json\n  plvs-cli ui targets --json\n  plvs-cli ui locate --target <target-id> --json\n  plvs-cli ui decide --surface-id <surface-id> --choice <id> --expected-revision <n> --expected-ui-generation <n> --json [--dry-run]\n  plvs-cli ui close <surface-id> --expected-revision <n> --expected-ui-generation <n> --json\n  plvs-cli ui cancel <surface-id> --expected-revision <n> --expected-ui-generation <n> --json";
   if args.iter().any(|arg| is_help(arg)) {
     return Ok(ControlCommand::FamilyHelp("ui".to_string()));
   }
@@ -1338,7 +1392,7 @@ fn parse_ui_args(args: &[String]) -> Result<ControlCommand, String> {
     }),
     "source-group" => {
       let group = group.ok_or_else(|| "The source group target requires --group.".to_string())?;
-      if !["output", "input", "applications"].contains(&group.as_str()) {
+      if !["mixes", "output", "input", "applications"].contains(&group.as_str()) {
         return Err("Unknown Sources group.".to_string());
       }
       Ok(ControlCommand::UiShowNamed {
@@ -4390,6 +4444,7 @@ fn command_name(command: &ControlCommand) -> String {
     ControlCommand::SettingsDescribe => "settings.describe".to_string(),
     ControlCommand::SettingsInspect => "settings.inspect".to_string(),
     ControlCommand::DeviceRead { method } => method.clone(),
+    ControlCommand::MixCommand { method, .. } => method.clone(),
     ControlCommand::DeviceSelect { .. } => "device.select".to_string(),
     ControlCommand::TransportInspect => "transport.inspect".to_string(),
     ControlCommand::TransportBatch { action, .. } => format!("transport.file.batch.{action}"),
@@ -4470,6 +4525,7 @@ fn request_for_command<R: Read>(
     | ControlCommand::DeviceRead { .. }
     | ControlCommand::TransportInspect
     | ControlCommand::VisualDescribe => serde_json::json!({}),
+    ControlCommand::MixCommand { params, .. } => params.clone(),
     ControlCommand::EditorDraftRead {
       kind,
       surface_id: Some(surface_id),
@@ -7200,6 +7256,7 @@ mod tests {
       "theme-id" => "custom-1".to_string(),
       "profile-id" => "profile-1".to_string(),
       "profile-id|off" => "off".to_string(),
+      "mix-id" => "mix-00000000-0000-0000-0000-000000000001".to_string(),
       "device-id|default" => "default".to_string(),
       "name" => "Name".to_string(),
       "session-id" => "file-1".to_string(),
@@ -7211,7 +7268,9 @@ mod tests {
       "sources|loudness-profile|panels|views|presets|status" => "presets".to_string(),
       "surface-id" => format!("ui-{}", "a".repeat(16)),
       "theme|loudness-profile|feedback|welcome" => "theme".to_string(),
+      "theme|loudness-profile|feedback|welcome|mix" => "mix".to_string(),
       "theme|loudness-profile" => "theme".to_string(),
+      "theme|loudness-profile|mix" => "mix".to_string(),
       "create|edit|customize|duplicate" | "create|edit" => "create".to_string(),
       "id" => "stats".to_string(),
       "main|workspace"
@@ -7226,7 +7285,7 @@ mod tests {
       "2..60" => "4".to_string(),
       "0..10000" => "0".to_string(),
       "start|next|back" => "next".to_string(),
-      "output|input|applications" => "output".to_string(),
+      "mixes|output|input|applications" => "output".to_string(),
       other => panic!("missing canonical argument for <{other}>"),
     }
   }

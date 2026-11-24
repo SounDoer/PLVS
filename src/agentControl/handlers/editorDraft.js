@@ -1,6 +1,13 @@
 import { describeEditorDraft, planEditorDraftPatch } from "../editorDraftControl.js";
 import { semanticFailure, SETTLEMENT_TIMEOUT_MS, COMMIT_NOT_OBSERVED } from "../bridge/failures.js";
 import { themeStateSignature, loudnessProfileStateSignature } from "../bridge/signatures.js";
+import { mixDraftDocument, publicMixDocument } from "../mixDraftControl.js";
+import { mixInputs } from "../../lib/mixRouting.js";
+
+function authoredDocument(kind, document) {
+  const { id: _id, ...authored } = kind === "mix" ? publicMixDocument(document) : document;
+  return authored;
+}
 
 export async function settleEditorDraftObservation({
   editorDraft,
@@ -48,6 +55,8 @@ export async function settleEditorDraftObservation({
 async function describe(ctx) {
   const { request, requestId, clock } = ctx;
   const kind = request.params.kind === "loudness-profile" ? "loudnessProfile" : request.params.kind;
+  if (kind === "mix" && !ctx.live().device?.sourceMixes?.supported)
+    throw semanticFailure("surfaceUnavailable", "$.params.kind", "Mixes are unavailable.", -32042);
   return {
     requestId,
     result: {
@@ -82,7 +91,7 @@ async function inspect(ctx) {
         -32042
       );
     }
-    const { id: _internalId, ...document } = snapshot.document;
+    const document = authoredDocument(kind, snapshot.document);
     return {
       requestId,
       result: {
@@ -99,6 +108,7 @@ async function inspect(ctx) {
         },
         target: surface.target,
         document,
+        ...(kind === "mix" && { mix: snapshot.mix }),
       },
     };
   } catch (error) {
@@ -181,7 +191,7 @@ async function act(ctx) {
     }
 
     if (request.method === "editorDraft.save") {
-      const saved = editorDraft.save(
+      const saved = await editorDraft.save(
         kind,
         request.params.surfaceId,
         request.params.expectedDraftGeneration
@@ -189,17 +199,28 @@ async function act(ctx) {
       const expectedSignature =
         kind === "theme"
           ? themeStateSignature(saved.state)
-          : loudnessProfileStateSignature(saved.state.profiles, saved.state.active);
+          : kind === "mix"
+            ? JSON.stringify(saved.document)
+            : loudnessProfileStateSignature(saved.state.profiles, saved.state.active);
       const deadline = Date.now() + SETTLEMENT_TIMEOUT_MS;
       let uiAfter;
       while (true) {
         uiAfter = uiNavigation.inspectUi();
+        const current = live();
+        const savedMix =
+          kind === "mix" &&
+          current.device?.sourceMixes?.list.find(({ id }) => id === saved.savedId);
         const observedSignature =
-          kind === "theme" ? live().themeSignature : live().loudnessSignature;
+          kind === "theme"
+            ? current.themeSignature
+            : kind === "mix"
+              ? savedMix &&
+                JSON.stringify(mixDraftDocument({ ...savedMix, inputs: mixInputs(savedMix) }))
+              : current.loudnessSignature;
         if (
           observedSignature === expectedSignature &&
           !uiAfter.surfaces.some(({ surfaceId }) => surfaceId === request.params.surfaceId) &&
-          !uiAfter.activeBlockingEditors?.includes(kind)
+          !uiAfter.activeBlockingEditors?.includes(kind === "mix" ? "sourceMix" : kind)
         )
           break;
         if (Date.now() >= deadline) {
@@ -234,7 +255,7 @@ async function act(ctx) {
           );
         }
       }
-      const { id: _savedId, ...document } = saved.document;
+      const document = authoredDocument(kind, saved.document);
       return {
         requestId,
         result: {
@@ -253,7 +274,12 @@ async function act(ctx) {
 
     let changed = true;
     if (request.method === "editorDraft.patch") {
-      const planned = planEditorDraftPatch(kind, before.document, request.params.patch);
+      const planned = planEditorDraftPatch(
+        kind,
+        before.document,
+        request.params.patch,
+        before.inventory
+      );
       if (planned.issues.length > 0) {
         throw semanticFailure(
           "invalidDraftPatch",
@@ -311,7 +337,7 @@ async function act(ctx) {
       : { ui: uiBefore, snapshot: before };
     const uiAfter = settled.ui;
     const after = settled.snapshot;
-    const { id: _internalId, ...document } = after.document;
+    const document = authoredDocument(kind, after.document);
     return {
       requestId,
       result: {
@@ -329,6 +355,7 @@ async function act(ctx) {
           canRedo: after.canRedo === true,
         },
         document,
+        ...(kind === "mix" && { mix: after.mix }),
       },
     };
   } catch (error) {

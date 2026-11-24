@@ -4,6 +4,14 @@ const G = Math.SQRT1_2;
 export const MIX_FORMATS = [{ id: "follow", name: "Follow Output" }, ...CHANNEL_LAYOUTS];
 export const MIX_AUTO_VERSION = 1;
 
+export function mixGainDb(gain) {
+  return Number((20 * Math.log10(gain)).toFixed(10));
+}
+
+export function linearMixGain(db) {
+  return 10 ** (Math.min(24, Math.max(-60, db)) / 20);
+}
+
 export function validMixRoles(roles) {
   return (
     Array.isArray(roles) &&

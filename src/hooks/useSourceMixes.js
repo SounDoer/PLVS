@@ -124,6 +124,7 @@ export function useSourceMixes({ supported, onSelect, onError }) {
       setList(read());
       setDraft(null);
       if (!draft.id) await onSelect(mix.id);
+      return mix;
     } catch (error) {
       onError("Could Not Save Mix", error);
       if (throwOnError) throw error;
@@ -133,17 +134,22 @@ export function useSourceMixes({ supported, onSelect, onError }) {
     }
   }
 
-  async function remove(mix) {
+  async function changeSavedMix(mix, replacement, errorTitle, throwOnError) {
     if (draft || writing.current) return;
     writing.current = true;
     try {
       const current = read();
       if (current.find(({ id }) => id === mix.id) !== mix)
         throw new Error("This Mix changed. Reopen Sources to review it.");
-      await sourceMixesStore.persist({ list: current.filter(({ id }) => id !== mix.id) });
+      const next = current.flatMap((item) =>
+        item !== mix ? [item] : replacement ? [replacement] : []
+      );
+      await sourceMixesStore.persist({ list: next });
       setList(read());
+      return next;
     } catch (error) {
-      onError("Could Not Delete Mix", error);
+      onError(errorTitle, error);
+      if (throwOnError) throw error;
     } finally {
       writing.current = false;
     }
@@ -159,10 +165,14 @@ export function useSourceMixes({ supported, onSelect, onError }) {
     toggleInputChannel,
     toggleOutput,
     setRoute,
+    replaceDraft: (document) =>
+      setDraft((current) => (current && !writing.current ? { ...current, ...document } : current)),
     setFormat: (format) =>
       setDraft((current) => (current && !writing.current ? { ...current, format } : current)),
     save,
-    remove,
+    remove: (mix, throwOnError = false) =>
+      changeSavedMix(mix, null, "Could Not Delete Mix", throwOnError),
+    renameSaved: (mix, name) => changeSavedMix(mix, { ...mix, name }, "Could Not Rename Mix", true),
     rename: (name) => setDraft((current) => current && { ...current, name }),
     cancel: () => {
       if (!writing.current) setDraft(null);

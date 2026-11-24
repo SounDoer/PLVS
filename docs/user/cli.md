@@ -352,7 +352,7 @@ plvs-cli ui show dock-toolbar --expected-revision <n> --expected-ui-generation <
 plvs-cli ui show panel-help --panel-id <id> --expected-revision <n> --expected-ui-generation <n> --json
 plvs-cli ui show panel-fullscreen --panel-id <id> --expected-revision <n> --expected-ui-generation <n> --json
 plvs-cli ui show add-panel --expected-revision <n> --expected-ui-generation <n> --json
-plvs-cli ui show source-group --group <output|input|applications> --expected-revision <n> --expected-ui-generation <n> --json
+plvs-cli ui show source-group --group <mixes|output|input|applications> --expected-revision <n> --expected-ui-generation <n> --json
 plvs-cli ui show dropdown --control <target-id> --expected-revision <n> --expected-ui-generation <n> --json
 plvs-cli ui quick-tour <start|next|back> --expected-revision <n> --expected-ui-generation <n> --json
 plvs-cli ui targets --json
@@ -369,7 +369,7 @@ toolbar menu opens as its toolbar button opens it, in the normal window or Dock.
 Dock Settings window; Theme/Profile authoring uses a separate draggable window while Dock stays active. Open
 shared editors and their drafts survive switching between Dock and the normal window. The Quick Tour card
 is inspectable and closable; `ui quick-tour` starts it or moves between its steps. `close` and `cancel` invoke only
-the exact surface's existing behavior. Dirty editor cancellation opens the visible discard decision;
+the exact surface's existing behavior. Dirty Theme and Loudness Profile cancellation opens the visible discard decision;
 only the exact linked `editor-draft discard` command can confirm that decision. Event-driven
 decisions are inspectable but cannot be fabricated. See [UI Navigation](../agent-control/ui.md) for
 two-token concurrency, Panel behavior in normal/Fullscreen/Dock forms, multi-workbench selection,
@@ -383,14 +383,15 @@ payload. Send without `--dry-run` submits Feedback from any app identity. When a
 prompt is open, its Send choice submits the saved report. Issue either Send command only when
 you intend to transmit that data.
 
-Editor Draft Control operates on an open Theme, Loudness Profile, Feedback, or Welcome draft.
+Editor Draft Control operates on an open Theme, Loudness Profile, Windows Mix, Feedback, or
+Welcome draft. For Mixes, open **Sources** and use its `add-mix` or `edit:<mix-id>` choice.
 For Welcome, use the `update` surface with phase `preferences`. Inspect and patch the draft, then
 use `ui decide --choice save` with fresh tokens to press Continue.
 
 ```powershell
-plvs-cli editor-draft describe <theme|loudness-profile|feedback|welcome> --json
-plvs-cli editor-draft inspect <theme|loudness-profile|feedback|welcome> <surface-id> --json
-plvs-cli editor-draft patch <theme|loudness-profile|feedback|welcome> <surface-id> <file|-> --expected-revision <n> --expected-ui-generation <n> --expected-draft-generation <n> --json
+plvs-cli editor-draft describe <theme|loudness-profile|feedback|welcome|mix> --json
+plvs-cli editor-draft inspect <theme|loudness-profile|feedback|welcome|mix> <surface-id> --json
+plvs-cli editor-draft patch <theme|loudness-profile|feedback|welcome|mix> <surface-id> <file|-> --expected-revision <n> --expected-ui-generation <n> --expected-draft-generation <n> --json
 plvs-cli editor-draft undo theme <surface-id> --expected-revision <n> --expected-ui-generation <n> --expected-draft-generation <n> --json
 plvs-cli editor-draft redo theme <surface-id> --expected-revision <n> --expected-ui-generation <n> --expected-draft-generation <n> --json
 plvs-cli editor-draft discard <theme|loudness-profile> <surface-id> --decision-surface-id <surface-id> --expected-revision <n> --expected-ui-generation <n> --expected-draft-generation <n> --json
@@ -399,7 +400,7 @@ plvs-cli editor-draft discard <theme|loudness-profile> <surface-id> --decision-s
 To save the exact reviewed draft, use:
 
 ```powershell
-plvs-cli editor-draft save <theme|loudness-profile> <surface-id> --expected-revision <n> --expected-ui-generation <n> --expected-draft-generation <n> --json
+plvs-cli editor-draft save <theme|loudness-profile|mix> <surface-id> --expected-revision <n> --expected-ui-generation <n> --expected-draft-generation <n> --json
 ```
 
 Save uses the editor's existing validation and save behavior, waits for persistence and editor
@@ -490,6 +491,16 @@ plvs-cli theme reorder <file|-> --expected-revision <n> --json [--dry-run]
 
 See [Theme Control](../agent-control/themes.md) for Theme authoring, built-in permissions, selection
 and fallback semantics, revision behavior, and editor blocking.
+
+Mix Control lists, renames, and deletes saved Windows Mixes. Use Device Control to select one.
+
+```powershell
+plvs-cli mix list --json
+plvs-cli mix rename <mix-id> <name> --expected-revision <n> --json [--dry-run]
+plvs-cli mix delete <mix-id> --expected-revision <n> --json [--dry-run]
+```
+
+See [Mix Control](../agent-control/mixes.md) and [Mix drafts](../agent-control/editor-drafts.md#mix-drafts-on-windows).
 
 Everything configuration export uses the same `.plvsconfig` document as Settings:
 

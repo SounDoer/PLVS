@@ -10,6 +10,11 @@ export const ACCEPTANCE_DISPOSITIONS = Object.freeze([
 
 const groups = [
   {
+    scenario: "windows-mix-library",
+    disposition: "platformContract",
+    commands: ["mix.list", "mix.rename", "mix.delete"],
+  },
+  {
     scenario: "offline-contract",
     disposition: "offline",
     commands: ["instances.list", "doctor", "schema.list", "schema.get", "completion"],

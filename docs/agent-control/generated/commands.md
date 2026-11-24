@@ -112,6 +112,9 @@ Manifest version `1`. Entries are shown in stable presentation order.
 | `settings.describe` | `settings describe` | runningApp / query | none | no | none |  |
 | `settings.inspect` | `settings inspect` | runningApp / query | none | no | none |  |
 | `settings.update` | `settings update` | runningApp / mutation | required | yes | none | ordinary |
+| `mix.list` | `mix list` | runningApp / query | none | no | none |  |
+| `mix.rename` | `mix rename` | runningApp / mutation | required | yes | none | ordinary |
+| `mix.delete` | `mix delete` | runningApp / mutation | required | yes | none | risky |
 | `device.list` | `device list` | runningApp / query | none | no | none |  |
 | `device.inspect` | `device inspect` | runningApp / query | none | no | none |  |
 | `device.select` | `device select` | runningApp / mutation | required | yes | none | ordinary |
@@ -521,7 +524,7 @@ Expand a Sources group as clicking its heading does.
 - Wire method: `ui.show.sourceGroup`
 
 ```text
-plvs-cli ui show source-group --group <output|input|applications> --expected-revision <n> --expected-ui-generation <n> --json
+plvs-cli ui show source-group --group <mixes|output|input|applications> --expected-revision <n> --expected-ui-generation <n> --json
 ```
 
 ### Positionals
@@ -532,7 +535,7 @@ None.
 
 | Name | Maps to | Required | Value |
 | --- | --- | --- | --- |
-| `--group` | `group` | yes | string; one of "output", "input", "applications" |
+| `--group` | `group` | yes | string; one of "mixes", "output", "input", "applications" |
 | `--expected-revision` | local only | yes | integer; 0 to 9007199254740991 |
 | `--expected-ui-generation` | `expectedUiGeneration` | yes | integer; 0 to 9007199254740991 |
 | `--json` | local only | yes | boolean |
@@ -2990,6 +2993,91 @@ plvs-cli settings update <file|-> --json --expected-revision <n> [--allow-measur
 | `--allow-measurement-restart` | `allowMeasurementRestart` | no | boolean |
 | `--dry-run` | `dryRun` | no | boolean |
 
+## `mix.list`
+
+List saved Windows Mixes and their routing.
+
+- CLI path: `mix list`
+- Execution: `runningApp`; operation: `query`
+- JSON: `required`; expected revision: `none`; dry-run: `false`; output file: `none`
+- Wire method: `mix.list`
+- Feature gate: `sourceMixes`
+
+```text
+plvs-cli mix list --json
+```
+
+### Positionals
+
+None.
+
+### Options
+
+| Name | Maps to | Required | Value |
+| --- | --- | --- | --- |
+| `--json` | local only | yes | boolean |
+
+## `mix.rename`
+
+Rename a saved Windows Mix.
+
+- CLI path: `mix rename`
+- Execution: `runningApp`; operation: `mutation`
+- Risk: `ordinary`
+- JSON: `required`; expected revision: `required`; dry-run: `true`; output file: `none`
+- Wire method: `mix.rename`
+- Feature gate: `sourceMixes`
+- Schema references: `agentControl.revision`
+
+```text
+plvs-cli mix rename <mix-id> <name> --expected-revision <n> --json [--dry-run]
+```
+
+### Positionals
+
+| Name | Maps to | Required | Value |
+| --- | --- | --- | --- |
+| `mix-id` | `mixId` | yes | string |
+| `name` | local only | yes | string |
+
+### Options
+
+| Name | Maps to | Required | Value |
+| --- | --- | --- | --- |
+| `--expected-revision` | `expectedRevision` | yes | ref agentControl.revision |
+| `--json` | local only | yes | boolean |
+| `--dry-run` | `dryRun` | no | boolean |
+
+## `mix.delete`
+
+Delete a saved Windows Mix from the shared library.
+
+- CLI path: `mix delete`
+- Execution: `runningApp`; operation: `mutation`
+- Risk: `risky`
+- JSON: `required`; expected revision: `required`; dry-run: `true`; output file: `none`
+- Wire method: `mix.delete`
+- Feature gate: `sourceMixes`
+- Schema references: `agentControl.revision`
+
+```text
+plvs-cli mix delete <mix-id> --expected-revision <n> --json [--dry-run]
+```
+
+### Positionals
+
+| Name | Maps to | Required | Value |
+| --- | --- | --- | --- |
+| `mix-id` | `mixId` | yes | string |
+
+### Options
+
+| Name | Maps to | Required | Value |
+| --- | --- | --- | --- |
+| `--expected-revision` | `expectedRevision` | yes | ref agentControl.revision |
+| `--json` | local only | yes | boolean |
+| `--dry-run` | `dryRun` | no | boolean |
+
 ## `device.list`
 
 List audio capture devices.
@@ -4181,14 +4269,14 @@ Describe the closed semantic operations supported by an editor draft kind.
 - Wire method: `editorDraft.describe`
 
 ```text
-plvs-cli editor-draft describe <theme|loudness-profile|feedback|welcome> --json
+plvs-cli editor-draft describe <theme|loudness-profile|feedback|welcome|mix> --json
 ```
 
 ### Positionals
 
 | Name | Maps to | Required | Value |
 | --- | --- | --- | --- |
-| `kind` | local only | yes | string; one of "theme", "loudness-profile", "feedback", "welcome" |
+| `kind` | local only | yes | string; one of "theme", "loudness-profile", "feedback", "welcome", "mix" |
 
 ### Options
 
@@ -4206,14 +4294,14 @@ Inspect the exact currently mounted editor draft and concurrency tokens.
 - Wire method: `editorDraft.inspect`
 
 ```text
-plvs-cli editor-draft inspect <theme|loudness-profile|feedback|welcome> <surface-id> --json
+plvs-cli editor-draft inspect <theme|loudness-profile|feedback|welcome|mix> <surface-id> --json
 ```
 
 ### Positionals
 
 | Name | Maps to | Required | Value |
 | --- | --- | --- | --- |
-| `kind` | local only | yes | string; one of "theme", "loudness-profile", "feedback", "welcome" |
+| `kind` | local only | yes | string; one of "theme", "loudness-profile", "feedback", "welcome", "mix" |
 | `surface-id` | `surfaceId` | yes | string |
 
 ### Options
@@ -4234,14 +4322,14 @@ Apply one closed atomic semantic transaction to the exact mounted draft.
 - Schema references: `editorDraft.patch`, `agentControl.revision`, `agentControl.uiGeneration`, `editorDraft.generation`
 
 ```text
-plvs-cli editor-draft patch <theme|loudness-profile|feedback|welcome> <surface-id> <file|-> --expected-revision <n> --expected-ui-generation <n> --expected-draft-generation <n> --json
+plvs-cli editor-draft patch <theme|loudness-profile|feedback|welcome|mix> <surface-id> <file|-> --expected-revision <n> --expected-ui-generation <n> --expected-draft-generation <n> --json
 ```
 
 ### Positionals
 
 | Name | Maps to | Required | Value |
 | --- | --- | --- | --- |
-| `kind` | local only | yes | string; one of "theme", "loudness-profile", "feedback", "welcome" |
+| `kind` | local only | yes | string; one of "theme", "loudness-profile", "feedback", "welcome", "mix" |
 | `surface-id` | `surfaceId` | yes | string |
 | `file` | `patch` | yes | string |
 
@@ -4328,14 +4416,14 @@ Save the exact mounted editor draft through its owner and await durable persiste
 - Schema references: `agentControl.revision`, `agentControl.uiGeneration`, `editorDraft.generation`
 
 ```text
-plvs-cli editor-draft save <theme|loudness-profile> <surface-id> --expected-revision <n> --expected-ui-generation <n> --expected-draft-generation <n> --json
+plvs-cli editor-draft save <theme|loudness-profile|mix> <surface-id> --expected-revision <n> --expected-ui-generation <n> --expected-draft-generation <n> --json
 ```
 
 ### Positionals
 
 | Name | Maps to | Required | Value |
 | --- | --- | --- | --- |
-| `kind` | local only | yes | string; one of "theme", "loudness-profile" |
+| `kind` | local only | yes | string; one of "theme", "loudness-profile", "mix" |
 | `surface-id` | `surfaceId` | yes | string |
 
 ### Options

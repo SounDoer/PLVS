@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Button } from "./ui/button";
-import { resolveMixLane } from "../lib/mixRouting.js";
+import { linearMixGain, mixGainDb, resolveMixLane } from "../lib/mixRouting.js";
 
 export function mixLaneSummary(draft, sourceId, lane, format) {
   const { routing, valid } = resolveMixLane(draft, sourceId, lane, format);
@@ -18,14 +18,6 @@ export function mixStereoPairs(source, format) {
   return ["", "s", "b", "w", "c", "tf", "tm", "tr"]
     .map((suffix) => [`L${suffix}`, `R${suffix}`])
     .filter((roles) => roles.every((role) => format.roles.includes(role)));
-}
-
-export function mixGainDb(gain) {
-  return Math.round(200 * Math.log10(gain)) / 10;
-}
-
-export function linearMixGain(db) {
-  return 10 ** (Math.min(24, Math.max(-60, db)) / 20);
 }
 
 function RouteGain({ gain, label, target, onSet }) {
@@ -50,7 +42,7 @@ function RouteGain({ gain, label, target, onSet }) {
         type="number"
         min={-60}
         max={24}
-        step={1}
+        step="any"
         value={value}
         onChange={(event) => setValue(event.target.value)}
         onBlur={commit}

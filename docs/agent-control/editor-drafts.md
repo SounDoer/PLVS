@@ -1,11 +1,11 @@
 # Editor Draft Control
 
 Editor Draft Control safely inspects and changes the in-memory document owned by a currently open
-Theme Editor, Loudness Profile Editor, Feedback dialog, or Welcome dialog. It is an authoring-session API: Patch, Undo, Redo, and Discard never Save a document, change the selected library
+Theme Editor, Loudness Profile Editor, Windows Mix editor, Feedback dialog, or Welcome dialog. It is an authoring-session API: Patch, Undo, Redo, and Discard never Save a document, change the selected library
 item, dirty a Preset, or write persistence. Explicit Save commits the exact draft through its existing
 editor owner, including the GUI's selection and Preset effects.
 
-Use `editor-draft describe <theme|loudness-profile|feedback|welcome>` to discover the closed operation vocabulary.
+Use `editor-draft describe <theme|loudness-profile|feedback|welcome|mix>` to discover the closed operation vocabulary.
 The Theme description is derived from the Core keys, palette presets, and editor-visible Theme Role
 Registry entries. The Profile description is derived from ruleable metrics and their display
 precision. Arbitrary object paths, React state, DOM selectors, clicks, and keystrokes are not
@@ -47,6 +47,33 @@ same operation supplies a replacement, matching the visible editor.
 Theme exposes Undo and Redo because the visible Theme Editor owns history. Loudness Profile does
 not; attempting those actions returns `draftActionUnavailable`.
 
+## Mix drafts on Windows
+
+Open **Sources** through UI Navigation and choose `add-mix` or `edit:<mix-id>` from the
+toolbar surface. Use the resulting `sourceMixEditor` surface ID with `editor-draft inspect mix`.
+The document includes the draft name, selected source IDs and channels, format, and per-channel
+overrides with gain in dB. Inspect and Patch also report `mix.resolvedFormat`, the ordered
+destination `mix.roles`, and `mix.canSave`. Use [Device Control](devices.md) to discover source IDs.
+
+- `setName` sets the draft name. An empty string restores automatic naming on Save.
+- `setFormat` takes the format ID from `editor-draft describe mix`, such as `follow` or `5.1`.
+- `setApplication` takes `sourceId` and `enabled`.
+- `setInputChannels` takes `sourceId` and the complete list of zero-based `channels`. An empty
+  list removes that input device.
+- `setOutput` takes a mapped playback `sourceId` or `null` to remove it.
+- `setRoute` takes `sourceId`, `lane`, and `destinations`. The lane is a string containing
+  a zero-based physical input channel index or a source speaker role. Each destination is an
+  object with a speaker `role` and numeric `gainDb`, including fractional values. Pass
+  `null` for Auto or an empty array to omit a channel. For example,
+  `{"op":"setRoute","sourceId":"<input-id>","lane":"0","destinations":[{"role":"Ls","gainDb":-2.5}]}`.
+
+The patch applies source and format edits before route edits and rejects the complete batch if
+the resulting sources or routes are incompatible. Source and format changes can be paired
+with their new routes in the same patch. An empty draft remains editable. Save requires a
+non-empty valid Mix and uses the same persistence and selection behavior as the editor button.
+Mix has no Undo or Redo and `ui cancel` closes the draft using the editor's Cancel behavior.
+Use [Mix Control](mixes.md) to inspect or manage saved Mixes.
+
 ## Welcome preferences
 
 Find the open `update` surface with phase `preferences` in `ui inspect`. Use its exact
@@ -78,7 +105,7 @@ editor and reconcile, and never retry with old tokens.
 
 ## Save the reviewed draft
 
-`editor-draft save <theme|loudness-profile> <surface-id>` requires `--json` and all three expected
+`editor-draft save <theme|loudness-profile|mix> <surface-id>` requires `--json` and all three expected
 tokens. It is an action and accepts neither `--dry-run` nor a force/conflict-resolution option.
 The exact editor must be topmost; a nested confirmation or other surface blocks Save.
 

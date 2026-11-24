@@ -31,6 +31,7 @@ import { WINDOW_OFFSET_MAX, WINDOW_SIZE_MAX, WINDOW_SIZE_MIN } from "./windowCon
 function featureGateAvailable(featureGate, runtime) {
   const visual = runtime?.visual;
   if (featureGate === undefined) return true;
+  if (featureGate === "sourceMixes") return runtime.platform === "windows";
   if (featureGate === "visual") return visual !== undefined;
   if (featureGate === "visual.screenshot") return visual?.screenshot === true;
   if (featureGate === "visual.recording") return visual?.recording === true;
@@ -88,7 +89,13 @@ export function buildAgentControlCapabilities(runtime, revision) {
       ...(hasMethod("editorDraft.describe")
         ? {
             editorDraft: {
-              kinds: ["theme", "loudness-profile", "feedback", "welcome"],
+              kinds: [
+                "theme",
+                "loudness-profile",
+                "feedback",
+                "welcome",
+                ...(hasMethod("mix.list") ? ["mix"] : []),
+              ],
               describe: true,
               inspect: hasMethod("editorDraft.inspect"),
               patch: hasMethod("editorDraft.patch"),

@@ -154,6 +154,26 @@ const loudnessProfile = {
   },
 };
 
+/** @type {Domain} */
+const mixLibrary = {
+  name: "mixLibrary",
+  init: (inputs) => ({ list: inputs.device?.sourceMixes?.list }),
+  deps: (inputs) => [inputs.device?.sourceMixes?.list],
+  observe({ inputs, memory, clock, settlement }) {
+    const list = inputs.device?.sourceMixes?.list;
+    if (list !== memory.list) {
+      const changed = JSON.stringify(list) !== JSON.stringify(memory.list);
+      memory.list = list;
+      if (changed) {
+        clock.bump();
+        clock.scheduleWake();
+      }
+    }
+    const pending = settlement.peek("mixLibrary");
+    if (pending?.matches?.(list)) settlement.resolve("mixLibrary");
+  },
+};
+
 /// `openAtLogin` and `keyboardShortcuts` are read from the operating system after startup. Their first
 /// real value replacing the placeholder is not a change anyone made, so each counts only once its
 /// source has reported ready.
@@ -288,6 +308,7 @@ export const DOMAINS = Object.freeze([
   presets,
   theme,
   loudnessProfile,
+  mixLibrary,
   settings,
   transport,
   device,

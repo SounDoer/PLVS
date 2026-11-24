@@ -138,6 +138,9 @@ describe("agent-control app snapshots", () => {
         "settings.describe",
         "settings.inspect",
         "settings.update",
+        "mix.list",
+        "mix.rename",
+        "mix.delete",
         "device.list",
         "device.inspect",
         "device.select",
@@ -191,7 +194,7 @@ describe("agent-control app snapshots", () => {
           maximumPeaksPerCurve: 5,
         },
         editorDraft: {
-          kinds: ["theme", "loudness-profile", "feedback", "welcome"],
+          kinds: ["theme", "loudness-profile", "feedback", "welcome", "mix"],
           describe: true,
           inspect: true,
           patch: true,

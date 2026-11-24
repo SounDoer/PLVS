@@ -16,6 +16,7 @@ function sampleForProperty(entry, name, schema) {
     kind: entry.family === "editor-draft" ? "theme" : "frequency",
     layout: entry.id === "dock.layout.apply" ? { panels: [] } : {},
     moduleId: "spectrum",
+    mixId: "mix-00000000-0000-0000-0000-000000000001",
     name: "Name",
     pack: { app: "PLVS" },
     panelId: "spectrum",

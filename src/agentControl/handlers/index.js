@@ -13,6 +13,7 @@ import { loudnessProfileHandlers } from "./loudnessProfile.js";
 import { themeHandlers } from "./theme.js";
 import { dockHandlers } from "./dock.js";
 import { deviceHandlers } from "./device.js";
+import { mixHandlers } from "./mix.js";
 import { transportHandlers } from "./transport.js";
 import { workspaceLayoutHandlers } from "./workspaceLayout.js";
 import { panelHandlers } from "./panel.js";
@@ -41,6 +42,7 @@ export const METHOD_TABLE = Object.freeze({
   ...workspaceLayoutHandlers,
   ...transportHandlers,
   ...deviceHandlers,
+  ...mixHandlers,
   ...dockHandlers,
   ...themeHandlers,
   ...loudnessProfileHandlers,

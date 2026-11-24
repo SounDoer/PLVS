@@ -72,9 +72,9 @@ example `format:5-1`. The Follow Output choice includes the resolved format. Ope
 `route:remove:<lane>:<role>`, `route:gain:<lane>:<role>:<up|down>` in 1 dB steps,
 `route:auto:<lane>`, `route:omit:<lane>`, and eligible `route:pair:<left>:<right>` choices.
 An invalid custom route disables Save.
-Use the latest surface ID,
-revision and UI generation for each decision. These choices run the same handlers as the editor
-controls. The editor's draft name stays private to the UI.
+Use the latest surface ID, revision and UI generation for each decision. These choices run the
+same handlers as the editor controls. Use [Editor Draft Control](editor-drafts.md#mix-drafts-on-windows)
+to inspect or patch the full draft, including the name and exact gains.
 
 `add-panel` and `source-group` act inside an open menu: open the Panels or Sources menu first, or
 the request is `surfaceUnavailable`. `dropdown` takes a target id from `ui targets`, such as

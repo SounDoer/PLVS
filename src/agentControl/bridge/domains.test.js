@@ -73,6 +73,7 @@ describe("createDomainRunner", () => {
       "presets",
       "theme",
       "loudnessProfile",
+      "mixLibrary",
       "settings",
       "transport",
       "device",
@@ -106,6 +107,21 @@ describe("createDomainRunner", () => {
     const committed = settlement.arm("dock", { matches: (dock) => dock.enabled === true });
     observeCommit({ ...inputs, dock: { enabled: true } });
     await expect(committed).resolves.toBe(1);
+  });
+
+  it("settles a Mix library mutation at the new revision", async () => {
+    const { clock, settlement, inputs, observeCommit } = setup();
+    const mix = { id: "mix-1", name: "First name" };
+    observeCommit({ ...inputs, device: { sourceMixes: { list: [mix] } } });
+    await Promise.resolve();
+    const previous = clock.current();
+    const committed = settlement.arm("mixLibrary", {
+      matches: (list) => list?.some(({ name }) => name === "New name"),
+    });
+    observeCommit({ ...inputs, device: { sourceMixes: { list: [{ ...mix }] } } });
+    expect(clock.current()).toBe(previous);
+    observeCommit({ ...inputs, device: { sourceMixes: { list: [{ ...mix, name: "New name" }] } } });
+    await expect(committed).resolves.toBe(previous + 1);
   });
 
   it("advances once when an import lands in two libraries in one commit", async () => {

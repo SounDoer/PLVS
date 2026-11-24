@@ -15,6 +15,8 @@ import {
 import {
   MIX_FORMATS,
   compileMixRouting,
+  linearMixGain,
+  mixGainDb,
   resolveMixFormat,
   resolveMixLane,
   mixInputs,
@@ -24,12 +26,15 @@ import {
   MixSourceRouting,
   addMixDestination,
   mixLaneSummary,
-  mixGainDb,
-  linearMixGain,
   mixStereoPairs,
 } from "./MixSourceRouting.jsx";
 import { cn } from "../lib/utils.js";
 import { useUiSurface } from "../uiNavigation/UiNavigationContext.jsx";
+import {
+  EditorDraftRegistryError,
+  useEditorDraftSurface,
+} from "../agentControl/EditorDraftContext.jsx";
+import { mixDraftDocument } from "../agentControl/mixDraftControl.js";
 import { useHoverTip } from "./HoverTip.jsx";
 import { Button } from "./ui/button";
 import { Checkbox } from "./ui/checkbox";
@@ -175,6 +180,19 @@ export function SourceMixEditor({
   };
   const saveDraft = (throwOnError = false) =>
     save({ throwOnError, referenceRoles: followFormat.fallback ? undefined : followFormat.roles });
+  const [draftVersion, setDraftVersion] = useState(() => ({ draft, generation: 0 }));
+  if (draftVersion.draft !== draft)
+    setDraftVersion({ draft, generation: draftVersion.generation + 1 });
+  const document = mixDraftDocument(draft);
+  const original = mixDraftDocument(
+    draft.original
+      ? { ...draft.original, inputs: mixInputs(draft.original) }
+      : { id: null, name: "", members: [], inputs: [] }
+  );
+  const dirty = JSON.stringify(document) !== JSON.stringify(original);
+  const stale = Boolean(
+    draft.id && owner.list && owner.list.find(({ id }) => id === draft.id) !== draft.original
+  );
   const routeChoices =
     routingSource?.lanes.flatMap((lane) => {
       const resolved = resolveMixLane(draft, routeId, lane, format);
@@ -233,12 +251,15 @@ export function SourceMixEditor({
           ? "If the input is monitored through this output, it will be counted twice."
           : null;
 
-  useUiSurface({
+  const surfaceId = useUiSurface({
     kind: "sourceMixEditor",
     origin: "navigable",
     blocking: true,
     busy: saving,
     dismissible: true,
+    dirty,
+    stale,
+    generationKey: draftVersion.generation,
     supportedActions: ["cancel"],
     target: { intent: draft.id ? "edit" : "create", mixId: draft.id },
     onCancel: cancel,
@@ -331,6 +352,34 @@ export function SourceMixEditor({
       },
       { id: "cancel", label: "Cancel", run: cancel },
     ],
+  });
+  useEditorDraftSurface({
+    kind: "mix",
+    surfaceId,
+    controller: {
+      inspectDraft: () => ({
+        document,
+        draftGeneration: draftVersion.generation,
+        dirty,
+        stale,
+        mix: { resolvedFormat: format.name, roles: format.roles, canSave },
+        inventory: { applications, inputs: inputDevices, outputs, defaultOutputReference },
+      }),
+      commitDraftDocument: (next) => {
+        if (saving) throw new EditorDraftRegistryError("transitionInProgress");
+        owner.replaceDraft(next);
+      },
+      saveForControl: async () => {
+        if (saving || !canSave) throw new EditorDraftRegistryError("draftActionUnavailable");
+        const saved = await saveDraft(true);
+        if (!saved) throw new EditorDraftRegistryError("draftActionUnavailable");
+        return {
+          changed: !draft.original || JSON.stringify(saved) !== JSON.stringify(draft.original),
+          savedId: saved.id,
+          document: mixDraftDocument({ ...saved, inputs: mixInputs(saved) }),
+        };
+      },
+    },
   });
 
   return (

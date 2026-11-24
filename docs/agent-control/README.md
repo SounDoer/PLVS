@@ -25,6 +25,7 @@ Three places divide the work, and nothing is said in two of them:
 | Presets                  | [`presets.md`](presets.md)                     |
 | Theme Control            | [`themes.md`](themes.md)                       |
 | Loudness Profile Control | [`loudness-profiles.md`](loudness-profiles.md) |
+| Mix Control              | [`mixes.md`](mixes.md)                         |
 | Settings Control         | [`settings.md`](settings.md)                   |
 | View Control             | [`view.md`](view.md)                           |
 | Dock Control             | [`dock.md`](dock.md)                           |

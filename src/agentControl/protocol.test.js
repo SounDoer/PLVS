@@ -85,7 +85,7 @@ describe("normalizeAgentControlRequest", () => {
   });
 
   describe("editor draft requests", () => {
-    it.each(["theme", "loudness-profile"])(
+    it.each(["theme", "loudness-profile", "mix"])(
       "validates exact Save tokens for %s and rejects implicit actions",
       (kind) => {
         const params = {
@@ -115,7 +115,7 @@ describe("normalizeAgentControlRequest", () => {
       }
     );
 
-    it.each(["theme", "loudness-profile"])(
+    it.each(["theme", "loudness-profile", "mix"])(
       "normalizes describe and exact inspect for %s",
       (kind) => {
         expect(normalizeAgentControlRequest(request("editorDraft.describe", { kind }))).toEqual({
