@@ -360,7 +360,12 @@ pub fn persistence_library_append(
   if additions
     .keys()
     .chain(expected_revisions.keys())
-    .any(|kind| !matches!(kind.as_str(), "preset" | "theme" | "loudnessProfile"))
+    .any(|kind| {
+      !matches!(
+        kind.as_str(),
+        "preset" | "theme" | "loudnessProfile" | "sourceMix"
+      )
+    })
   {
     return Err(PersistenceCommandError {
       reason: PersistenceErrorReason::InvalidDomain,

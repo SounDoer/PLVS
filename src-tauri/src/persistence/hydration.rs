@@ -12,6 +12,7 @@ pub struct HydratedWorkspace {
   pub workspace: Value,
   pub presets: Value,
   pub themes: Value,
+  pub source_mixes: Value,
   pub capture_device_id: Value,
   pub window_bounds: Value,
   pub dock_state: Value,
@@ -56,11 +57,12 @@ pub fn hydrate_workspace(
   }
 
   let collections = repository
-    .collections(&["preset", "theme", "loudnessProfile"])
+    .collections(&["preset", "theme", "loudnessProfile", "sourceMix"])
     .map_err(|error| error.to_string())?;
   let preset_items = &collections["preset"].items;
   let theme_items = &collections["theme"].items;
   let profile_items = &collections["loudnessProfile"].items;
+  let source_mixes = json!({ "list": collections["sourceMix"].items.iter().map(|item| &item.document).collect::<Vec<_>>() });
 
   let mut settings = object_at(state, "plvs:settings");
   if let Some(preference) = global_preferences.get("quickTour") {
@@ -138,6 +140,7 @@ pub fn hydrate_workspace(
     workspace: Value::Object(object_at(state, "plvs:workspace")),
     presets: Value::Object(presets),
     themes: json!({ "themes": theme_documents, "order": theme_order }),
+    source_mixes,
     capture_device_id: state
       .get("captureDeviceId")
       .cloned()
@@ -157,4 +160,33 @@ fn object_at(state: &Map<String, Value>, key: &str) -> Map<String, Value> {
     .and_then(Value::as_object)
     .cloned()
     .unwrap_or_default()
+}
+
+#[cfg(test)]
+mod tests {
+  use super::*;
+
+  #[test]
+  fn source_mixes_are_shared_but_the_selected_source_is_per_workspace() {
+    let directory = tempfile::tempdir().unwrap();
+    let root = directory.path();
+    let id = "mix-10000000-0000-4000-8000-000000000000";
+    let mix = json!({ "id": id, "name": "Reference" });
+    LibraryRepository::open(root)
+      .unwrap()
+      .create("sourceMix", id, &mix)
+      .unwrap();
+    WorkspaceStore::open(root, "default")
+      .unwrap()
+      .save(&json!({"captureDeviceId": id}))
+      .unwrap();
+
+    let first = hydrate_workspace(root, "default").unwrap();
+    let second = hydrate_workspace(root, "other").unwrap();
+    assert_eq!(first.capture_device_id, id);
+    assert_eq!(second.capture_device_id, "default");
+    assert_eq!(first.source_mixes, json!({ "list": [mix] }));
+    assert_eq!(first.source_mixes, second.source_mixes);
+    assert_eq!(second.library_item_revisions["sourceMix"][id], 1);
+  }
 }

@@ -103,6 +103,10 @@ export const presetsStore = createDomainStore({
   notifySameContext: true,
 });
 export const themesStore = createDomainStore({ name: "plvs:themes", backend });
+export const sourceMixesStore = createDomainStore({
+  name: "plvs:sourceMixes",
+  backend,
+});
 
 export function subscribeLibraryConflicts(listener) {
   return backend.subscribeLibraryConflicts?.(listener) ?? (() => {});
@@ -175,4 +179,5 @@ export function resetAll() {
   workspaceStore.reset();
   presetsStore.reset();
   themesStore.reset();
+  sourceMixesStore.reset();
 }

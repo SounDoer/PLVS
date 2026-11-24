@@ -61,6 +61,7 @@ const TOOLBAR_TRIGGER_OPEN_CLASS =
  *   audioOutputs: any[],
  *   audioInputs: any[],
  *   captureApplications?: any[],
+ *   sourceMixes?: ReturnType<typeof import("../hooks/useSourceMixes.js").useSourceMixes>,
  *   safeAudioDeviceId: string,
  *   setCaptureDeviceId: (...args: any[]) => any,
  *   openMenu?: string | null,
@@ -113,6 +114,7 @@ export function AppHeader({
   audioOutputs,
   audioInputs,
   captureApplications = [],
+  sourceMixes,
   safeAudioDeviceId,
   setCaptureDeviceId,
   openMenu = null,
@@ -223,7 +225,13 @@ export function AppHeader({
             <Popover
               open={openMenu === "sources"}
               onOpenChange={(open) => {
-                if (open && !audioDevices.length && !captureApplications.length) return;
+                if (
+                  open &&
+                  !audioDevices.length &&
+                  !captureApplications.length &&
+                  !sourceMixes?.supported
+                )
+                  return;
                 onMenuOpenChange("sources", open);
               }}
             >
@@ -236,17 +244,35 @@ export function AppHeader({
                     tip="Sources"
                     data-tour-target="sources"
                     data-ui-target="toolbar:sources"
-                    disabled={!audioDevices.length && !captureApplications.length}
+                    disabled={
+                      !audioDevices.length && !captureApplications.length && !sourceMixes?.supported
+                    }
                     className={TOOLBAR_TRIGGER_OPEN_CLASS}
                   />
                 </span>
               </PopoverTrigger>
-              <PopoverContent align="end" sideOffset={6} className={SOURCES_POPOVER_CLASS}>
+              <PopoverContent
+                align="end"
+                sideOffset={6}
+                className={SOURCES_POPOVER_CLASS}
+                onCloseAutoFocus={(event) => {
+                  if (sourceMixes?.draft) event.preventDefault();
+                }}
+              >
                 <p className={`${POPOVER_HEADER_CLASS} ${POPOVER_TITLE_CLASS}`}>Sources</p>
                 <DeviceSelectionContent
                   audioOutputs={audioOutputs}
                   audioInputs={audioInputs}
                   captureApplications={captureApplications}
+                  sourceMixes={
+                    sourceMixes && {
+                      ...sourceMixes,
+                      open: (mix) => {
+                        sourceMixes.open(mix);
+                        onMenuOpenChange("sources", false);
+                      },
+                    }
+                  }
                   safeAudioDeviceId={safeAudioDeviceId}
                   onSelect={handleSourceSelect}
                 />

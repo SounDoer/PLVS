@@ -4,6 +4,10 @@ import { automaticOutputChangeNotice } from "../lib/captureHealth.js";
 import { errorDetails } from "../lib/errorDetails.js";
 import { formatAudioDeviceLabel } from "@/lib/audioDeviceLabels.js";
 import { isTauri } from "../ipc/env.js";
+import { isWindows } from "../lib/platform.js";
+import { isSourceMixId } from "../lib/sourceMixes.js";
+import { usesTransactionalPersistence } from "../persistence/index.js";
+import { useSourceMixes } from "../hooks/useSourceMixes.js";
 import { useMeterDisplayState, useMeterRuntime } from "./MeterRuntimeContext.jsx";
 
 /**
@@ -13,6 +17,8 @@ import { useMeterDisplayState, useMeterRuntime } from "./MeterRuntimeContext.jsx
  *   onSelectCaptureDevice: (deviceId: string) => Promise<boolean>,
  *   captureFormatSignature: string,
  *   captureDeviceUnavailable: boolean,
+ *   sourceMixes: ReturnType<typeof useSourceMixes>,
+ *   mixApplicationIds: string[] | undefined,
  *   selectedSource: { type: string, label: string } | null,
  *   sourceDisplayName: string | null,
  *   footerSourceLabel: string,
@@ -33,6 +39,7 @@ export function SourceProvider({ children }) {
     selectCaptureDevice,
     defaultOutputFormatSig,
     defaultOutputLabel,
+    refreshCaptureApplications,
   } = devices;
 
   const audioOutputs = useMemo(
@@ -63,8 +70,30 @@ export function SourceProvider({ children }) {
     [clearNotice, raiseNotice, selectCaptureDevice]
   );
 
+  const sourceMixes = useSourceMixes({
+    supported: isTauri() && isWindows() && usesTransactionalPersistence,
+    onSelect: onSelectCaptureDevice,
+    onError: (message, error) => raiseNotice("error", message, errorDetails(message, error)),
+  });
+  const selectedMix = sourceMixes.supported
+    ? sourceMixes.list.find(({ id }) => id === captureDeviceId)
+    : null;
+  const selectionIsMix = isSourceMixId(captureDeviceId);
+  const mixMembers = selectedMix?.members
+    .map(({ id }) => id)
+    .sort()
+    .join(",");
+  const mixApplicationIds = useMemo(() => mixMembers?.split(","), [mixMembers]);
+  const editingMix = sourceMixes.draft !== null;
+  useEffect(() => {
+    if (!editingMix || selectionIsMix || captureDeviceId.startsWith("app-")) return;
+    const timer = window.setInterval(() => void refreshCaptureApplications(), 2_000);
+    return () => window.clearInterval(timer);
+  }, [captureDeviceId, editingMix, refreshCaptureApplications, selectionIsMix]);
+
   const captureFormatSignature = useMemo(() => {
     if (!isTauri()) return "";
+    if (selectionIsMix) return mixMembers ? `2:48000|${mixMembers}` : "";
     if (/^app-[0-9a-f]{32}$/.test(captureDeviceId)) {
       const application = captureApplications.find((candidate) => candidate.id === captureDeviceId);
       const processSignature = application?.processIds?.length
@@ -79,15 +108,24 @@ export function SourceProvider({ children }) {
     return d
       ? `${d.channels}:${d.defaultSampleRate}${d.monitorSignature ? `|${d.monitorSignature}` : ""}`
       : "";
-  }, [captureDeviceId, audioDevices, captureApplications, defaultOutputFormatSig]);
-  const captureDeviceUnavailable =
-    devices.snapshot.inventoryReady &&
-    captureDeviceId !== "default" &&
-    !/^app-[0-9a-f]{32}$/.test(captureDeviceId) &&
-    !captureFormatSignature;
+  }, [
+    captureDeviceId,
+    audioDevices,
+    captureApplications,
+    defaultOutputFormatSig,
+    selectionIsMix,
+    mixMembers,
+  ]);
+  const captureDeviceUnavailable = selectionIsMix
+    ? !selectedMix
+    : devices.snapshot.inventoryReady &&
+      captureDeviceId !== "default" &&
+      !/^app-[0-9a-f]{32}$/.test(captureDeviceId) &&
+      !captureFormatSignature;
 
   const selectedSource = useMemo(() => {
     if (!isTauri()) return null;
+    if (selectedMix) return { type: "Mix", label: selectedMix.name };
     if (captureDeviceId === "default") {
       const label =
         defaultOutputLabel || audioDevices.find((device) => device.isSystemOutputMonitor)?.label;
@@ -103,10 +141,11 @@ export function SourceProvider({ children }) {
       type: device.isSystemOutputMonitor ? "Output" : "Input",
       label: device.label,
     };
-  }, [captureDeviceId, audioDevices, captureApplications, defaultOutputLabel]);
+  }, [captureDeviceId, audioDevices, captureApplications, defaultOutputLabel, selectedMix]);
   const sourceDisplayName = useMemo(() => {
     if (!selectedSource) return null;
-    if (selectedSource.type === "Application") return selectedSource.label;
+    if (selectedSource.type === "Application" || selectedSource.type === "Mix")
+      return selectedSource.label;
     const display = formatAudioDeviceLabel(selectedSource.label);
     return display.secondary || display.primary;
   }, [selectedSource]);
@@ -141,6 +180,8 @@ export function SourceProvider({ children }) {
         onSelectCaptureDevice,
         captureFormatSignature,
         captureDeviceUnavailable,
+        sourceMixes,
+        mixApplicationIds,
         selectedSource,
         sourceDisplayName,
         footerSourceLabel,

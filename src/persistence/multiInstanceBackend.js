@@ -6,6 +6,7 @@ const REFRESH_INTERVAL_MS = 1000;
 const DOMAIN_KIND = {
   "plvs:presets": "preset",
   "plvs:themes": "theme",
+  "plvs:sourceMixes": "sourceMix",
 };
 
 function clone(value) {
@@ -16,7 +17,8 @@ function clone(value) {
  * @param {string} key
  */
 function documentsFor(key, value) {
-  if (key === "plvs:presets") return Array.isArray(value?.list) ? value.list : [];
+  if (key === "plvs:presets" || key === "plvs:sourceMixes")
+    return Array.isArray(value?.list) ? value.list : [];
   if (key === "plvs:themes") {
     const themes = value?.themes && typeof value.themes === "object" ? value.themes : {};
     const order = Array.isArray(value?.order) ? value.order : [];
@@ -58,11 +60,11 @@ function domainFor(key) {
 }
 
 function collectionKey(kind) {
-  return kind === "preset" ? "plvs:presets" : kind === "theme" ? "plvs:themes" : "plvs:settings";
+  return Object.keys(DOMAIN_KIND).find((key) => DOMAIN_KIND[key] === kind) ?? "plvs:settings";
 }
 
 function withCollection(kind, current, documents) {
-  if (kind === "preset") return { ...current, list: documents };
+  if (kind === "preset" || kind === "sourceMix") return { ...current, list: documents };
   if (kind === "theme") {
     return {
       themes: Object.fromEntries(documents.map((item) => [item.id, item])),
@@ -107,7 +109,7 @@ export function createMultiInstanceBackend() {
   const seed = (typeof window !== "undefined" && window.__PLVS_INITIAL_STATE__) || {};
   const metadata = seed.multiInstancePersistence || {};
   const cache = new Map(
-    ["plvs:settings", "plvs:workspace", "plvs:presets", "plvs:themes"]
+    ["plvs:settings", "plvs:workspace", "plvs:presets", "plvs:themes", "plvs:sourceMixes"]
       .filter((key) => seed[key] && typeof seed[key] === "object")
       .map((key) => [key, clone(seed[key])])
   );
@@ -471,7 +473,7 @@ export function createMultiInstanceBackend() {
       !writesPaused && !hasPendingDelete(key) && startedAt.get(key) === editGenerations.get(key);
     const refreshing = invoke("persistence_hydrate")
       .then((hydrated) => {
-        for (const kind of ["preset", "theme", "loudnessProfile"]) {
+        for (const kind of ["preset", "theme", "loudnessProfile", "sourceMix"]) {
           if (!collectionConflicts.has(kind) && canApply(collectionKey(kind))) {
             applyRemoteCollection(kind, hydrated);
           }
@@ -752,7 +754,12 @@ export function createMultiInstanceBackend() {
     }
     let document = committedConflictCopies.get(conflict);
     if (!document) {
-      const id = conflict.kind === "theme" ? `custom-${makeId()}` : makeId();
+      const id =
+        conflict.kind === "theme"
+          ? `custom-${makeId()}`
+          : conflict.kind === "sourceMix"
+            ? `mix-${makeId()}`
+            : makeId();
       document = {
         ...conflict.document,
         id,

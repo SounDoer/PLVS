@@ -105,6 +105,20 @@ routes instead:
 On macOS, DAWs play through Core Audio, so system playback and Application sources can measure
 them without extra routing.
 
+## Application mixes on Windows
+
+In the normal window, choose **Add Mix** at the bottom of **Sources** and select at least two
+applications. PLVS generates a name from the selection. Use the pencil to enter your own name.
+**Save** adds the Mix under **Mixes** and selects it for the current Workbench.
+
+PLVS sums the selected application audio into one stereo signal for measurement. If one application
+exits, capture can continue with the others while PLVS waits for it to return. The Mix row shows
+members missing from the application list. Applications with no current audio can stay selected.
+
+Use the row menu to edit or delete a Mix. Changing the members of the active Mix starts a new
+measurement. Renaming it keeps the current measurement. Saved mixes are available to Workbenches
+on the same installation. Each Workbench remembers its own Source selection independently of Presets.
+
 ## Long source lists
 
 Outputs, Inputs, and Applications are grouped into collapsible sections with source counts. The

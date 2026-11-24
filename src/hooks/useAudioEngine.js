@@ -51,6 +51,7 @@ const CAPTURE_INVALIDATION_RETRY_STEP_MS = 300;
  * @param {{
  *   captureDeviceId?: string,
  *   captureFormatSignature?: string,
+ *   mixApplicationIds?: string[],
  *   captureDeviceUnavailable?: boolean,
  *   histMaxSamples: number,
  *   visualMaxSamples: number,
@@ -71,6 +72,7 @@ const CAPTURE_INVALIDATION_RETRY_STEP_MS = 300;
  */
 export function useAudioEngine({
   captureDeviceId = "default",
+  mixApplicationIds,
   /** When channels/default rate change for the active device, bumps to restart WASAPI/session (e.g. Windows speaker layout). */
   captureFormatSignature = "",
   captureDeviceUnavailable = false,
@@ -214,11 +216,12 @@ export function useAudioEngine({
         if (!mounted) return;
         if (isTauri()) {
           const applicationId = /^app-[0-9a-f]{32}$/.test(captureDeviceId) ? captureDeviceId : null;
-          const devices = await listAudioDevices();
+          const devices = mixApplicationIds ? [] : await listAudioDevices();
           if (!mounted) return;
-          const resolved = applicationId
-            ? { device: { id: applicationId, defaultSampleRate: 48_000 }, isAutomatic: false }
-            : resolveDevice(devices ?? [], captureDeviceId);
+          const resolved =
+            applicationId || mixApplicationIds
+              ? { device: { id: captureDeviceId, defaultSampleRate: 48_000 }, isAutomatic: false }
+              : resolveDevice(devices ?? [], captureDeviceId);
           const { device: resolvedDevice, isAutomatic } = resolved;
           if (!resolvedDevice) {
             if (isAutomatic) throw new Error("No input devices reported by the native engine");
@@ -227,7 +230,10 @@ export function useAudioEngine({
           }
 
           let engineDeviceId;
-          if (applicationId) {
+          if (mixApplicationIds) {
+            defaultSampleRateRef.current = 48_000;
+            engineDeviceId = "default";
+          } else if (applicationId) {
             const preview = await previewAudioDevice("default");
             if (!mounted) return;
             defaultSampleRateRef.current = preview.sampleRateHz || 48_000;
@@ -346,6 +352,7 @@ export function useAudioEngine({
             nativeStart = startAudioCapture({
               deviceId: engineDeviceId,
               ...(applicationId ? { applicationId } : {}),
+              ...(mixApplicationIds ? { mixApplicationIds } : {}),
               continueSession,
               onFrame: applyFrame,
             });
@@ -410,6 +417,7 @@ export function useAudioEngine({
   }, [
     running,
     captureDeviceId,
+    mixApplicationIds,
     captureFormatSignature,
     captureDeviceUnavailable,
     recoveryRevision,

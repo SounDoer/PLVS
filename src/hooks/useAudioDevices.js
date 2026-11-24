@@ -13,6 +13,8 @@ import {
 } from "../ipc/capturePrefs.js";
 import { onDeviceListChanged } from "../ipc/events.js";
 import { isTauri } from "../ipc/env.js";
+import { isSourceMixId, readSourceMixes } from "../lib/sourceMixes.js";
+import { sourceMixesStore } from "../persistence/index.js";
 
 const APPLICATION_REFRESH_INTERVAL_MS = 2_000;
 
@@ -155,6 +157,11 @@ export function useAudioDevices({
   );
 
   const previewSelection = useCallback(async (/** @type {string} */ deviceId) => {
+    if (isSourceMixId(deviceId)) {
+      const mix = readSourceMixes(sourceMixesStore.read()).find(({ id }) => id === deviceId);
+      if (!mix) throw new Error("Selected Mix Unavailable");
+      return { label: mix.name, sampleRateHz: 48_000, channels: 2 };
+    }
     if (/^app-[0-9a-f]{32}$/.test(deviceId)) {
       const application = snapshotRef.current.captureApplications.find(
         (candidate) => candidate.id === deviceId
@@ -357,7 +364,11 @@ export function useAudioDevices({
   }, [updateSnapshot]);
 
   useEffect(() => {
-    if (!isTauri() || !/^app-[0-9a-f]{32}$/.test(snapshot.requestedId)) return;
+    if (
+      !isTauri() ||
+      (!/^app-[0-9a-f]{32}$/.test(snapshot.requestedId) && !isSourceMixId(snapshot.requestedId))
+    )
+      return;
     const interval = window.setInterval(
       () => void refreshCaptureApplications(),
       APPLICATION_REFRESH_INTERVAL_MS
@@ -369,7 +380,8 @@ export function useAudioDevices({
     if (!isTauri() || !snapshot.inventoryReady || snapshot.requestedId === "default") return;
     // Application IDs are stable identities rather than device endpoints. Preserve an application
     // selection while it is not running so the same selection can rebind to its next PID.
-    if (/^app-[0-9a-f]{32}$/.test(snapshot.requestedId)) return;
+    if (/^app-[0-9a-f]{32}$/.test(snapshot.requestedId) || isSourceMixId(snapshot.requestedId))
+      return;
     if (
       snapshot.allDevices.some((device) => device.id === snapshot.requestedId) ||
       snapshot.captureApplications.some((application) => application.id === snapshot.requestedId)

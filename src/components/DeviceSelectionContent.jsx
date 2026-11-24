@@ -1,11 +1,16 @@
 import { useState } from "react";
-import { ChevronRight } from "lucide-react";
+import { ChevronRight, Ellipsis } from "lucide-react";
 import {
   formatAudioDeviceLabel,
   isUnavailableApplicationSource,
 } from "../lib/audioDeviceLabels.js";
 import { cn } from "../lib/utils.js";
 import { MenuRow } from "./ui/row";
+import { AddButton } from "./AddButton.jsx";
+import { IconAction } from "./ui/icon-action";
+import { Popover, PopoverContent, PopoverTrigger } from "./ui/popover";
+import { InlineConfirm } from "./InlineConfirm.jsx";
+import { isSourceMixId } from "../lib/sourceMixes.js";
 import { useUiNavigationTarget, useUiSurface } from "../uiNavigation/UiNavigationContext.jsx";
 
 /** @param {{ primary: string, secondary?: string, selected: boolean, onSelect: (...args: any[]) => any, ariaLabel: string, uiTarget?: string }} props */
@@ -60,10 +65,13 @@ function selectedApplicationSummary(applications, selectedId) {
 }
 
 function SourceSection({ id, group, label, count, open, onOpenChange, selectedSummary, children }) {
+  const navigable = group !== "mixes";
   // `ui show source-group` expands a group as clicking its heading does.
-  useUiNavigationTarget("sourceGroup", group, { show: () => onOpenChange(true) });
+  useUiNavigationTarget(navigable ? `sourceGroup:${group}` : null, {
+    show: () => onOpenChange(true),
+  });
   useUiSurface({
-    active: open,
+    active: open && navigable,
     kind: "sourceGroup",
     origin: "navigable",
     blocking: false,
@@ -124,12 +132,14 @@ export function DeviceSelectionContent({
   audioInputs = [],
   captureApplications = [],
   safeAudioDeviceId = "default",
+  sourceMixes = null,
   onSelect,
 }) {
   const [sourceSectionsOpen, setSourceSectionsOpen] = useState({
     output: false,
     input: false,
     applications: false,
+    mixes: isSourceMixId(safeAudioDeviceId),
   });
 
   const setSourceSectionOpen = (/** @type {string} */ section, open) => {
@@ -139,6 +149,8 @@ export function DeviceSelectionContent({
   const selectedOutputSummary = selectedDeviceSummary(audioOutputs, safeAudioDeviceId);
   const selectedInputSummary = selectedDeviceSummary(audioInputs, safeAudioDeviceId);
   const selectedApplication = selectedApplicationSummary(captureApplications, safeAudioDeviceId);
+  const selectedMix = sourceMixes?.list.find((mix) => mix.id === safeAudioDeviceId);
+  const available = new Set(captureApplications.map(({ id }) => id));
 
   return (
     <>
@@ -154,10 +166,62 @@ export function DeviceSelectionContent({
           Selected Application Unavailable
         </p>
       ) : null}
+      {sourceMixes?.supported && isSourceMixId(safeAudioDeviceId) && !selectedMix ? (
+        <p className="px-2 py-1 text-[length:var(--ui-fs-caption)] text-muted-foreground">
+          Selected Mix Unavailable
+        </p>
+      ) : null}
       <div
         data-source-scroll
         className="min-h-0 overflow-x-hidden overflow-y-auto overscroll-contain [scrollbar-gutter:stable]"
       >
+        {sourceMixes?.supported && sourceMixes.list.length ? (
+          <SourceSection
+            id="source-mixes-list"
+            group="mixes"
+            label="Mixes"
+            count={sourceMixes.list.length}
+            open={sourceSectionsOpen.mixes}
+            onOpenChange={(open) => setSourceSectionOpen("mixes", open)}
+            selectedSummary={selectedMix?.name}
+          >
+            {sourceMixes.list.map((mix) => {
+              const unavailable = mix.members.filter(({ id }) => !available.has(id)).length;
+              const count = unavailable
+                ? `${unavailable} ${unavailable === 1 ? "Source" : "Sources"} Unavailable`
+                : `${mix.members.length} Sources · Stereo`;
+              return (
+                <div key={mix.id} className="flex items-center gap-1">
+                  <div className="min-w-0 flex-1">
+                    <SourceRow
+                      ariaLabel={mix.name}
+                      primary={mix.name}
+                      secondary={count}
+                      selected={mix.id === safeAudioDeviceId}
+                      onSelect={() => onSelect(mix.id)}
+                    />
+                  </div>
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <IconAction aria-label={`manage ${mix.name}`}>
+                        <Ellipsis className="size-[length:var(--ui-icon-management-action)]" />
+                      </IconAction>
+                    </PopoverTrigger>
+                    <PopoverContent align="end" className="w-auto p-1">
+                      <MenuRow onClick={() => sourceMixes.open(mix)}>Edit</MenuRow>
+                      <InlineConfirm
+                        confirmLabel={`delete ${mix.name}`}
+                        cancelLabel="cancel deletion"
+                        onConfirm={() => void sourceMixes.remove(mix)}
+                        trigger={(arm) => <MenuRow onClick={arm}>Delete</MenuRow>}
+                      />
+                    </PopoverContent>
+                  </Popover>
+                </div>
+              );
+            })}
+          </SourceSection>
+        ) : null}
         {audioOutputs.length ? (
           <SourceSection
             id="source-output-list"
@@ -222,6 +286,11 @@ export function DeviceSelectionContent({
           </SourceSection>
         ) : null}
       </div>
+      {sourceMixes?.supported ? (
+        <div className="shrink-0 px-2 py-1">
+          <AddButton label="Add Mix" onClick={() => sourceMixes.open()} />
+        </div>
+      ) : null}
     </>
   );
 }

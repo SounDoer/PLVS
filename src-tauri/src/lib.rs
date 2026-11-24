@@ -157,6 +157,8 @@ struct InitialStateValues<'a> {
   presets: &'a serde_json::Value,
   #[serde(rename = "plvs:themes")]
   themes: &'a serde_json::Value,
+  #[serde(rename = "plvs:sourceMixes")]
+  source_mixes: &'a serde_json::Value,
   #[serde(rename = "dockState")]
   dock_state: &'a Option<dock::DockStateRecord>,
   #[serde(rename = "agentControl")]
@@ -579,6 +581,7 @@ pub fn run() {
         workspace: &workspace,
         presets: &presets,
         themes: &themes,
+        source_mixes: &hydrated.source_mixes,
         dock_state: &dock_state,
         agent_control: &agent_control,
         capture_device_id: &hydrated.capture_device_id,
@@ -1061,6 +1064,7 @@ mod tests {
       workspace: &json!({}),
       presets: &json!({}),
       themes: &json!({}),
+      source_mixes: &json!({}),
       dock_state: &None,
       agent_control: &json!({}),
       capture_device_id: &json!("default"),
@@ -1090,6 +1094,7 @@ mod tests {
         "multiInstancePersistence",
         "plvs:presets",
         "plvs:settings",
+        "plvs:sourceMixes",
         "plvs:themes",
         "plvs:workspace",
         "workspaceId",
@@ -1118,6 +1123,7 @@ mod tests {
       workspace: &workspace,
       presets: &presets,
       themes: &themes,
+      source_mixes: &json!({}),
       dock_state: &None,
       agent_control: &agent_control,
       capture_device_id: &json!("default"),
@@ -1142,6 +1148,7 @@ mod tests {
       workspace: &json!({}),
       presets: &json!({}),
       themes: &json!({}),
+      source_mixes: &json!({}),
       dock_state: &Some(dock_record()),
       agent_control: &json!({}),
       capture_device_id: &json!("default"),

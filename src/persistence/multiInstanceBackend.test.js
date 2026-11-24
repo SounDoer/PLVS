@@ -46,6 +46,36 @@ function seed() {
 }
 
 describe("multiInstanceBackend", () => {
+  it("persists saved Mixes in the Library and refreshes them from a peer", async () => {
+    seed();
+    const { createMultiInstanceBackend } = await import("./multiInstanceBackend.js");
+    const backend = createMultiInstanceBackend();
+    const id = "mix-10000000-0000-4000-8000-000000000000";
+    const mix = { id, name: "Reference" };
+    invoke.mockResolvedValueOnce({ item: { revision: 1 }, collectionRevision: 1 });
+    backend.set("plvs:sourceMixes", { list: [mix] });
+    await backend.flush();
+    expect(invoke).toHaveBeenCalledWith("persistence_library_create", {
+      kind: "sourceMix",
+      id,
+      document: mix,
+    });
+    const updated = { ...mix, name: "Peer Edit" };
+    invoke.mockResolvedValueOnce({
+      sourceMixes: { list: [updated] },
+      libraryItemRevisions: { sourceMix: { [id]: 2 } },
+      libraryCollectionRevisions: { sourceMix: 2 },
+    });
+    const unsubscribe = backend.subscribe("plvs:sourceMixes", () => {});
+    try {
+      await vi.waitFor(() => expect(backend.get("plvs:sourceMixes")).toEqual({ list: [updated] }), {
+        timeout: 2500,
+      });
+    } finally {
+      unsubscribe();
+    }
+  });
+
   it.each(["already saved", "different value", "unavailable"])(
     "keeps Workspace writes moving when a shared preference conflicts and hydration is %s",
     async (outcome) => {

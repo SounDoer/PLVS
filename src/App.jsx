@@ -23,6 +23,7 @@ import { DockProvider, useDock } from "./dock/DockContext.jsx";
 import { WindowChromeProvider, useWindowChrome } from "./hooks/WindowChromeContext.jsx";
 import { PresetsProvider, usePresetLibrary } from "./hooks/PresetsContext.jsx";
 import { SourceProvider, useSource } from "./runtime/SourceContext.jsx";
+import { SourceMixEditor } from "./components/SourceMixEditor.jsx";
 import { SourceActionsProvider, useSourceActions } from "./runtime/SourceActionsContext.jsx";
 import { AppLifecycleProvider, useAppLifecycle } from "./hooks/AppLifecycleContext.jsx";
 import { DisplaySnapshotProvider, useDisplaySnapshot } from "./runtime/DisplaySnapshotContext.jsx";
@@ -232,6 +233,8 @@ function AppContent() {
     onSelectCaptureDevice,
     captureFormatSignature,
     captureDeviceUnavailable,
+    sourceMixes,
+    mixApplicationIds,
     footerSourceLabel,
   } = useSource();
 
@@ -241,7 +244,7 @@ function AppContent() {
     sourcesAvailable:
       isTauri() &&
       sourceMode === "live" &&
-      (audioDevices.length > 0 || captureApplications.length > 0),
+      (audioDevices.length > 0 || captureApplications.length > 0 || sourceMixes.supported),
     statusAvailable: statusItems.length > 0,
     autoHideControls: focusView.autoHideControls,
     controlsVisible: !focusView.autoHideControls || focusControlsVisible,
@@ -290,6 +293,7 @@ function AppContent() {
   // authoritative for the whole file.
   const runtimeEnginesProps = {
     captureDeviceId,
+    mixApplicationIds,
     captureFormatSignature,
     captureDeviceUnavailable,
     histMaxSamples,
@@ -337,6 +341,7 @@ function AppContent() {
     audioOutputs,
     audioInputs,
     captureApplications,
+    sourceMixes,
     safeAudioDeviceId,
     setCaptureDeviceId: onSelectCaptureDevice,
     openMenu: toolbarMenu.openMenu,
@@ -581,6 +586,9 @@ function AppContent() {
           />
         }
       >
+        {!docked && sourceMixes.draft ? (
+          <SourceMixEditor owner={sourceMixes} applications={captureApplications} />
+        ) : null}
         <CloseConfirmDialog
           open={closeDialogOpen}
           error={closeError}

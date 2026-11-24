@@ -24,6 +24,7 @@ const LABELS = {
   preset: "Preset",
   theme: "Theme",
   loudnessProfile: "Loudness Profile",
+  sourceMix: "Mix",
 };
 
 export function LibraryConflictDialog() {
