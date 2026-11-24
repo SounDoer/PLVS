@@ -42,12 +42,13 @@ export function migrateCaptureDeviceId(deviceId) {
 /**
  * `continueSession` resumes the statistics of the last stopped Live session (Stop then Start of
  * the same Source); otherwise the engine starts a fresh measurement.
- * @param {{ deviceId: string; processId?: number | null; applicationId?: string | null; continueSession?: boolean; onFrame: (payload: object) => void }} opts
+ * @param {{ deviceId: string; processId?: number | null; applicationId?: string | null; mixApplicationIds?: string[]; continueSession?: boolean; onFrame: (payload: object) => void }} opts
  */
 export async function startAudioCapture({
   deviceId,
   processId = null,
   applicationId = null,
+  mixApplicationIds,
   continueSession = false,
   onFrame,
 }) {
@@ -73,6 +74,7 @@ export async function startAudioCapture({
     deviceId,
     processId,
     applicationId,
+    ...(mixApplicationIds && { mixApplicationIds }),
     continueSession,
     onFrame: onAudio,
   });

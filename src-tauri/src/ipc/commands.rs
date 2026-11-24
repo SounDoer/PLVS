@@ -8,6 +8,8 @@ use tauri::{AppHandle, Emitter, Manager, State};
 use crate::audio::capture::{AudioCapture, MeterResetKind, MeterResetRequest};
 use crate::audio::cpal_backend;
 use crate::audio::device::DeviceInfo;
+#[cfg(target_os = "windows")]
+use crate::audio::windows_process_loopback::{start_process_session, ProcessCaptureSource};
 use crate::audio::AppAudioBackend;
 use crate::crash_report::{
   normalize_frontend_crash, normalize_frontend_log, CrashKind, CrashReport, CrashReporterState,
@@ -229,15 +231,33 @@ fn normalize_process_capture_format(sample_rate: u32, channels: u16) -> (u32, u1
 }
 
 #[tauri::command]
+#[allow(clippy::too_many_arguments)]
 pub fn audio_start(
   app: AppHandle,
   device_id: String,
   process_id: Option<u32>,
   application_id: Option<String>,
+  mix_application_ids: Option<Vec<String>>,
   continue_session: Option<bool>,
   on_frame: tauri::ipc::Channel<tauri::ipc::InvokeResponseBody>,
   state: State<'_, AppState>,
 ) -> Result<(), String> {
+  if usize::from(process_id.is_some())
+    + usize::from(application_id.is_some())
+    + usize::from(mix_application_ids.is_some())
+    > 1
+  {
+    return Err("audio_start accepts only one application source selector".into());
+  }
+  if let Some(ids) = &mix_application_ids {
+    #[cfg(target_os = "windows")]
+    validate_mix_application_ids(ids)?;
+    #[cfg(not(target_os = "windows"))]
+    {
+      let _ = ids;
+      return Err("application mixes are not available on this platform".into());
+    }
+  }
   {
     // Stop any active source (live or file) before starting live capture; only one runs at a time.
     let mut source = state
@@ -289,9 +309,6 @@ pub fn audio_start(
   let channel_selection = state.inner().channel_selection.clone();
   let dialogue_gating = state.inner().dialogue_gating_enabled.clone();
   let dialogue_vad_engine = state.inner().dialogue_vad_engine.clone();
-  if process_id.is_some() && application_id.is_some() {
-    return Err("audio_start accepts either processId or applicationId, not both".to_string());
-  }
   #[cfg(not(target_os = "windows"))]
   if process_id.is_some() {
     return Err("direct per-process capture is not available on this platform".to_string());
@@ -317,15 +334,36 @@ pub fn audio_start(
     // their speaker masks are verified on a real endpoint.
     normalize_process_capture_format(sample_rate, channels)
   });
-  let session = if application_id.is_some() {
+  let is_mix = mix_application_ids.is_some();
+  let session = if let Some(ids) = mix_application_ids {
+    #[cfg(target_os = "windows")]
+    {
+      start_process_session(
+        ProcessCaptureSource::Mix(ids),
+        48_000,
+        2,
+        pool,
+        app.clone(),
+        channel_selection,
+        dialogue_gating,
+        dialogue_vad_engine,
+        state.inner().measured_pcm.clone(),
+      )?
+    }
+    #[cfg(not(target_os = "windows"))]
+    {
+      let _ = ids;
+      return Err("application mixes are not available on this platform".into());
+    }
+  } else if application_id.is_some() {
     #[cfg(target_os = "windows")]
     {
       let process_id =
         process_id.ok_or_else(|| "capture application process was not resolved".to_string())?;
       let (sample_rate, channels) =
         process_format.ok_or_else(|| "process capture format was not resolved".to_string())?;
-      crate::audio::windows_process_loopback::start_process_session(
-        process_id,
+      start_process_session(
+        ProcessCaptureSource::Single(process_id),
         sample_rate,
         channels,
         pool,
@@ -364,8 +402,8 @@ pub fn audio_start(
       {
         let (sample_rate, channels) =
           process_format.ok_or_else(|| "process capture format was not resolved".to_string())?;
-        crate::audio::windows_process_loopback::start_process_session(
-          process_id,
+        start_process_session(
+          ProcessCaptureSource::Single(process_id),
           sample_rate,
           channels,
           pool,
@@ -408,17 +446,21 @@ pub fn audio_start(
       .map_err(|_| "state lock poisoned".to_string())?;
     *source = EngineSource::Live(session);
   }
-  #[cfg(target_os = "windows")]
-  if process_id.is_some() {
-    if let Some((sample_rate, _)) = process_format {
-      let _ = app.emit("sample-rate-changed", sample_rate);
+  if is_mix {
+    let _ = app.emit("sample-rate-changed", 48_000u32);
+  } else {
+    #[cfg(target_os = "windows")]
+    if process_id.is_some() {
+      if let Some((sample_rate, _)) = process_format {
+        let _ = app.emit("sample-rate-changed", sample_rate);
+      }
+    } else if let Ok((sr, _ch)) = cpal_backend::device_default_format(&device_id) {
+      let _ = app.emit("sample-rate-changed", sr);
     }
-  } else if let Ok((sr, _ch)) = cpal_backend::device_default_format(&device_id) {
-    let _ = app.emit("sample-rate-changed", sr);
-  }
-  #[cfg(not(target_os = "windows"))]
-  if let Ok((sr, _ch)) = cpal_backend::device_default_format(&device_id) {
-    let _ = app.emit("sample-rate-changed", sr);
+    #[cfg(not(target_os = "windows"))]
+    if let Ok((sr, _ch)) = cpal_backend::device_default_format(&device_id) {
+      let _ = app.emit("sample-rate-changed", sr);
+    }
   }
   let _ = app.emit(
     "engine-state-changed",
@@ -428,6 +470,19 @@ pub fn audio_start(
       reason: None,
     },
   );
+  Ok(())
+}
+
+#[cfg(target_os = "windows")]
+fn validate_mix_application_ids(ids: &[String]) -> Result<(), String> {
+  let mut seen = HashSet::new();
+  if ids.len() < 2
+    || ids
+      .iter()
+      .any(|id| !crate::audio::windows_capture_apps::is_application_id(id) || !seen.insert(id))
+  {
+    return Err("a mix requires at least two distinct application IDs".into());
+  }
   Ok(())
 }
 
@@ -1304,5 +1359,16 @@ mod tests {
     assert_eq!(parse_spectrum_view("lr").unwrap(), SpectrumView::Lr);
     assert_eq!(parse_spectrum_view("ms").unwrap(), SpectrumView::Ms);
     assert!(parse_spectrum_view("bogus").is_err());
+  }
+
+  #[cfg(target_os = "windows")]
+  #[test]
+  fn live_mix_rejects_single_duplicate_and_invalid_application_ids() {
+    let first = format!("app-{}", "1".repeat(32));
+    let second = format!("app-{}", "2".repeat(32));
+    assert!(super::validate_mix_application_ids(std::slice::from_ref(&first)).is_err());
+    assert!(super::validate_mix_application_ids(&[first.clone(), first.clone()]).is_err());
+    assert!(super::validate_mix_application_ids(&[first.clone(), "default".into()]).is_err());
+    assert!(super::validate_mix_application_ids(&[first, second]).is_ok());
   }
 }

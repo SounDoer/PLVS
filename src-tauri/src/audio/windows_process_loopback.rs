@@ -1,11 +1,7 @@
-//! Experimental Windows process-loopback capture.
-//!
-//! This is deliberately not wired into the product device picker yet. It exists to validate
-//! isolation and meter parity on real Windows audio stacks before the source model becomes a
-//! persisted public contract.
+//! Windows process-loopback capture for individual applications and stereo application mixes.
 
 use std::mem::{size_of, ManuallyDrop};
-use std::sync::atomic::AtomicU64;
+use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::sync::{mpsc, Arc};
 use std::time::{Duration, Instant};
 
@@ -43,7 +39,7 @@ use super::cpal_backend::{
   PcmBufferPool, PcmCallbackForwarder, PcmDeliveryQueue, PCM_QUEUE_CAP,
 };
 use super::stereo_mix_timeline::{MixCoverage, StereoMixTimeline};
-use super::windows_capture_apps::application_id_for_process;
+use super::windows_capture_apps::{application_id_for_process, resolve_capture_application};
 use crate::dsp::channel_layouts::ChannelSelection;
 use crate::dsp::speech::VadEngineKind;
 use crate::dsp::summary_meter::{SummaryMeter, SummaryMetrics};
@@ -326,7 +322,8 @@ fn db_from_linear(value: f64) -> f64 {
 fn drain_process_packets(
   capture_client: &IAudioCaptureClient,
   channels: u16,
-  forwarder: &PcmCallbackForwarder,
+  timestamped: bool,
+  on_pcm: &mut impl FnMut(PacketTiming, &[f32]),
   silent_samples: &mut Vec<f32>,
 ) -> Result<(), String> {
   loop {
@@ -338,20 +335,48 @@ fn drain_process_packets(
 
     let mut data = std::ptr::null_mut();
     let mut frames = 0u32;
-    let mut flags = 0u32;
-    unsafe { capture_client.GetBuffer(&mut data, &mut frames, &mut flags, None, None) }
-      .map_err(|error| format!("GetBuffer failed: {error}"))?;
+    let mut timing = PacketTiming::default();
+    unsafe {
+      capture_client.GetBuffer(
+        &mut data,
+        &mut frames,
+        &mut timing.flags,
+        timestamped.then_some(&mut timing.device_frame),
+        timestamped.then_some(&mut timing.qpc),
+      )
+    }
+    .map_err(|error| format!("GetBuffer failed: {error}"))?;
+    if frames == 0 {
+      return Ok(());
+    }
 
     let sample_count = frames as usize * channels as usize;
-    if (flags & AUDCLNT_BUFFERFLAGS_SILENT.0 as u32) != 0 {
+    if timing.is_silent() {
       silent_samples.resize(sample_count, 0.0);
-      forwarder.forward_f32(silent_samples);
+      on_pcm(timing, silent_samples);
     } else {
       let samples = unsafe { std::slice::from_raw_parts(data.cast::<f32>(), sample_count) };
-      forwarder.forward_f32(samples);
+      on_pcm(timing, samples);
     }
     unsafe { capture_client.ReleaseBuffer(frames) }
       .map_err(|error| format!("ReleaseBuffer failed: {error}"))?;
+  }
+}
+
+#[derive(Clone, Copy, Default)]
+struct PacketTiming {
+  device_frame: u64,
+  qpc: u64,
+  flags: u32,
+}
+
+impl PacketTiming {
+  fn is_silent(self) -> bool {
+    self.flags & AUDCLNT_BUFFERFLAGS_SILENT.0 as u32 != 0
+  }
+
+  fn has_qpc(self) -> bool {
+    self.qpc != 0 && self.flags & AUDCLNT_BUFFERFLAGS_TIMESTAMP_ERROR.0 as u32 == 0
   }
 }
 
@@ -359,8 +384,9 @@ fn run_process_stream(
   process_id: u32,
   sample_rate: u32,
   channels: u16,
-  stop_rx: mpsc::Receiver<()>,
-  forwarder: PcmCallbackForwarder,
+  timestamped: bool,
+  mut stopped: impl FnMut() -> bool,
+  mut on_pcm: impl FnMut(PacketTiming, &[f32]),
 ) -> Result<(), String> {
   let _com = ComApartment::initialize()?;
   let audio_client = activate_process_audio_client(process_id)?;
@@ -390,9 +416,8 @@ fn run_process_stream(
 
   let mut silent_samples = Vec::new();
   let capture_result = loop {
-    match stop_rx.try_recv() {
-      Ok(()) | Err(mpsc::TryRecvError::Disconnected) => break Ok(()),
-      Err(mpsc::TryRecvError::Empty) => {}
+    if stopped() {
+      break Ok(());
     }
     let wait = unsafe { WaitForSingleObject(event.0, 100) };
     if wait == WAIT_TIMEOUT {
@@ -401,9 +426,13 @@ fn run_process_stream(
     if wait != WAIT_OBJECT_0 {
       break Err(format!("WaitForSingleObject failed with status {}", wait.0));
     }
-    if let Err(error) =
-      drain_process_packets(&capture_client, channels, &forwarder, &mut silent_samples)
-    {
+    if let Err(error) = drain_process_packets(
+      &capture_client,
+      channels,
+      timestamped,
+      &mut on_pcm,
+      &mut silent_samples,
+    ) {
       break Err(error);
     }
   };
@@ -435,9 +464,14 @@ impl AudioCaptureSession for ProcessLoopbackSession {
   }
 }
 
+pub enum ProcessCaptureSource {
+  Single(u32),
+  Mix(Vec<String>),
+}
+
 #[allow(clippy::too_many_arguments)]
 pub fn start_process_session(
-  process_id: u32,
+  source: ProcessCaptureSource,
   sample_rate: u32,
   channels: u16,
   frame_subscribers: FrameSubscribers,
@@ -447,7 +481,7 @@ pub fn start_process_session(
   dialogue_vad_engine: Arc<std::sync::Mutex<VadEngineKind>>,
   measured_pcm: Arc<MeasuredPcmSubscriptions>,
 ) -> Result<Box<dyn AudioCaptureSession>, String> {
-  if process_id == 0 {
+  if matches!(source, ProcessCaptureSource::Single(0)) {
     return Err("process id must be non-zero".to_string());
   }
   capture_format(sample_rate, channels)?;
@@ -488,8 +522,24 @@ pub fn start_process_session(
         );
         cleanup_delivery.consumer_finished(&cleanup_pool);
       });
-      let forwarder = PcmCallbackForwarder::new(delivery.producer(), pool, dropped_chunks);
-      let result = run_process_stream(process_id, sample_rate, channels, stop_rx, forwarder);
+      let forwarder = PcmCallbackForwarder::new(delivery.producer(), pool, dropped_chunks.clone());
+      let result = match source {
+        ProcessCaptureSource::Single(pid) => run_process_stream(
+          pid,
+          sample_rate,
+          channels,
+          false,
+          || !matches!(stop_rx.try_recv(), Err(mpsc::TryRecvError::Empty)),
+          |_, pcm| {
+            forwarder.forward_f32(pcm);
+          },
+        ),
+        ProcessCaptureSource::Mix(applications) => {
+          run_live_mix(applications, stop_rx, &dropped_chunks, |pcm| {
+            forwarder.forward_f32(pcm);
+          })
+        }
+      };
       delivery.stop_producer();
       let _ = bridge.join();
       if let Err(error) = &result {
@@ -504,6 +554,96 @@ pub fn start_process_session(
     join: Some(join),
     meter_resets,
   }))
+}
+
+fn run_live_mix(
+  applications: Vec<String>,
+  stop_rx: mpsc::Receiver<()>,
+  dropped: &AtomicU64,
+  mut on_pcm: impl FnMut(&[f32]),
+) -> Result<(), String> {
+  let stopping = AtomicBool::new(false);
+  std::thread::scope(|scope| {
+    let member_count = applications.len();
+    let (tx, rx) = mpsc::sync_channel(16 * member_count);
+    for (member, app_id) in applications.into_iter().enumerate() {
+      let tx = tx.clone();
+      let stopping = &stopping;
+      if let Err(error) = std::thread::Builder::new()
+        .name("mix-member-capture".into())
+        .spawn_scoped(scope, move || {
+          capture_live_member(member, &app_id, &tx, stopping, dropped)
+        })
+      {
+        stopping.store(true, Ordering::Relaxed);
+        return Err(format!("could not start mix capture: {error}"));
+      }
+    }
+    drop(tx);
+    run_mix_timeline(
+      rx,
+      member_count,
+      || {
+        if matches!(stop_rx.try_recv(), Err(mpsc::TryRecvError::Empty)) {
+          return false;
+        }
+        stopping.store(true, Ordering::Relaxed);
+        true
+      },
+      |pcm, coverage| {
+        if coverage.full + coverage.partial > 0 {
+          on_pcm(pcm);
+        }
+      },
+      || {
+        dropped.fetch_add(1, Ordering::Relaxed);
+      },
+    );
+    stopping.store(true, Ordering::Relaxed);
+    Ok(())
+  })
+}
+
+fn capture_live_member(
+  member: usize,
+  app_id: &str,
+  tx: &mpsc::SyncSender<MixPacket>,
+  stopping: &AtomicBool,
+  dropped: &AtomicU64,
+) {
+  let stopped = || stopping.load(Ordering::Relaxed);
+  while !stopped() {
+    if let Ok(app) = resolve_capture_application(app_id) {
+      if let Ok(handle) = unsafe { OpenProcess(PROCESS_SYNCHRONIZE, false, app.process_id) } {
+        let handle = CaptureHandle(handle);
+        if application_id_for_process(app.process_id).as_deref() == Some(app_id) {
+          let exited = || unsafe { WaitForSingleObject(handle.0, 0) } == WAIT_OBJECT_0;
+          let result = run_process_stream(
+            app.process_id,
+            DEFAULT_SAMPLE_RATE,
+            DEFAULT_CHANNELS,
+            true,
+            || stopped() || exited(),
+            |timing, pcm| {
+              if !stopped() && !exited() && !queue_mix_packet(tx, member, timing, pcm) {
+                dropped.fetch_add(1, Ordering::Relaxed);
+              }
+            },
+          );
+          if let Err(error) = result {
+            log::debug!("Mix member capture interrupted: {error}");
+          }
+        }
+      }
+    }
+    // Retry a missing or failed member without resetting the mix worker or its meter.
+    for _ in 0..5 {
+      if stopped() {
+        return;
+      }
+      std::thread::sleep(Duration::from_millis(100));
+    }
+  }
 }
 
 /// Capture the target process tree for `duration` and run it through PLVS's summary meter.
@@ -538,14 +678,7 @@ pub fn capture_process_to_summary_with_format(
   sample_rate: u32,
   channels: u16,
 ) -> Result<ProcessLoopbackProbeResult, String> {
-  capture_process_probe(
-    process_id,
-    duration,
-    sample_rate,
-    channels,
-    None,
-    |_, _, _| {},
-  )
+  capture_process_probe(process_id, duration, sample_rate, channels, None, |_, _| {})
 }
 
 /// Probe two 48 kHz stereo streams through the bounded mix worker.
@@ -569,21 +702,12 @@ pub fn capture_stereo_mix_probe(
       DEFAULT_SAMPLE_RATE,
       DEFAULT_CHANNELS,
       Some(&process),
-      |qpc, flags, packet| {
+      |timing, packet| {
         // WASAPI can still send silence for an exited PID. Keep that distinct from an idle app.
         if unsafe { WaitForSingleObject(process.0, 0) } == WAIT_OBJECT_0 {
           return;
         }
-        if qpc == 0 || flags & AUDCLNT_BUFFERFLAGS_TIMESTAMP_ERROR.0 as u32 != 0 {
-          dropped += 1;
-          return;
-        }
-        let packet = MixPacket {
-          member,
-          qpc,
-          frames: Vec::from(packet.as_chunks::<2>().0),
-        };
-        if tx.try_send(packet).is_err() {
+        if !queue_mix_packet(tx, member, timing, packet) {
           dropped += 1;
         }
       },
@@ -698,6 +822,22 @@ struct MixPacket {
   frames: Vec<[f32; 2]>,
 }
 
+fn queue_mix_packet(
+  tx: &mpsc::SyncSender<MixPacket>,
+  member: usize,
+  timing: PacketTiming,
+  pcm: &[f32],
+) -> bool {
+  timing.has_qpc()
+    && tx
+      .try_send(MixPacket {
+        member,
+        qpc: timing.qpc,
+        frames: Vec::from(pcm.as_chunks::<2>().0),
+      })
+      .is_ok()
+}
+
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct MixProbeMeasurement {
@@ -712,54 +852,27 @@ pub struct MixProbeMeasurement {
 }
 
 fn measure_streaming_stereo(rx: mpsc::Receiver<MixPacket>) -> Result<MixProbeMeasurement, String> {
-  const DELAY: Duration = Duration::from_millis(80);
-  const POLL: Duration = Duration::from_millis(5);
-  const RATE: usize = DEFAULT_SAMPLE_RATE as usize;
-  // The larger ring absorbs bursts without permitting unbounded accumulation.
-  let mut timeline = StereoMixTimeline::new(2, RATE / 2);
   let mut meter = SummaryMeter::new(DEFAULT_SAMPLE_RATE, DEFAULT_CHANNELS);
   let mut coverage = MixCoverage::default();
   let mut dropped = 0;
-  let mut block = [[0.0; 2]; RATE / 100];
-  let first = rx.recv().map_err(|_| "mix received no valid PCM packets")?;
-  let epoch = first.qpc;
-  let started = Instant::now();
-  let mut observed_end = 0;
-  let mut pending = Ok(first);
-
-  loop {
-    if let Ok(packet) = &pending {
-      let ticks = i128::from(packet.qpc) - i128::from(epoch);
-      let scaled = ticks * RATE as i128;
-      let position = ((scaled + scaled.signum() * 5_000_000) / 10_000_000) as i64;
-      if timeline.push(packet.member, position, &packet.frames) {
-        observed_end = observed_end.max(position + packet.frames.len() as i64);
-      } else {
-        dropped += 1;
-      }
-    }
-    let finished = matches!(pending, Err(mpsc::RecvTimeoutError::Disconnected));
-    let release_at = if finished {
-      observed_end
-    } else {
-      let elapsed = started.elapsed().saturating_sub(DELAY);
-      (elapsed.as_nanos() * RATE as u128 / 1_000_000_000) as i64
-    };
-    while timeline.cursor() < release_at {
-      let count = ((release_at - timeline.cursor()) as usize).min(block.len());
-      let block = &mut block[..count];
-      let rendered = timeline.render(block);
+  let started = run_mix_timeline(
+    rx,
+    2,
+    || false,
+    |pcm, rendered| {
       coverage.full += rendered.full;
       coverage.partial += rendered.partial;
       coverage.empty += rendered.empty;
-      if rendered.empty < count {
-        meter.push_interleaved(block.as_flattened());
+      if rendered.full + rendered.partial > 0 {
+        meter.push_interleaved(pcm);
       }
-    }
-    if finished {
-      break;
-    }
-    pending = rx.recv_timeout(POLL);
+    },
+    || {
+      dropped += 1;
+    },
+  );
+  if !started {
+    return Err("mix received no valid PCM packets".into());
   }
   let metrics = meter.finish();
   Ok(MixProbeMeasurement {
@@ -774,13 +887,73 @@ fn measure_streaming_stereo(rx: mpsc::Receiver<MixPacket>) -> Result<MixProbeMea
   })
 }
 
+fn run_mix_timeline(
+  rx: mpsc::Receiver<MixPacket>,
+  member_count: usize,
+  mut stopped: impl FnMut() -> bool,
+  mut on_block: impl FnMut(&[f32], MixCoverage),
+  mut on_drop: impl FnMut(),
+) -> bool {
+  const DELAY: Duration = Duration::from_millis(80);
+  const POLL: Duration = Duration::from_millis(5);
+  const RATE: usize = DEFAULT_SAMPLE_RATE as usize;
+  // The larger ring absorbs bursts without permitting unbounded accumulation.
+  let mut timeline = StereoMixTimeline::new(member_count, RATE / 2);
+  let mut block = [[0.0; 2]; RATE / 100];
+  let first = loop {
+    if stopped() {
+      return false;
+    }
+    match rx.recv_timeout(POLL) {
+      Ok(packet) => break packet,
+      Err(mpsc::RecvTimeoutError::Disconnected) => return false,
+      Err(mpsc::RecvTimeoutError::Timeout) => {}
+    }
+  };
+  let epoch = first.qpc;
+  let started = Instant::now();
+  let mut observed_end = 0;
+  let mut pending = Ok(first);
+
+  loop {
+    if let Ok(packet) = &pending {
+      let ticks = i128::from(packet.qpc) - i128::from(epoch);
+      let scaled = ticks * RATE as i128;
+      let position = ((scaled + scaled.signum() * 5_000_000) / 10_000_000) as i64;
+      if timeline.push(packet.member, position, &packet.frames) {
+        observed_end = observed_end.max(position + packet.frames.len() as i64);
+      } else {
+        on_drop();
+      }
+    }
+    let finished = matches!(pending, Err(mpsc::RecvTimeoutError::Disconnected)) || stopped();
+    let release_at = if finished {
+      observed_end
+    } else {
+      let elapsed = started.elapsed().saturating_sub(DELAY);
+      (elapsed.as_nanos() * RATE as u128 / 1_000_000_000) as i64
+    };
+    while timeline.cursor() < release_at {
+      let count = ((release_at - timeline.cursor()) as usize).min(block.len());
+      let block = &mut block[..count];
+      let rendered = timeline.render(block);
+      on_block(block.as_flattened(), rendered);
+    }
+    if finished {
+      break;
+    }
+    pending = rx.recv_timeout(POLL);
+  }
+  true
+}
+
 fn capture_process_probe(
   process_id: u32,
   duration: Duration,
   sample_rate: u32,
   channels: u16,
   process: Option<&CaptureHandle>,
-  mut on_pcm: impl FnMut(u64, u32, &[f32]),
+  mut on_pcm: impl FnMut(PacketTiming, &[f32]),
 ) -> Result<ProcessLoopbackProbeResult, String> {
   if process_id == 0 {
     return Err("process id must be non-zero".to_string());
@@ -789,111 +962,45 @@ fn capture_process_probe(
     return Err("capture duration must be non-zero".to_string());
   }
 
-  let _com = ComApartment::initialize()?;
-  let audio_client = activate_process_audio_client(process_id)?;
-  let format = capture_format(sample_rate, channels)?;
-  unsafe {
-    audio_client.Initialize(
-      AUDCLNT_SHAREMODE_SHARED,
-      AUDCLNT_STREAMFLAGS_LOOPBACK
-        | AUDCLNT_STREAMFLAGS_EVENTCALLBACK
-        | AUDCLNT_STREAMFLAGS_AUTOCONVERTPCM
-        | AUDCLNT_STREAMFLAGS_SRC_DEFAULT_QUALITY,
-      200_000,
-      0,
-      format.as_ptr(),
-      None,
-    )
-  }
-  .map_err(|error| format!("IAudioClient::Initialize failed: {error}"))?;
-
-  let event = CaptureHandle::create_event()?;
-  unsafe { audio_client.SetEventHandle(event.0) }
-    .map_err(|error| format!("IAudioClient::SetEventHandle failed: {error}"))?;
-  let capture_client: IAudioCaptureClient = unsafe { audio_client.GetService() }
-    .map_err(|error| format!("IAudioClient::GetService failed: {error}"))?;
-
   let mut meter = SummaryMeter::new(sample_rate, channels);
-  let mut silent_samples = Vec::new();
   let mut channel_peaks = vec![0.0f64; usize::from(channels)];
   let mut captured_frames = 0u64;
   let mut silent_frames = 0u64;
   let mut timing = ProcessLoopbackTiming::default();
-  let deadline = Instant::now() + duration;
-  unsafe { audio_client.Start() }
-    .map_err(|error| format!("IAudioClient::Start failed: {error}"))?;
-
-  let capture_result = (|| {
-    while Instant::now() < deadline {
-      if process.is_some_and(|handle| unsafe { WaitForSingleObject(handle.0, 0) } == WAIT_OBJECT_0)
-      {
-        break;
-      }
-      let remaining = deadline.saturating_duration_since(Instant::now());
-      let wait_ms = remaining.as_millis().clamp(1, 100) as u32;
-      let wait = unsafe { WaitForSingleObject(event.0, wait_ms) };
-      if wait == WAIT_TIMEOUT {
-        continue;
-      }
-      if wait != WAIT_OBJECT_0 {
-        return Err(format!("WaitForSingleObject failed with status {}", wait.0));
-      }
-
-      loop {
-        let packet_frames = unsafe { capture_client.GetNextPacketSize() }
-          .map_err(|error| format!("GetNextPacketSize failed: {error}"))?;
-        if packet_frames == 0 {
-          break;
-        }
-
-        let mut data = std::ptr::null_mut();
-        let mut frames = 0u32;
-        let mut flags = 0u32;
-        let mut device_frame = 0u64;
-        let mut qpc_100ns = 0u64;
-        unsafe {
-          capture_client.GetBuffer(
-            &mut data,
-            &mut frames,
-            &mut flags,
-            Some(&mut device_frame),
-            Some(&mut qpc_100ns),
-          )
-        }
-        .map_err(|error| format!("GetBuffer failed: {error}"))?;
-        if frames == 0 {
-          break;
-        }
-        timing.record(device_frame, qpc_100ns, captured_frames, sample_rate, flags);
-
-        let sample_count = frames as usize * channels as usize;
-        if (flags & AUDCLNT_BUFFERFLAGS_SILENT.0 as u32) != 0 {
-          silent_samples.resize(sample_count, 0.0);
-          meter.push_interleaved(&silent_samples);
-          on_pcm(qpc_100ns, flags, &silent_samples);
-          silent_frames += u64::from(frames);
-        } else {
-          let samples = unsafe { std::slice::from_raw_parts(data.cast::<f32>(), sample_count) };
-          for frame in samples.chunks_exact(usize::from(channels)) {
-            for (peak, sample) in channel_peaks.iter_mut().zip(frame) {
-              *peak = peak.max(f64::from(sample.abs()));
-            }
+  let mut started = None;
+  run_process_stream(
+    process_id,
+    sample_rate,
+    channels,
+    true,
+    || {
+      started.get_or_insert_with(Instant::now).elapsed() >= duration
+        || process
+          .is_some_and(|handle| unsafe { WaitForSingleObject(handle.0, 0) } == WAIT_OBJECT_0)
+    },
+    |packet, samples| {
+      let frames = (samples.len() / usize::from(channels)) as u64;
+      timing.record(
+        packet.device_frame,
+        packet.qpc,
+        captured_frames,
+        sample_rate,
+        packet.flags,
+      );
+      if packet.is_silent() {
+        silent_frames += frames;
+      } else {
+        for frame in samples.chunks_exact(usize::from(channels)) {
+          for (peak, sample) in channel_peaks.iter_mut().zip(frame) {
+            *peak = peak.max(f64::from(sample.abs()));
           }
-          meter.push_interleaved(samples);
-          on_pcm(qpc_100ns, flags, samples);
         }
-        captured_frames += u64::from(frames);
-        unsafe { capture_client.ReleaseBuffer(frames) }
-          .map_err(|error| format!("ReleaseBuffer failed: {error}"))?;
       }
-    }
-    Ok(())
-  })();
-
-  let stop_result =
-    unsafe { audio_client.Stop() }.map_err(|error| format!("IAudioClient::Stop failed: {error}"));
-  capture_result?;
-  stop_result?;
+      meter.push_interleaved(samples);
+      on_pcm(packet, samples);
+      captured_frames += frames;
+    },
+  )?;
 
   Ok(ProcessLoopbackProbeResult {
     process_id,
@@ -910,8 +1017,8 @@ fn capture_process_probe(
 #[cfg(test)]
 mod tests {
   use super::{
-    capture_format, measure_streaming_stereo, ActivationPayload, CaptureFormat, MixPacket,
-    ProcessLoopbackTiming,
+    capture_format, measure_streaming_stereo, run_mix_timeline, ActivationPayload, CaptureFormat,
+    MixPacket, ProcessLoopbackTiming,
   };
   use windows::Win32::Media::Audio::{
     AUDCLNT_BUFFERFLAGS_DATA_DISCONTINUITY, AUDCLNT_BUFFERFLAGS_TIMESTAMP_ERROR,
@@ -919,6 +1026,18 @@ mod tests {
     PROCESS_LOOPBACK_MODE_INCLUDE_TARGET_PROCESS_TREE,
   };
   use windows::Win32::System::Variant::VT_BLOB;
+
+  #[test]
+  fn mix_can_stop_before_any_member_delivers_pcm() {
+    let (_sender, receiver) = std::sync::mpsc::sync_channel(2);
+    assert!(!run_mix_timeline(
+      receiver,
+      2,
+      || true,
+      |_, _| panic!("unexpected PCM"),
+      || panic!("unexpected drop")
+    ));
+  }
 
   #[test]
   fn mix_probe_aligns_offset_packets_and_preserves_over_range_peaks() {
