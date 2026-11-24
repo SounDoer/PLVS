@@ -126,6 +126,7 @@ impl Server {
         collected.borrow_mut().push(Playback {
           index: info.index,
           sink: info.sink,
+          corked: info.corked,
           id: application_id(identity),
           label,
           process,
@@ -176,6 +177,7 @@ impl Server {
 struct Playback {
   index: u32,
   sink: u32,
+  corked: bool,
   id: String,
   label: String,
   process: u32,
@@ -410,37 +412,37 @@ fn capture_device(
 fn capture_application(member: &Member<'_>, id: &str) -> Result<(), String> {
   let stopped = || member.stopped();
   let mut server = Server::open(&stopped)?;
-  let target_streams = |server: &mut Server| {
+  let targets = |server: &mut Server| {
     let mut streams = server
       .playback(&stopped)?
       .into_iter()
       .filter(|row| row.id == id)
-      .map(|row| (row.index, row.sink))
       .collect::<Vec<_>>();
-    streams.sort_unstable();
+    streams.sort_unstable_by_key(|stream| stream.index);
     Ok::<_, String>(streams)
   };
-  let targets = target_streams(&mut server)?;
-  if targets.is_empty() {
+  let initial = targets(&mut server)?;
+  if initial.is_empty() {
     return Err("The Mix application has no playback streams.".into());
   }
+  let target_key = |stream: &Playback| (stream.index, stream.sink);
   let mut channel_map = channelmap::Map::default();
   channel_map.init_stereo();
   let mut recordings = Vec::new();
-  for &(stream, sink) in &targets {
-    let monitor = server.monitor_name(sink, &stopped)?;
+  for target in &initial {
+    let monitor = server.monitor_name(target.sink, &stopped)?;
     recordings.push(Recording::open(
       &mut server,
       &monitor,
       channel_map,
-      Some(stream),
+      Some(target.index),
     )?);
   }
   let mut interval = Instant::now();
   let mut activity = Instant::now();
   while !stopped() {
     server.pump()?;
-    for ((stream, _), recorder) in targets.iter().zip(&mut recordings) {
+    for (target, recorder) in initial.iter().zip(&mut recordings) {
       while let Some((start, frames)) = recorder.read(member)? {
         activity = Instant::now();
         let routed = frames
@@ -449,7 +451,7 @@ fn capture_application(member: &Member<'_>, id: &str) -> Result<(), String> {
           .iter()
           .map(|frame| member.project(*frame))
           .collect();
-        member.send(Some(*stream), frames_to_ticks(start), None, routed);
+        member.send(Some(target.index), frames_to_ticks(start), None, routed);
       }
     }
     member.set_ready(
@@ -459,10 +461,18 @@ fn capture_application(member: &Member<'_>, id: &str) -> Result<(), String> {
     );
     if interval.elapsed() >= Duration::from_millis(500) {
       interval = Instant::now();
-      if target_streams(&mut server)? != targets {
+      let current = targets(&mut server)?;
+      if initial
+        .iter()
+        .map(target_key)
+        .ne(current.iter().map(target_key))
+      {
         return Ok(());
       }
-      if activity.elapsed() >= Duration::from_secs(5) {
+      if current.iter().all(|stream| stream.corked) {
+        // The playback stream still exists while its application has paused it.
+        activity = Instant::now();
+      } else if activity.elapsed() >= Duration::from_secs(5) {
         return Err("The Mix application's record streams delivered no PCM.".into());
       }
     }
