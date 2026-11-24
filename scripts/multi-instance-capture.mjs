@@ -275,6 +275,10 @@ async function runProcessTimingProbe(index) {
   if (!Number.isSafeInteger(seconds)) throw new RigError("--seconds must be an integer.");
   const measureMix = process.argv.includes("--measure-mix");
   if (measureMix && seconds > 60) throw new RigError("Mix measurement accepts up to 60 seconds.");
+  const dropMember = process.argv.includes("--drop-mix-member");
+  if (dropMember && (!measureMix || seconds < 8)) {
+    throw new RigError("--drop-mix-member requires --measure-mix for at least 8 seconds.");
+  }
   const wav = join(tmpdir(), `plvs-process-timing-${process.pid}.wav`);
   const secondWav = measureMix ? join(tmpdir(), `plvs-process-mix-right-${process.pid}.wav`) : wav;
   const reportPath = await withCaptureRig(
@@ -287,9 +291,15 @@ async function runProcessTimingProbe(index) {
           ...(measureMix ? { peakRDb: -Infinity } : {}),
         });
         if (measureMix)
-          await synthesizeSignal(secondWav, { seconds: seconds + 15, peakLDb: -Infinity });
+          await synthesizeSignal(secondWav, {
+            seconds: dropMember ? SETTLE_MS / 1000 + seconds / 2 : seconds + 15,
+            peakLDb: -Infinity,
+          });
         for (const file of [wav, secondWav]) {
-          const child = await startPlayer(endpoint, file, { independent: true });
+          const child = await startPlayer(endpoint, file, {
+            independent: true,
+            loop: !dropMember || file === wav,
+          });
           players.push(child);
           if (child.pid === undefined) await once(child, "spawn");
         }
@@ -326,9 +336,25 @@ async function runProcessTimingProbe(index) {
               `The process captures did not isolate the two test signals. Report: ${path}`
             );
           }
+          if (mixed.droppedPackets !== 0 || mixed.emptyFrames >= SIGNAL.sampleRateHz) {
+            throw new Error(`Mix lost capture data. Report: ${path}`);
+          }
+          if (
+            mixed.comparedFrames < SIGNAL.sampleRateHz ||
+            (dropMember && mixed.partialFrames < SIGNAL.sampleRateHz) ||
+            (!dropMember && mixed.partialFrames >= SIGNAL.sampleRateHz)
+          ) {
+            throw new Error(`Mix coverage did not match the test scenario. Report: ${path}`);
+          }
+          const rightCoverage = dropMember
+            ? mixed.comparedFrames / (mixed.comparedFrames + mixed.partialFrames)
+            : 1;
           const expected = {
             integratedLufs:
-              10 * Math.log10(10 ** (left.integratedLufs / 10) + 10 ** (right.integratedLufs / 10)),
+              10 *
+              Math.log10(
+                10 ** (left.integratedLufs / 10) + rightCoverage * 10 ** (right.integratedLufs / 10)
+              ),
             samplePeakMaxLDb: SIGNAL.peakLDb,
             samplePeakMaxRDb: SIGNAL.peakRDb,
           };
