@@ -74,7 +74,9 @@ const result = run(
   [
     "test",
     "--manifest-path",
-    "src-tauri/vendor/tauri-plugin-updater/Cargo.toml",
+    "src-tauri/Cargo.toml",
+    "-p",
+    "tauri-plugin-updater",
     "--locked",
     "--target-dir",
     "src-tauri/target/updater-probe",

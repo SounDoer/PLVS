@@ -27,3 +27,6 @@ upstream API when an equivalent supported interface becomes available.
 `rustfmt.toml` keeps upstream's default formatting (4-space indentation). `cargo fmt --all` also
 formats path dependencies, so without it the repository's 2-space style would rewrite every file
 and bury the patch. Compare against upstream with a plain `diff`; only the changes above remain.
+
+The updater is a PLVS Cargo workspace member. Its tests, including the signed Windows installer
+probe in `scripts/probe-cached-updater.mjs`, use the same `src-tauri/Cargo.lock` as the application.

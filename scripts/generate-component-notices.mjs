@@ -88,8 +88,13 @@ export async function generateComponentNotices({ candidate = false } = {}) {
       "Development/build tool versions or licenses changed; review the candidate tools inventory"
     );
   }
+  // Vendored workspace members still require the original third-party notices.
   const components = collectRustRuntimePackages(metadata)
-    .filter((pkg) => !metadata.workspace_members.includes(pkg.id))
+    .filter(
+      (pkg) =>
+        !metadata.workspace_members.includes(pkg.id) ||
+        relative(root, pkg.manifest_path).replaceAll("\\", "/").startsWith("src-tauri/vendor/")
+    )
     .map((pkg) => ({
       id: `rust:${pkg.name}@${pkg.version}`,
       license:
