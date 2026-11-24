@@ -263,6 +263,13 @@ fn read_update_status(app: &tauri::AppHandle) -> Result<UpdateStatus, String> {
   })
 }
 
+/// The dev app runs unbundled, so the updater knows no package type and looks for the bare
+/// `{os}-{arch}` manifest entry. Linux publishes only the Debian package entry, so the dev app
+/// reads that one and reports the same availability as an installed package. It never installs.
+fn dev_update_target(dev: bool, os: &str, arch: &str) -> Option<String> {
+  (dev && os == "linux").then(|| format!("linux-{arch}-deb"))
+}
+
 #[tauri::command]
 pub async fn update_check(
   window: WebviewWindow,
@@ -275,9 +282,15 @@ pub async fn update_check(
   }
   let runtime = app.state::<UpdateRuntime>();
   let generation = runtime.cache.generation()?;
-  let candidate = app
-    .updater_builder()
-    .timeout(Duration::from_secs(30))
+  let mut builder = app.updater_builder().timeout(Duration::from_secs(30));
+  if let Some(target) = dev_update_target(
+    cfg!(feature = "dev-identity"),
+    std::env::consts::OS,
+    std::env::consts::ARCH,
+  ) {
+    builder = builder.target(target);
+  }
+  let candidate = builder
     .build()
     .map_err(|e| e.to_string())?
     .check()
@@ -538,4 +551,24 @@ pub fn update_commit_install(
   crate::update_worker::commit(runtime.cache.root(), worker)?;
   app.exit(0);
   Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+  use super::dev_update_target;
+
+  #[test]
+  fn linux_dev_app_reads_the_debian_package_entry() {
+    assert_eq!(
+      dev_update_target(true, "linux", "x86_64").as_deref(),
+      Some("linux-x86_64-deb")
+    );
+  }
+
+  #[test]
+  fn other_platforms_and_installed_packages_keep_the_updater_lookup() {
+    assert_eq!(dev_update_target(true, "macos", "aarch64"), None);
+    assert_eq!(dev_update_target(true, "windows", "x86_64"), None);
+    assert_eq!(dev_update_target(false, "linux", "x86_64"), None);
+  }
 }

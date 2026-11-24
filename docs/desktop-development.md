@@ -41,6 +41,9 @@ Two independent choices describe every build. The identity decides which app it 
 
 Each identity has its own settings, webview data and Agent Control discovery, so all three can be installed side by side.
 
+The dev app checks the stable update feed but never installs from it. It runs unbundled, so on Linux
+it reads the `linux-x86_64-deb` manifest entry; the feed publishes no bare Linux entry.
+
 | Cargo profile | Trade-off                                | Used for                                |
 | ------------- | ---------------------------------------- | --------------------------------------- |
 | `debug`       | Fast to compile, slow to run             | Daily development and tests             |
