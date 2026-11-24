@@ -40,6 +40,7 @@ use super::cpal_backend::{
   PcmBufferPool, PcmCallbackForwarder, PcmDeliveryQueue, PCM_QUEUE_CAP,
 };
 use super::stereo_mix_timeline::{MixCoverage, StereoMixTimeline};
+use super::windows_capture_apps::application_id_for_process;
 use crate::dsp::channel_layouts::ChannelSelection;
 use crate::dsp::speech::VadEngineKind;
 use crate::dsp::summary_meter::{SummaryMeter, SummaryMetrics};
@@ -534,24 +535,26 @@ pub fn capture_process_to_summary_with_format(
   sample_rate: u32,
   channels: u16,
 ) -> Result<ProcessLoopbackProbeResult, String> {
-  capture_process_probe(process_id, duration, sample_rate, channels, |_, _, _| {})
+  capture_process_probe(
+    process_id,
+    duration,
+    sample_rate,
+    channels,
+    None,
+    |_, _, _| {},
+  )
 }
 
 /// Probe two 48 kHz stereo streams through the bounded mix worker.
 pub fn capture_stereo_mix_probe(
   process_ids: [u32; 2],
   seconds: u64,
-) -> Result<
-  (
-    [ProcessLoopbackProbeResult; 2],
-    Result<MixProbeMeasurement, String>,
-  ),
-  String,
-> {
+  replacement_pid: Option<impl FnOnce(Instant) -> Result<u32, String> + Send>,
+) -> Result<StereoMixProbeResult, String> {
   if !(1..=60).contains(&seconds) {
     return Err("mix probe duration must be between 1 and 60 seconds".to_string());
   }
-  let capture = |member, pid, tx: mpsc::SyncSender<MixPacket>| {
+  let capture = |member, pid, duration, tx: &mpsc::SyncSender<MixPacket>| {
     let process = CaptureHandle(
       unsafe { OpenProcess(PROCESS_SYNCHRONIZE, false, pid) }
         .map_err(|error| format!("could not monitor process {pid}: {error}"))?,
@@ -559,9 +562,10 @@ pub fn capture_stereo_mix_probe(
     let mut dropped = 0;
     let report = capture_process_probe(
       pid,
-      Duration::from_secs(seconds),
+      duration,
       DEFAULT_SAMPLE_RATE,
       DEFAULT_CHANNELS,
+      Some(&process),
       |qpc, flags, packet| {
         // WASAPI can still send silence for an exited PID. Keep that distinct from an idle app.
         if unsafe { WaitForSingleObject(process.0, 0) } == WAIT_OBJECT_0 {
@@ -587,20 +591,55 @@ pub fn capture_stereo_mix_probe(
   std::thread::scope(|scope| {
     let (tx, rx) = mpsc::sync_channel(32);
     let left_tx = tx.clone();
-    let first = scope.spawn(move || capture(0, process_ids[0], left_tx));
-    let second = scope.spawn(move || capture(1, process_ids[1], tx));
+    let duration = Duration::from_secs(seconds);
+    let deadline = Instant::now() + duration;
+    let first = scope.spawn(move || capture(0, process_ids[0], duration, &left_tx));
+    let second = scope.spawn(move || {
+      let app_id = replacement_pid
+        .as_ref()
+        .map(|_| {
+          application_id_for_process(process_ids[1]).ok_or("could not identify the original app")
+        })
+        .transpose()?;
+      let (right, mut dropped) = capture(1, process_ids[1], duration, &tx)?;
+      let mut replacement = None;
+      if let Some(resolve_pid) = replacement_pid {
+        let pid = resolve_pid(deadline)?;
+        if pid == 0 || process_ids.contains(&pid) {
+          return Err("replacement must have a new process ID".to_string());
+        }
+        if application_id_for_process(pid) != app_id {
+          return Err("replacement process does not match the original application ID".into());
+        }
+        let remaining = deadline.saturating_duration_since(Instant::now());
+        let (report, replacement_dropped) = capture(1, pid, remaining, &tx)?;
+        replacement = Some(report);
+        dropped += replacement_dropped;
+      }
+      Ok::<_, String>((right, replacement, dropped))
+    });
     let mut mixed = measure_streaming_stereo(rx);
     let (left, left_dropped) = first
       .join()
       .map_err(|_| "first capture thread panicked")??;
-    let (right, right_dropped) = second
+    let (right, replacement, right_dropped) = second
       .join()
       .map_err(|_| "second capture thread panicked")??;
     if let Ok(mixed) = &mut mixed {
       mixed.dropped_packets += left_dropped + right_dropped;
     }
-    Ok(([left, right], mixed))
+    Ok(StereoMixProbeResult {
+      streams: [left, right],
+      replacement,
+      measurement: mixed,
+    })
   })
+}
+
+pub struct StereoMixProbeResult {
+  pub streams: [ProcessLoopbackProbeResult; 2],
+  pub replacement: Option<ProcessLoopbackProbeResult>,
+  pub measurement: Result<MixProbeMeasurement, String>,
 }
 
 struct MixPacket {
@@ -690,6 +729,7 @@ fn capture_process_probe(
   duration: Duration,
   sample_rate: u32,
   channels: u16,
+  process: Option<&CaptureHandle>,
   mut on_pcm: impl FnMut(u64, u32, &[f32]),
 ) -> Result<ProcessLoopbackProbeResult, String> {
   if process_id == 0 {
@@ -735,6 +775,10 @@ fn capture_process_probe(
 
   let capture_result = (|| {
     while Instant::now() < deadline {
+      if process.is_some_and(|handle| unsafe { WaitForSingleObject(handle.0, 0) } == WAIT_OBJECT_0)
+      {
+        break;
+      }
       let remaining = deadline.saturating_duration_since(Instant::now());
       let wait_ms = remaining.as_millis().clamp(1, 100) as u32;
       let wait = unsafe { WaitForSingleObject(event.0, wait_ms) };

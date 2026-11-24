@@ -65,6 +65,10 @@ fn process_image_path(process_id: u32) -> Option<String> {
   Some(String::from_utf16_lossy(&buffer[..length as usize]))
 }
 
+pub(super) fn application_id_for_process(process_id: u32) -> Option<String> {
+  process_image_path(process_id).map(|path| application_id(&path))
+}
+
 fn application_label(path: &str) -> String {
   Path::new(path)
     .file_stem()
