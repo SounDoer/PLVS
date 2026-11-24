@@ -1,8 +1,9 @@
 #!/usr/bin/env node
 
 import { spawn, spawnSync } from "node:child_process";
+import { randomUUID } from "node:crypto";
 import { once } from "node:events";
-import { existsSync, mkdirSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, renameSync, writeFileSync } from "node:fs";
 import { rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
@@ -120,9 +121,12 @@ function readRssMb(pid) {
   return process.platform === "win32" ? value / 1024 / 1024 : value / 1024;
 }
 
-function runChild(harness, args, resourceEverySeconds = null) {
-  return new Promise((resolve) => {
-    const child = spawn(harness, harnessArgs(args), { stdio: ["ignore", "pipe", "pipe"] });
+function runChild(executable, args, resourceEverySeconds = null) {
+  return new Promise((resolve, reject) => {
+    const child = spawn(executable, args, {
+      stdio: ["ignore", "pipe", "pipe"],
+      windowsHide: true,
+    });
     let stdout = "";
     let stderr = "";
     const resources = [];
@@ -138,6 +142,7 @@ function runChild(harness, args, resourceEverySeconds = null) {
     child.stderr.on("data", (chunk) => {
       stderr += chunk.toString();
     });
+    child.once("error", reject);
     child.on("close", (status) => {
       if (resourceTimer) clearInterval(resourceTimer);
       resolve({ status, stdout, stderr, resources });
@@ -179,7 +184,7 @@ export async function runConcurrentCapture({
     ];
     if (every !== null) args.push("--every", String(every));
     const children = await Promise.all(
-      Array.from({ length: count }, () => runChild(harness, args, every))
+      Array.from({ length: count }, () => runChild(harness, harnessArgs(args), every))
     );
     const reports = children.map((child) => finalReport(child.stdout));
     const result = judgeConcurrentCaptures(truth, reports);
@@ -275,12 +280,19 @@ async function runProcessTimingProbe(index) {
   if (!Number.isSafeInteger(seconds)) throw new RigError("--seconds must be an integer.");
   const measureMix = process.argv.includes("--measure-mix");
   if (measureMix && seconds > 60) throw new RigError("Mix measurement accepts up to 60 seconds.");
-  const dropMember = process.argv.includes("--drop-mix-member");
+  const restartMember = process.argv.includes("--restart-mix-member");
+  const dropMember = restartMember || process.argv.includes("--drop-mix-member");
+  if (restartMember && (!measureMix || seconds < 12)) {
+    throw new RigError("--restart-mix-member requires --measure-mix for at least 12 seconds.");
+  }
   if (dropMember && (!measureMix || seconds < 8)) {
     throw new RigError("--drop-mix-member requires --measure-mix for at least 8 seconds.");
   }
   const wav = join(tmpdir(), `plvs-process-timing-${process.pid}.wav`);
   const secondWav = measureMix ? join(tmpdir(), `plvs-process-mix-right-${process.pid}.wav`) : wav;
+  const returnPeak = -12;
+  const handoff = restartMember ? join(tmpdir(), `plvs-mix-${randomUUID()}`) : null;
+  const returnWav = handoff ? `${handoff}.wav` : null;
   const reportPath = await withCaptureRig(
     async () => {
       const players = [];
@@ -292,9 +304,18 @@ async function runProcessTimingProbe(index) {
         });
         if (measureMix)
           await synthesizeSignal(secondWav, {
-            seconds: dropMember ? SETTLE_MS / 1000 + seconds / 2 : seconds + 15,
+            seconds: dropMember
+              ? SETTLE_MS / 1000 + seconds / (restartMember ? 3 : 2)
+              : seconds + 15,
             peakLDb: -Infinity,
           });
+        if (returnWav) {
+          await synthesizeSignal(returnWav, {
+            seconds: seconds + 15,
+            peakLDb: -Infinity,
+            peakRDb: returnPeak,
+          });
+        }
         for (const file of [wav, secondWav]) {
           const child = await startPlayer(endpoint, file, {
             independent: true,
@@ -308,13 +329,29 @@ async function runProcessTimingProbe(index) {
           throw new RigError("A test player exited before capture began.");
         }
         const [first, second] = players.map((player) => String(player.pid));
-        const probe = runCli(resolve(executable), [
+        const args = [
           first,
           String(seconds),
           "--with-pid",
           second,
           ...(measureMix ? ["--mix"] : []),
-        ]);
+          ...(handoff ? ["--replacement-pid-file", handoff] : []),
+        ];
+        const [probe, replacementPid] = handoff
+          ? await runRestartProbe(resolve(executable), args, async () => {
+              const original = players[1];
+              if (original.exitCode === null && original.signalCode === null) {
+                await once(original, "exit", { signal: AbortSignal.timeout(seconds * 1000) });
+              }
+              await new Promise((settled) => setTimeout(settled, 1500));
+              const child = await startPlayer(endpoint, returnWav, { independent: true });
+              players.push(child);
+              if (child.pid === undefined) await once(child, "spawn");
+              writeFileSync(`${handoff}.tmp`, String(child.pid), { flag: "wx" });
+              renameSync(`${handoff}.tmp`, handoff);
+              return child.pid;
+            })
+          : [runCli(resolve(executable), args), null];
         const report = parseJsonLines(probe.stdout).at(-1);
         if (probe.status !== 0 || report?.streams?.length !== 2) {
           throw new RigError(`Process timing probe failed: ${probe.stderr.trim() || "no report"}`);
@@ -349,21 +386,43 @@ async function runProcessTimingProbe(index) {
           const rightCoverage = dropMember
             ? mixed.comparedFrames / (mixed.comparedFrames + mixed.partialFrames)
             : 1;
+          const replacement = report.replacement;
+          if (
+            restartMember &&
+            (replacement?.processId !== replacementPid ||
+              replacement.samplePeakMaxLDb !== null ||
+              !Number.isFinite(replacement.integratedLufs) ||
+              replacement.capturedFrames < SIGNAL.sampleRateHz)
+          ) {
+            throw new Error(
+              `The replacement process did not supply the expected signal. Report: ${path}`
+            );
+          }
+          const replacementCoverage = restartMember
+            ? Math.min(replacement.capturedFrames, mixed.comparedFrames) /
+              (mixed.comparedFrames + mixed.partialFrames)
+            : 0;
           const expected = {
             integratedLufs:
               10 *
               Math.log10(
-                10 ** (left.integratedLufs / 10) + rightCoverage * 10 ** (right.integratedLufs / 10)
+                10 ** (left.integratedLufs / 10) +
+                  (rightCoverage - replacementCoverage) * 10 ** (right.integratedLufs / 10) +
+                  replacementCoverage * 10 ** ((replacement?.integratedLufs ?? 0) / 10)
               ),
             samplePeakMaxLDb: SIGNAL.peakLDb,
-            samplePeakMaxRDb: SIGNAL.peakRDb,
+            samplePeakMaxRDb: restartMember ? returnPeak : SIGNAL.peakRDb,
           };
           const comparison = compareMetrics(expected, mixed);
           if (!comparison.ok)
             throw new Error(
               `Mix readings differ: ${JSON.stringify(comparison.failures)}. Report: ${path}`
             );
-          const expectedTruePeak = Math.max(left.truePeakMaxDbtp, right.truePeakMaxDbtp);
+          const expectedTruePeak = Math.max(
+            left.truePeakMaxDbtp,
+            right.truePeakMaxDbtp,
+            replacement?.truePeakMaxDbtp ?? -Infinity
+          );
           if (
             !Number.isFinite(mixed.truePeakMaxDbtp) ||
             Math.abs(mixed.truePeakMaxDbtp - expectedTruePeak) > 0.2
@@ -376,11 +435,23 @@ async function runProcessTimingProbe(index) {
         for (const player of players) stopPlayer(player, { keepLease: true });
         await rm(wav, { force: true });
         if (measureMix) await rm(secondWav, { force: true });
+        if (handoff) {
+          await rm(returnWav, { force: true });
+          await rm(handoff, { force: true });
+          await rm(`${handoff}.tmp`, { force: true });
+        }
       }
     },
     { wait: process.argv.includes("--wait") }
   );
   console.log(`Windows process timing report: ${reportPath}`);
+}
+
+async function runRestartProbe(executable, args, restart) {
+  const [probe, replacement] = await Promise.allSettled([runChild(executable, args), restart()]);
+  if (probe.status === "rejected") throw probe.reason;
+  if (replacement.status === "rejected") throw replacement.reason;
+  return [probe.value, replacement.value];
 }
 
 if (process.argv[1] && pathToFileURL(process.argv[1]).href === import.meta.url) await main();
