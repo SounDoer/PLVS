@@ -20,7 +20,7 @@ import { useMeterDisplayState, useMeterRuntime } from "./MeterRuntimeContext.jsx
  *   captureDeviceUnavailable: boolean,
  *   sourceMixes: ReturnType<typeof useSourceMixes>,
  *   mixApplicationIds: string[] | undefined,
- *   mixInput: { id: string, channels: number[], mode?: "sum" } | undefined,
+ *   mixInput: { id: string, channels: number[] } | undefined,
  *   selectedSource: { type: string, label: string } | null,
  *   sourceDisplayName: string | null,
  *   footerSourceLabel: string,
@@ -92,7 +92,6 @@ export function SourceProvider({ children }) {
     ? JSON.stringify({
         id: selectedMix.input.id,
         channels: selectedMix.input.channels,
-        mode: selectedMix.input.mode,
       })
     : "";
   const mixInput = useMemo(

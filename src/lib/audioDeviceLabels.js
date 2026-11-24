@@ -29,3 +29,30 @@ export function isUnavailableApplicationSource(sourceId, applications) {
     !applications.some((application) => application.id === sourceId)
   );
 }
+
+const APPLICATION_NAMES = {
+  applemusic: "Apple Music",
+  chrome: "Chrome",
+  explorer: "File Explorer",
+  githubdesktop: "GitHub Desktop",
+  systemsettings: "Settings",
+};
+
+function applicationNameKey(value) {
+  return value.toLowerCase().replace(/[^\p{L}\p{N}]/gu, "");
+}
+
+export function applicationSourceName({ label, windowTitle }) {
+  const key = applicationNameKey(label);
+  if (Object.hasOwn(APPLICATION_NAMES, key)) return APPLICATION_NAMES[key];
+  if (windowTitle && applicationNameKey(windowTitle) === key) return windowTitle.trim();
+  return label;
+}
+
+export function applicationWindowContext(application) {
+  const title = application.windowTitle?.trim();
+  return title &&
+    applicationNameKey(title) !== applicationNameKey(applicationSourceName(application))
+    ? title
+    : undefined;
+}

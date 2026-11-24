@@ -501,12 +501,8 @@ fn validate_mix_sources(
   input: Option<&crate::audio::capture::MixInput>,
 ) -> Result<(), String> {
   let mut seen = HashSet::new();
-  let min_apps = match input {
-    Some(input) if input.mode == Some(crate::audio::capture::MixInputMode::Sum) => 0,
-    Some(_) => 1,
-    None => 2,
-  };
-  if ids.len() < min_apps
+  let input_channels = input.map_or(0, |input| input.channels.len());
+  if ids.len() + input_channels < 2
     || ids
       .iter()
       .any(|id| !crate::audio::windows_capture_apps::is_application_id(id) || !seen.insert(id))
@@ -1406,13 +1402,11 @@ mod tests {
     assert!(super::validate_mix_sources(&[first.clone(), "default".into()], None).is_err());
     let mut input = crate::audio::capture::MixInput {
       id: format!("cap-{}", "3".repeat(32)),
-      channels: vec![0, 1],
-      mode: None,
+      channels: vec![0],
     };
     assert!(super::validate_mix_sources(std::slice::from_ref(&first), Some(&input)).is_ok());
     assert!(super::validate_mix_sources(&[], Some(&input)).is_err());
-    input.mode = Some(crate::audio::capture::MixInputMode::Sum);
-    input.channels = vec![0, 2, 4];
+    input.channels = vec![0, 2];
     assert!(super::validate_mix_sources(&[], Some(&input)).is_ok());
     input.channels = vec![1, 1];
     assert!(super::validate_mix_sources(std::slice::from_ref(&first), Some(&input)).is_err());

@@ -13,30 +13,17 @@ use super::device::DeviceInfo;
 use crate::dsp::speech::VadEngineKind;
 use crate::ipc::types::FrameSubscribers;
 
-/// One explicitly selected endpoint and its zero-based mono or stereo channels.
+/// One explicitly selected endpoint and its zero-based channels to sum.
 #[derive(serde::Deserialize)]
 pub struct MixInput {
   pub id: String,
   pub channels: Vec<u16>,
-  pub mode: Option<MixInputMode>,
-}
-
-#[derive(serde::Deserialize, PartialEq, Eq)]
-#[serde(rename_all = "camelCase")]
-pub enum MixInputMode {
-  Sum,
 }
 
 impl MixInput {
   #[cfg(target_os = "windows")]
   pub fn has_valid_channels(&self) -> bool {
-    let count = self.channels.len();
-    let valid_count = if self.mode == Some(MixInputMode::Sum) {
-      count >= 2
-    } else {
-      (1..=2).contains(&count)
-    };
-    valid_count
+    !self.channels.is_empty()
       && self.channels.last().is_some_and(|channel| *channel < 256)
       && self.channels.windows(2).all(|pair| pair[0] < pair[1])
   }

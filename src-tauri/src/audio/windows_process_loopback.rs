@@ -38,9 +38,7 @@ use windows::Win32::System::Threading::{
 };
 use windows::Win32::System::Variant::VT_BLOB;
 
-use super::capture::{
-  AudioCaptureSession, MeasuredPcmSubscriptions, MeterResetRequest, MixInput, MixInputMode,
-};
+use super::capture::{AudioCaptureSession, MeasuredPcmSubscriptions, MeterResetRequest, MixInput};
 use super::cpal_backend::{
   emit_capture_failure, pooled_pcm_buffer_capacity, run_meter_pipeline_bridge_thread,
   PcmBufferPool, PcmCallbackForwarder, PcmDeliveryQueue, PCM_QUEUE_CAP,
@@ -835,7 +833,7 @@ fn run_mix_input_stream(
         end_qpc: None,
         frames: pcm
           .chunks_exact(usize::from(channels))
-          .map(|frame| mix_input_stereo_frame(frame, &input.channels, input.mode.as_ref()))
+          .map(|frame| mix_input_stereo_frame(frame, &input.channels))
           .collect(),
       });
       if let Some(mut previous) = std::mem::replace(&mut pending, next) {
@@ -853,23 +851,12 @@ fn run_mix_input_stream(
   )
 }
 
-fn mix_input_stereo_frame(
-  frame: &[f32],
-  channels: &[u16],
-  mode: Option<&MixInputMode>,
-) -> [f32; 2] {
-  if mode == Some(&MixInputMode::Sum) {
-    let sum = channels
-      .iter()
-      .map(|&index| frame[usize::from(index)])
-      .sum::<f32>();
-    return [sum * std::f32::consts::FRAC_1_SQRT_2; 2];
-  }
-  let left = frame[usize::from(channels[0])];
-  match channels.get(1) {
-    Some(&right) => [left, frame[usize::from(right)]],
-    None => [left * std::f32::consts::FRAC_1_SQRT_2; 2],
-  }
+fn mix_input_stereo_frame(frame: &[f32], channels: &[u16]) -> [f32; 2] {
+  let sum = channels
+    .iter()
+    .map(|&index| frame[usize::from(index)])
+    .sum::<f32>();
+  [sum * std::f32::consts::FRAC_1_SQRT_2; 2]
 }
 
 fn capture_live_member(
@@ -1048,7 +1035,6 @@ pub fn capture_input_mix_probe(
   let input = MixInput {
     id: super::device_enum::resolve_device_id_by_substring(input_label)?,
     channels: vec![1],
-    mode: None,
   };
   let dropped = AtomicU64::new(0);
   let duration = Duration::from_secs(seconds);
@@ -1589,15 +1575,11 @@ mod tests {
   fn mix_input_maps_selected_channels_without_folding_in_other_channels() {
     let frame = [0.25, 1.0, -0.5];
     assert_eq!(
-      super::mix_input_stereo_frame(&frame, &[0, 2], None),
-      [0.25, -0.5]
-    );
-    assert_eq!(
-      super::mix_input_stereo_frame(&frame, &[1], None),
+      super::mix_input_stereo_frame(&frame, &[1]),
       [std::f32::consts::FRAC_1_SQRT_2; 2]
     );
     assert_eq!(
-      super::mix_input_stereo_frame(&frame, &[0, 2], Some(&super::MixInputMode::Sum)),
+      super::mix_input_stereo_frame(&frame, &[0, 2]),
       [-0.25 * std::f32::consts::FRAC_1_SQRT_2; 2]
     );
   }

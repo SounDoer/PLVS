@@ -1,12 +1,15 @@
 import { useState } from "react";
 import { ChevronRight, SlidersHorizontal, Trash2 } from "lucide-react";
 import {
+  applicationSourceName,
+  applicationWindowContext,
   formatAudioDeviceLabel,
   isUnavailableApplicationSource,
 } from "../lib/audioDeviceLabels.js";
 import { cn } from "../lib/utils.js";
 import { MenuRow, RowAction } from "./ui/row";
 import { AddButton } from "./AddButton.jsx";
+import { useHoverTip } from "./HoverTip.jsx";
 import { InlineConfirm } from "./InlineConfirm.jsx";
 import {
   MANAGEMENT_ROW_ACTIONS_CLASS,
@@ -24,7 +27,7 @@ import { useUiNavigationTarget, useUiSurface } from "../uiNavigation/UiNavigatio
 
 const SOURCE_LEADING_CLASS = "grid w-[1em] shrink-0 place-items-center";
 
-/** @param {{ primary: string, secondary?: string, selected: boolean, onSelect: (...args: any[]) => any, ariaLabel: string, uiTarget?: string, actions?: import("react").ReactNode, showActions?: boolean }} props */
+/** @param {{ primary: string, secondary?: import("react").ReactNode, selected: boolean, onSelect: (...args: any[]) => any, ariaLabel: string, uiTarget?: string, actions?: import("react").ReactNode, showActions?: boolean, stretchActions?: boolean, tip?: string }} props */
 function SourceRow({
   primary,
   secondary,
@@ -34,10 +37,18 @@ function SourceRow({
   uiTarget,
   actions,
   showActions,
+  stretchActions,
+  tip,
 }) {
+  const { anchorRef, showTip, hideTip, tipNode } = useHoverTip({ tip, align: "start" });
   const Row = actions ? RowAction : MenuRow;
   const row = (
     <Row
+      ref={anchorRef}
+      onMouseEnter={tip ? showTip : undefined}
+      onMouseLeave={tip ? hideTip : undefined}
+      onFocus={tip ? showTip : undefined}
+      onBlur={tip ? hideTip : undefined}
       aria-label={ariaLabel}
       aria-current={selected ? "true" : undefined}
       data-ui-target={uiTarget}
@@ -60,11 +71,25 @@ function SourceRow({
       </span>
     </Row>
   );
-  if (!actions) return row;
+  if (!actions)
+    return tip ? (
+      <>
+        {row}
+        {tipNode}
+      </>
+    ) : (
+      row
+    );
   return (
     <div className={MANAGEMENT_ROW_CLASS}>
       {row}
-      <span className={showActions ? "flex shrink-0 items-center" : MANAGEMENT_ROW_ACTIONS_CLASS}>
+      <span
+        className={cn(
+          MANAGEMENT_ROW_ACTIONS_CLASS,
+          showActions && "opacity-100",
+          stretchActions && "self-stretch"
+        )}
+      >
         {actions}
       </span>
     </div>
@@ -77,8 +102,7 @@ function AudioDeviceOption({ device, selectedId, onSelect }) {
   const [open, setOpen] = useState(Boolean(selectedChannel));
   const label = formatAudioDeviceLabel(device.label);
   const listId = `source-channels-${device.id}`;
-  const detail = [
-    label.secondary,
+  const channelDetail = [
     choices.length > 0
       ? `${choices.length} ${choices.length === 1 ? "Channel" : "Channels"}`
       : null,
@@ -92,13 +116,29 @@ function AudioDeviceOption({ device, selectedId, onSelect }) {
         uiTarget={`source:${device.id}`}
         ariaLabel={label.full}
         primary={label.primary}
-        secondary={detail}
+        secondary={
+          channelDetail ? (
+            <span className="flex min-w-0 items-center gap-1">
+              {label.secondary ? (
+                <>
+                  <span className="min-w-0 truncate">{label.secondary}</span>
+                  <span aria-hidden="true">·</span>
+                </>
+              ) : null}
+              <span className="shrink-0">{channelDetail}</span>
+            </span>
+          ) : (
+            label.secondary
+          )
+        }
         selected={device.id === selectedId}
         onSelect={() => onSelect(device.id)}
-        showActions
+        showActions={open}
+        stretchActions
         actions={
           choices.length > 0 ? (
             <IconAction
+              className="grid w-10 place-items-center self-stretch"
               aria-label={`channels for ${label.full}`}
               aria-expanded={open}
               aria-controls={listId}
@@ -139,7 +179,7 @@ function selectedDeviceSummary(devices, selectedId) {
 
 function selectedApplicationSummary(applications, selectedId) {
   const selected = applications.find((application) => application.id === selectedId);
-  return selected ? selected.label : null;
+  return selected ? applicationSourceName(selected) : null;
 }
 
 function SourceSection({ id, group, label, count, open, onOpenChange, selectedSummary, children }) {
@@ -365,9 +405,9 @@ export function DeviceSelectionContent({
               <SourceRow
                 key={application.id}
                 uiTarget={`source:${application.id}`}
-                ariaLabel={`${application.label} application audio`}
-                primary={application.label}
-                secondary={application.windowTitle}
+                ariaLabel={`${applicationSourceName(application)} application audio`}
+                primary={applicationSourceName(application)}
+                tip={applicationWindowContext(application)}
                 selected={safeAudioDeviceId === application.id}
                 onSelect={() => onSelect(application.id)}
               />

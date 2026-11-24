@@ -108,25 +108,26 @@ them without extra routing.
 ## Individual channels on Windows
 
 In the normal window or Dock, expand an **Input** or **Output** device in **Sources** with the
-arrow at the end of its row. Select the device row to measure the whole device, or select one
-channel beneath it for a mono measurement. PLVS shows input channels by number and output channels
+arrow at the end of its row. Hover or focus a collapsed device row to reveal the arrow.
+Select the device row to measure the whole device, or select one channel beneath it for a
+mono measurement. PLVS shows input channels by number and output channels
 by speaker name. Output channels appear when Windows reports a usable speaker layout. Choosing a
 channel changes what PLVS measures. Playback and device routing stay the same.
 
 ## Mixes on Windows
 
 In the normal window, choose **Add Mix** at the bottom of **Sources**. Select two or more
-applications, or combine applications with one device under **Input**. An input can contribute a
-mono channel, an adjacent stereo pair, or a sum of selected channels. Choose **Sum Channels** and
-check two or more channels from the same device to create a Mix with or without applications.
+applications, or expand a device under **Input** and check individual channels. A Mix needs at
+least two sources in total. Each checked application or input channel counts as one source.
+A Mix can use channels from one input device at a time.
 PLVS generates a name from the selection. Use the pencil to enter your own name.
 **Save** adds the Mix under **Mixes** and selects it for the current Workbench.
 You can also select a saved Mix under **Mixes** in the Dock toolbar's **Sources** menu or in the
 system Tray's **Source** submenu for your Workbench.
 
 PLVS sums the sources into one stereo signal for measurement. A mono input goes to both sides at
-−3 dB per side. **Sum Channels** adds the selected inputs at unity gain and places their mono sum
-at the center the same way. A stereo pair keeps its left and right positions. If the selected input is already audible through an application in the Mix, PLVS
+−3 dB per side. When several channels are checked, PLVS adds them at unity gain before placing
+the result at the center. If the selected input is already audible through an application in the Mix, PLVS
 will count that signal twice. If one source goes away, capture can continue with the others while
 PLVS waits for it to return. The Mix row shows unavailable members. Applications with no current
 audio can stay selected.
@@ -142,8 +143,9 @@ on the same installation. Each Workbench remembers its own Source selection inde
 ## Long source lists
 
 Outputs, Inputs, and Applications are grouped into collapsible sections with source counts. The
-picker scrolls when the available sources do not fit on screen. The system tray's **Source**
-submenu offers the same source groups, including running applications.
+picker scrolls when the available sources do not fit on screen. Application rows show a single
+name. Hover or focus a row to see its window title when it adds context. The system tray's
+**Source** submenu offers the same source groups, including running applications.
 
 ## When capture is interrupted
 

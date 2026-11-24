@@ -22,9 +22,8 @@ export function isMixInputId(id) {
 }
 
 export function canSaveSourceMix({ members, input }) {
-  const summing = input?.mode === "sum";
   return (
-    members.length >= (summing ? 0 : input ? 1 : 2) &&
+    members.length + (input?.channels?.length ?? 0) >= 2 &&
     members.every(
       (member) => /^app-[0-9a-f]{32}$/.test(member?.id) && typeof member.label === "string"
     ) &&
@@ -33,9 +32,7 @@ export function canSaveSourceMix({ members, input }) {
       (isMixInputId(input.id) &&
         typeof input.label === "string" &&
         Array.isArray(input.channels) &&
-        (summing
-          ? input.channels.length >= 2
-          : input.mode == null && [1, 2].includes(input.channels.length)) &&
+        input.channels.length > 0 &&
         input.channels.every(
           (channel) => Number.isInteger(channel) && channel >= 0 && channel < 256
         ) &&
@@ -50,10 +47,7 @@ export function sourceMixMembers(mix) {
 }
 
 export function sourceMixMemberCount(mix) {
-  return (
-    mix.members.length +
-    (mix.input?.mode === "sum" ? mix.input.channels.length : Number(Boolean(mix.input)))
-  );
+  return mix.members.length + (mix.input?.channels.length ?? 0);
 }
 
 export function mixInputAvailable(input, devices) {
@@ -68,9 +62,7 @@ export function sourceMixName(draft) {
       ...draft.members.map(({ label }) => label),
       ...(draft.input
         ? [
-            draft.input.mode === "sum"
-              ? `${draft.input.label} · ${draft.input.channels.map((channel) => channel + 1).join(" + ")}`
-              : draft.input.label,
+            `${draft.input.label} · ${draft.input.channels.map((channel) => channel + 1).join(" + ")}`,
           ]
         : []),
     ].join(" + ") ||

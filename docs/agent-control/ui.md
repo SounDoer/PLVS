@@ -61,12 +61,11 @@ does. Select sources, presets, and profiles through their owning families when a
 On Windows, the normal-window Sources surface declares Mix choices through `ui inspect`. Use its
 `add-mix`, `edit:<mix-id>`, or `select:<mix-id>` choice with `ui decide`. The Dock Sources surface
 also exposes `select:<mix-id>` for each saved Mix. The normal-window `sourceMixEditor`
-surface exposes `toggle:<application-id>` and `input:<device-id>` choices with their selection
-state. Toggling another input replaces the current input. The available `input-channels:<key>`
-choices carry labels showing the channel numbers and Mono or Stereo. Use `input-mode:sum` to
-show individual channel choices, then use `input-toggle:<index>` with the published zero-based
-indices to change their selection. Save supports two applications, one or more applications
-with an input, or a sum of at least two channels from one input without applications. Use the latest surface ID,
+surface exposes `group:input` and `group:applications` to expand or collapse a group. In Input,
+`input:<device-id>` expands a device and exposes its `input-toggle:<index>` checkbox choices
+with zero-based indices. Checking a channel from a different input replaces the previous
+input selection. Applications exposes `toggle:<application-id>`. Save requires at least two
+checked applications or channels in total. Use the latest surface ID,
 revision and UI generation for each decision. These choices run the same handlers as the editor
 controls. The editor's draft name stays private to the UI.
 

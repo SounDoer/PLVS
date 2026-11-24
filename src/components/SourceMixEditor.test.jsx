@@ -49,6 +49,8 @@ function mountEditor(onSelect = vi.fn(), inputs = []) {
 
 it("exposes edit choices with generation checks and keeps the draft name out of inspection", async () => {
   const { ui } = mountEditor();
+  expect(screen.queryByRole("checkbox")).toBeNull();
+  fireEvent.click(screen.getByRole("button", { name: "Applications" }));
   const initial = ui().inspectUi();
   const editor = initial.surfaces.find(({ kind }) => kind === "sourceMixEditor");
   expect(editor.target).toEqual({ intent: "create" });
@@ -96,12 +98,20 @@ it("saves one application with one input and its chosen channel through Agent Co
       });
     });
   };
+  await decide("group:input");
   await decide(`input:${mic.id}`);
-  expect(screen.getByRole("button", { name: "Save" }).hasAttribute("disabled")).toBe(true);
+  await decide("input-toggle:0");
+  expect(screen.getByRole("button", { name: "Save" })).toHaveProperty("disabled", true);
   await decide(`input:${cable.id}`);
-  expect(screen.getByRole("checkbox", { name: "Microphone" })).toHaveProperty("checked", false);
+  expect(screen.getByRole("button", { name: "Microphone 1 Selected" })).toHaveProperty(
+    "type",
+    "button"
+  );
+  expect(screen.getByRole("checkbox", { name: "Channel 1" })).toHaveProperty("checked", false);
+  await decide("input-toggle:1");
+  expect(screen.getByRole("button", { name: "Microphone" }).textContent).not.toContain("Selected");
+  await decide("group:applications");
   await decide(`toggle:${applications[0].id}`);
-  await decide("input-channels:1");
   await decide("save");
   expect(vi.mocked(sourceMixesStore.persist).mock.calls[0][0].list[0]).toMatchObject({
     members: [applications[0]],
@@ -111,6 +121,7 @@ it("saves one application with one input and its chosen channel through Agent Co
 
 it("blocks scene mutation from an open draft and discards it on Cancel", () => {
   const { onSelect, scene } = mountEditor();
+  fireEvent.click(screen.getByRole("button", { name: "Applications" }));
   fireEvent.click(screen.getByRole("checkbox", { name: "Player" }));
   const mutateScene = vi.fn();
   expect(() => {
@@ -134,6 +145,7 @@ it("requires two members and selects the named Mix only after saving it", async 
   );
   const { onSelect } = mountEditor();
   const save = screen.getByRole("button", { name: "Save" });
+  fireEvent.click(screen.getByRole("button", { name: "Applications" }));
   fireEvent.click(screen.getByRole("checkbox", { name: "Player" }));
   expect(save.hasAttribute("disabled")).toBe(true);
   fireEvent.click(screen.getByRole("checkbox", { name: "DAW" }));
@@ -163,14 +175,14 @@ it("saves only the checked channels from an input without requiring an applicati
       });
     });
   };
+  await decide("group:input");
   await decide(`input:${input.id}`);
-  await decide("input-mode:sum");
-  await decide("input-toggle:1");
+  await decide("input-toggle:0");
   expect(screen.getByRole("button", { name: "Save" })).toHaveProperty("disabled", true);
   await decide("input-toggle:2");
   await decide("save");
   expect(vi.mocked(sourceMixesStore.persist).mock.calls[0][0].list[0]).toMatchObject({
     members: [],
-    input: { id: input.id, channels: [0, 2], mode: "sum" },
+    input: { id: input.id, channels: [0, 2] },
   });
 });

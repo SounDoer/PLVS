@@ -74,7 +74,11 @@ it("selects an individual channel or its whole device from the same source group
     />
   );
   fireEvent.click(screen.getByRole("button", { name: /^Input/ }));
-  fireEvent.click(screen.getByRole("button", { name: "channels for Interface" }));
+  const expand = screen.getByRole("button", { name: "channels for Interface" });
+  expect(expand.getAttribute("aria-expanded")).toBe("false");
+  fireEvent.click(expand);
+  expect(expand.getAttribute("aria-expanded")).toBe("true");
+  expect(onSelect).not.toHaveBeenCalled();
   fireEvent.click(screen.getByRole("button", { name: "Interface · Channel 3" }));
   expect(onSelect).toHaveBeenLastCalledWith(`ch:${input.id}:3`);
   fireEvent.click(screen.getByRole("button", { name: "Interface" }));
@@ -83,4 +87,21 @@ it("selects an individual channel or its whole device from the same source group
   fireEvent.click(screen.getByRole("button", { name: "channels for Speakers" }));
   fireEvent.click(screen.getByRole("button", { name: "Speakers · Center" }));
   expect(onSelect).toHaveBeenLastCalledWith(`ch:${output.id}:C`);
+});
+
+it("shows single-line application names and reveals distinct window context on focus", () => {
+  const captureApplications = [
+    { id: `app-${"1".repeat(32)}`, label: "AppleMusic", windowTitle: "Apple Music" },
+    { id: `app-${"2".repeat(32)}`, label: "chrome", windowTitle: "Audio Meter Reference" },
+  ];
+  render(<DeviceSelectionContent captureApplications={captureApplications} onSelect={vi.fn()} />);
+  fireEvent.click(screen.getByRole("button", { name: /^Applications/ }));
+  const music = screen.getByRole("button", { name: "Apple Music application audio" });
+  expect(music.textContent).toBe("Apple Music");
+  fireEvent.focus(music);
+  expect(screen.queryByRole("tooltip")).toBeNull();
+  const chrome = screen.getByRole("button", { name: "Chrome application audio" });
+  expect(chrome.textContent).toBe("Chrome");
+  fireEvent.focus(chrome);
+  expect(screen.getByRole("tooltip").textContent).toBe("Audio Meter Reference");
 });
