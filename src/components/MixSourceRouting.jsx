@@ -1,13 +1,6 @@
 import { resolveMixLane } from "../lib/mixRouting.js";
 import { useDropdownNavigation } from "../uiNavigation/useDropdownNavigation.js";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectSeparator,
-  SelectTrigger,
-  SelectValue,
-} from "./ui/select.jsx";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./ui/select.jsx";
 
 export function mixStereoPairs(source, format) {
   if (source.lanes.length !== 2 || source.lanes[0].role !== "L" || source.lanes[1].role !== "R")
@@ -106,12 +99,9 @@ export function MixRouteSelect({
         ))}
         {mono && <SelectItem value="off">Off</SelectItem>}
         {onToggle && (
-          <>
-            <SelectSeparator />
-            <SelectItem value="details">
-              {expanded ? "Hide Channel Settings" : "Per-Channel Settings"}
-            </SelectItem>
-          </>
+          <SelectItem value="details">
+            {expanded ? "Hide Channel Settings" : "Per-Channel Settings"}
+          </SelectItem>
         )}
       </SelectContent>
     </Select>

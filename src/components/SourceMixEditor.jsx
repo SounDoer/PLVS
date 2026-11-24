@@ -251,16 +251,16 @@ export function SourceMixEditor({
     onCancel: cancel,
     choices: [
       {
-        id: "group:input",
-        label: "Input",
-        selected: inputOpen,
-        run: () => setInputOpen(!inputOpen),
-      },
-      {
         id: "group:output",
         label: "Output",
         selected: outputOpen,
         run: () => setOutputOpen(!outputOpen),
+      },
+      {
+        id: "group:input",
+        label: "Input",
+        selected: inputOpen,
+        run: () => setInputOpen(!inputOpen),
       },
       {
         id: "group:applications",
@@ -429,6 +429,26 @@ export function SourceMixEditor({
       >
         <fieldset disabled={saving} className="min-w-0">
           <MixGroup
+            label="Output"
+            open={outputOpen}
+            onToggle={() => setOutputOpen(!outputOpen)}
+            count={Number(Boolean(draft.output))}
+          >
+            {outputChoices.length === 0 && (
+              <p className="px-2 text-muted-foreground">No Stereo Outputs Available</p>
+            )}
+            {outputChoices.map((device) => (
+              <MixCheckRow
+                key={device.id}
+                label={formatAudioDeviceLabel(device.label).full}
+                checked={device.id === draft.output?.id}
+                unavailable={!isMixOutputDevice(device)}
+                onChange={() => toggleOutput(device)}
+                {...routingControls(device.id)}
+              />
+            ))}
+          </MixGroup>
+          <MixGroup
             label="Input"
             open={inputOpen}
             onToggle={() => setInputOpen(!inputOpen)}
@@ -458,26 +478,6 @@ export function SourceMixEditor({
                     />
                   ))}
               </MixGroup>
-            ))}
-          </MixGroup>
-          <MixGroup
-            label="Output"
-            open={outputOpen}
-            onToggle={() => setOutputOpen(!outputOpen)}
-            count={Number(Boolean(draft.output))}
-          >
-            {outputChoices.length === 0 && (
-              <p className="px-2 text-muted-foreground">No Stereo Outputs Available</p>
-            )}
-            {outputChoices.map((device) => (
-              <MixCheckRow
-                key={device.id}
-                label={formatAudioDeviceLabel(device.label).full}
-                checked={device.id === draft.output?.id}
-                unavailable={!isMixOutputDevice(device)}
-                onChange={() => toggleOutput(device)}
-                {...routingControls(device.id)}
-              />
             ))}
           </MixGroup>
           <MixGroup
@@ -540,13 +540,12 @@ export function SourceMixEditor({
         </fieldset>
       </div>
       <div className="flex shrink-0 items-center justify-end gap-2 border-t border-border px-3 py-2">
-        {(mixPreviewActive || mixNotice) && (
+        {mixNotice && (
           <div
             role="status"
             className="min-w-0 flex-1 text-[length:var(--ui-fs-caption)] text-muted-foreground"
           >
-            {mixPreviewActive && <div>Live Preview</div>}
-            {mixNotice && <div>{mixNotice}</div>}
+            {mixNotice}
           </div>
         )}
         <Button variant="ghost" disabled={saving} onClick={cancel}>

@@ -131,6 +131,11 @@ it("patches a complete named Mix with single destinations atomically and saves t
 
 it("exposes edit choices with generation checks and keeps the draft name out of inspection", async () => {
   const { ui } = mountEditor();
+  expect(
+    within(screen.getByRole("dialog", { name: "mix editor" }))
+      .getAllByRole("button", { name: /^(Output|Input|Applications)$/ })
+      .map((button) => button.textContent.trim())
+  ).toEqual(["Output", "Input", "Applications"]);
   expect(screen.queryByRole("checkbox")).toBeNull();
   fireEvent.click(screen.getByRole("button", { name: "Applications" }));
   const initial = ui().inspectUi();

@@ -13,14 +13,26 @@ const mix = {
 };
 
 it("shows the selected source in the group header only while collapsed", () => {
-  render(
+  const { container } = render(
     <DeviceSelectionContent
+      audioOutputs={[{ id: "output", label: "Speakers" }]}
+      audioInputs={[{ id: "input", label: "Microphone" }]}
       captureApplications={mix.members}
       safeAudioDeviceId={mix.id}
       sourceMixes={{ supported: true, list: [mix] }}
       onSelect={vi.fn()}
     />
   );
+  expect(
+    [...container.querySelectorAll('[data-ui-target^="source-group:"]')].map((element) =>
+      element.getAttribute("data-ui-target")
+    )
+  ).toEqual([
+    "source-group:output",
+    "source-group:input",
+    "source-group:applications",
+    "source-group:mixes",
+  ]);
   const group = screen.getByRole("button", { name: /^Mixes/ });
   expect(group.textContent).not.toContain(mix.name);
   expect(screen.getByRole("button", { name: mix.name }).getAttribute("aria-current")).toBe("true");

@@ -1068,12 +1068,26 @@ describe("useTray", () => {
     const onSelectSource = vi.fn();
     const { rerender } = renderHook(
       ({ sourceMixes }) =>
-        useTray({ ...defaultProps, onSelectSource, safeAudioDeviceId: mix.id, sourceMixes }),
+        useTray({
+          ...defaultProps,
+          audioOutputs: [{ id: "out-1", label: "Speakers" }],
+          audioInputs: [{ id: "mic-1", label: "Microphone" }],
+          captureApplications: [{ id: "app-00112233445566778899aabbccddeeff", label: "Player" }],
+          onSelectSource,
+          safeAudioDeviceId: mix.id,
+          sourceMixes,
+        }),
       { initialProps: { sourceMixes: [mix] } }
     );
     await act(async () => {});
 
     expect(findText(submenuOptions(), "Source: Mix · Playback (Stereo)")).toBeTruthy();
+    const groups = ["Output", "Input", "Applications", "Mixes"];
+    expect(
+      menuItemOptions()
+        .filter(({ text }) => groups.includes(text))
+        .map(({ text }) => text)
+    ).toEqual(groups);
     expect(findText(menuItemOptions(), "Mixes")).toMatchObject({ enabled: false });
     const item = findText(checkItemOptions(), mix.label);
     expect(item).toMatchObject({ checked: true });

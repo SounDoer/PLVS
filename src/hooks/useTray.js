@@ -114,10 +114,10 @@ function sourceDefinitions(cfg, prefix) {
     items.push(menuItem(`${prefix}:mix-unavailable`, "Selected Mix Unavailable", null, false));
   }
   for (const [group, sources, formatLabel] of [
-    ["Mixes", cfg.sourceMixes, (label) => label],
     ["Output", cfg.audioOutputs, menuDeviceText],
     ["Input", cfg.audioInputs, menuDeviceText],
     ["Applications", cfg.captureApplications, (label) => label],
+    ["Mixes", cfg.sourceMixes, (label) => label],
   ]) {
     if (!sources.length) continue;
     items.push(separator(`${prefix}:${group}:separator`));

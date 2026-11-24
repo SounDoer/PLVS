@@ -113,7 +113,7 @@ channels from one or more input devices. Under **Output**, choose one mapped pla
 its own or with input channels. One checked source is enough to save. Output and application
 selections cannot be saved together.
 PLVS generates a name from the selection. Use the pencil to enter your own name.
-**Save** adds the Mix under **Mixes** and selects it for the current Workbench.
+**Save** adds the Mix under **Mixes**, below **Applications**, and selects it for the current Workbench.
 You can also select a saved Mix under **Mixes** in the Dock toolbar's **Sources** menu or in the
 system Tray's **Source** submenu for your Workbench.
 
@@ -134,8 +134,8 @@ roles used in Settings. A format
 change that removes a custom destination requires a routing edit before the new configuration
 can be measured.
 
-While Live is running, valid edits preview immediately. **Live Preview** identifies the draft
-measurement. An edit that temporarily leaves a route invalid keeps the last valid capture.
+While Live is running, valid edits preview immediately. An edit that temporarily leaves a
+route invalid keeps the last valid capture.
 **Cancel** restores the original source configuration. **Save** keeps the edits. Switching
 between different capture configurations starts a new measurement.
 
@@ -155,7 +155,7 @@ on the same installation. Each Workbench remembers its own Source selection inde
 
 ## Long source lists
 
-Outputs, Inputs, and Applications are grouped into collapsible sections with source counts. The
+Output, Input, Applications, and Mixes are grouped into collapsible sections with source counts. The
 picker scrolls when the available sources do not fit on screen. Application rows show a single
 name. Hover or focus a row to see its window title when it adds context. The system tray's
 **Source** submenu offers the same source groups, including running applications.

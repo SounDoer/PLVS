@@ -209,6 +209,69 @@ export function DeviceSelectionContent({
         data-source-scroll
         className="min-h-0 overflow-x-hidden overflow-y-auto overscroll-contain [scrollbar-gutter:stable]"
       >
+        {audioOutputs.length ? (
+          <SourceSection
+            id="source-output-list"
+            group="output"
+            label="Output"
+            count={audioOutputs.length}
+            open={sourceSectionsOpen.output}
+            onOpenChange={(open) => setSourceSectionOpen("output", open)}
+            selectedSummary={selectedOutputSummary}
+          >
+            {audioOutputs.map((device) => (
+              <AudioDeviceOption
+                key={device.id}
+                device={device}
+                selectedId={safeAudioDeviceId}
+                onSelect={onSelect}
+              />
+            ))}
+          </SourceSection>
+        ) : null}
+        {audioInputs.length ? (
+          <SourceSection
+            id="source-input-list"
+            group="input"
+            label="Input"
+            count={audioInputs.length}
+            open={sourceSectionsOpen.input}
+            onOpenChange={(open) => setSourceSectionOpen("input", open)}
+            selectedSummary={selectedInputSummary}
+          >
+            {audioInputs.map((device) => (
+              <AudioDeviceOption
+                key={device.id}
+                device={device}
+                selectedId={safeAudioDeviceId}
+                onSelect={onSelect}
+              />
+            ))}
+          </SourceSection>
+        ) : null}
+        {captureApplications.length ? (
+          <SourceSection
+            id="source-application-list"
+            group="applications"
+            label="Applications"
+            count={captureApplications.length}
+            open={sourceSectionsOpen.applications}
+            onOpenChange={(open) => setSourceSectionOpen("applications", open)}
+            selectedSummary={selectedApplication}
+          >
+            {captureApplications.map((application) => (
+              <SourceRow
+                key={application.id}
+                uiTarget={`source:${application.id}`}
+                ariaLabel={`${applicationSourceName(application)} application audio`}
+                primary={applicationSourceName(application)}
+                tip={applicationWindowContext(application)}
+                selected={safeAudioDeviceId === application.id}
+                onSelect={() => onSelect(application.id)}
+              />
+            ))}
+          </SourceSection>
+        ) : null}
         {sourceMixes?.supported && sourceMixes.list.length ? (
           <SourceSection
             id="source-mixes-list"
@@ -276,69 +339,6 @@ export function DeviceSelectionContent({
                 />
               );
             })}
-          </SourceSection>
-        ) : null}
-        {audioOutputs.length ? (
-          <SourceSection
-            id="source-output-list"
-            group="output"
-            label="Output"
-            count={audioOutputs.length}
-            open={sourceSectionsOpen.output}
-            onOpenChange={(open) => setSourceSectionOpen("output", open)}
-            selectedSummary={selectedOutputSummary}
-          >
-            {audioOutputs.map((device) => (
-              <AudioDeviceOption
-                key={device.id}
-                device={device}
-                selectedId={safeAudioDeviceId}
-                onSelect={onSelect}
-              />
-            ))}
-          </SourceSection>
-        ) : null}
-        {audioInputs.length ? (
-          <SourceSection
-            id="source-input-list"
-            group="input"
-            label="Input"
-            count={audioInputs.length}
-            open={sourceSectionsOpen.input}
-            onOpenChange={(open) => setSourceSectionOpen("input", open)}
-            selectedSummary={selectedInputSummary}
-          >
-            {audioInputs.map((device) => (
-              <AudioDeviceOption
-                key={device.id}
-                device={device}
-                selectedId={safeAudioDeviceId}
-                onSelect={onSelect}
-              />
-            ))}
-          </SourceSection>
-        ) : null}
-        {captureApplications.length ? (
-          <SourceSection
-            id="source-application-list"
-            group="applications"
-            label="Applications"
-            count={captureApplications.length}
-            open={sourceSectionsOpen.applications}
-            onOpenChange={(open) => setSourceSectionOpen("applications", open)}
-            selectedSummary={selectedApplication}
-          >
-            {captureApplications.map((application) => (
-              <SourceRow
-                key={application.id}
-                uiTarget={`source:${application.id}`}
-                ariaLabel={`${applicationSourceName(application)} application audio`}
-                primary={applicationSourceName(application)}
-                tip={applicationWindowContext(application)}
-                selected={safeAudioDeviceId === application.id}
-                onSelect={() => onSelect(application.id)}
-              />
-            ))}
           </SourceSection>
         ) : null}
       </div>

@@ -263,7 +263,7 @@ export function SourceProvider({ children }) {
   }, [defaultOutputLabel]);
   const footerSourceLabel =
     selectedSource && sourceDisplayName
-      ? `${mixPreviewActive ? "Mix Preview" : selectedSource.type} · ${sourceDisplayName}`
+      ? `${selectedSource.type} · ${sourceDisplayName}`
       : "Not connected";
 
   return (
