@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { ChevronRight, Pencil, Trash2 } from "lucide-react";
+import { ChevronRight, SlidersHorizontal, Trash2 } from "lucide-react";
 import {
   formatAudioDeviceLabel,
   isUnavailableApplicationSource,
@@ -218,7 +218,7 @@ export function DeviceSelectionContent({
                           label={`edit ${mix.name}`}
                           tip="Edit"
                           icon={
-                            <Pencil className="size-[length:var(--ui-icon-management-action)]" />
+                            <SlidersHorizontal className="size-[length:var(--ui-icon-management-action)]" />
                           }
                           onClick={() => sourceMixes.open(mix)}
                         />
