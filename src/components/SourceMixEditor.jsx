@@ -24,8 +24,9 @@ import {
 } from "../lib/mixRouting.js";
 import {
   MixSourceRouting,
+  MixRouteSelect,
   addMixDestination,
-  mixLaneSummary,
+  mixDestinationRoute,
   mixStereoPairs,
 } from "./MixSourceRouting.jsx";
 import { cn } from "../lib/utils.js";
@@ -71,35 +72,29 @@ function MixCheckRow({
   onChange,
   unavailable = false,
   tip = undefined,
-  summary = undefined,
-  onRoute = undefined,
+  route = undefined,
+  details = undefined,
 }) {
   const { anchorRef, showTip, hideTip, tipNode } = useHoverTip({ tip, align: "start" });
   return (
-    <div className="flex items-center">
-      <label
-        ref={anchorRef}
-        onMouseEnter={tip ? showTip : undefined}
-        onMouseLeave={tip ? hideTip : undefined}
-        onFocus={tip ? showTip : undefined}
-        onBlur={tip ? hideTip : undefined}
-        className="flex min-h-[var(--ui-row-h)] min-w-0 flex-1 cursor-pointer items-center gap-2 rounded-xs px-2 hover:bg-ui-hover focus-within:bg-ui-hover"
-      >
-        <Checkbox checked={checked} onChange={onChange} />
-        <span className="min-w-0 flex-1 truncate">{label}</span>
-        {unavailable ? <span className="shrink-0 text-muted-foreground">Unavailable</span> : null}
-        {checked && summary && (
-          <span aria-hidden="true" className="truncate text-muted-foreground">
-            {summary}
-          </span>
-        )}
-        {tipNode}
-      </label>
-      {checked && onRoute && (
-        <Button variant="ghost" aria-label={`routing for ${label}`} onClick={onRoute}>
-          Routing
-        </Button>
-      )}
+    <div>
+      <div className="flex items-center">
+        <label
+          ref={anchorRef}
+          onMouseEnter={tip ? showTip : undefined}
+          onMouseLeave={tip ? hideTip : undefined}
+          onFocus={tip ? showTip : undefined}
+          onBlur={tip ? hideTip : undefined}
+          className="flex min-h-[var(--ui-row-h)] min-w-0 flex-1 cursor-pointer items-center gap-2 rounded-xs px-2 hover:bg-ui-hover focus-within:bg-ui-hover"
+        >
+          <Checkbox checked={checked} onChange={onChange} />
+          <span className="min-w-0 flex-1 truncate">{label}</span>
+          {unavailable ? <span className="shrink-0 text-muted-foreground">Unavailable</span> : null}
+          {tipNode}
+        </label>
+        {route}
+      </div>
+      {details}
     </div>
   );
 }
@@ -128,17 +123,13 @@ export function SourceMixEditor({
   const [renaming, setRenaming] = useState(false);
   const selectedInputs = mixInputs(draft);
   const [inputOpen, setInputOpen] = useState(selectedInputs.length > 0);
-  const [routeId, setRouteId] = useState(null);
-  const routingRef = useRef(null);
+  const [routing, setRouting] = useState(null);
   const [outputOpen, setOutputOpen] = useState(Boolean(draft.output));
   const [applicationsOpen, setApplicationsOpen] = useState(draft.members.length > 0);
   const [expandedDevice, setExpandedDevice] = useState(selectedInputs[0]?.id ?? null);
   const originalName = useRef("");
   const drag = useFloatingPanelDrag(ref, setPosition);
   useLayoutEffect(() => ref.current?.focus(), []);
-  useLayoutEffect(() => {
-    if (routeId) routingRef.current?.scrollIntoView?.({ block: "nearest" });
-  }, [routeId]);
 
   const available = new Set(applications.map(({ id }) => id));
   const checked = new Set(draft.members.map(({ id }) => id));
@@ -167,16 +158,55 @@ export function SourceMixEditor({
       ? format
       : resolveMixFormat({ ...draft, format: "follow" }, outputs, defaultOutputReference);
   const sources = mixRoutingSources(draft, outputs);
+  const routeId = routing?.id;
   const routingSource = sources.find(({ id }) => id === routeId);
+  const routingLanes = routingSource?.lanes.filter(
+    ({ key }) => routing.laneKey === undefined || key === routing.laneKey
+  );
   const compiled = compileMixRouting(draft, outputs, defaultOutputReference);
   const canSave = canSaveSourceMix(draft) && Boolean(compiled);
-  const chooseRouting = (id) => setRouteId((current) => (current === id ? null : id));
-  const sourceSummary = (id, laneKey = undefined) => {
-    const lanes = sources.find((source) => source.id === id)?.lanes ?? [];
-    const selected = lanes.filter((lane) => laneKey === undefined || lane.key === laneKey);
-    return [...new Set(selected.map((lane) => mixLaneSummary(draft, id, lane, format)))].join(
-      " · "
-    );
+  const isRouting = (id, laneKey) => routeId === id && routing?.laneKey === laneKey;
+  const toggleRoutingForControl = (id, laneKey) => {
+    if (isRouting(id, laneKey)) {
+      setRouting(null);
+      return;
+    }
+    if (laneKey !== undefined) {
+      setInputOpen(true);
+      setExpandedDevice(id);
+    } else if (draft.output?.id === id) {
+      setOutputOpen(true);
+    } else {
+      setApplicationsOpen(true);
+    }
+    setRouting({ id, laneKey });
+  };
+  const routingControls = (id, laneKey = undefined) => {
+    const source = sources.find((source) => source.id === id);
+    if (!source || (laneKey !== undefined && !source.lanes.some(({ key }) => key === laneKey)))
+      return {};
+    return {
+      route: (
+        <MixRouteSelect
+          draft={draft}
+          source={source}
+          laneKey={laneKey}
+          format={format}
+          setRoute={setRoute}
+          onDetails={() => setRouting({ id, laneKey })}
+        />
+      ),
+      details: isRouting(id, laneKey) ? (
+        <MixSourceRouting
+          draft={draft}
+          source={source}
+          laneKey={laneKey}
+          format={format}
+          setRoute={setRoute}
+          onDone={() => setRouting(null)}
+        />
+      ) : undefined,
+    };
   };
   const saveDraft = (throwOnError = false) =>
     save({ throwOnError, referenceRoles: followFormat.fallback ? undefined : followFormat.roles });
@@ -194,7 +224,7 @@ export function SourceMixEditor({
     draft.id && owner.list && owner.list.find(({ id }) => id === draft.id) !== draft.original
   );
   const routeChoices =
-    routingSource?.lanes.flatMap((lane) => {
+    routingLanes?.flatMap((lane) => {
       const resolved = resolveMixLane(draft, routeId, lane, format);
       const custom = resolved.automatic ? [] : resolved.routing;
       return [
@@ -320,14 +350,28 @@ export function SourceMixEditor({
         selected: format.id === id,
         run: () => setFormat(id),
       })),
-      ...sources.map(({ id, label }) => ({
-        id: `routing:${id}`,
-        label: `Routing · ${label}`,
-        selected: routeId === id,
-        run: () => chooseRouting(id),
-      })),
+      ...sources.flatMap(({ id, label, lanes }) => {
+        const input = isMixInputId(id);
+        const first = input ? lanes[0]?.key : undefined;
+        return [
+          {
+            id: `routing:${id}`,
+            label: `Per-Channel Settings · ${label}`,
+            selected: isRouting(id, first),
+            run: () => toggleRoutingForControl(id, first),
+          },
+          ...(input && lanes.length > 1
+            ? lanes.map(({ key, label: laneLabel }) => ({
+                id: `routing:${id}:${key}`,
+                label: `Per-Channel Settings · ${label} · ${laneLabel}`,
+                selected: isRouting(id, key),
+                run: () => toggleRoutingForControl(id, key),
+              }))
+            : []),
+        ];
+      }),
       ...routeChoices,
-      ...(routingSource
+      ...(routingSource && routing.laneKey === undefined
         ? Object.keys(draft.routes?.[routeId] ?? {})
             .filter((key) => !routingSource.lanes.some((lane) => lane.key === key))
             .map((key) => ({
@@ -339,10 +383,17 @@ export function SourceMixEditor({
       ...pairs.map(([left, right]) => ({
         id: `route:pair:${left}:${right}`,
         label: `${left} / ${right}`,
-        run: () => {
-          setRoute(routeId, "L", [[left, 1]]);
-          setRoute(routeId, "R", [[right, 1]]);
-        },
+        run: () =>
+          routingSource.lanes.forEach((lane, index) =>
+            setRoute(
+              routeId,
+              lane.key,
+              mixDestinationRoute(
+                resolveMixLane(draft, routeId, lane, format),
+                index === 0 ? left : right
+              )
+            )
+          ),
       })),
       {
         id: "save",
@@ -465,8 +516,7 @@ export function SourceMixEditor({
                       checked={activeChannels.includes(channel)}
                       onChange={() => toggleInputChannel(device, channel)}
                       unavailable={channel >= channelCount}
-                      summary={sourceSummary(device.id, String(channel))}
-                      onRoute={() => chooseRouting(device.id)}
+                      {...routingControls(device.id, String(channel))}
                     />
                   ))}
               </MixGroup>
@@ -488,8 +538,7 @@ export function SourceMixEditor({
                 checked={device.id === draft.output?.id}
                 unavailable={!isMixOutputDevice(device)}
                 onChange={() => toggleOutput(device)}
-                summary={sourceSummary(device.id)}
-                onRoute={() => chooseRouting(device.id)}
+                {...routingControls(device.id)}
               />
             ))}
           </MixGroup>
@@ -512,8 +561,7 @@ export function SourceMixEditor({
                   checked={checked.has(member.id)}
                   onChange={() => toggle({ id: member.id, label })}
                   unavailable={!available.has(member.id)}
-                  summary={sourceSummary(member.id)}
-                  onRoute={() => chooseRouting(member.id)}
+                  {...routingControls(member.id)}
                 />
               );
             })}
@@ -536,24 +584,6 @@ export function SourceMixEditor({
               ))}
             </select>
           </label>
-          {routingSource && (
-            <section ref={routingRef} className="border-t border-border">
-              <div className="flex items-center gap-2 px-2 py-1">
-                <span className="min-w-0 flex-1 truncate font-medium">
-                  Routing · {routingSource.label}
-                </span>
-                <Button variant="ghost" onClick={() => setRouteId(null)}>
-                  Done
-                </Button>
-              </div>
-              <MixSourceRouting
-                draft={draft}
-                source={routingSource}
-                format={format}
-                setRoute={setRoute}
-              />
-            </section>
-          )}
         </fieldset>
       </div>
       <div className="flex shrink-0 items-center justify-end gap-2 border-t border-border px-3 py-2">

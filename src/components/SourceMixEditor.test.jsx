@@ -1,5 +1,5 @@
 /** @vitest-environment jsdom */
-import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { beforeEach, expect, it, vi } from "vitest";
 import { BlockingEditorsProvider, useBlockingEditors } from "../hooks/BlockingEditorsContext.jsx";
 import { useSourceMixes } from "../hooks/useSourceMixes.js";
@@ -319,7 +319,9 @@ it("edits a mono route in 5.1 and requires repair when switching to stereo", asy
   await decide("input-toggle:0");
   await decide("format:5-1");
   await decide(`routing:${input.id}`);
-  expect(screen.getByText("Auto · C")).toBeTruthy();
+  expect(
+    within(screen.getByRole("group", { name: "per-channel settings" })).getByText("Auto · C")
+  ).toBeTruthy();
   await decide("route:add:0:Ls");
   expect(screen.getByRole("combobox", { name: "destination for Channel 1" })).toHaveProperty(
     "value",
@@ -337,4 +339,54 @@ it("edits a mono route in 5.1 and requires repair when switching to stereo", asy
     format: "5.1",
     routes: { [input.id]: { 0: [["Ls", 1]] } },
   });
+});
+
+it("routes mono and stereo from their row dropdowns and opens details beneath only that row", () => {
+  const input = { id: `cap-${"3".repeat(32)}`, label: "Microphone", channels: 2 };
+  mountEditor(vi.fn(), [input]);
+  fireEvent.click(screen.getByRole("button", { name: "Input" }));
+  fireEvent.click(screen.getByRole("button", { name: "Microphone" }));
+  fireEvent.click(screen.getByRole("checkbox", { name: "Channel 1" }));
+  fireEvent.click(screen.getByRole("checkbox", { name: "Channel 2" }));
+  fireEvent.change(screen.getByRole("combobox", { name: "mix format" }), {
+    target: { value: "5.1" },
+  });
+  const first = screen.getByRole("combobox", { name: "route for Channel 1" });
+  const second = screen.getByRole("combobox", { name: "route for Channel 2" });
+  const choose = (trigger, option) => {
+    fireEvent.keyDown(trigger, { key: "ArrowDown" });
+    fireEvent.click(screen.getByRole("option", { name: option }));
+  };
+  expect(first.textContent).toContain("Auto · C");
+  choose(first, "Ls");
+  expect(first.textContent).toBe("Ls");
+  expect(second.textContent).toBe("Auto · C");
+  expect(screen.queryByRole("group", { name: "per-channel settings" })).toBeNull();
+
+  choose(first, "Per-Channel Settings");
+  const details = screen.getByRole("group", { name: "per-channel settings" });
+  expect(
+    within(details).getByRole("spinbutton", { name: "gain for Channel 1 to Ls" })
+  ).toBeTruthy();
+  expect(within(details).queryByText("Channel 2")).toBeNull();
+  expect(details.previousElementSibling.contains(first)).toBe(true);
+  fireEvent.click(within(details).getByRole("button", { name: "Done" }));
+  expect(screen.queryByRole("group", { name: "per-channel settings" })).toBeNull();
+
+  fireEvent.click(screen.getByRole("button", { name: "Applications" }));
+  fireEvent.click(screen.getByRole("checkbox", { name: "Player" }));
+  const stereo = screen.getByRole("combobox", { name: "route for Player" });
+  expect(stereo.textContent).toBe("Auto · L / R");
+  choose(stereo, "Ls / Rs");
+  expect(stereo.textContent).toBe("Ls / Rs");
+  choose(stereo, "Per-Channel Settings");
+  const stereoDetails = screen.getByRole("group", { name: "per-channel settings" });
+  expect(within(stereoDetails).getByRole("combobox", { name: "destination for L" })).toHaveProperty(
+    "value",
+    "Ls"
+  );
+  expect(within(stereoDetails).getByRole("combobox", { name: "destination for R" })).toHaveProperty(
+    "value",
+    "Rs"
+  );
 });

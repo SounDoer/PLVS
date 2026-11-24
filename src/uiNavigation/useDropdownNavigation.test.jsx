@@ -3,7 +3,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { useState } from "react";
 import { act, render, renderHook } from "@testing-library/react";
-import { BlockingEditorsProvider } from "../hooks/BlockingEditorsContext.jsx";
+import { BlockingEditorsProvider, useBlockingEditor } from "../hooks/BlockingEditorsContext.jsx";
 import { UiNavigationProvider, useUiNavigation, useUiSurface } from "./UiNavigationContext.jsx";
 import { useDropdownNavigation } from "./useDropdownNavigation.js";
 import { UiSurfaceScope } from "./uiSurfaceScope.jsx";
@@ -21,6 +21,36 @@ describe("named dropdowns", () => {
   afterEach(() => {
     resetNavigationHold();
     vi.restoreAllMocks();
+  });
+
+  it("can open a dropdown inside its owning editor while unrelated targets remain blocked", async () => {
+    const control = "mix-routing:input:0";
+    const unrelated = "setting:channels.layout";
+    const { result } = renderHook(
+      () => {
+        useBlockingEditor("sourceMix", true);
+        useDropdownNavigation(unrelated);
+        return {
+          dropdown: useDropdownNavigation(control, { blockingEditorId: "sourceMix" }),
+          navigation: useUiNavigation(),
+        };
+      },
+      { wrapper }
+    );
+    const show = (target) =>
+      result.current.navigation.showDropdown({
+        control: target,
+        expectedRevision: 2,
+        expectedUiGeneration: result.current.navigation.inspectUi().uiGeneration,
+      });
+    await expect(show(unrelated)).rejects.toMatchObject({ reason: "uiConflict" });
+    let pending;
+    await act(async () => {
+      pending = show(control);
+      await Promise.resolve();
+    });
+    await expect(pending).resolves.toMatchObject({ surface: { target: { control } } });
+    expect(result.current.dropdown.rootProps.open).toBe(true);
   });
 
   it("stays open when the agent's app takes focus back, and closes on the user's own input", async () => {

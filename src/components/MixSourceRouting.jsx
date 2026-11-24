@@ -1,9 +1,17 @@
 import { useEffect, useState } from "react";
 import { Button } from "./ui/button";
 import { linearMixGain, mixGainDb, resolveMixLane } from "../lib/mixRouting.js";
+import { useDropdownNavigation } from "../uiNavigation/useDropdownNavigation.js";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectSeparator,
+  SelectTrigger,
+  SelectValue,
+} from "./ui/select.jsx";
 
-export function mixLaneSummary(draft, sourceId, lane, format) {
-  const { routing, valid } = resolveMixLane(draft, sourceId, lane, format);
+function mixLaneSummary({ routing, valid }) {
   if (!valid) return "Needs Routing";
   return routing.length ? routing.map(([role]) => role).join(" / ") : "Omitted";
 }
@@ -12,12 +20,97 @@ export function addMixDestination(lane, target) {
   return lane.some(([role]) => role === target) ? lane : [...lane, [target, 1]];
 }
 
+export function mixDestinationRoute({ routing, automatic }, target) {
+  const gain = !automatic && routing?.length === 1 ? routing[0][1] : 1;
+  return [[target, gain]];
+}
+
 export function mixStereoPairs(source, format) {
   if (source.lanes.length !== 2 || source.lanes[0].role !== "L" || source.lanes[1].role !== "R")
     return [];
   return ["", "s", "b", "w", "c", "tf", "tm", "tr"]
     .map((suffix) => [`L${suffix}`, `R${suffix}`])
     .filter((roles) => roles.every((role) => format.roles.includes(role)));
+}
+
+export function MixRouteSelect({ draft, source, laneKey, format, onDetails, setRoute }) {
+  const dropdown = useDropdownNavigation(
+    `mix-routing:${source.id}${laneKey === undefined ? "" : `:${laneKey}`}`,
+    { blockingEditorId: "sourceMix" }
+  );
+  const lanes = source.lanes.filter(({ key }) => laneKey === undefined || key === laneKey);
+  const resolved = lanes.map((lane) => resolveMixLane(draft, source.id, lane, format));
+  const summaries = resolved.map(mixLaneSummary);
+  const automatic = resolved.every(({ automatic }) => automatic);
+  const autoSummary = [
+    ...new Set(lanes.map((lane) => mixLaneSummary(resolveMixLane({}, source.id, lane, format)))),
+  ].join(" / ");
+  const summary = [...new Set(summaries)].join(" / ");
+  const mono = lanes.length === 1;
+  const options = mono ? format.roles.map((role) => [role]) : mixStereoPairs(source, format);
+  const selected = options.find((roles) =>
+    resolved.every(
+      ({ routing, automatic }, index) =>
+        !automatic && routing?.length === 1 && routing[0][0] === roles[index]
+    )
+  );
+  const value = automatic
+    ? "auto"
+    : selected
+      ? selected.join(":")
+      : mono && !resolved[0].routing?.length
+        ? "omit"
+        : "custom";
+
+  function choose(next) {
+    if (next === "details") {
+      onDetails();
+      return;
+    }
+    if (next === "auto") {
+      const keys =
+        laneKey === undefined
+          ? new Set([
+              ...lanes.map(({ key }) => key),
+              ...Object.keys(draft.routes?.[source.id] ?? {}),
+            ])
+          : [laneKey];
+      for (const key of keys) setRoute(source.id, key, undefined);
+      return;
+    }
+    const roles = next.split(":");
+    lanes.forEach(({ key }, index) =>
+      setRoute(
+        source.id,
+        key,
+        next === "omit" ? [] : mixDestinationRoute(resolved[index], roles[index])
+      )
+    );
+  }
+
+  return (
+    <Select value={value} onValueChange={choose} {...dropdown.rootProps}>
+      <SelectTrigger
+        variant="inline"
+        className="max-w-[45%]"
+        aria-label={`route for ${laneKey === undefined ? source.label : lanes[0].label}`}
+        {...dropdown.triggerProps}
+      >
+        <SelectValue>{automatic ? `Auto · ${autoSummary}` : summary}</SelectValue>
+      </SelectTrigger>
+      <SelectContent variant="inline" align="end">
+        <SelectItem value="auto">Auto · {autoSummary}</SelectItem>
+        {options.map((roles) => (
+          <SelectItem key={roles.join(":")} value={roles.join(":")}>
+            {roles.join(" / ")}
+          </SelectItem>
+        ))}
+        {mono && <SelectItem value="omit">Omit</SelectItem>}
+        <SelectSeparator />
+        <SelectItem value="details">Per-Channel Settings</SelectItem>
+      </SelectContent>
+    </Select>
+  );
 }
 
 function RouteGain({ gain, label, target, onSet }) {
@@ -56,38 +149,17 @@ function RouteGain({ gain, label, target, onSet }) {
   );
 }
 
-export function MixSourceRouting({ draft, source, format, setRoute }) {
-  const orphaned = Object.keys(draft.routes?.[source.id] ?? {}).filter(
-    (key) => !source.lanes.some((lane) => lane.key === key)
-  );
-  const pairs = mixStereoPairs(source, format);
+export function MixSourceRouting({ draft, source, laneKey, format, setRoute, onDone }) {
+  const orphaned =
+    laneKey === undefined
+      ? Object.keys(draft.routes?.[source.id] ?? {}).filter(
+          (key) => !source.lanes.some((lane) => lane.key === key)
+        )
+      : [];
+  const lanes = source.lanes.filter(({ key }) => laneKey === undefined || key === laneKey);
   return (
-    <div className="space-y-2 px-2 py-1">
-      {pairs.length > 0 && (
-        <label className="flex items-center gap-2">
-          Stereo Pair
-          <select
-            value=""
-            onChange={(event) => {
-              const roles = event.target.value.split("/");
-              source.lanes.forEach(({ key }, index) =>
-                setRoute(source.id, key, [[roles[index], 1]])
-              );
-            }}
-            className="plvs-input h-[var(--ui-control-h)] rounded-md border border-input bg-card px-2"
-          >
-            <option value="" disabled>
-              Choose Pair
-            </option>
-            {pairs.map(([left, right]) => (
-              <option key={left} value={`${left}/${right}`}>
-                {left} / {right}
-              </option>
-            ))}
-          </select>
-        </label>
-      )}
-      {source.lanes.map((lane) => {
+    <div className="space-y-2 pt-1 pb-2 pl-4" role="group" aria-label="per-channel settings">
+      {lanes.map((lane) => {
         const { routing, valid, automatic } = resolveMixLane(draft, source.id, lane, format);
         const custom = automatic ? [] : routing;
         const targets = format.roles.filter((role) => !custom.some(([target]) => target === role));
@@ -98,7 +170,7 @@ export function MixSourceRouting({ draft, source, format, setRoute }) {
               <span className="font-medium">{lane.label}</span>
               <span className="flex-1 text-muted-foreground">
                 {automatic
-                  ? `Auto · ${mixLaneSummary(draft, source.id, lane, format)}`
+                  ? `Auto · ${mixLaneSummary({ routing, valid })}`
                   : !valid
                     ? "Destination Unavailable"
                     : !custom.length
@@ -177,6 +249,11 @@ export function MixSourceRouting({ draft, source, format, setRoute }) {
           </Button>
         </div>
       ))}
+      <div className="flex justify-end">
+        <Button variant="ghost" onClick={onDone}>
+          Done
+        </Button>
+      </div>
     </div>
   );
 }
