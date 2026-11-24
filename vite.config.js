@@ -96,6 +96,7 @@ export default defineConfig({
     rollupOptions: {
       input: {
         index: fileURLToPath(new URL("./index.html", import.meta.url)),
+        "dock-settings": fileURLToPath(new URL("./dock-settings.html", import.meta.url)),
         "dock-update": fileURLToPath(new URL("./dock-update.html", import.meta.url)),
       },
     },

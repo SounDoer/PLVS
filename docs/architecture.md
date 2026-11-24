@@ -766,7 +766,9 @@ after the same ordered idle acknowledgement. See
 
 Settings uses a narrow `dock-settings` host, following the ordinary drawer's Interface Size width.
 Theme/Profile/Feedback use the separate `dock-authoring` host, with the shared floating frame's
-intrinsic size and rounded border. A host service delegates title dragging to the native window;
+intrinsic size and rounded border. Both hosts load `dock-settings.html` and select their presentation
+by surface label, so they start without loading the workspace entry point.
+A host service delegates title dragging to the native window;
 individual editor controls contain no Dock routing. Authoring geometry uses its own WebView scale,
 physical positions, and the monitor containing the editor. Theme Preview is the ordinary modal
 component: the host expands temporarily and restores its base bounds when the preview closes.
