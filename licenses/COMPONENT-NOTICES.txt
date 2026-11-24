@@ -13268,9 +13268,9 @@ DEALINGS IN THE SOFTWARE.
 
 
 ========================================================================
-rust:cookie@0.18.2
+rust:cookie@0.18.3
 Declared license: MIT OR Apache-2.0
-Source: https://crates.io/api/v1/crates/cookie/0.18.2/download
+Source: https://crates.io/api/v1/crates/cookie/0.18.3/download
 
 --- LICENSE-APACHE ---
                               Apache License
@@ -29545,9 +29545,9 @@ SOFTWARE.
 
 
 ========================================================================
-rust:form_urlencoded@1.2.2
+rust:form_urlencoded@1.2.3
 Declared license: MIT OR Apache-2.0
-Source: https://crates.io/api/v1/crates/form_urlencoded/1.2.2/download
+Source: https://crates.io/api/v1/crates/form_urlencoded/1.2.3/download
 
 --- LICENSE-APACHE ---
                               Apache License
@@ -66488,9 +66488,9 @@ SOFTWARE.
 
 
 ========================================================================
-rust:rustix@1.1.4
+rust:rustix@1.1.6
 Declared license: Apache-2.0 WITH LLVM-exception OR Apache-2.0 OR MIT
-Source: https://crates.io/api/v1/crates/rustix/1.1.4/download
+Source: https://crates.io/api/v1/crates/rustix/1.1.6/download
 
 --- COPYRIGHT ---
 Short version for non-lawyers:
@@ -67742,9 +67742,9 @@ SOFTWARE.
 
 
 ========================================================================
-rust:rustls-webpki@0.103.15
+rust:rustls-webpki@0.103.16
 Declared license: ISC
-Source: https://crates.io/api/v1/crates/rustls-webpki/0.103.15/download
+Source: https://crates.io/api/v1/crates/rustls-webpki/0.103.16/download
 
 --- LICENSE ---
 Except as otherwise noted, this project is licensed under the following
@@ -84626,9 +84626,9 @@ SOFTWARE.
 
 
 ========================================================================
-rust:tokio@1.53.1
+rust:tokio@1.53.3
 Declared license: MIT
-Source: https://crates.io/api/v1/crates/tokio/1.53.1/download
+Source: https://crates.io/api/v1/crates/tokio/1.53.3/download
 
 --- LICENSE ---
 MIT License
@@ -89312,9 +89312,9 @@ SOFTWARE.
 
 
 ========================================================================
-rust:url@2.5.8
+rust:url@2.5.9
 Declared license: MIT OR Apache-2.0
-Source: https://crates.io/api/v1/crates/url/2.5.8/download
+Source: https://crates.io/api/v1/crates/url/2.5.9/download
 
 --- LICENSE-APACHE ---
                               Apache License
@@ -93957,9 +93957,9 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 
 ========================================================================
-rust:webpki-root-certs@1.0.9
+rust:webpki-root-certs@1.0.10
 Declared license: CDLA-Permissive-2.0
-Source: https://crates.io/api/v1/crates/webpki-root-certs/1.0.9/download
+Source: https://crates.io/api/v1/crates/webpki-root-certs/1.0.10/download
 
 --- LICENSE ---
 # Community Data License Agreement - Permissive - Version 2.0

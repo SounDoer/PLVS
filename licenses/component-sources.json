@@ -278,7 +278,7 @@
       "license": "Apache-2.0 OR MIT",
       "noticeSha256": "fdd2e80380fdd9ce965e9bc3448db0645823739a9679e3aa741cbe3ef20ef540"
     },
-    "rust:cookie@0.18.2": {
+    "rust:cookie@0.18.3": {
       "license": "MIT OR Apache-2.0",
       "noticeSha256": "8efe9d34f5ffd3634324c5734cf5d8a9683fd754f54668324084020d6e2f2e26"
     },
@@ -651,7 +651,7 @@
       "license": "MIT/Apache-2.0",
       "noticeSha256": "1eee4eae2f7f2c036dc66523eba7cdc2a17871a9f0e9139277a90632518aa086"
     },
-    "rust:form_urlencoded@1.2.2": {
+    "rust:form_urlencoded@1.2.3": {
       "license": "MIT OR Apache-2.0",
       "noticeSha256": "20851f0e768d0a09f19fa0d27be04c5deb801187800c3ed1153b28f181ce32f0"
     },
@@ -1817,7 +1817,7 @@
       "license": "MIT OR Apache-2.0",
       "noticeSha256": "7d07fcbc56c9711befa717a5395e10707f7a2a453c4ac6953c54ba7871a9bea4"
     },
-    "rust:rustix@1.1.4": {
+    "rust:rustix@1.1.6": {
       "license": "Apache-2.0 WITH LLVM-exception OR Apache-2.0 OR MIT",
       "noticeSha256": "2722bc06006b2e754f368af5473f2821a6e22d2323de5eb80f1ced2b89e7918c"
     },
@@ -1837,7 +1837,7 @@
       "license": "MIT OR Apache-2.0",
       "noticeSha256": "c6d754369461a76706e9a166a190462d67df88f0f4849e55761f93545a1dbd73"
     },
-    "rust:rustls-webpki@0.103.15": {
+    "rust:rustls-webpki@0.103.16": {
       "license": "ISC",
       "noticeSha256": "169b4c4c362b87f7e110c68a6a5afd6cc722a6ecaef322a7afe8e743716c0e79"
     },
@@ -2193,7 +2193,7 @@
       "license": "MIT OR Apache-2.0 OR Zlib",
       "noticeSha256": "08bfa093b3042d254f619202fd058390b7d5d444d11674d18f98068d7a4f7207"
     },
-    "rust:tokio@1.53.1": {
+    "rust:tokio@1.53.3": {
       "license": "MIT",
       "noticeSha256": "8b464877ffeb6d7741f56b00e32e0a9161256a4ed5e78dad5148a366cf99ce58"
     },
@@ -2325,7 +2325,7 @@
       "license": "MIT OR Apache-2.0",
       "noticeSha256": "db361090c8874382d22e0b5c4eb2552b72136df0fd08d765fa231b75fedfb205"
     },
-    "rust:url@2.5.8": {
+    "rust:url@2.5.9": {
       "license": "MIT OR Apache-2.0",
       "noticeSha256": "e4d98290c50bed5164f4e914cbd3670da7609dc1b723e670ea71b955cbfc5d90"
     },
@@ -2437,7 +2437,7 @@
       "license": "MIT",
       "noticeSha256": "f666149d80d5120915b76c823b42c1e9b1337d3e49ad95e77e4c93532291837e"
     },
-    "rust:webpki-root-certs@1.0.9": {
+    "rust:webpki-root-certs@1.0.10": {
       "license": "CDLA-Permissive-2.0",
       "noticeSha256": "24656ee29225f2689752f13ab27481ad887b59ca1eaf09b1364916d3cb05375f"
     },
