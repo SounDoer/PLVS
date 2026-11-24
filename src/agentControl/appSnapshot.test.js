@@ -32,7 +32,9 @@ describe("agent-control app snapshots", () => {
     );
     expect(methods).toContain("mix.list");
     expect(features.editorDraft.kinds).toContain("mix");
-    expect(features.uiNavigation.show.sourceGroup.groups).toContain("mixes");
+    expect(features.uiNavigation.show.sourceGroup).toMatchObject({
+      groups: expect.arrayContaining(["mixes"]),
+    });
   });
 
   it("reports deterministic runtime and module capabilities at the current revision", () => {
