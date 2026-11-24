@@ -21,6 +21,8 @@ pub mod macos_capture_apps;
 mod platform_backend;
 pub(crate) mod source_layout;
 #[cfg(target_os = "windows")]
+mod stereo_mix_timeline;
+#[cfg(target_os = "windows")]
 pub mod windows_capture_apps;
 #[cfg(target_os = "windows")]
 mod windows_layout;

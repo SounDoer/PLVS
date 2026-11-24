@@ -29,7 +29,9 @@ use windows::Win32::System::Com::StructuredStorage::{
   PROPVARIANT, PROPVARIANT_0, PROPVARIANT_0_0, PROPVARIANT_0_0_0,
 };
 use windows::Win32::System::Com::{CoInitializeEx, CoUninitialize, BLOB, COINIT_MULTITHREADED};
-use windows::Win32::System::Threading::{CreateEventW, WaitForSingleObject};
+use windows::Win32::System::Threading::{
+  CreateEventW, OpenProcess, WaitForSingleObject, PROCESS_SYNCHRONIZE,
+};
 use windows::Win32::System::Variant::VT_BLOB;
 
 use super::capture::{AudioCaptureSession, MeasuredPcmSubscriptions, MeterResetRequest};
@@ -37,6 +39,7 @@ use super::cpal_backend::{
   emit_capture_failure, pooled_pcm_buffer_capacity, run_meter_pipeline_bridge_thread,
   PcmBufferPool, PcmCallbackForwarder, PcmDeliveryQueue, PCM_QUEUE_CAP,
 };
+use super::stereo_mix_timeline::{MixCoverage, StereoMixTimeline};
 use crate::dsp::channel_layouts::ChannelSelection;
 use crate::dsp::speech::VadEngineKind;
 use crate::dsp::summary_meter::{SummaryMeter, SummaryMetrics};
@@ -168,17 +171,17 @@ impl Drop for ComApartment {
   }
 }
 
-struct EventHandle(windows::Win32::Foundation::HANDLE);
+struct CaptureHandle(windows::Win32::Foundation::HANDLE);
 
-impl EventHandle {
-  fn create() -> Result<Self, String> {
+impl CaptureHandle {
+  fn create_event() -> Result<Self, String> {
     let handle = unsafe { CreateEventW(None, false, false, None) }
       .map_err(|error| format!("CreateEventW failed: {error}"))?;
     Ok(Self(handle))
   }
 }
 
-impl Drop for EventHandle {
+impl Drop for CaptureHandle {
   fn drop(&mut self) {
     unsafe {
       let _ = CloseHandle(self.0);
@@ -373,7 +376,7 @@ fn run_process_stream(
   }
   .map_err(|error| format!("IAudioClient::Initialize failed: {error}"))?;
 
-  let event = EventHandle::create()?;
+  let event = CaptureHandle::create_event()?;
   unsafe { audio_client.SetEventHandle(event.0) }
     .map_err(|error| format!("IAudioClient::SetEventHandle failed: {error}"))?;
   let capture_client: IAudioCaptureClient = unsafe { audio_client.GetService() }
@@ -531,10 +534,10 @@ pub fn capture_process_to_summary_with_format(
   sample_rate: u32,
   channels: u16,
 ) -> Result<ProcessLoopbackProbeResult, String> {
-  capture_process_probe(process_id, duration, sample_rate, channels, |_| {})
+  capture_process_probe(process_id, duration, sample_rate, channels, |_, _, _| {})
 }
 
-/// Probe two 48 kHz stereo streams and measure their aligned, overlapping PCM.
+/// Probe two 48 kHz stereo streams through the bounded mix worker.
 pub fn capture_stereo_mix_probe(
   process_ids: [u32; 2],
   seconds: u64,
@@ -548,92 +551,133 @@ pub fn capture_stereo_mix_probe(
   if !(1..=60).contains(&seconds) {
     return Err("mix probe duration must be between 1 and 60 seconds".to_string());
   }
-  let capture = |pid| {
-    let mut samples = Vec::new();
+  let capture = |member, pid, tx: mpsc::SyncSender<MixPacket>| {
+    let process = CaptureHandle(
+      unsafe { OpenProcess(PROCESS_SYNCHRONIZE, false, pid) }
+        .map_err(|error| format!("could not monitor process {pid}: {error}"))?,
+    );
+    let mut dropped = 0;
     let report = capture_process_probe(
       pid,
       Duration::from_secs(seconds),
       DEFAULT_SAMPLE_RATE,
       DEFAULT_CHANNELS,
-      |packet| samples.extend_from_slice(packet),
+      |qpc, flags, packet| {
+        // WASAPI can still send silence for an exited PID. Keep that distinct from an idle app.
+        if unsafe { WaitForSingleObject(process.0, 0) } == WAIT_OBJECT_0 {
+          return;
+        }
+        if qpc == 0 || flags & AUDCLNT_BUFFERFLAGS_TIMESTAMP_ERROR.0 as u32 != 0 {
+          dropped += 1;
+          return;
+        }
+        let packet = MixPacket {
+          member,
+          qpc,
+          frames: Vec::from(packet.as_chunks::<2>().0),
+        };
+        if tx.try_send(packet).is_err() {
+          dropped += 1;
+        }
+      },
     )?;
-    Ok::<_, String>((report, samples))
+    Ok::<_, String>((report, dropped))
   };
 
-  let ((left_report, left), (right_report, right)) = std::thread::scope(|scope| {
-    let second = scope.spawn(|| capture(process_ids[1]));
-    let first = capture(process_ids[0]);
-    let second = second
+  std::thread::scope(|scope| {
+    let (tx, rx) = mpsc::sync_channel(32);
+    let left_tx = tx.clone();
+    let first = scope.spawn(move || capture(0, process_ids[0], left_tx));
+    let second = scope.spawn(move || capture(1, process_ids[1], tx));
+    let mut mixed = measure_streaming_stereo(rx);
+    let (left, left_dropped) = first
       .join()
-      .map_err(|_| "second capture thread panicked")?;
-    Ok::<_, String>((first?, second?))
-  })?;
-  let mixed =
-    measure_aligned_stereo([(&left_report.timing, &left), (&right_report.timing, &right)]);
-  Ok(([left_report, right_report], mixed))
+      .map_err(|_| "first capture thread panicked")??;
+    let (right, right_dropped) = second
+      .join()
+      .map_err(|_| "second capture thread panicked")??;
+    if let Ok(mixed) = &mut mixed {
+      mixed.dropped_packets += left_dropped + right_dropped;
+    }
+    Ok(([left, right], mixed))
+  })
+}
+
+struct MixPacket {
+  member: usize,
+  qpc: u64,
+  frames: Vec<[f32; 2]>,
 }
 
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct MixProbeMeasurement {
   compared_frames: usize,
+  partial_frames: usize,
+  empty_frames: usize,
+  dropped_packets: usize,
   integrated_lufs: f64,
   true_peak_max_dbtp: f64,
   sample_peak_max_l_db: f64,
   sample_peak_max_r_db: f64,
 }
 
-fn measure_aligned_stereo(
-  streams: [(&ProcessLoopbackTiming, &[f32]); 2],
-) -> Result<MixProbeMeasurement, String> {
-  let mut start = [0; 2];
-  let mut pcm = [&[][..]; 2];
-  for (index, (timing, samples)) in streams.into_iter().enumerate() {
-    let first = timing.first.ok_or("capture has no valid QPC anchor")?;
-    // This probe only sums contiguous captures. Live capture will need to handle gaps and drift.
-    let half_frame_ms = 500.0 / f64::from(DEFAULT_SAMPLE_RATE);
-    if timing.discontinuity_packets > 0
-      || timing.invalid_timestamp_packets > 0
-      || timing.non_advancing_qpc > 0
-      || timing.max_qpc_frame_error_ms > half_frame_ms
-    {
-      return Err(format!(
-        "capture {} does not have a contiguous PCM clock",
-        index + 1
-      ));
-    }
-    start[index] = first.qpc_100ns;
-    pcm[index] = samples;
-  }
-
-  let common_start = start[0].max(start[1]);
-  let [first, second] = pcm.map(|samples| samples.as_chunks::<2>().0.iter());
-  // Subtract the common epoch before rounding to the nearest frame, keeping the calculation exact.
-  let offset = |qpc| {
-    let ticks = u128::from(common_start - qpc);
-    ((ticks * u128::from(DEFAULT_SAMPLE_RATE) + 5_000_000) / 10_000_000) as usize
-  };
-  let first = first.skip(offset(start[0]));
-  let second = second.skip(offset(start[1]));
-  let compared_frames = first.len().min(second.len());
-  if compared_frames == 0 {
-    return Err("captures did not overlap".to_string());
-  }
-
+fn measure_streaming_stereo(rx: mpsc::Receiver<MixPacket>) -> Result<MixProbeMeasurement, String> {
+  const DELAY: Duration = Duration::from_millis(80);
+  const POLL: Duration = Duration::from_millis(5);
+  const RATE: usize = DEFAULT_SAMPLE_RATE as usize;
+  // The larger ring absorbs bursts without permitting unbounded accumulation.
+  let mut timeline = StereoMixTimeline::new(2, RATE / 2);
   let mut meter = SummaryMeter::new(DEFAULT_SAMPLE_RATE, DEFAULT_CHANNELS);
-  const BLOCK_SAMPLES: usize = 1024;
-  let mut block = Vec::with_capacity(BLOCK_SAMPLES);
-  for (a, b) in first.zip(second) {
-    block.extend_from_slice(&[a[0] + b[0], a[1] + b[1]]);
-    if block.len() == BLOCK_SAMPLES {
-      meter.push_interleaved(&block);
-      block.clear();
+  let mut coverage = MixCoverage::default();
+  let mut dropped = 0;
+  let mut block = [[0.0; 2]; RATE / 100];
+  let first = rx.recv().map_err(|_| "mix received no valid PCM packets")?;
+  let epoch = first.qpc;
+  let started = Instant::now();
+  let mut observed_end = 0;
+  let mut pending = Ok(first);
+
+  loop {
+    if let Ok(packet) = &pending {
+      let ticks = i128::from(packet.qpc) - i128::from(epoch);
+      let scaled = ticks * RATE as i128;
+      let position = ((scaled + scaled.signum() * 5_000_000) / 10_000_000) as i64;
+      if timeline.push(packet.member, position, &packet.frames) {
+        observed_end = observed_end.max(position + packet.frames.len() as i64);
+      } else {
+        dropped += 1;
+      }
     }
+    let finished = matches!(pending, Err(mpsc::RecvTimeoutError::Disconnected));
+    let release_at = if finished {
+      observed_end
+    } else {
+      let elapsed = started.elapsed().saturating_sub(DELAY);
+      (elapsed.as_nanos() * RATE as u128 / 1_000_000_000) as i64
+    };
+    while timeline.cursor() < release_at {
+      let count = ((release_at - timeline.cursor()) as usize).min(block.len());
+      let block = &mut block[..count];
+      let rendered = timeline.render(block);
+      coverage.full += rendered.full;
+      coverage.partial += rendered.partial;
+      coverage.empty += rendered.empty;
+      if rendered.empty < count {
+        meter.push_interleaved(block.as_flattened());
+      }
+    }
+    if finished {
+      break;
+    }
+    pending = rx.recv_timeout(POLL);
   }
-  meter.push_interleaved(&block);
   let metrics = meter.finish();
   Ok(MixProbeMeasurement {
-    compared_frames,
+    compared_frames: coverage.full,
+    partial_frames: coverage.partial,
+    empty_frames: coverage.empty,
+    dropped_packets: dropped,
     integrated_lufs: metrics.integrated_lufs,
     true_peak_max_dbtp: metrics.true_peak_max_dbtp,
     sample_peak_max_l_db: metrics.sample_peak_max_l_db,
@@ -646,7 +690,7 @@ fn capture_process_probe(
   duration: Duration,
   sample_rate: u32,
   channels: u16,
-  mut on_pcm: impl FnMut(&[f32]),
+  mut on_pcm: impl FnMut(u64, u32, &[f32]),
 ) -> Result<ProcessLoopbackProbeResult, String> {
   if process_id == 0 {
     return Err("process id must be non-zero".to_string());
@@ -673,7 +717,7 @@ fn capture_process_probe(
   }
   .map_err(|error| format!("IAudioClient::Initialize failed: {error}"))?;
 
-  let event = EventHandle::create()?;
+  let event = CaptureHandle::create_event()?;
   unsafe { audio_client.SetEventHandle(event.0) }
     .map_err(|error| format!("IAudioClient::SetEventHandle failed: {error}"))?;
   let capture_client: IAudioCaptureClient = unsafe { audio_client.GetService() }
@@ -732,7 +776,7 @@ fn capture_process_probe(
         if (flags & AUDCLNT_BUFFERFLAGS_SILENT.0 as u32) != 0 {
           silent_samples.resize(sample_count, 0.0);
           meter.push_interleaved(&silent_samples);
-          on_pcm(&silent_samples);
+          on_pcm(qpc_100ns, flags, &silent_samples);
           silent_frames += u64::from(frames);
         } else {
           let samples = unsafe { std::slice::from_raw_parts(data.cast::<f32>(), sample_count) };
@@ -742,7 +786,7 @@ fn capture_process_probe(
             }
           }
           meter.push_interleaved(samples);
-          on_pcm(samples);
+          on_pcm(qpc_100ns, flags, samples);
         }
         captured_frames += u64::from(frames);
         unsafe { capture_client.ReleaseBuffer(frames) }
@@ -772,7 +816,8 @@ fn capture_process_probe(
 #[cfg(test)]
 mod tests {
   use super::{
-    capture_format, measure_aligned_stereo, ActivationPayload, CaptureFormat, ProcessLoopbackTiming,
+    capture_format, measure_streaming_stereo, ActivationPayload, CaptureFormat, MixPacket,
+    ProcessLoopbackTiming,
   };
   use windows::Win32::Media::Audio::{
     AUDCLNT_BUFFERFLAGS_DATA_DISCONTINUITY, AUDCLNT_BUFFERFLAGS_TIMESTAMP_ERROR,
@@ -783,18 +828,25 @@ mod tests {
 
   #[test]
   fn mix_probe_aligns_offset_packets_and_preserves_over_range_peaks() {
-    let mut early = ProcessLoopbackTiming::default();
-    early.record(0, 100_000, 0, 48_000, 0);
-    let mut late = ProcessLoopbackTiming::default();
-    late.record(0, 100_208, 0, 48_000, 0);
-
-    let mix = measure_aligned_stereo([
-      (&early, &[0.0, 0.0, 0.75, 0.25]),
-      (&late, &[0.75, -0.25, 0.0, 0.0]),
-    ])
+    let (tx, rx) = std::sync::mpsc::sync_channel(2);
+    tx.send(MixPacket {
+      member: 0,
+      qpc: 100_000,
+      frames: vec![[0.0, 0.0], [0.75, 0.25]],
+    })
     .unwrap();
+    tx.send(MixPacket {
+      member: 1,
+      qpc: 100_208,
+      frames: vec![[0.75, -0.25], [0.0, 0.0]],
+    })
+    .unwrap();
+    drop(tx);
+
+    let mix = measure_streaming_stereo(rx).unwrap();
 
     assert_eq!(mix.compared_frames, 1);
+    assert_eq!(mix.partial_frames, 2);
     assert!((mix.sample_peak_max_l_db - 20.0 * 1.5_f64.log10()).abs() < 0.000_001);
     assert!(!mix.sample_peak_max_r_db.is_finite());
   }
