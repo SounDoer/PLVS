@@ -34,6 +34,11 @@ export async function onEngineBackpressure(handler) {
   });
 }
 
+/** @param {(payload: { unavailable: string[], partialAt: number | null }) => void} handler */
+export function onMixCaptureStatus(handler) {
+  return listen("mix-capture-status", (event) => handler(event.payload));
+}
+
 /**
  * @param {(sampleRateHz: number) => void} handler
  * @returns {Promise<() => void>}

@@ -294,9 +294,11 @@ describe("Status projection", () => {
     const items = buildAppStatusItems({
       layoutInferred: { name: "7.1", channelCount: 8 },
       audioDrop: { chunks: 1, since: 0 },
+      mixCapture: { unavailable: ["Player"], total: 2, incomplete: false },
     });
     expect(projectUiStatus(items)).toEqual([
       expect.objectContaining({ id: "audio-drop", kind: "warning" }),
+      { id: "mix-capture", kind: "warning" },
       {
         id: "channel-layout-inferred",
         kind: "info",

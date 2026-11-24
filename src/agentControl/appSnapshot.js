@@ -105,6 +105,11 @@ export function buildAgentControlCapabilities(runtime, revision) {
               inspect: true,
               close: hasMethod("ui.close"),
               decide: hasMethod("ui.decide"),
+              ...(runtime.platform === "windows" && hasMethod("ui.decide")
+                ? {
+                    sourceMixes: { menu: "sources", editorSurface: "sourceMixEditor" },
+                  }
+                : {}),
               targets: hasMethod("ui.targets"),
               locate: hasMethod("ui.locate"),
               quickTour: hasMethod("ui.quickTour.start")

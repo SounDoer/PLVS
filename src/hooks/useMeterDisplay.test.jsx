@@ -4,6 +4,41 @@ import { act, renderHook } from "@testing-library/react";
 import { useMeterDisplay, INITIAL_METER_AUDIO, CLEARED_METER_AUDIO } from "./useMeterDisplay.js";
 
 describe("useMeterDisplay", () => {
+  it("retains a partial Mix after recovery and clears it without accepting a delayed pre-Clear report", () => {
+    vi.useFakeTimers();
+    try {
+      const { result } = renderHook(() => useMeterDisplay());
+      vi.setSystemTime(100);
+      act(() => result.current.beginMixCapture("mix", false));
+      act(() =>
+        result.current.updateMixCapture("mix", { unavailable: ["player"], partialAt: 150 })
+      );
+      act(() => result.current.updateMixCapture("mix", { unavailable: [], partialAt: null }));
+      expect(result.current.mixCaptureStatus).toEqual({
+        sourceId: "mix",
+        unavailable: [],
+        incomplete: true,
+      });
+      act(() => result.current.beginMixCapture("mix", true));
+      expect(result.current.mixCaptureStatus.incomplete).toBe(true);
+      vi.setSystemTime(200);
+      act(() => result.current.clearMixMeasurement());
+      act(() =>
+        result.current.updateMixCapture("mix", { unavailable: ["player"], partialAt: 150 })
+      );
+      expect(result.current.mixCaptureStatus).toEqual({
+        sourceId: "mix",
+        unavailable: ["player"],
+        incomplete: false,
+      });
+      act(() =>
+        result.current.updateMixCapture("mix", { unavailable: ["player"], partialAt: 210 })
+      );
+      expect(result.current.mixCaptureStatus.incomplete).toBe(true);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
   it("requires explicit interrupted-work metadata before a notice can force Dock controls open", () => {
     const { result } = renderHook(() => useMeterDisplay());
     act(() => result.current.raiseNotice("error", "Could Not Reserve Space"));

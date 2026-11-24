@@ -31,7 +31,7 @@ export function useSourceMixes({ supported, onSelect, onError }) {
     });
   }
 
-  async function save() {
+  async function save({ throwOnError = false } = {}) {
     if (writing.current || !draft || draft.members.length < 2) return;
     writing.current = true;
     setSaving(true);
@@ -58,6 +58,7 @@ export function useSourceMixes({ supported, onSelect, onError }) {
       if (!draft.id) await onSelect(mix.id);
     } catch (error) {
       onError("Could Not Save Mix", error);
+      if (throwOnError) throw error;
     } finally {
       writing.current = false;
       setSaving(false);

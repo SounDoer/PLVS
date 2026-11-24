@@ -3,6 +3,7 @@ import { act, fireEvent, render, screen, waitFor } from "@testing-library/react"
 import { beforeEach, expect, it, vi } from "vitest";
 import { BlockingEditorsProvider, useBlockingEditors } from "../hooks/BlockingEditorsContext.jsx";
 import { useSourceMixes } from "../hooks/useSourceMixes.js";
+import { UiNavigationProvider, useUiNavigation } from "../uiNavigation/UiNavigationContext.jsx";
 import { SCENE_OPERATIONS } from "../lib/sceneOperations.js";
 import { sourceMixesStore } from "../persistence/index.js";
 import { SourceMixEditor } from "./SourceMixEditor.jsx";
@@ -24,9 +25,11 @@ beforeEach(() => {
 
 function mountEditor(onSelect = vi.fn()) {
   let registry;
+  let navigation;
   function Harness() {
     const owner = useSourceMixes({ supported: true, onSelect, onError: vi.fn() });
     registry = useBlockingEditors();
+    navigation = useUiNavigation();
     return owner.draft ? (
       <SourceMixEditor owner={owner} applications={applications} />
     ) : (
@@ -35,12 +38,48 @@ function mountEditor(onSelect = vi.fn()) {
   }
   render(
     <BlockingEditorsProvider>
-      <Harness />
+      <UiNavigationProvider getRevision={() => 3}>
+        <Harness />
+      </UiNavigationProvider>
     </BlockingEditorsProvider>
   );
   fireEvent.click(screen.getByRole("button", { name: "Add Mix" }));
-  return { onSelect, scene: () => registry };
+  return { onSelect, scene: () => registry, ui: () => navigation };
 }
+
+it("exposes edit choices with generation checks and keeps the draft name out of inspection", async () => {
+  const { ui } = mountEditor();
+  const initial = ui().inspectUi();
+  const editor = initial.surfaces.find(({ kind }) => kind === "sourceMixEditor");
+  expect(editor.target).toEqual({ intent: "create" });
+  expect(editor.choices.find(({ id }) => id === "save").disabled).toBe(true);
+  const decide = (choice, generation) =>
+    ui().decideSurface({
+      surfaceId: editor.surfaceId,
+      choice,
+      expectedRevision: 3,
+      expectedUiGeneration: generation,
+    });
+  await act(async () => {
+    await decide(`toggle:${applications[0].id}`, initial.uiGeneration);
+  });
+  await expect(decide(`toggle:${applications[1].id}`, initial.uiGeneration)).rejects.toMatchObject({
+    reason: "uiGenerationConflict",
+  });
+  await act(async () => {
+    await decide(`toggle:${applications[1].id}`, ui().inspectUi().uiGeneration);
+  });
+  expect(
+    ui()
+      .inspectUi()
+      .surfaces[0].choices.find(({ id }) => id === "save").disabled
+  ).toBeUndefined();
+  expect(sourceMixesStore.persist).not.toHaveBeenCalled();
+  await act(async () => {
+    await decide("cancel", ui().inspectUi().uiGeneration);
+  });
+  expect(ui().inspectUi().surfaces).toHaveLength(0);
+});
 
 it("blocks scene mutation from an open draft and discards it on Cancel", () => {
   const { onSelect, scene } = mountEditor();

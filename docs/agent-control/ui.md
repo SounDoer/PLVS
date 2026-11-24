@@ -15,7 +15,7 @@ supported close/cancel actions, and only the state needed to navigate it safely.
 feedback text, diagnostics, DOM details, geometry, and other authored content are never returned.
 
 `status` lists the conditions behind the toolbar status entry, in the order it shows them, by
-`id` (`notice`, `configuration-restart`, `audio-drop`, `channel-layout`, `channel-layout-inferred`,
+`id` (`notice`, `configuration-restart`, `audio-drop`, `mix-capture`, `channel-layout`, `channel-layout-inferred`,
 `update`) and `kind`.
 Where available, entries also
 include `helpTopic`, `helpTarget`, `action`, and `actionTarget`. Notice wording and details stay
@@ -56,8 +56,14 @@ Dock the request first reveals the Dock toolbar, then opens the same editor besi
 the button opens, anchored to that button, with `presentation: "dock"`. Sources is
 `uiTargetNotVisible` in File source or when there is no source to choose, and Status is
 `uiTargetNotVisible` while there are no conditions. `ui close` closes the menu as a click outside
-does. Menu contents are not reported; select an item through its owning family, such as `device`,
-`preset`, or `loudness-profile`.
+does. Select sources, presets, and profiles through their owning families when available.
+
+On Windows, the normal-window Sources surface declares Mix choices through `ui inspect`. Use its
+`add-mix`, `edit:<mix-id>`, or `select:<mix-id>` choice with `ui decide`. The `sourceMixEditor`
+surface exposes `toggle:<application-id>` choices with their selection state, then `save` and
+`cancel`. Save is available once at least two applications are selected. Use the latest surface ID,
+revision and UI generation for each decision. These choices run the same handlers as the editor
+controls. The editor's draft name stays private to the UI.
 
 `add-panel` and `source-group` act inside an open menu: open the Panels or Sources menu first, or
 the request is `surfaceUnavailable`. `dropdown` takes a target id from `ui targets`, such as

@@ -21,6 +21,7 @@ const MeterRuntimeAssemblyContext = createContext(null);
  *
  * @typedef {{
  *   notice: ReturnType<typeof useMeterDisplay>["notice"],
+ *   mixCaptureStatus: ReturnType<typeof useMeterDisplay>["mixCaptureStatus"],
  *   raiseNotice: ReturnType<typeof useMeterDisplay>["raiseNotice"],
  *   clearNotice: ReturnType<typeof useMeterDisplay>["clearNotice"],
  *   selectedOffset: number,
@@ -198,6 +199,7 @@ export function MeterRuntimeProvider({ children }) {
     liveContinuationRef.current = null;
     liveIntakeRef.current.reset();
     liveMeasurementOwnerRef.current.clear();
+    display.clearMixMeasurement();
     transport.clearAudioDrop();
     if (sourceSelectionRef.current.mode === "live") {
       display.clearAudio();
@@ -707,6 +709,7 @@ export function MeterRuntimeProvider({ children }) {
   const displayState = useMemo(
     () => ({
       notice: display.notice,
+      mixCaptureStatus: display.mixCaptureStatus,
       raiseNotice: display.raiseNotice,
       clearNotice: display.clearNotice,
       selectedOffset: display.selectedOffset,
@@ -718,6 +721,7 @@ export function MeterRuntimeProvider({ children }) {
     }),
     [
       display.notice,
+      display.mixCaptureStatus,
       display.raiseNotice,
       display.clearNotice,
       display.selectedOffset,

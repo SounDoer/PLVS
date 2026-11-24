@@ -1,6 +1,24 @@
 import { describe, expect, it } from "vitest";
 import { buildAppStatusItems, inferredChannelLayout } from "./appStatus.js";
 
+it("shows the live Mix warning before the retained incomplete notice", () => {
+  const mixCapture = { total: 2, unavailable: ["Player"], incomplete: true };
+  expect(buildAppStatusItems({ mixCapture })).toEqual([
+    expect.objectContaining({
+      id: "mix-capture",
+      text: "Mix Source Unavailable",
+      details: expect.stringContaining("Player"),
+    }),
+  ]);
+  expect(buildAppStatusItems({ mixCapture: { ...mixCapture, unavailable: [] } })[0].text).toBe(
+    "Incomplete Mix Measurement"
+  );
+  expect(
+    buildAppStatusItems({ mixCapture: { ...mixCapture, unavailable: ["Player", "DAW"] } })[0]
+      .details
+  ).toContain("No Mix sources can currently be measured");
+});
+
 describe("current app status", () => {
   it("keeps independent conditions together and prioritizes interrupted measurement", () => {
     const items = buildAppStatusItems({

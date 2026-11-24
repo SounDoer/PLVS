@@ -3,10 +3,10 @@
 use std::mem::{size_of, ManuallyDrop};
 use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::sync::{mpsc, Arc};
-use std::time::{Duration, Instant};
+use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
 use serde::Serialize;
-use tauri::AppHandle;
+use tauri::{AppHandle, Emitter};
 use windows::core::{implement, IUnknown, Interface, Ref, HRESULT};
 use windows::Win32::Foundation::{CloseHandle, ERROR_NO_MORE_FILES, WAIT_OBJECT_0, WAIT_TIMEOUT};
 use windows::Win32::Media::Audio::{
@@ -386,6 +386,7 @@ fn run_process_stream(
   channels: u16,
   timestamped: bool,
   mut stopped: impl FnMut() -> bool,
+  on_start: impl FnOnce(),
   mut on_pcm: impl FnMut(PacketTiming, &[f32]),
 ) -> Result<(), String> {
   let _com = ComApartment::initialize()?;
@@ -413,6 +414,7 @@ fn run_process_stream(
     .map_err(|error| format!("IAudioClient::GetService failed: {error}"))?;
   unsafe { audio_client.Start() }
     .map_err(|error| format!("IAudioClient::Start failed: {error}"))?;
+  on_start();
 
   let mut silent_samples = Vec::new();
   let capture_result = loop {
@@ -530,15 +532,20 @@ pub fn start_process_session(
           channels,
           false,
           || !matches!(stop_rx.try_recv(), Err(mpsc::TryRecvError::Empty)),
+          || {},
           |_, pcm| {
             forwarder.forward_f32(pcm);
           },
         ),
-        ProcessCaptureSource::Mix(applications) => {
-          run_live_mix(applications, stop_rx, &dropped_chunks, |pcm| {
+        ProcessCaptureSource::Mix(applications) => run_live_mix(
+          applications,
+          stop_rx,
+          &dropped_chunks,
+          &failure_app,
+          |pcm| {
             forwarder.forward_f32(pcm);
-          })
-        }
+          },
+        ),
       };
       delivery.stop_producer();
       let _ = bridge.join();
@@ -560,19 +567,25 @@ fn run_live_mix(
   applications: Vec<String>,
   stop_rx: mpsc::Receiver<()>,
   dropped: &AtomicU64,
+  app: &AppHandle,
   mut on_pcm: impl FnMut(&[f32]),
 ) -> Result<(), String> {
   let stopping = AtomicBool::new(false);
+  let readiness: Vec<_> = applications
+    .iter()
+    .map(|_| AtomicBool::new(false))
+    .collect();
   std::thread::scope(|scope| {
     let member_count = applications.len();
     let (tx, rx) = mpsc::sync_channel(16 * member_count);
-    for (member, app_id) in applications.into_iter().enumerate() {
+    for (member, app_id) in applications.iter().enumerate() {
       let tx = tx.clone();
       let stopping = &stopping;
+      let available = &readiness[member];
       if let Err(error) = std::thread::Builder::new()
         .name("mix-member-capture".into())
         .spawn_scoped(scope, move || {
-          capture_live_member(member, &app_id, &tx, stopping, dropped)
+          capture_live_member(member, app_id, &tx, stopping, available, dropped)
         })
       {
         stopping.store(true, Ordering::Relaxed);
@@ -580,11 +593,34 @@ fn run_live_mix(
       }
     }
     drop(tx);
+    let mut last_report = Instant::now();
+    let mut last_unavailable = None;
+    let partial_at = std::cell::Cell::new(None);
     run_mix_timeline(
       rx,
       member_count,
       || {
         if matches!(stop_rx.try_recv(), Err(mpsc::TryRecvError::Empty)) {
+          if last_report.elapsed() >= Duration::from_millis(250) {
+            let unavailable: Vec<_> = applications
+              .iter()
+              .zip(&readiness)
+              .filter(|(_, ready)| !ready.load(Ordering::Relaxed))
+              .map(|(id, _)| id.as_str())
+              .collect();
+            let partial_at = partial_at.take();
+            if last_unavailable.as_ref() != Some(&unavailable) || partial_at.is_some() {
+              let _ = app.emit(
+                "mix-capture-status",
+                MixCaptureStatus {
+                  unavailable: &unavailable,
+                  partial_at,
+                },
+              );
+              last_unavailable = Some(unavailable);
+            }
+            last_report = Instant::now();
+          }
           return false;
         }
         stopping.store(true, Ordering::Relaxed);
@@ -592,6 +628,16 @@ fn run_live_mix(
       },
       |pcm, coverage| {
         if coverage.full + coverage.partial > 0 {
+          if (coverage.partial > 0 || coverage.empty > 0)
+            && readiness.iter().any(|ready| !ready.load(Ordering::Relaxed))
+          {
+            partial_at.set(
+              SystemTime::now()
+                .duration_since(UNIX_EPOCH)
+                .ok()
+                .map(|time| time.as_millis() as u64),
+            );
+          }
           on_pcm(pcm);
         }
       },
@@ -604,11 +650,19 @@ fn run_live_mix(
   })
 }
 
+#[derive(Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+struct MixCaptureStatus<'a> {
+  unavailable: &'a [&'a str],
+  partial_at: Option<u64>,
+}
+
 fn capture_live_member(
   member: usize,
   app_id: &str,
   tx: &mpsc::SyncSender<MixPacket>,
   stopping: &AtomicBool,
+  available: &AtomicBool,
   dropped: &AtomicU64,
 ) {
   let stopped = || stopping.load(Ordering::Relaxed);
@@ -624,12 +678,14 @@ fn capture_live_member(
             DEFAULT_CHANNELS,
             true,
             || stopped() || exited(),
+            || available.store(true, Ordering::Relaxed),
             |timing, pcm| {
               if !stopped() && !exited() && !queue_mix_packet(tx, member, timing, pcm) {
                 dropped.fetch_add(1, Ordering::Relaxed);
               }
             },
           );
+          available.store(false, Ordering::Relaxed);
           if let Err(error) = result {
             log::debug!("Mix member capture interrupted: {error}");
           }
@@ -978,6 +1034,7 @@ fn capture_process_probe(
         || process
           .is_some_and(|handle| unsafe { WaitForSingleObject(handle.0, 0) } == WAIT_OBJECT_0)
     },
+    || {},
     |packet, samples| {
       let frames = (samples.len() / usize::from(channels)) as u64;
       timing.record(

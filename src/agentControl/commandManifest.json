@@ -907,7 +907,7 @@
       "family": "ui",
       "path": ["ui", "decide"],
       "usage": "plvs-cli ui decide --surface-id <surface-id> --choice <id> --expected-revision <n> --expected-ui-generation <n> --json [--dry-run]",
-      "summary": "Answer one exact UI surface using a declared choice.",
+      "summary": "Answer one exact UI surface using a declared choice, including Sources and Mix editor choices on Windows.",
       "execution": "runningApp",
       "operation": "action",
       "wireMethod": "ui.decide",

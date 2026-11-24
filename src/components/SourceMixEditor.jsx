@@ -2,6 +2,7 @@ import { useLayoutEffect, useRef, useState } from "react";
 import { Pencil } from "lucide-react";
 import { useFloatingPanelDrag } from "../hooks/useFloatingPanelDrag.js";
 import { sourceMixName } from "../lib/sourceMixes.js";
+import { useUiSurface } from "../uiNavigation/UiNavigationContext.jsx";
 import { Button } from "./ui/button";
 import { Checkbox } from "./ui/checkbox";
 import { IconAction } from "./ui/icon-action";
@@ -26,6 +27,31 @@ export function SourceMixEditor({ owner, applications }) {
       ].map((member) => [member.id, member])
     ).values(),
   ];
+  useUiSurface({
+    kind: "sourceMixEditor",
+    origin: "navigable",
+    blocking: true,
+    busy: saving,
+    dismissible: true,
+    supportedActions: ["cancel"],
+    target: { intent: draft.id ? "edit" : "create", mixId: draft.id },
+    onCancel: cancel,
+    choices: [
+      ...choices.map((member) => ({
+        id: `toggle:${member.id}`,
+        label: member.label,
+        selected: checked.has(member.id),
+        run: () => toggle(member),
+      })),
+      {
+        id: "save",
+        label: "Save",
+        disabled: draft.members.length < 2,
+        run: () => save({ throwOnError: true }),
+      },
+      { id: "cancel", label: "Cancel", run: cancel },
+    ],
+  });
   return (
     <div
       ref={ref}

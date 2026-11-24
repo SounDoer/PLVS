@@ -69,6 +69,8 @@ export function useMeterDisplay() {
   const [selectedOffset, setSelectedOffsetState] = useState(-1);
   const [selectedSnapshotTimeMs, setSelectedSnapshotTimeMs] = useState(null);
   const [notice, setNotice] = useState(null);
+  const [mixCaptureStatus, setMixCaptureStatus] = useState(null);
+  const mixClearTimeRef = useRef(0);
   const [showClock, setShowClock] = useState(false);
   const selectedOffsetRef = useRef(-1);
   const latestAudioRef = useRef(audio);
@@ -167,6 +169,34 @@ export function useMeterDisplay() {
   );
 
   const clearAudio = useCallback(() => setAudio({ ...CLEARED_METER_AUDIO }), [setAudio]);
+  const beginMixCapture = useCallback((sourceId, continued) => {
+    if (!continued) mixClearTimeRef.current = Date.now();
+    setMixCaptureStatus((current) =>
+      sourceId
+        ? {
+            sourceId,
+            unavailable: [],
+            incomplete: Boolean(continued && current?.sourceId === sourceId && current.incomplete),
+          }
+        : null
+    );
+  }, []);
+  const updateMixCapture = useCallback((sourceId, { unavailable, partialAt }) => {
+    setMixCaptureStatus((current) => {
+      if (current?.sourceId !== sourceId) return current;
+      const incomplete =
+        current.incomplete || (Number.isFinite(partialAt) && partialAt >= mixClearTimeRef.current);
+      if (incomplete === current.incomplete && current.unavailable.join() === unavailable.join())
+        return current;
+      return { ...current, unavailable, incomplete };
+    });
+  }, []);
+  const clearMixMeasurement = useCallback(() => {
+    mixClearTimeRef.current = Date.now();
+    setMixCaptureStatus((current) =>
+      current?.incomplete ? { ...current, incomplete: false } : current
+    );
+  }, []);
 
   return {
     audio,
@@ -180,6 +210,10 @@ export function useMeterDisplay() {
     selectedOffsetRef,
     frameRef,
     notice,
+    mixCaptureStatus,
+    beginMixCapture,
+    updateMixCapture,
+    clearMixMeasurement,
     raiseNotice,
     clearNotice,
     showClock,

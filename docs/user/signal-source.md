@@ -114,6 +114,9 @@ applications. PLVS generates a name from the selection. Use the pencil to enter 
 PLVS sums the selected application audio into one stereo signal for measurement. If one application
 exits, capture can continue with the others while PLVS waits for it to return. The Mix row shows
 members missing from the application list. Applications with no current audio can stay selected.
+**Status Notices** identifies unavailable members. After they return, **Incomplete Mix
+Measurement** indicates that Integrated and Max include the incomplete intervals. Clear or a new
+measurement clears that indication.
 
 Use the row menu to edit or delete a Mix. Changing the members of the active Mix starts a new
 measurement. Renaming it keeps the current measurement. Saved mixes are available to Workbenches

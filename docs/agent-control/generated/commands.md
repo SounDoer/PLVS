@@ -718,7 +718,7 @@ None.
 
 ## `ui.decide`
 
-Answer one exact UI surface using a declared choice.
+Answer one exact UI surface using a declared choice, including Sources and Mix editor choices on Windows.
 
 - CLI path: `ui decide`
 - Execution: `runningApp`; operation: `action`

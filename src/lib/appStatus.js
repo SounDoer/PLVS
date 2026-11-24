@@ -39,10 +39,11 @@ export function statusActionTarget(item) {
 
 /**
  * Current conditions, rather than a history of old notifications.
- * @param {{ notice?: {kind?: string, text: string, details?: string, helpTopic?: string, requiresAttention?: boolean}, layoutUnknown?: boolean, layoutInferred?: { name: string, channelCount: number } | null, autoChannelRoles?: string[], audioDrop?: {chunks: number, since: number}, update?: {phase: string, text: string, action?: string}, configurationRestart?: "required" | "restarting" | null }} input
+ * @param {{ notice?: {kind?: string, text: string, details?: string, helpTopic?: string, requiresAttention?: boolean}, mixCapture?: {unavailable: string[], total: number, incomplete: boolean}, layoutUnknown?: boolean, layoutInferred?: { name: string, channelCount: number } | null, autoChannelRoles?: string[], audioDrop?: {chunks: number, since: number}, update?: {phase: string, text: string, action?: string}, configurationRestart?: "required" | "restarting" | null }} input
  */
 export function buildAppStatusItems({
   notice = null,
+  mixCapture = null,
   layoutUnknown = false,
   layoutInferred = null,
   autoChannelRoles = null,
@@ -81,6 +82,26 @@ export function buildAppStatusItems({
       helpTopic: "audio-dropped",
       details: describeAudioDrop(audioDrop),
     });
+  if (mixCapture?.unavailable.length) {
+    const explanation =
+      mixCapture.unavailable.length === mixCapture.total
+        ? "No Mix sources can currently be measured."
+        : "Measurement continues with the remaining sources.";
+    items.push({
+      id: "mix-capture",
+      kind: "warning",
+      text: "Mix Source Unavailable",
+      details: `${mixCapture.unavailable.join(", ")}. ${explanation}`,
+    });
+  } else if (mixCapture?.incomplete) {
+    items.push({
+      id: "mix-capture",
+      kind: "warning",
+      text: "Incomplete Mix Measurement",
+      details:
+        "One or more sources were unavailable earlier. Integrated and Max include those intervals. Clear to begin a fresh measurement.",
+    });
+  }
   if (layoutUnknown)
     items.push({
       id: "channel-layout",

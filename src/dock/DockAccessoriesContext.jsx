@@ -131,12 +131,13 @@ export function DockAccessoriesProvider({ children }) {
     audioInputs,
     captureApplications,
     safeAudioDeviceId,
+    sourceMixes,
     footerSourceLabel,
     refreshInventory,
     onSelectCaptureDevice,
   } = useSource();
-  const { sourceMode, liveAudioDrop } = useMeterRuntime();
-  const { notice, raiseNotice, clearNotice } = useMeterDisplayState();
+  const { sourceMode, liveAudioDrop, running } = useMeterRuntime();
+  const { notice, mixCaptureStatus, raiseNotice, clearNotice } = useMeterDisplayState();
   const { sourceTransportState, histSourceList, displayAudio } = useDisplaySnapshot();
   const historyTotalSamples = histSourceList?.length ?? 0;
   const { channelCount, channelLabelRuntime, vectorscopePairOptions, spectrumChannelOptions } =
@@ -366,11 +367,26 @@ export function DockAccessoriesProvider({ children }) {
     subscribeConfigurationRestart,
     configurationRestartStatus
   );
+  const statusMix =
+    sourceMode === "live" && mixCaptureStatus && mixCaptureStatus.sourceId === safeAudioDeviceId
+      ? sourceMixes.list.find(({ id }) => id === safeAudioDeviceId)
+      : null;
   const statusKey = JSON.stringify(
     statusFixture
       ? developmentStatusItems(statusFixture.phase)
       : buildAppStatusItems({
           notice,
+          mixCapture: statusMix
+            ? {
+                unavailable: running
+                  ? statusMix.members
+                      .filter(({ id }) => mixCaptureStatus.unavailable.includes(id))
+                      .map(({ label }) => label)
+                  : [],
+                total: statusMix.members.length,
+                incomplete: mixCaptureStatus.incomplete,
+              }
+            : null,
           layoutUnknown: channelCount > 0 && displayAudio?.loudnessLayoutKnown === false,
           layoutInferred: inferredChannelLayout({
             channelCount,

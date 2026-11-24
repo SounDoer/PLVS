@@ -250,6 +250,9 @@ function AppContent() {
     controlsVisible: !focusView.autoHideControls || focusControlsVisible,
     holdControls: holdFocusControls,
     refreshSources: refreshInventory,
+    sourceMixes,
+    selectedSourceId: safeAudioDeviceId,
+    selectSource: onSelectCaptureDevice,
     openDockMenu,
   });
 

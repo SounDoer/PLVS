@@ -26,6 +26,9 @@ export const DOCK_VIEW_BY_TOOLBAR_MENU = Object.freeze({
  *   controlsVisible: boolean,
  *   holdControls: (open: boolean) => void,
  *   refreshSources?: () => unknown,
+ *   sourceMixes?: ReturnType<typeof import("../hooks/useSourceMixes.js").useSourceMixes>,
+ *   selectedSourceId?: string,
+ *   selectSource?: (id: string) => Promise<boolean>,
  *   openDockMenu: (view: string) => Promise<void>,
  * }} options
  */
@@ -38,6 +41,9 @@ export function useToolbarMenuNavigation({
   controlsVisible,
   holdControls,
   refreshSources,
+  sourceMixes,
+  selectedSourceId,
+  selectSource,
   openDockMenu,
 }) {
   const [openMenu, setOpenMenu] = useState(/** @type {string | null} */ (null));
@@ -68,6 +74,41 @@ export function useToolbarMenuNavigation({
       changeMenu(menu, true);
     },
   });
+  const mixChoices =
+    openMenu === "sources" && sourceMixes?.supported
+      ? [
+          {
+            id: "add-mix",
+            label: "Add Mix",
+            run: () => {
+              sourceMixes.open();
+              changeMenu("sources", false);
+            },
+          },
+          ...sourceMixes.list.flatMap((mix) => [
+            {
+              id: `select:${mix.id}`,
+              label: mix.name,
+              selected: mix.id === selectedSourceId,
+              run: async () => {
+                if (!(await selectSource?.(mix.id)))
+                  throw createUiNavigationError("uiActionUnavailable", {
+                    choice: `select:${mix.id}`,
+                  });
+                changeMenu("sources", false);
+              },
+            },
+            {
+              id: `edit:${mix.id}`,
+              label: `Edit ${mix.name}`,
+              run: () => {
+                sourceMixes.open(mix);
+                changeMenu("sources", false);
+              },
+            },
+          ]),
+        ]
+      : undefined;
   useUiSurface({
     active: openMenu !== null && !menuGone && controlsVisible,
     kind: "toolbarMenu",
@@ -77,6 +118,7 @@ export function useToolbarMenuNavigation({
     supportedActions: ["close"],
     target: { menu: openMenu, presentation: "window" },
     onClose: () => changeMenu(openMenu, false),
+    choices: mixChoices,
   });
 
   return { openMenu, changeMenu };

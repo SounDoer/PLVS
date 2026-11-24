@@ -10,7 +10,7 @@ import {
   ackFrames,
 } from "../ipc/commands.js";
 import { isTauri } from "../ipc/env.js";
-import { onEngineBackpressure, onEngineStateChanged } from "../ipc/events.js";
+import { onEngineBackpressure, onEngineStateChanged, onMixCaptureStatus } from "../ipc/events.js";
 import { buildTauriFrameApply } from "../lib/tauriFrameApply.js";
 import { resolveDevice } from "../lib/audioEngineCommands.js";
 import { DEFAULT_DIALOGUE_VAD_ENGINE } from "../settings/defaults.js";
@@ -99,6 +99,8 @@ export function useAudioEngine({
     setAudio,
     setSelectedOffset,
     raiseNotice,
+    beginMixCapture,
+    updateMixCapture,
     setShowClock,
     clock: { resetTimer, stopTimer },
   } = display;
@@ -347,6 +349,20 @@ export function useAudioEngine({
             releaseListeners();
             return;
           }
+          beginMixCapture?.(mixApplicationIds ? captureDeviceId : null, continueSession);
+          if (mixApplicationIds) {
+            unsubs.push(
+              await onMixCaptureStatus((payload) => {
+                if (mounted && payload && Array.isArray(payload.unavailable)) {
+                  updateMixCapture?.(captureDeviceId, payload);
+                }
+              })
+            );
+          }
+          if (!mounted || disconnected) {
+            releaseListeners();
+            return;
+          }
           measurementOwner?.beginSession();
           try {
             nativeStart = startAudioCapture({
@@ -418,6 +434,8 @@ export function useAudioEngine({
     running,
     captureDeviceId,
     mixApplicationIds,
+    beginMixCapture,
+    updateMixCapture,
     captureFormatSignature,
     captureDeviceUnavailable,
     recoveryRevision,
