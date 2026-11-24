@@ -42,12 +42,14 @@ describe("pre-commit command selection", () => {
   it("checks Cargo lock consistency without changing the lockfile", () => {
     const [command] = commandPlanForPaths(["src-tauri/plvs-cli/Cargo.toml"]);
     expect(command.command).toBe("cargo");
+    expect(command.fromCargoIndex).toBe(true);
     expect(command.args).toContain("metadata");
     expect(command.args).toContain("--locked");
     expect(command.args).not.toContain("update");
+    expect(commandPlanForPaths(["src-tauri/Cargo.lock"])).toEqual([command]);
   });
 
-  it("rejects a stale Cargo lockfile and accepts the refreshed one", () => {
+  it("checks the staged Cargo lockfile independently of working-tree edits", () => {
     const cwd = mkdtempSync(join(tmpdir(), "plvs-pre-commit-cargo-"));
     const manifest = "src-tauri/Cargo.toml";
     const lockfile = join(cwd, "src-tauri", "Cargo.lock");
@@ -81,6 +83,21 @@ describe("pre-commit command selection", () => {
         writeFileSync(join(crate, "src", "lib.rs"), "");
       }
       refreshLock();
+      git("add", "src-tauri");
+      git(
+        "-c",
+        "user.name=PLVS Test",
+        "-c",
+        "user.email=test@example.invalid",
+        "-c",
+        "commit.gpgsign=false",
+        "-c",
+        `core.hooksPath=${join(cwd, "no-hooks")}`,
+        "commit",
+        "--quiet",
+        "-m",
+        "fixture"
+      );
       const originalLock = readFileSync(lockfile, "utf8");
       const appManifest = join(cwd, manifest);
       writeFileSync(
@@ -91,17 +108,31 @@ describe("pre-commit command selection", () => {
       git("add", manifest);
 
       const stale = checkLock();
-      expect(stale.status).not.toBe(0);
+      expect(stale.status, JSON.stringify(stale)).toBe(101);
       expect(stale.stderr).toMatch(/Cargo\.lock.*--locked/s);
       expect(readFileSync(lockfile, "utf8")).toBe(originalLock);
 
       refreshLock();
-      git("add", "src-tauri/Cargo.lock");
       const refreshedLock = readFileSync(lockfile, "utf8");
       expect(refreshedLock).toContain('name = "fixture-helper"');
+      const unstaged = checkLock();
+      expect(unstaged.status).not.toBe(0);
+      expect(unstaged.stderr).toContain("failed for the Git index");
+      expect(readFileSync(lockfile, "utf8")).toBe(refreshedLock);
+
+      git("add", "src-tauri/Cargo.lock");
+      writeFileSync(lockfile, originalLock);
       const current = checkLock();
       expect(current.status, current.stderr).toBe(0);
-      expect(readFileSync(lockfile, "utf8")).toBe(refreshedLock);
+      expect(readFileSync(lockfile, "utf8")).toBe(originalLock);
+      expect(git("show", ":src-tauri/Cargo.lock").toString("utf8")).toBe(refreshedLock);
+
+      git("restore", "--staged", "--", manifest);
+      git("rm", "--cached", "--force", "src-tauri/Cargo.lock");
+      const deleted = checkLock();
+      expect(deleted.status, deleted.stderr).toBe(101);
+      expect(deleted.stderr).toMatch(/Cargo\.lock.*--locked/s);
+      expect(readFileSync(lockfile, "utf8")).toBe(originalLock);
     } finally {
       rmSync(cwd, { recursive: true, force: true });
     }

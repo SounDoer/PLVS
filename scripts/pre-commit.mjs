@@ -1,10 +1,13 @@
 #!/usr/bin/env node
 import { execFileSync, spawnSync } from "node:child_process";
-import { resolve } from "node:path";
+import { mkdtempSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join, resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 
 const prettierPath =
   /^(?:src\/.*\.(?:js|jsx|css|json)|scripts\/.*\.(?:js|mjs|cjs|json)|\.github\/.*\.ya?ml|docs\/.*\.md|\.agents\/.*\.md|(?:AGENTS|CHANGELOG|CONTRIBUTING|README)\.md|package\.json)$/;
+const cargoDependencyPath = /^src-tauri\/(?:(?:[^/]+\/)*Cargo\.toml|Cargo\.lock)$/;
 
 export function commandPlanForPaths(paths, { nodeExecutable = process.execPath } = {}) {
   const files = [...new Set(paths)];
@@ -21,11 +24,11 @@ export function commandPlanForPaths(paths, { nodeExecutable = process.execPath }
       args: ["fmt", "--manifest-path", "src-tauri/Cargo.toml", "--all", "--", "--check"],
     });
   }
-  if (files.some((file) => /^src-tauri\/(?:[^/]+\/)*Cargo\.toml$/.test(file))) {
+  if (files.some((file) => cargoDependencyPath.test(file))) {
     // Cargo must resolve dependencies to check the lockfile. --no-deps skips that check.
     commands.push({
       command: "cargo",
-      quietStdout: true,
+      fromCargoIndex: true,
       args: [
         "metadata",
         "--locked",
@@ -42,10 +45,37 @@ export function commandPlanForPaths(paths, { nodeExecutable = process.execPath }
 export function stagedPaths({ cwd = process.cwd() } = {}) {
   const bytes = execFileSync(
     "git",
-    ["diff", "--cached", "--name-only", "--diff-filter=ACMR", "-z"],
+    ["diff", "--cached", "--name-status", "--no-renames", "--diff-filter=AMDT", "-z"],
     { cwd, encoding: "buffer", stdio: ["ignore", "pipe", "inherit"] }
   );
-  return bytes.toString("utf8").split("\0").filter(Boolean);
+  const fields = bytes.toString("utf8").split("\0");
+  const paths = [];
+  for (let i = 0; i + 1 < fields.length; i += 2) {
+    const [status, file] = [fields[i], fields[i + 1]];
+    if (status !== "D" || cargoDependencyPath.test(file)) paths.push(file);
+  }
+  return paths;
+}
+
+function runCargoIndexCheck(command, args, cwd) {
+  const snapshot = mkdtempSync(join(tmpdir(), "plvs-cargo-index-"));
+  try {
+    // Cargo reads files on disk. Materialize the Git index outside the checkout so
+    // partially staged changes are checked as committed, with local crate paths intact.
+    const paths = execFileSync(
+      "git",
+      ["ls-files", "--cached", "-z", "--", "src-tauri", ".cargo", "rust-toolchain.toml"],
+      { cwd }
+    );
+    execFileSync(
+      "git",
+      ["checkout-index", "--ignore-skip-worktree-bits", "--stdin", "-z", `--prefix=${snapshot}/`],
+      { cwd, input: paths, stdio: ["pipe", "ignore", "inherit"] }
+    );
+    return spawnSync(command, args, { cwd: snapshot, stdio: ["ignore", "ignore", "inherit"] });
+  } finally {
+    rmSync(snapshot, { recursive: true, force: true });
+  }
 }
 
 export function runPreCommit({ cwd = process.cwd(), paths = stagedPaths({ cwd }) } = {}) {
@@ -54,11 +84,19 @@ export function runPreCommit({ cwd = process.cwd(), paths = stagedPaths({ cwd })
     console.log("Pre-commit: no staged formatter or Cargo contract applies.");
     return;
   }
-  for (const { command, args, quietStdout = false } of commands) {
-    const stdio = quietStdout ? ["ignore", "ignore", "inherit"] : "inherit";
-    const result = spawnSync(command, args, { cwd, stdio, shell: false });
+  for (const { command, args, fromCargoIndex } of commands) {
+    const result = fromCargoIndex
+      ? runCargoIndexCheck(command, args, cwd)
+      : spawnSync(command, args, { cwd, stdio: "inherit" });
     if (result.error) throw result.error;
-    if (result.status !== 0) process.exit(result.status ?? 1);
+    if (result.status !== 0) {
+      if (fromCargoIndex) {
+        console.error(
+          "Cargo lock check failed for the Git index. Stage any Cargo.lock updates before retrying."
+        );
+      }
+      process.exit(result.status ?? 1);
+    }
   }
 }
 
