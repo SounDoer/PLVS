@@ -12,6 +12,7 @@
           "libstdc++6",
           "libgcc-s1",
           "libasound2t64",
+          "libpulse0",
           "libgtk-3-0t64",
           "libwebkit2gtk-4.1-0",
           "libayatana-appindicator3-1",

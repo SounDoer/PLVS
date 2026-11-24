@@ -1095,6 +1095,14 @@
       "license": "ISC",
       "noticeSha256": "afb6db6c1684f7cf6dede588d9a3414a47b702f123a137559acb7fa7d13fb816"
     },
+    "rust:libpulse-binding@2.30.1": {
+      "license": "MIT OR Apache-2.0",
+      "noticeSha256": "fe1e7ae952b0d84799870cc42a96672b7c4dbfdc2efbe9010634e9f815589f54"
+    },
+    "rust:libpulse-sys@1.23.0": {
+      "license": "MIT OR Apache-2.0",
+      "noticeSha256": "fe1e7ae952b0d84799870cc42a96672b7c4dbfdc2efbe9010634e9f815589f54"
+    },
     "rust:libredox@0.1.21": {
       "license": "MIT",
       "noticeSha256": "30f0694d86c8d132d0e35cdd11c1d583d70f165be30d6822038e7ee1db26169b"

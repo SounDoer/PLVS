@@ -145,7 +145,14 @@ pub fn list_capture_applications(
   crate::audio::macos_capture_apps::list_capture_applications()
 }
 
-#[cfg(not(any(target_os = "windows", target_os = "macos")))]
+#[cfg(target_os = "linux")]
+#[tauri::command]
+pub fn list_capture_applications(
+) -> Result<Vec<crate::audio::linux_pulse_mix::CaptureApplication>, String> {
+  crate::audio::linux_pulse_mix::list_capture_applications()
+}
+
+#[cfg(not(any(target_os = "windows", target_os = "macos", target_os = "linux")))]
 #[tauri::command]
 pub fn list_capture_applications() -> Result<Vec<serde_json::Value>, String> {
   Ok(Vec::new())
@@ -203,10 +210,18 @@ pub(crate) fn read_audio_device_preview(device_id: &str) -> Result<AudioDevicePr
     )
   };
   #[cfg(not(target_os = "windows"))]
-  let (plan, reference_roles) = (
-    crate::audio::source_layout::device_plan(&device, supported.channels(), output),
-    None,
-  );
+  let (plan, reference_roles) = {
+    let plan = crate::audio::source_layout::device_plan(&device, supported.channels(), output);
+    #[cfg(any(target_os = "macos", target_os = "linux"))]
+    let reference = plan
+      .roles
+      .as_ref()
+      .filter(|roles| output && crate::audio::capture::valid_mix_roles(roles))
+      .cloned();
+    #[cfg(not(any(target_os = "macos", target_os = "linux")))]
+    let reference = None;
+    (plan, reference)
+  };
   let sample_rate_hz = supported.sample_rate();
   let channels = plan.channels();
   Ok(AudioDevicePreview {
@@ -284,7 +299,7 @@ pub fn audio_start(
   {
     return Err("mix endpoints require a mix source selector".into());
   }
-  #[cfg(target_os = "windows")]
+  #[cfg(any(target_os = "windows", target_os = "macos", target_os = "linux"))]
   let mix_inputs = {
     if mix_input.is_some() && mix_inputs.is_some() {
       return Err("Supply either a single Mix input or a list of inputs.".into());
@@ -292,15 +307,26 @@ pub fn audio_start(
     let inputs = mix_inputs.unwrap_or_else(|| mix_input.into_iter().collect());
     if let Some(ids) = &mix_application_ids {
       validate_mix_sources(ids, &inputs, mix_output_id.as_deref())?;
+      #[cfg(any(target_os = "macos", target_os = "linux"))]
+      if mix_routing.is_none() {
+        return Err("This platform requires a Mix routing plan.".into());
+      }
       if let Some(routing) = &mix_routing {
         routing.validate(ids, &inputs, mix_output_id.as_deref())?;
       }
     }
     inputs
   };
-  #[cfg(not(target_os = "windows"))]
+  #[cfg(not(any(target_os = "windows", target_os = "macos", target_os = "linux")))]
   if mix_application_ids.is_some() {
     return Err("mix sources are not available on this platform".into());
+  }
+  #[cfg(target_os = "linux")]
+  if application_id
+    .as_deref()
+    .is_some_and(|id| !crate::audio::linux_pulse_mix::is_application_id(id))
+  {
+    return Err("Invalid capture application ID.".into());
   }
   {
     // Stop any active source (live or file) before starting live capture; only one runs at a time.
@@ -363,7 +389,7 @@ pub fn audio_start(
     .map(crate::audio::windows_capture_apps::resolve_capture_application)
     .transpose()?
     .map(|application| application.process_id);
-  #[cfg(not(any(target_os = "windows", target_os = "macos")))]
+  #[cfg(not(any(target_os = "windows", target_os = "macos", target_os = "linux")))]
   if application_id.is_some() {
     return Err("per-process capture is not available on this platform".to_string());
   }
@@ -378,6 +404,10 @@ pub fn audio_start(
     // their speaker masks are verified on a real endpoint.
     normalize_process_capture_format(sample_rate, channels)
   });
+  #[cfg(target_os = "linux")]
+  let linux_app = application_id.is_some();
+  #[cfg(not(target_os = "linux"))]
+  let linux_app = false;
   let is_mix = mix_application_ids.is_some();
   let session = if let Some(ids) = mix_application_ids {
     #[cfg(target_os = "windows")]
@@ -399,14 +429,49 @@ pub fn audio_start(
         state.inner().measured_pcm.clone(),
       )?
     }
-    #[cfg(not(target_os = "windows"))]
+    #[cfg(target_os = "macos")]
+    {
+      use crate::audio::live_mix::MixSources;
+      crate::audio::macos::start_mix(
+        MixSources {
+          applications: ids,
+          inputs: mix_inputs,
+          output: mix_output_id,
+          routing: mix_routing.ok_or("Missing Mix routing plan.")?,
+        },
+        pool,
+        app.clone(),
+        dialogue_gating,
+        dialogue_vad_engine,
+        state.inner().measured_pcm.clone(),
+      )?
+    }
+    #[cfg(target_os = "linux")]
+    {
+      use crate::audio::live_mix::MixSources;
+      crate::audio::linux_pulse_mix::start_mix(
+        MixSources {
+          applications: ids,
+          inputs: mix_inputs,
+          output: mix_output_id,
+          routing: mix_routing.ok_or("Missing Mix routing plan.")?,
+        },
+        pool,
+        app.clone(),
+        dialogue_gating,
+        dialogue_vad_engine,
+        state.inner().measured_pcm.clone(),
+      )?
+    }
+    #[cfg(not(any(target_os = "windows", target_os = "macos", target_os = "linux")))]
     {
       let _ = ids;
       return Err("application mixes are not available on this platform".into());
     }
-  } else if application_id.is_some() {
+  } else if let Some(application_id) = application_id {
     #[cfg(target_os = "windows")]
     {
+      let _ = application_id;
       let process_id =
         process_id.ok_or_else(|| "capture application process was not resolved".to_string())?;
       let (sample_rate, channels) =
@@ -425,11 +490,8 @@ pub fn audio_start(
     }
     #[cfg(target_os = "macos")]
     {
-      let application_id = application_id
-        .as_deref()
-        .expect("application id checked above");
       crate::audio::macos::start_application_session(
-        application_id,
+        &application_id,
         &device_id,
         pool,
         app.clone(),
@@ -439,7 +501,18 @@ pub fn audio_start(
         state.inner().measured_pcm.clone(),
       )?
     }
-    #[cfg(not(any(target_os = "windows", target_os = "macos")))]
+    #[cfg(target_os = "linux")]
+    {
+      crate::audio::linux_pulse_mix::start_application(
+        application_id,
+        pool,
+        app.clone(),
+        dialogue_gating,
+        dialogue_vad_engine,
+        state.inner().measured_pcm.clone(),
+      )?
+    }
+    #[cfg(not(any(target_os = "windows", target_os = "macos", target_os = "linux")))]
     {
       let _ = application_id;
       return Err("per-process capture is not available on this platform".to_string());
@@ -495,7 +568,7 @@ pub fn audio_start(
       .map_err(|_| "state lock poisoned".to_string())?;
     *source = EngineSource::Live(session);
   }
-  if is_mix {
+  if is_mix || linux_app {
     let _ = app.emit("sample-rate-changed", 48_000u32);
   } else {
     #[cfg(target_os = "windows")]
@@ -522,7 +595,7 @@ pub fn audio_start(
   Ok(())
 }
 
-#[cfg(target_os = "windows")]
+#[cfg(any(target_os = "windows", target_os = "macos", target_os = "linux"))]
 fn validate_mix_sources(
   ids: &[String],
   inputs: &[crate::audio::capture::MixInput],
@@ -540,9 +613,15 @@ fn validate_mix_sources(
   if inputs.is_empty() && ids.is_empty() && output_id.is_none() {
     return Err("a mix requires at least one source".into());
   }
+  #[cfg(target_os = "linux")]
+  use crate::audio::linux_pulse_mix::is_application_id;
+  #[cfg(target_os = "macos")]
+  use crate::audio::macos_capture_apps::is_application_id;
+  #[cfg(target_os = "windows")]
+  use crate::audio::windows_capture_apps::is_application_id;
   if ids
     .iter()
-    .any(|id| !crate::audio::windows_capture_apps::is_application_id(id) || !seen.insert(id))
+    .any(|id| !is_application_id(id) || !seen.insert(id))
   {
     return Err("a mix requires distinct application IDs".into());
   }

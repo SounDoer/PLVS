@@ -12,7 +12,7 @@ import { automaticOutputChangeNotice } from "../lib/captureHealth.js";
 import { errorDetails } from "../lib/errorDetails.js";
 import { formatAudioDeviceLabel } from "@/lib/audioDeviceLabels.js";
 import { isTauri } from "../ipc/env.js";
-import { isWindows } from "../lib/platform.js";
+import { isLinux, isMacOS, isWindows } from "../lib/platform.js";
 import { compileMixRouting, mixInputs, resolveMixFormat } from "../lib/mixRouting.js";
 import { canSaveSourceMix, isSourceMixId, sourceMixName } from "../lib/sourceMixes.js";
 import { usesTransactionalPersistence } from "../persistence/index.js";
@@ -98,7 +98,7 @@ export function SourceProvider({ children }) {
   );
 
   const sourceMixes = useSourceMixes({
-    supported: isTauri() && isWindows() && usesTransactionalPersistence,
+    supported: isTauri() && (isWindows() || isMacOS() || isLinux()) && usesTransactionalPersistence,
     onSelect: onSelectCaptureDevice,
     onError: (message, error) => raiseNotice("error", message, errorDetails(message, error)),
   });

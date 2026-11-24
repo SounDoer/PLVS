@@ -31,7 +31,8 @@ import { WINDOW_OFFSET_MAX, WINDOW_SIZE_MAX, WINDOW_SIZE_MIN } from "./windowCon
 function featureGateAvailable(featureGate, runtime) {
   const visual = runtime?.visual;
   if (featureGate === undefined) return true;
-  if (featureGate === "sourceMixes") return runtime.platform === "windows";
+  if (featureGate === "sourceMixes")
+    return ["windows", "macos", "linux"].includes(runtime.platform);
   if (featureGate === "visual") return visual !== undefined;
   if (featureGate === "visual.screenshot") return visual?.screenshot === true;
   if (featureGate === "visual.recording") return visual?.recording === true;
@@ -112,7 +113,7 @@ export function buildAgentControlCapabilities(runtime, revision) {
               inspect: true,
               close: hasMethod("ui.close"),
               decide: hasMethod("ui.decide"),
-              ...(runtime.platform === "windows" && hasMethod("ui.decide")
+              ...(featureGateAvailable("sourceMixes", runtime) && hasMethod("ui.decide")
                 ? {
                     sourceMixes: { menu: "sources", editorSurface: "sourceMixEditor" },
                   }
@@ -144,7 +145,14 @@ export function buildAgentControlCapabilities(runtime, revision) {
                 panelFullscreen: hasMethod("ui.show.panelFullscreen"),
                 addPanel: hasMethod("ui.show.addPanel"),
                 sourceGroup: hasMethod("ui.show.sourceGroup")
-                  ? { groups: ["output", "input", "applications"] }
+                  ? {
+                      groups: [
+                        "output",
+                        "input",
+                        "applications",
+                        ...(hasMethod("mix.list") ? ["mixes"] : []),
+                      ],
+                    }
                   : false,
                 dropdown: hasMethod("ui.show.dropdown"),
               },

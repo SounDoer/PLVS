@@ -143,7 +143,7 @@
  * @property {number} currentInflightFrames sent frames not yet acknowledged by the WebView
  * @property {number} maxInflightFrames highest in-flight count observed this session
  * @property {number} inflightLimit backlog cap at which new UI frames are dropped
- * @property {{invalidTimestamps: number, ingressQueueRejected: number, timelineOverflow: number, lateFrames: number, analysisQueueRejected: number}} [mixDrops] Windows Mix loss counters by capture stage
+ * @property {{invalidTimestamps: number, ingressQueueRejected: number, timelineOverflow: number, lateFrames: number, analysisQueueRejected: number}} [mixDrops] Mix loss counters by capture stage
  */
 
 /**

@@ -1,7 +1,7 @@
 # Editor Draft Control
 
 Editor Draft Control safely inspects and changes the in-memory document owned by a currently open
-Theme Editor, Loudness Profile Editor, Windows Mix editor, Feedback dialog, or Welcome dialog. It is an authoring-session API: Patch, Undo, Redo, and Discard never Save a document, change the selected library
+Theme Editor, Loudness Profile Editor, Mix editor, Feedback dialog, or Welcome dialog. It is an authoring-session API: Patch, Undo, Redo, and Discard never Save a document, change the selected library
 item, dirty a Preset, or write persistence. Explicit Save commits the exact draft through its existing
 editor owner, including the GUI's selection and Preset effects.
 
@@ -47,7 +47,7 @@ same operation supplies a replacement, matching the visible editor.
 Theme exposes Undo and Redo because the visible Theme Editor owns history. Loudness Profile does
 not; attempting those actions returns `draftActionUnavailable`.
 
-## Mix drafts on Windows
+## Mix drafts
 
 Open **Sources** through UI Navigation and choose `add-mix` or `edit:<mix-id>` from the
 toolbar surface. Use the resulting `sourceMixEditor` surface ID with `editor-draft inspect mix`.

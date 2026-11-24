@@ -9,12 +9,12 @@ pub struct PcmBridgeCtx {
   pub forwarder: PcmCallbackForwarder,
 }
 
-#[no_mangle]
 pub unsafe extern "C" fn pcm_bridge(
   userdata: *mut c_void,
   samples: *const f32,
   frame_count: u32,
   channels: u32,
+  _host_time: u64,
 ) {
   if userdata.is_null() || samples.is_null() || channels == 0 {
     return;

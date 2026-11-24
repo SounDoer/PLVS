@@ -58,7 +58,7 @@ the button opens, anchored to that button, with `presentation: "dock"`. Sources 
 `uiTargetNotVisible` while there are no conditions. `ui close` closes the menu as a click outside
 does. Select sources, presets, and profiles through their owning families when available.
 
-On Windows, the normal-window Sources surface declares Mix choices through `ui inspect`. Use its
+Where Mixes are supported, the normal-window Sources surface declares Mix choices through `ui inspect`. Use its
 `add-mix`, `edit:<mix-id>`, or `select:<mix-id>` choice with `ui decide`. The Dock Sources surface
 also exposes `select:<mix-id>` for each saved Mix. The normal-window `sourceMixEditor`
 surface exposes `group:input` and `group:applications` to expand or collapse a group. In Input,
@@ -77,7 +77,7 @@ per-channel settings with `routing:<source-id>`. The open rows offer
 individual physical input channels.
 An invalid custom route disables Save.
 Use the latest surface ID, revision and UI generation for each decision. These choices run the
-same handlers as the editor controls. Use [Editor Draft Control](editor-drafts.md#mix-drafts-on-windows)
+same handlers as the editor controls. Use [Editor Draft Control](editor-drafts.md#mix-drafts)
 to inspect or patch the full draft, including the name and channel destinations.
 
 `add-panel` and `source-group` act inside an open menu: open the Panels or Sources menu first, or

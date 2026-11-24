@@ -14,13 +14,17 @@ mod linux_capture;
 mod linux_devices;
 #[cfg(target_os = "linux")]
 mod linux_layout;
+#[cfg(target_os = "linux")]
+pub(crate) mod linux_pulse_mix;
+#[cfg(any(target_os = "macos", target_os = "linux"))]
+pub(crate) mod live_mix;
 #[cfg(target_os = "macos")]
 pub mod macos;
 #[cfg(target_os = "macos")]
 pub mod macos_capture_apps;
 mod platform_backend;
 pub(crate) mod source_layout;
-#[cfg(target_os = "windows")]
+#[cfg(any(test, target_os = "windows", target_os = "macos", target_os = "linux"))]
 mod stereo_mix_timeline;
 #[cfg(target_os = "windows")]
 pub mod windows_capture_apps;

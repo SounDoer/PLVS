@@ -336,6 +336,20 @@ official corpus is an opt-in local input with no CI or release-job dependency.
 
 ### Capture hardware and soak evidence
 
+On macOS and Linux, start the dev app in a linked worktree and run
+`node scripts/source-mix-acceptance.mjs --wait`. The scenario starts two identified playback
+fixtures under the capture lease, creates a Mix with Agent Control, checks measured peaks and
+loudness, restarts a member, and checks routing previews through 9.1.6. Linux also captures
+two streams belonging to one application. Pass `--devices` to cover Application + Input and
+Output + Input with the same deterministic signals. Pass `--phase` to check that a beat
+preserves over-range peaks and cancellation. The scenario uses BlackHole on macOS and a
+private null sink on Linux.
+
+For backend-only isolation, run `node scripts/macos-source-mix-probe.mjs --unbound --wait`
+or `node scripts/linux-source-mix-probe.mjs --wait`. On Linux, `--pipewire` tests native
+PipeWire targeting with `pw-record` instead of the Pulse monitor path. The Linux probe uses
+two distinct WAVs and compares the per-stream readings with the whole test sink.
+
 For Windows application Mixes, build the `process_loopback_probe` Cargo example. Run
 `npm run smoke:capture:multi -- --process-timing-probe <probe.exe> --measure-mix --measure-mix-phase --wait`
 to capture two independent players with left-channel tones at 1,000 and 1,001 Hz. Their beat lets

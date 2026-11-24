@@ -201,7 +201,7 @@ pub(crate) fn build_device_list() -> Result<Vec<DeviceInfo>, String> {
       let mix_output_roles = observed
         .as_ref()
         .and_then(|value| value.monitor_plan(cfg.channels()).ok()?.roles)
-        .filter(|roles| super::windows_layout::valid_mix_roles(roles));
+        .filter(|roles| super::capture::valid_mix_roles(roles));
       let reference_roles = observed
         .as_ref()
         .and_then(|value| value.reference_roles.clone());
@@ -212,7 +212,18 @@ pub(crate) fn build_device_list() -> Result<Vec<DeviceInfo>, String> {
       );
       (plan, mix_stereo_output, mix_output_roles, reference_roles)
     };
-    #[cfg(not(target_os = "windows"))]
+    #[cfg(target_os = "linux")]
+    let (plan, mix_stereo_output, mix_output_roles, reference_roles) = {
+      let native = super::linux_layout::device_layout(&device, cfg.channels(), true);
+      let mix_roles =
+        super::source_layout::MonitoringPlan::require_system_scope(cfg.channels(), native.clone())
+          .ok()
+          .and_then(|plan| plan.roles)
+          .filter(|roles| super::capture::valid_mix_roles(roles));
+      let plan = super::source_layout::plan_device_layout(cfg.channels(), true, native);
+      (plan, false, mix_roles.clone(), mix_roles)
+    };
+    #[cfg(not(any(target_os = "windows", target_os = "linux")))]
     let (plan, mix_stereo_output, mix_output_roles, reference_roles) = (
       super::source_layout::device_plan(&device, cfg.channels(), true),
       false,

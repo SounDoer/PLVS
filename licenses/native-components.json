@@ -21,6 +21,7 @@
     "gdk-sys@0.18.2": "System/platform binding; Linux uses the distribution GTK stack rather than bundling it.",
     "gtk-sys@0.18.2": "System/platform binding; Linux uses the distribution GTK stack rather than bundling it.",
     "libdbus-sys@0.2.7": "System/platform binding; Linux uses the distribution D-Bus library rather than bundling it.",
+    "libpulse-sys@1.23.0": "System/platform binding; Linux links the distribution libpulse.so.0 and PLVS does not bundle it.",
     "libsqlite3-sys@0.39.1": "Native code shipped; upstream and embedded notices reviewed. See component and native notices.",
     "objc2-exception-helper@0.1.1": "Native code shipped; upstream and embedded notices reviewed. See component and native notices.",
     "openssl-sys@0.9.117": "System/platform binding; Linux uses the distribution OpenSSL library rather than bundling it.",
@@ -45,7 +46,7 @@
   "inputs": [
     {
       "path": "src-tauri/Cargo.toml",
-      "sha256": "d67847a4538f4f77c2f852b05bdc02b81c1f2bab4e36b93e009b56a08767c69c"
+      "sha256": "9f5747214e8602d0a722e2befb6504e7dd584160ba7f9eaf9bd725d2b7b6b7f9"
     },
     {
       "path": "scripts/fetch-ffmpeg-sidecar.mjs",

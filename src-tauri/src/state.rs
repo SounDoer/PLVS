@@ -20,7 +20,7 @@ pub struct UiFrameDiagnosticsCounters {
   mix_drops: [AtomicU64; 5],
 }
 
-#[cfg(target_os = "windows")]
+#[cfg(any(target_os = "windows", target_os = "macos", target_os = "linux"))]
 #[derive(Debug, PartialEq, Eq)]
 pub(crate) enum MixDropStage {
   InvalidTimestamp,
@@ -42,12 +42,12 @@ impl UiFrameDiagnosticsCounters {
     }
   }
 
-  #[cfg(target_os = "windows")]
+  #[cfg(any(target_os = "windows", target_os = "macos", target_os = "linux"))]
   pub(crate) fn begin_mix(&self) {
     self.mix_active.store(true, Ordering::Relaxed);
   }
 
-  #[cfg(target_os = "windows")]
+  #[cfg(any(target_os = "windows", target_os = "macos", target_os = "linux"))]
   pub(crate) fn record_mix_drop(&self, stage: MixDropStage, count: u64) {
     self.mix_drops[stage as usize].fetch_add(count, Ordering::Relaxed);
   }

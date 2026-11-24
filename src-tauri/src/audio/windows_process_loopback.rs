@@ -46,7 +46,9 @@ use super::cpal_backend::{
   emit_capture_failure, pooled_pcm_buffer_capacity, run_meter_pipeline_bridge_thread,
   PcmBufferPool, PcmCallbackForwarder, PcmDeliveryQueue, PCM_QUEUE_CAP,
 };
-use super::stereo_mix_timeline::{MixCoverage, MixInsert, StereoMixTimeline};
+#[cfg(test)]
+use super::stereo_mix_timeline::StereoMixTimeline;
+use super::stereo_mix_timeline::{run_mix_timeline, MixCoverage, MixInsert, MixPacket};
 use super::windows_capture_apps::{application_id_for_process, resolve_capture_application};
 use crate::dsp::channel_layouts::ChannelSelection;
 use crate::dsp::speech::VadEngineKind;
@@ -972,8 +974,9 @@ fn run_mix_device_stream<const N: usize>(
     |timing, pcm| {
       let next = timing.has_qpc().then(|| MixPacket {
         member,
-        qpc: timing.qpc,
-        end_qpc: None,
+        stream: None,
+        time_100ns: timing.qpc,
+        end_time_100ns: None,
         frames: pcm
           .chunks_exact(usize::from(channels))
           .map(|frame| {
@@ -1005,7 +1008,7 @@ fn run_mix_device_stream<const N: usize>(
       }
       if let Some(mut previous) = std::mem::replace(&mut pending, next) {
         if timing.has_qpc() && timing.flags & AUDCLNT_BUFFERFLAGS_DATA_DISCONTINUITY.0 as u32 == 0 {
-          previous.end_qpc = Some(timing.qpc);
+          previous.end_time_100ns = Some(timing.qpc);
         }
         if !send(previous) {
           on_drop(MixDropStage::IngressQueue);
@@ -1085,8 +1088,9 @@ fn capture_live_member<const N: usize>(
                 if tx
                   .try_send(MixPacket {
                     member,
-                    qpc: timing.qpc,
-                    end_qpc: None,
+                    stream: None,
+                    time_100ns: timing.qpc,
+                    end_time_100ns: None,
                     frames,
                   })
                   .is_err()
@@ -1345,13 +1349,6 @@ pub struct StereoMixProbeResult {
   pub measurement: Result<MixProbeMeasurement, String>,
 }
 
-struct MixPacket<const N: usize = 2> {
-  member: usize,
-  qpc: u64,
-  end_qpc: Option<u64>,
-  frames: Vec<[f32; N]>,
-}
-
 fn queue_mix_packet(
   tx: &mpsc::SyncSender<MixPacket>,
   member: usize,
@@ -1363,8 +1360,9 @@ fn queue_mix_packet(
   }
   tx.try_send(MixPacket {
     member,
-    qpc: timing.qpc,
-    end_qpc: None,
+    stream: None,
+    time_100ns: timing.qpc,
+    end_time_100ns: None,
     frames: Vec::from(pcm.as_chunks::<2>().0),
   })
   .map_err(|_| MixDropStage::IngressQueue)
@@ -1445,121 +1443,6 @@ fn measure_streaming_stereo(rx: mpsc::Receiver<MixPacket>) -> Result<MixProbeMea
   })
 }
 
-fn run_mix_timeline<const N: usize>(
-  rx: mpsc::Receiver<MixPacket<N>>,
-  member_count: usize,
-  stopped: impl FnMut() -> bool,
-  on_block: impl FnMut(&[f32], MixCoverage),
-  on_insert: impl FnMut(MixInsert),
-) -> bool {
-  run_mix_timeline_with_clock(rx, member_count, stopped, on_block, on_insert, Instant::now)
-}
-
-fn run_mix_timeline_with_clock<const N: usize>(
-  rx: mpsc::Receiver<MixPacket<N>>,
-  member_count: usize,
-  mut stopped: impl FnMut() -> bool,
-  mut on_block: impl FnMut(&[f32], MixCoverage),
-  mut on_insert: impl FnMut(MixInsert),
-  mut now: impl FnMut() -> Instant,
-) -> bool {
-  const DELAY: Duration = Duration::from_millis(80);
-  const POLL: Duration = Duration::from_millis(5);
-  const RATE: usize = DEFAULT_SAMPLE_RATE as usize;
-  // The larger ring absorbs bursts without permitting unbounded accumulation.
-  let mut timeline = StereoMixTimeline::new(member_count, RATE / 2);
-  let mut block = [[0.0; N]; RATE / 100];
-  let mut adjusted = Vec::new();
-  let first = loop {
-    if stopped() {
-      return false;
-    }
-    match rx.recv_timeout(POLL) {
-      Ok(packet) => break packet,
-      Err(mpsc::RecvTimeoutError::Disconnected) => return false,
-      Err(mpsc::RecvTimeoutError::Timeout) => {}
-    }
-  };
-  let epoch = first.qpc;
-  let frame_at = |qpc| {
-    let ticks = i128::from(qpc) - i128::from(epoch);
-    let scaled = ticks * RATE as i128;
-    ((scaled + scaled.signum() * 5_000_000) / 10_000_000) as i64
-  };
-  let started = now();
-  let mut observed_end = 0;
-  let mut pending = Ok(first);
-
-  loop {
-    if let Ok(packet) = &pending {
-      let position = frame_at(packet.qpc);
-      let frames = packet
-        .end_qpc
-        .and_then(|end| usize::try_from(frame_at(end) - position).ok())
-        .and_then(|len| adjust_input_clock(&packet.frames, len, &mut adjusted))
-        .unwrap_or(&packet.frames);
-      let outcome = timeline.push(packet.member, position, frames);
-      if outcome != MixInsert::Overflow {
-        observed_end = observed_end.max(position + frames.len() as i64);
-      }
-      on_insert(outcome);
-    }
-    let finished = matches!(pending, Err(mpsc::RecvTimeoutError::Disconnected)) || stopped();
-    let release_at = if finished {
-      observed_end
-    } else {
-      let elapsed = now()
-        .saturating_duration_since(started)
-        .saturating_sub(DELAY);
-      let due = (elapsed.as_nanos() * RATE as u128 / 1_000_000_000) as i64;
-      // Independent packet cadences can wake the mixer several times within one meter block.
-      // Keep the delivery rate independent of those wakes and release the short tail on stop.
-      let block_frames = block.len() as i64;
-      due - due % block_frames
-    };
-    while timeline.cursor() < release_at {
-      let count = ((release_at - timeline.cursor()) as usize).min(block.len());
-      let block = &mut block[..count];
-      let rendered = timeline.render(block);
-      on_block(block.as_flattened(), rendered);
-    }
-    if finished {
-      break;
-    }
-    pending = rx.recv_timeout(POLL);
-  }
-  true
-}
-
-// WASAPI handles nominal sample-rate conversion. Move the input packet boundary to match
-// its measured clock, within a small allowance. A larger timestamp jump is a real gap.
-fn adjust_input_clock<'a, const N: usize>(
-  frames: &[[f32; N]],
-  length: usize,
-  output: &'a mut Vec<[f32; N]>,
-) -> Option<&'a [[f32; N]]> {
-  if length < 2
-    || frames.len() < 2
-    || length == frames.len()
-    || length.abs_diff(frames.len()) > 2 + frames.len() / 200
-  {
-    return None;
-  }
-  output.clear();
-  let step = (frames.len() - 1) as f64 / (length - 1) as f64;
-  output.extend((0..length).map(|index| {
-    let at = index as f64 * step;
-    let lower = at as usize;
-    let upper = (lower + 1).min(frames.len() - 1);
-    let fraction = (at - lower as f64) as f32;
-    std::array::from_fn(|channel| {
-      let value = frames[lower][channel];
-      value + fraction * (frames[upper][channel] - value)
-    })
-  }));
-  Some(output)
-}
-
 fn capture_process_probe(
   process_id: u32,
   duration: Duration,
@@ -1631,8 +1514,8 @@ fn capture_process_probe(
 #[cfg(test)]
 mod tests {
   use super::{
-    capture_format, measure_streaming_stereo, run_mix_timeline, ActivationPayload, CaptureFormat,
-    MixPacket, ProcessLoopbackTiming,
+    capture_format, measure_streaming_stereo, ActivationPayload, CaptureFormat, MixPacket,
+    ProcessLoopbackTiming,
   };
   use windows::Win32::Media::Audio::{
     AUDCLNT_BUFFERFLAGS_DATA_DISCONTINUITY, AUDCLNT_BUFFERFLAGS_TIMESTAMP_ERROR,
@@ -1640,18 +1523,6 @@ mod tests {
     PROCESS_LOOPBACK_MODE_INCLUDE_TARGET_PROCESS_TREE,
   };
   use windows::Win32::System::Variant::VT_BLOB;
-
-  #[test]
-  fn mix_can_stop_before_any_member_delivers_pcm() {
-    let (_sender, receiver) = std::sync::mpsc::sync_channel::<MixPacket>(2);
-    assert!(!run_mix_timeline(
-      receiver,
-      2,
-      || true,
-      |_, _| panic!("unexpected PCM"),
-      |_| panic!("unexpected drop")
-    ));
-  }
 
   #[test]
   fn mix_distinguishes_bad_timestamps_from_a_saturated_ingress_queue() {
@@ -1675,97 +1546,21 @@ mod tests {
   }
 
   #[test]
-  fn interleaved_packets_keep_fixed_blocks_through_clock_drift_and_input_restart() {
-    use super::{run_mix_timeline_with_clock, Duration, Instant, MixInsert};
-    const BLOCK: usize = 480;
-    const PACKETS: usize = 800;
-    let position = |index| index * BLOCK + index / 10;
-    let qpc = |frame: usize| 1_000_000 + ((frame as u64 * 10_000_000 + 24_000) / 48_000);
-    let time = |frame: usize| Duration::from_nanos(frame as u64 * 1_000_000_000 / 48_000);
-    let mut arrivals = Vec::new();
-    for index in 0..=PACKETS {
-      let frames = if index == PACKETS { BLOCK / 2 } else { BLOCK };
-      let at = index * BLOCK;
-      arrivals.push((
-        time(at + index % 5 * 29),
-        MixPacket {
-          member: 0,
-          qpc: qpc(at),
-          end_qpc: None,
-          frames: vec![[0.25, 0.0]; frames],
-        },
-      ));
-      if index < PACKETS && !(200..280).contains(&index) {
-        let at = position(index);
-        arrivals.push((
-          time(at + 96 + index % 7 * 31),
-          MixPacket {
-            member: 1,
-            qpc: qpc(at),
-            end_qpc: Some(qpc(position(index + 1))),
-            frames: vec![[0.125, 0.5]; BLOCK],
-          },
-        ));
-      }
-    }
-    arrivals.sort_by_key(|(time, _)| *time);
-    let (tx, rx) = std::sync::mpsc::sync_channel(arrivals.len());
-    let mut ticks = vec![Duration::ZERO];
-    for (arrival, packet) in arrivals {
-      ticks.push(arrival);
-      tx.send(packet).unwrap();
-    }
-    drop(tx);
-    let now = Instant::now();
-    let mut ticks = ticks.into_iter();
-    let mut rendered = 0;
-    let mut block_sizes = Vec::new();
-    assert!(run_mix_timeline_with_clock(
-      rx,
-      2,
-      || false,
-      |pcm, coverage| {
-        let mut full = 0;
-        let frames = pcm.as_chunks::<2>().0;
-        block_sizes.push(frames.len());
-        for (index, frame) in frames.iter().enumerate() {
-          let at = rendered + index;
-          let input = !(position(200)..position(280)).contains(&at) && at < position(PACKETS);
-          assert_eq!(
-            *frame,
-            if input { [0.375, 0.5] } else { [0.25, 0.0] },
-            "frame {at}"
-          );
-          full += usize::from(input);
-        }
-        assert_eq!(coverage.full, full);
-        assert_eq!(coverage.partial, frames.len() - full);
-        assert_eq!(coverage.empty, 0);
-        rendered += frames.len();
-      },
-      |outcome| assert_eq!(outcome, MixInsert::Accepted { late_frames: 0 }),
-      || now + ticks.next().unwrap(),
-    ));
-    let (&tail, full) = block_sizes.split_last().unwrap();
-    assert!(full.iter().all(|&size| size == BLOCK));
-    assert_eq!(tail, BLOCK / 2);
-    assert_eq!(rendered, PACKETS * BLOCK + BLOCK / 2);
-  }
-
-  #[test]
   fn mix_probe_aligns_offset_packets_and_preserves_over_range_peaks() {
     let (tx, rx) = std::sync::mpsc::sync_channel(2);
     tx.send(MixPacket {
       member: 0,
-      qpc: 100_000,
-      end_qpc: None,
+      stream: None,
+      time_100ns: 100_000,
+      end_time_100ns: None,
       frames: vec![[0.0, 0.0], [0.75, 0.25]],
     })
     .unwrap();
     tx.send(MixPacket {
       member: 1,
-      qpc: 100_208,
-      end_qpc: None,
+      stream: None,
+      time_100ns: 100_208,
+      end_time_100ns: None,
       frames: vec![[0.75, -0.25], [0.0, 0.0]],
     })
     .unwrap();
@@ -1797,8 +1592,8 @@ mod tests {
     let mut timeline = super::StereoMixTimeline::new(2, 8);
     let input = super::mix_input_stereo_frame(&[0.25, 0.99, 0.125], &[0, 2]);
     let output = [0.125, -0.5];
-    timeline.push(0, 0, &[input]);
-    timeline.push(1, 0, &[output]);
+    timeline.push(0, None, 0, &[input]);
+    timeline.push(1, None, 0, &[output]);
     let mut mixed = [[0.0; 2]];
     let coverage = timeline.render(&mut mixed);
     assert_eq!(coverage.full, 1);
@@ -1811,23 +1606,12 @@ mod tests {
     let mono = super::project_mix_frame::<16>([1.0], &vec![vec![(2, 1.0), (4, 0.25)]]);
     let stereo = super::project_mix_frame::<16>([0.5, -1.0], &vec![vec![(4, 0.5)], vec![(5, 0.5)]]);
     let mut timeline = super::StereoMixTimeline::<16>::new(2, 4);
-    timeline.push(0, 0, &[mono]);
-    timeline.push(1, 0, &[stereo]);
+    timeline.push(0, None, 0, &[mono]);
+    timeline.push(1, None, 0, &[stereo]);
     let mut output = [[0.0; 16]];
     assert_eq!(timeline.render(&mut output).full, 1);
     assert_eq!(&output[0][..6], &[0.0, 0.0, 1.0, 0.0, 0.5, -0.5]);
     assert!(output[0][6..].iter().all(|value| *value == 0.0));
-  }
-
-  #[test]
-  fn small_input_clock_correction_stretches_pcm_but_large_gaps_stay_gaps() {
-    let frames = [[0.0, 1.0], [1.0, 0.0]];
-    let mut adjusted = Vec::new();
-    assert_eq!(
-      super::adjust_input_clock(&frames, 3, &mut adjusted).unwrap(),
-      [[0.0, 1.0], [0.5, 0.5], [1.0, 0.0]]
-    );
-    assert!(super::adjust_input_clock(&frames, 10, &mut adjusted).is_none());
   }
 
   #[test]

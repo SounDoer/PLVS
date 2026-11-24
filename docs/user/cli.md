@@ -383,7 +383,7 @@ payload. Send without `--dry-run` submits Feedback from any app identity. When a
 prompt is open, its Send choice submits the saved report. Issue either Send command only when
 you intend to transmit that data.
 
-Editor Draft Control operates on an open Theme, Loudness Profile, Windows Mix, Feedback, or
+Editor Draft Control operates on an open Theme, Loudness Profile, Mix, Feedback, or
 Welcome draft. For Mixes, open **Sources** and use its `add-mix` or `edit:<mix-id>` choice.
 For Welcome, use the `update` surface with phase `preferences`. Inspect and patch the draft, then
 use `ui decide --choice save` with fresh tokens to press Continue.
@@ -492,7 +492,7 @@ plvs-cli theme reorder <file|-> --expected-revision <n> --json [--dry-run]
 See [Theme Control](../agent-control/themes.md) for Theme authoring, built-in permissions, selection
 and fallback semantics, revision behavior, and editor blocking.
 
-Mix Control lists, renames, and deletes saved Windows Mixes. Use Device Control to select one.
+Mix Control lists, renames, and deletes saved Mixes. Use Device Control to select one.
 
 ```powershell
 plvs-cli mix list --json
@@ -500,7 +500,7 @@ plvs-cli mix rename <mix-id> <name> --expected-revision <n> --json [--dry-run]
 plvs-cli mix delete <mix-id> --expected-revision <n> --json [--dry-run]
 ```
 
-See [Mix Control](../agent-control/mixes.md) and [Mix drafts](../agent-control/editor-drafts.md#mix-drafts-on-windows).
+See [Mix Control](../agent-control/mixes.md) and [Mix drafts](../agent-control/editor-drafts.md#mix-drafts).
 
 Everything configuration export uses the same `.plvsconfig` document as Settings:
 

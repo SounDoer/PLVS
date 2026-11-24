@@ -721,7 +721,7 @@ None.
 
 ## `ui.decide`
 
-Answer one exact UI surface using a declared choice, including Sources and Mix editor choices on Windows.
+Answer one exact UI surface using a declared choice, including Sources and Mix editor choices.
 
 - CLI path: `ui decide`
 - Execution: `runningApp`; operation: `action`
@@ -2995,7 +2995,7 @@ plvs-cli settings update <file|-> --json --expected-revision <n> [--allow-measur
 
 ## `mix.list`
 
-List saved Windows Mixes and their routing.
+List saved Mixes and their routing.
 
 - CLI path: `mix list`
 - Execution: `runningApp`; operation: `query`
@@ -3019,7 +3019,7 @@ None.
 
 ## `mix.rename`
 
-Rename a saved Windows Mix.
+Rename a saved Mix.
 
 - CLI path: `mix rename`
 - Execution: `runningApp`; operation: `mutation`
@@ -3050,7 +3050,7 @@ plvs-cli mix rename <mix-id> <name> --expected-revision <n> --json [--dry-run]
 
 ## `mix.delete`
 
-Delete a saved Windows Mix from the shared library.
+Delete a saved Mix from the shared library.
 
 - CLI path: `mix delete`
 - Execution: `runningApp`; operation: `mutation`

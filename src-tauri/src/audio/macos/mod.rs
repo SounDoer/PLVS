@@ -1,6 +1,7 @@
 //! macOS 14.2+ system audio via Core Audio process tap + private aggregate device (`native/macos/tap_bridge.m`).
 //! Physical inputs still use cpal (same `cap-*` ids as Windows).
 
+mod mix_member;
 mod pcm_shim;
 
 use std::collections::HashSet;
@@ -50,10 +51,13 @@ unsafe extern "C" {
     stream_index: isize,
     process_object_ids: *const u32,
     process_object_count: usize,
+    pcm_callback: unsafe extern "C" fn(*mut c_void, *const f32, u32, u32, u64),
     pcm_userdata: *mut c_void,
     err_out: *mut c_char,
     err_cap: usize,
   ) -> *mut c_void;
+  fn macos_process_is_running_output(process_id: u32) -> bool;
+  fn macos_tap_format(opaque: *mut c_void, sample_rate: *mut u32, channels: *mut u32) -> c_int;
   fn macos_tap_destroy(opaque: *mut c_void, out_pcm_userdata: *mut *mut c_void);
 }
 
@@ -165,15 +169,27 @@ fn list_loopback_rows_macos() -> Result<Vec<DeviceInfo>, String> {
     let Ok((target, cfg)) = capture_target(device, cfg) else {
       continue;
     };
-    let plan = super::source_layout::device_plan(&target, cfg.channels(), true);
+    let target_key = device_id_key(&target)?;
+    let target_uid = uid_for_output_name(&target_key);
+    let native = target_uid
+      .as_deref()
+      .and_then(|uid| layout_for_uid(uid, cfg.channels()));
+    let plan = super::source_layout::plan_device_layout(cfg.channels(), true, native.clone());
     // Name the captured member in the signature, so a change of first member restarts capture
     // even when both members map the same speakers.
-    let target_key = device_id_key(&target)?;
     let signature = if target_key == key {
       plan.signature()
     } else {
       format!("{target_key}|{}", plan.signature())
     };
+    let mix_roles = target_uid
+      .as_deref()
+      .filter(|uid| output_stream_count(uid) == Some(1))
+      .and_then(|_| {
+        super::source_layout::MonitoringPlan::require_system_scope(cfg.channels(), native).ok()
+      })
+      .and_then(|plan| plan.roles)
+      .filter(|roles| super::capture::valid_mix_roles(roles));
     out.push(DeviceInfo {
       id,
       label,
@@ -182,8 +198,8 @@ fn list_loopback_rows_macos() -> Result<Vec<DeviceInfo>, String> {
       default_sample_rate: cfg.sample_rate(),
       channels: plan.channels(),
       mix_stereo_output: false,
-      mix_output_roles: None,
-      reference_roles: None,
+      mix_output_roles: mix_roles.clone(),
+      reference_roles: mix_roles,
       monitor_signature: Some(signature),
       core_audio_output_uid: core_uid,
     });
@@ -352,6 +368,7 @@ fn run_macos_tap_worker(args: MacosTapWorkerArgs) -> Result<(), CaptureWorkerErr
       0isize,
       process_object_ids_ptr,
       process_object_ids.len(),
+      pcm_shim::pcm_bridge,
       ctx_ptr.cast(),
       err.as_mut_ptr().cast(),
       err.len(),
@@ -547,4 +564,23 @@ pub fn start_application_session(
     dialogue_vad_engine,
     measured_pcm,
   )?))
+}
+
+pub(crate) fn start_mix(
+  sources: super::live_mix::MixSources,
+  frame_subscribers: FrameSubscribers,
+  app: AppHandle,
+  dialogue_gating: Arc<std::sync::Mutex<bool>>,
+  dialogue_vad_engine: Arc<std::sync::Mutex<VadEngineKind>>,
+  measured_pcm: Arc<MeasuredPcmSubscriptions>,
+) -> Result<Box<dyn AudioCaptureSession>, String> {
+  super::live_mix::start(
+    sources,
+    mix_member::capture,
+    frame_subscribers,
+    app,
+    dialogue_gating,
+    dialogue_vad_engine,
+    measured_pcm,
+  )
 }

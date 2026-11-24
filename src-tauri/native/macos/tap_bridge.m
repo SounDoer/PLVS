@@ -1,5 +1,5 @@
 // Core Audio process tap + private aggregate + IOProc (macOS 14.2+).
-// PCM is forwarded to Rust via pcm_bridge (same crate, #[no_mangle]).
+// PCM is forwarded by a caller-provided realtime callback.
 //
 // Requires Xcode / macOS SDK with Core Audio tap APIs (CATapDescription, AudioHardwareCreateProcessTap).
 
@@ -20,9 +20,8 @@
 #import <stdlib.h>
 #import <string.h>
 
-// Implemented in Rust (src/audio/macos/pcm_shim.rs).
-extern void pcm_bridge(void *userdata, const float *samples, uint32_t frame_count,
-                                  uint32_t channels);
+typedef void (*PLVSTapPcmCallback)(void *userdata, const float *samples, uint32_t frames,
+                                    uint32_t channels, uint64_t host_time);
 
 typedef void (*PLVSAudioProcessCallback)(void *context, uint32_t audio_object_id,
                                          int32_t process_id, const char *identity_utf8,
@@ -310,6 +309,7 @@ typedef struct {
   AudioObjectID aggregate_id;
   AudioDeviceIOProcID io_proc_id;
   void *pcm_userdata;
+  PLVSTapPcmCallback pcm_callback;
   float *interleave_buf;
   size_t interleave_buf_capacity;
 } TapHandle;
@@ -322,20 +322,22 @@ static OSStatus tap_io_proc(AudioObjectID inDevice, const AudioTimeStamp *inNow,
   (void)inNow;
   (void)outOutputData;
   (void)inOutputTime;
-  (void)inInputTime;
   TapHandle *tap = (TapHandle *)inClientData;
   if (!tap || !inInputData || !tap->pcm_userdata) {
     return noErr;
   }
 
+  uint64_t host_time = inInputTime && (inInputTime->mFlags & kAudioTimeStampHostTimeValid)
+                           ? inInputTime->mHostTime
+                           : 0;
   if (inInputData->mNumberBuffers == 1) {
     const AudioBuffer *buf = &inInputData->mBuffers[0];
-    if (!buf->mData || buf->mDataByteSize == 0) {
+    if (!buf->mData || buf->mDataByteSize == 0 || buf->mNumberChannels == 0) {
       return noErr;
     }
     UInt32 channels = buf->mNumberChannels;
     UInt32 frame_count = (UInt32)(buf->mDataByteSize / (channels * sizeof(float)));
-    pcm_bridge(tap->pcm_userdata, (const float *)buf->mData, frame_count, channels);
+    tap->pcm_callback(tap->pcm_userdata, (const float *)buf->mData, frame_count, channels, host_time);
     return noErr;
   }
 
@@ -345,7 +347,7 @@ static OSStatus tap_io_proc(AudioObjectID inDevice, const AudioTimeStamp *inNow,
   UInt32 frame_count = 0;
   for (UInt32 i = 0; i < nbufs; i++) {
     const AudioBuffer *buf = &inInputData->mBuffers[i];
-    if (!buf->mData || buf->mDataByteSize == 0) {
+    if (!buf->mData || buf->mDataByteSize == 0 || buf->mNumberChannels == 0) {
       return noErr;
     }
     UInt32 ch = buf->mNumberChannels;
@@ -378,14 +380,15 @@ static OSStatus tap_io_proc(AudioObjectID inDevice, const AudioTimeStamp *inNow,
     ch_offset += buf_ch;
   }
 
-  pcm_bridge(tap->pcm_userdata, tap->interleave_buf, frame_count, total_ch);
+  tap->pcm_callback(tap->pcm_userdata, tap->interleave_buf, frame_count, total_ch, host_time);
   return noErr;
 }
 
 void *macos_tap_create(const char *device_uid_utf8, intptr_t stream_index,
                        const uint32_t *process_object_ids, size_t process_object_count,
-                       void *pcm_userdata, char *err_out, size_t err_cap) {
-  if (!device_uid_utf8 || !pcm_userdata) {
+                       PLVSTapPcmCallback pcm_callback, void *pcm_userdata, char *err_out,
+                       size_t err_cap) {
+  if ((!device_uid_utf8 && process_object_count == 0) || !pcm_callback || !pcm_userdata) {
     if (err_out && err_cap > 0) {
       snprintf(err_out, err_cap, "missing device uid or pcm context");
     }
@@ -393,8 +396,8 @@ void *macos_tap_create(const char *device_uid_utf8, intptr_t stream_index,
   }
 
   @autoreleasepool {
-    NSString *uid = @(device_uid_utf8);
-    if (!uid || uid.length == 0) {
+    NSString *uid = device_uid_utf8 ? @(device_uid_utf8) : nil;
+    if (device_uid_utf8 && uid.length == 0) {
       if (err_out && err_cap > 0) {
         snprintf(err_out, err_cap, "invalid device uid");
       }
@@ -408,9 +411,10 @@ void *macos_tap_create(const char *device_uid_utf8, intptr_t stream_index,
       for (size_t i = 0; i < process_object_count; i++) {
         [processes addObject:@(process_object_ids[i])];
       }
-      tapDesc = [[CATapDescription alloc] initWithProcesses:processes
-                                              andDeviceUID:uid
-                                                withStream:(NSInteger)stream_index];
+      tapDesc = uid ? [[CATapDescription alloc] initWithProcesses:processes
+                                                   andDeviceUID:uid
+                                                     withStream:(NSInteger)stream_index]
+                    : [[CATapDescription alloc] initStereoMixdownOfProcesses:processes];
     } else {
       tapDesc = [[CATapDescription alloc] initExcludingProcesses:@[]
                                                     andDeviceUID:uid
@@ -546,6 +550,7 @@ void *macos_tap_create(const char *device_uid_utf8, intptr_t stream_index,
     h->tap_id = tap_id;
     h->aggregate_id = aggregate_id;
     h->pcm_userdata = pcm_userdata;
+    h->pcm_callback = pcm_callback;
     h->interleave_buf_capacity = 2048 * 16;
     h->interleave_buf = (float *)malloc(h->interleave_buf_capacity * sizeof(float));
     if (!h->interleave_buf) {
@@ -585,6 +590,33 @@ void *macos_tap_create(const char *device_uid_utf8, intptr_t stream_index,
 
     return h;
   }
+}
+
+bool macos_process_is_running_output(uint32_t process_id) {
+  AudioObjectPropertyAddress address = {
+      kAudioProcessPropertyIsRunningOutput,
+      kAudioObjectPropertyScopeGlobal,
+      kAudioObjectPropertyElementMain,
+  };
+  UInt32 running = 0;
+  UInt32 size = sizeof(running);
+  return AudioObjectGetPropertyData(process_id, &address, 0, NULL, &size, &running) == noErr &&
+         running != 0;
+}
+
+int macos_tap_format(void *opaque, uint32_t *sample_rate, uint32_t *channels) {
+  TapHandle *tap = opaque;
+  if (!tap || !sample_rate || !channels) return -1;
+  AudioObjectPropertyAddress address = {
+      kAudioTapPropertyFormat, kAudioObjectPropertyScopeGlobal, kAudioObjectPropertyElementMain,
+  };
+  AudioStreamBasicDescription format = {0};
+  UInt32 size = sizeof(format);
+  OSStatus status = AudioObjectGetPropertyData(tap->tap_id, &address, 0, NULL, &size, &format);
+  if (status != noErr || format.mSampleRate < 1 || format.mSampleRate > UINT32_MAX) return -1;
+  *sample_rate = (uint32_t)format.mSampleRate;
+  *channels = format.mChannelsPerFrame;
+  return 0;
 }
 
 void macos_tap_destroy(void *opaque, void **out_pcm_userdata) {

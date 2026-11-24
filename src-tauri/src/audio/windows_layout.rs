@@ -1,4 +1,5 @@
 //! WASAPI speaker positions for the exact cpal endpoint, not a device-name match.
+use super::capture::valid_mix_roles;
 use super::source_layout::{wave_layout, wave_roles, MonitoringPlan, NativeLayout};
 use cpal::traits::DeviceTrait;
 use windows::core::PCWSTR;
@@ -46,16 +47,6 @@ impl OutputLayout {
 
 pub(crate) fn read_output(device: &cpal::Device, channels: u16) -> Option<OutputLayout> {
   read_roles(device.id().ok()?.id(), channels, true, false)
-}
-
-pub(crate) fn valid_mix_roles(roles: &[String]) -> bool {
-  !roles.is_empty()
-    && roles.len() <= 16
-    && roles.iter().enumerate().all(|(index, role)| {
-      role != "generic"
-        && crate::dsp::channel_layouts::role_weight(role).is_some()
-        && !roles[..index].contains(role)
-    })
 }
 
 fn supports_mix_stereo(layout: &NativeLayout, configured_mask: Option<u32>) -> bool {

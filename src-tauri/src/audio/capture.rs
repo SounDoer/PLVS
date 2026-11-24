@@ -21,7 +21,7 @@ pub struct MixInput {
 }
 
 impl MixInput {
-  #[cfg(target_os = "windows")]
+  #[cfg(any(target_os = "windows", target_os = "macos", target_os = "linux"))]
   pub fn has_valid_channels(&self) -> bool {
     !self.channels.is_empty()
       && self.channels.last().is_some_and(|channel| *channel < 256)
@@ -39,7 +39,7 @@ pub struct MixRouting {
   pub output_roles: Option<Vec<String>>,
 }
 
-#[cfg(target_os = "windows")]
+#[cfg(any(target_os = "windows", target_os = "macos", target_os = "linux"))]
 impl MixRouting {
   pub fn validate(
     &self,
@@ -47,11 +47,11 @@ impl MixRouting {
     inputs: &[MixInput],
     output: Option<&str>,
   ) -> Result<(), String> {
-    let valid_size = super::windows_layout::valid_mix_roles(&self.roles)
+    let valid_size = valid_mix_roles(&self.roles)
       && self
         .output_roles
         .as_ref()
-        .is_none_or(|roles| super::windows_layout::valid_mix_roles(roles))
+        .is_none_or(|roles| valid_mix_roles(roles))
       && output.is_some() == self.output_roles.is_some();
     let expected = applications
       .iter()
@@ -83,6 +83,17 @@ impl MixRouting {
     }
     Ok(())
   }
+}
+
+#[cfg(any(target_os = "windows", target_os = "macos", target_os = "linux"))]
+pub(crate) fn valid_mix_roles(roles: &[String]) -> bool {
+  !roles.is_empty()
+    && roles.len() <= 16
+    && roles.iter().enumerate().all(|(index, role)| {
+      role != "generic"
+        && crate::dsp::channel_layouts::role_weight(role).is_some()
+        && !roles[..index].contains(role)
+    })
 }
 
 /// One PCM buffer from the device; channel count is never hard-coded to stereo.

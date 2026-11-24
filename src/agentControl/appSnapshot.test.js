@@ -25,6 +25,16 @@ describe("agent-control app snapshots", () => {
     if (globalThis.window) delete globalThis.window.__PLVS_INITIAL_STATE__;
   });
 
+  it.each(["windows", "macos", "linux"])("advertises Mix Control on %s", (platform) => {
+    const { features, methods } = buildAgentControlCapabilities(
+      { platform, appVersion: "0.26.4" },
+      1
+    );
+    expect(methods).toContain("mix.list");
+    expect(features.editorDraft.kinds).toContain("mix");
+    expect(features.uiNavigation.show.sourceGroup.groups).toContain("mixes");
+  });
+
   it("reports deterministic runtime and module capabilities at the current revision", () => {
     const capabilities = buildAgentControlCapabilities(runtime, 11);
     expect(capabilities).toMatchObject({

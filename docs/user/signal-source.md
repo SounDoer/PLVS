@@ -81,6 +81,8 @@ Meter one running audio application instead of the complete system mix.
   this capture path.
 - **macOS** 14.2 or later lists applications currently connected to Core Audio, groups an
   application's helper processes with it, and captures through the current default output device.
+- **Linux** lists applications with playback streams on PulseAudio or PipeWire's PulseAudio
+  server. A program that closes all of its playback streams disappears until it reconnects.
 
 PLVS recognises the application again when it restarts and reconnects to it.
 While the selected application is unavailable, Sources and the Tray keep the application
@@ -106,7 +108,13 @@ routes instead:
 On macOS, DAWs play through Core Audio, so system playback and Application sources can measure
 them without extra routing.
 
-## Mixes on Windows
+## Mixes
+
+Mixes are available on Windows, macOS, and Linux. On macOS, Application members use Core
+Audio Stereo process taps. An Output member requires a mapped, single-stream output. A
+Multi-Output Device is measured through its first active member. On Linux, Application members
+measure their playback streams through PulseAudio or PipeWire's PulseAudio server. The Linux
+application list depends on the identity metadata supplied by each playback client.
 
 In the normal window, choose **Add Mix** at the bottom of **Sources**. Check applications or
 channels from one or more input devices. Under **Output**, choose one mapped playback device on
@@ -121,7 +129,7 @@ system Tray's **Source** submenu for your Workbench.
 system default output's layout if the Mix contains no output. You can choose a fixed format from
 Mono through 9.1.6. If the reference layout is temporarily unavailable, PLVS uses its last
 confirmed layout or falls back to Stereo. The Mix
-format affects PLVS measurements while Windows continues to play through its existing route.
+format affects PLVS measurements while audio continues to play through its existing route.
 
 Auto passes matching speaker roles through and folds roles missing from the target format. A
 physical input channel defaults to Center where available, or to both Stereo sides at −3 dB

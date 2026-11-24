@@ -937,6 +937,19 @@ reports and older clients retain their v1 contracts. The receiver lives in `soun
 
 ## 11. Platform notes
 
+Live Mix feeds one bounded, timestamped 48 kHz PCM sum into the existing meter and recorder
+pipeline. Windows supplies WASAPI QPC times. macOS uses one Stereo Core Audio tap per Application,
+a mapped device-bound tap for Output, and CPAL capture timestamps for Input. Routing, rate
+conversion, member recovery and summing run on normal workers. The IOProc only copies into pooled
+storage and preserves the Core Audio host timestamp.
+
+Linux Mix uses distribution libpulse. Application inventory comes from playback stream metadata,
+grouped by application ID or executable identity. A record stream targets its specific playback
+stream with `pa_stream_set_monitor_stream`; all live streams for the selected application contribute.
+Input and Output record from explicitly selected sources. Linux anchors capture to monotonic time
+using libpulse's latency estimate and the received frame count; timing accuracy depends on the
+server's latency reports. Saved selection and recovery use stable application or device IDs.
+
 Experimental Linux builds select cpal's PulseAudio host explicitly for device discovery, including
 PipeWire through `pipewire-pulse`. The discovery client and host are process-long resources because
 the pure-Rust Pulse reactor cannot reliably tear down a short-lived client while PipeWire is
@@ -949,7 +962,7 @@ Linux live capture uses the system `libpulse-simple` ABI rather than cpal's pure
 on Ubuntu 24.04 / PipeWire 1.0.5 that stream can be created successfully without ever delivering a
 buffer. The native reader requests 20 ms float PCM fragments at the source rate and channel count,
 publishes measured-source recording PCM on the reader clock, and batches five reads into the shared
-bounded pool and meter pipeline. Per-application capture remains unsupported.
+bounded pool and meter pipeline.
 
 The Ubuntu 24.04 x86_64 deb installs the application and CLI in `/usr/bin` and bundles checksum-
 pinned FFmpeg/FFprobe in an identity-private directory under `/usr/lib`. Every path is identity
@@ -967,11 +980,11 @@ inputs and gives each pipe an input queue. This prevents the two blocking writer
 each other during startup. Its audio target advances from submitted video frames rather than wall
 time, so slow Wayland snapshots cannot lengthen the AAC track beyond the video timeline.
 
-| Platform | System audio path                                                  | Minimum version                                                                  |
-| -------- | ------------------------------------------------------------------ | -------------------------------------------------------------------------------- |
-| Windows  | WASAPI Loopback (cpal); Application Process Loopback               | Windows 10+; per-application capture needs build 20348+ (in practice Windows 11) |
-| macOS    | Core Audio process tap (global or per-application process objects) | macOS 14.2+ (required for taps)                                                  |
-| Linux    | PulseAudio monitor source, including PipeWire via `pipewire-pulse` | Ubuntu 24.04 x86_64; per-application capture is unsupported                      |
+| Platform | System audio path                                                       | Minimum version                                                                  |
+| -------- | ----------------------------------------------------------------------- | -------------------------------------------------------------------------------- |
+| Windows  | WASAPI Loopback (cpal); Application Process Loopback                    | Windows 10+; per-application capture needs build 20348+ (in practice Windows 11) |
+| macOS    | Core Audio process tap (global or per-application process objects)      | macOS 14.2+ (required for taps)                                                  |
+| Linux    | PulseAudio monitor sources and playback-stream recording via `libpulse` | Ubuntu 24.04 x86_64, including PipeWire via `pipewire-pulse`                     |
 
 Fallback behaviour on macOS below 14.2 or without tap support is defined by the code. User installation guidance, including Windows SmartScreen and macOS Gatekeeper verification, is in `docs/user/getting-started.md`.
 
