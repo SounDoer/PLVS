@@ -556,7 +556,7 @@ describe("AppSettingsOverlays", () => {
     expect(screen.getByTestId("pack-status").textContent).toBe("");
   });
 
-  it("renders the theme editor when custom theme editing is active", () => {
+  it("loads the theme editor when custom theme editing is active", async () => {
     renderOverlays(
       makeSettings({
         editor: {
@@ -568,7 +568,7 @@ describe("AppSettingsOverlays", () => {
     );
 
     expect(screen.getByTestId("theme-disabled").textContent).toBe("true");
-    expect(screen.getByTestId("theme-editor").textContent).toBe("true");
+    expect((await screen.findByTestId("theme-editor")).textContent).toBe("true");
   });
 });
 

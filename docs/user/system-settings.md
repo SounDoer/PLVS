@@ -232,7 +232,8 @@ dialogs, feedback, update details, and status lists adjust their widths with the
 Menus fit their content within size-aware limits. Dock windows follow the same widths and remain
 bounded by their monitor; the Dock strip layout remains independent. **Appearance** follows the system theme by default or
 uses a fixed theme. Light and Dark ship built in, and the theme editor lets you build and save your
-own themes. PLVS bundles Inter for interface text and JetBrains Mono for changing numeric readouts,
+own themes. The first time you open the editor in a window, it may briefly show a loading message.
+PLVS bundles Inter for interface text and JetBrains Mono for changing numeric readouts,
 so their layout does not depend on fonts installed on the computer. A custom theme keeps its Dark
 or Light appearance beside its name; **Core** holds the
 main identity colors, **Palettes** controls shared data scales, and **Advanced** contains optional

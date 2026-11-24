@@ -12,7 +12,7 @@ import { ItemPickerDialog } from "./ItemPickerDialog.jsx";
 import { LibraryExportDialog } from "./LibraryExportDialog.jsx";
 import { LoudnessProfileEditor } from "./LoudnessProfileEditor.jsx";
 import { SettingsPanel } from "./SettingsPanel.jsx";
-import { ThemeEditor } from "./ThemeEditor.jsx";
+import { LazyThemeEditor } from "./LazyThemeEditor.jsx";
 import { LAYER_PRIORITY } from "./ui/layers.js";
 import { BUILTIN_THEMES_V2 } from "../theme/builtinThemesV2.js";
 import { createUiNavigationError } from "../uiNavigation/uiNavigationModel.js";
@@ -603,7 +603,7 @@ export function AppSettingsOverlays({
         </div>
       ) : null}
 
-      {editor.isEditing ? <ThemeEditor {...views.theme} /> : null}
+      {editor.isEditing ? <LazyThemeEditor {...views.theme} /> : null}
 
       {loudnessProfile?.draft ? <LoudnessProfileEditor {...views.profile} /> : null}
     </>

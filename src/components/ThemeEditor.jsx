@@ -4,12 +4,12 @@ import { Check, Eye, Pencil, Redo2, Undo2, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { LABEL_TEXT_CLASS } from "@/components/ui/controlStyles.js";
 import { ColorControl } from "./ColorControl.jsx";
-import { ConfirmDialog } from "@/components/ConfirmDialog.jsx";
 import { ResetAction } from "@/components/ResetAction.jsx";
 import { useFloatingPanelDrag } from "../hooks/useFloatingPanelDrag.js";
 import { PalettesPage } from "./theme-editor/PalettesPage.jsx";
 import { AdvancedPage } from "./theme-editor/AdvancedPage.jsx";
 import { ThemePreview } from "./theme-editor/ThemePreview.jsx";
+import { ThemeDiscardDialog } from "./theme-editor/ThemeDiscardDialog.jsx";
 import { BUILTIN_THEMES_V2 } from "../theme/builtinThemesV2.js";
 import { HoverTip } from "@/components/HoverTip";
 import { IconAction } from "@/components/ui/icon-action";
@@ -492,13 +492,9 @@ export function ThemeEditor({
           </div>
         </div>
       </div>
-      <ConfirmDialog
+      <ThemeDiscardDialog
         open={discardDialogOpen}
         onOpenChange={setDiscardDialogOpen}
-        title="Discard theme changes?"
-        description="Unsaved edits will be discarded and the previous theme will be restored."
-        cancelLabel="Keep Editing"
-        confirmLabel="Discard Changes"
         onConfirm={onConfirmDiscard ?? onCancel}
         editorDraftDecision={editorDraftDecision}
       />

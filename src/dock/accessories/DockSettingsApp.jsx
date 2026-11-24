@@ -6,7 +6,7 @@ import { LAYER_PRIORITY } from "../../components/ui/layers.js";
 import { useSuppressNativeContextMenu } from "../../hooks/useSuppressNativeContextMenu.js";
 import { SettingsContent } from "../../components/SettingsContent.jsx";
 import { SettingsWindowFrame } from "../../components/settings/SettingsFrames.jsx";
-import { ThemeEditor } from "../../components/ThemeEditor.jsx";
+import { LazyThemeEditor } from "../../components/LazyThemeEditor.jsx";
 import { LoudnessProfileEditor } from "../../components/LoudnessProfileEditor.jsx";
 import { FeedbackContent } from "../../components/FeedbackDialog.jsx";
 import { LibraryExportDialog } from "../../components/LibraryExportDialog.jsx";
@@ -420,7 +420,7 @@ function SettingsSession({ surface, payload, model, send: sendToMain, onError })
           {payload.view === "settings" ? (
             <SettingsContent {...model} Frame={SettingsWindowFrame} />
           ) : null}
-          {payload.view === "theme" ? <ThemeEditor {...model} onMove={() => {}} /> : null}
+          {payload.view === "theme" ? <LazyThemeEditor {...model} onMove={() => {}} /> : null}
           {payload.view === "profile" ? (
             <LoudnessProfileEditor {...model} onMove={() => {}} />
           ) : null}

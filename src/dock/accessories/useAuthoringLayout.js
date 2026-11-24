@@ -7,9 +7,15 @@ export function useAuthoringLayout(active, interfaceSize, action, view) {
     if (!active) return undefined;
     let frame = 0;
     let previous = "";
+    let observedEditor = null;
     const report = () => {
       frame = 0;
       const editor = document.querySelector("[data-settings-editor]");
+      if (editor !== observedEditor) {
+        resizes?.disconnect();
+        if (editor) resizes?.observe(editor);
+        observedEditor = editor;
+      }
       if (!editor) return;
       const preview = Boolean(document.querySelector('[aria-label="Theme preview"]'));
       const rect = editor.getBoundingClientRect();
@@ -36,8 +42,6 @@ export function useAuthoringLayout(active, interfaceSize, action, view) {
     const mutations = new MutationObserver(schedule);
     mutations.observe(document.body, { subtree: true, childList: true, attributes: true });
     const resizes = typeof ResizeObserver === "function" ? new ResizeObserver(schedule) : null;
-    const editor = document.querySelector("[data-settings-editor]");
-    if (editor) resizes?.observe(editor);
     window.addEventListener("resize", schedule);
     schedule();
     return () => {
