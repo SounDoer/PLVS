@@ -25,7 +25,7 @@ mod stereo_mix_timeline;
 #[cfg(target_os = "windows")]
 pub mod windows_capture_apps;
 #[cfg(target_os = "windows")]
-mod windows_layout;
+pub(crate) mod windows_layout;
 #[cfg(target_os = "windows")]
 pub mod windows_process_loopback;
 

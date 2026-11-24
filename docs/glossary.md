@@ -135,6 +135,9 @@ screen, and the abbreviations on compact surfaces only make sense against the En
 | Max Hold                   | Keeps the highest value reached on screen; Spectrum's Hold option does this           |
 | Playback Max               | Level Meter readout showing the latest playback max while the bar stays live          |
 | Correlation                | Phase correlation of a channel pair, from −1 to +1                                    |
+| Mix Format                 | The channel layout that a Mix produces for measurement                                |
+| Follow Output              | The Mix Format choice that follows the selected or system default playback device     |
+| Routing                    | Assignment of source channels to destinations and gains within a Mix                  |
 | Channel Pair               | The two channels a stereo panel reads                                                 |
 | Dialogue-Gated Loudness    | The family of readouts based on detected speech                                       |
 | Dialogue Detection         | The on-device voice detector those readouts depend on                                 |

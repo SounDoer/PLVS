@@ -12,6 +12,22 @@ import {
   isMixOutputDevice,
   sourceMixName,
 } from "../lib/sourceMixes.js";
+import {
+  MIX_FORMATS,
+  compileMixRouting,
+  resolveMixFormat,
+  resolveMixLane,
+  mixInputs,
+  mixRoutingSources,
+} from "../lib/mixRouting.js";
+import {
+  MixSourceRouting,
+  addMixDestination,
+  mixLaneSummary,
+  mixGainDb,
+  linearMixGain,
+  mixStereoPairs,
+} from "./MixSourceRouting.jsx";
 import { cn } from "../lib/utils.js";
 import { useUiSurface } from "../uiNavigation/UiNavigationContext.jsx";
 import { useHoverTip } from "./HoverTip.jsx";
@@ -44,65 +60,178 @@ function MixGroup({ label, open, onToggle, count, unavailable = false, children 
   );
 }
 
-function MixCheckRow({ label, checked, onChange, unavailable = false, tip = undefined }) {
+function MixCheckRow({
+  label,
+  checked,
+  onChange,
+  unavailable = false,
+  tip = undefined,
+  summary = undefined,
+  onRoute = undefined,
+}) {
   const { anchorRef, showTip, hideTip, tipNode } = useHoverTip({ tip, align: "start" });
   return (
-    <label
-      ref={anchorRef}
-      onMouseEnter={tip ? showTip : undefined}
-      onMouseLeave={tip ? hideTip : undefined}
-      onFocus={tip ? showTip : undefined}
-      onBlur={tip ? hideTip : undefined}
-      className="flex min-h-[var(--ui-row-h)] cursor-pointer items-center gap-2 rounded-xs px-2 hover:bg-ui-hover focus-within:bg-ui-hover"
-    >
-      <Checkbox checked={checked} onChange={onChange} />
-      <span className="min-w-0 flex-1 truncate">{label}</span>
-      {unavailable ? <span className="shrink-0 text-muted-foreground">Unavailable</span> : null}
-      {tipNode}
-    </label>
+    <div className="flex items-center">
+      <label
+        ref={anchorRef}
+        onMouseEnter={tip ? showTip : undefined}
+        onMouseLeave={tip ? hideTip : undefined}
+        onFocus={tip ? showTip : undefined}
+        onBlur={tip ? hideTip : undefined}
+        className="flex min-h-[var(--ui-row-h)] min-w-0 flex-1 cursor-pointer items-center gap-2 rounded-xs px-2 hover:bg-ui-hover focus-within:bg-ui-hover"
+      >
+        <Checkbox checked={checked} onChange={onChange} />
+        <span className="min-w-0 flex-1 truncate">{label}</span>
+        {unavailable ? <span className="shrink-0 text-muted-foreground">Unavailable</span> : null}
+        {checked && summary && (
+          <span aria-hidden="true" className="truncate text-muted-foreground">
+            {summary}
+          </span>
+        )}
+        {tipNode}
+      </label>
+      {checked && onRoute && (
+        <Button variant="ghost" aria-label={`routing for ${label}`} onClick={onRoute}>
+          Routing
+        </Button>
+      )}
+    </div>
   );
 }
 
-export function SourceMixEditor({ owner, applications, inputs = [], outputs = [] }) {
-  const { draft, saving, rename, cancel, save, toggle, toggleInputChannel, toggleOutput } = owner;
+export function SourceMixEditor({
+  owner,
+  applications,
+  inputs = [],
+  outputs = [],
+  defaultOutputReference = undefined,
+}) {
+  const {
+    draft,
+    saving,
+    rename,
+    cancel,
+    save,
+    toggle,
+    toggleInputChannel,
+    toggleOutput,
+    setRoute,
+    setFormat,
+  } = owner;
   const ref = useRef(null);
   const [position, setPosition] = useState(null);
   const [renaming, setRenaming] = useState(false);
-  const [inputOpen, setInputOpen] = useState(Boolean(draft.input));
+  const selectedInputs = mixInputs(draft);
+  const [inputOpen, setInputOpen] = useState(selectedInputs.length > 0);
+  const [routeId, setRouteId] = useState(null);
+  const routingRef = useRef(null);
   const [outputOpen, setOutputOpen] = useState(Boolean(draft.output));
   const [applicationsOpen, setApplicationsOpen] = useState(draft.members.length > 0);
-  const [expandedDevice, setExpandedDevice] = useState(draft.input?.id ?? null);
+  const [expandedDevice, setExpandedDevice] = useState(selectedInputs[0]?.id ?? null);
   const originalName = useRef("");
   const drag = useFloatingPanelDrag(ref, setPosition);
   useLayoutEffect(() => ref.current?.focus(), []);
+  useLayoutEffect(() => {
+    if (routeId) routingRef.current?.scrollIntoView?.({ block: "nearest" });
+  }, [routeId]);
 
   const available = new Set(applications.map(({ id }) => id));
   const checked = new Set(draft.members.map(({ id }) => id));
   const choices = [...applications, ...draft.members.filter(({ id }) => !available.has(id))];
   const inputDevices = inputs.filter(({ id, channels }) => isMixInputId(id) && channels > 0);
-  const selectedInput = inputDevices.find(({ id }) => id === draft.input?.id);
-  const inputChoices =
-    draft.input && !selectedInput ? [...inputDevices, draft.input] : inputDevices;
+  const inputChoices = [
+    ...inputDevices,
+    ...selectedInputs.filter(({ id }) => !inputDevices.some((device) => device.id === id)),
+  ];
   const expandedInput = inputChoices.find(({ id }) => id === expandedDevice);
-  const selectedChannels = draft.input?.channels ?? [];
-  const activeChannels = draft.input?.id === expandedDevice ? selectedChannels : [];
+  const selectedChannels = selectedInputs.reduce((sum, input) => sum + input.channels.length, 0);
+  const activeChannels = selectedInputs.find(({ id }) => id === expandedDevice)?.channels ?? [];
   const channelCount =
     typeof expandedInput?.channels === "number" ? Math.min(256, expandedInput.channels) : 0;
   const channels = [
     ...new Set([...Array.from({ length: channelCount }, (_, index) => index), ...activeChannels]),
   ].sort((a, b) => a - b);
   const toggleDevice = (id) => setExpandedDevice((current) => (current === id ? null : id));
-  const stereoOutputs = outputs.filter(isMixOutputDevice);
-  const outputAvailable = stereoOutputs.some(({ id }) => id === draft.output?.id);
+  const supportedOutputs = outputs.filter(isMixOutputDevice);
+  const outputAvailable = supportedOutputs.some(({ id }) => id === draft.output?.id);
   const outputChoices =
-    draft.output && !outputAvailable ? [...stereoOutputs, draft.output] : stereoOutputs;
-  const canSave = canSaveSourceMix(draft);
+    draft.output && !outputAvailable ? [...supportedOutputs, draft.output] : supportedOutputs;
+  const format = resolveMixFormat(draft, outputs, defaultOutputReference);
+  const followFormat =
+    format.id === "follow"
+      ? format
+      : resolveMixFormat({ ...draft, format: "follow" }, outputs, defaultOutputReference);
+  const sources = mixRoutingSources(draft, outputs);
+  const routingSource = sources.find(({ id }) => id === routeId);
+  const compiled = compileMixRouting(draft, outputs, defaultOutputReference);
+  const canSave = canSaveSourceMix(draft) && Boolean(compiled);
+  const chooseRouting = (id) => setRouteId((current) => (current === id ? null : id));
+  const sourceSummary = (id, laneKey = undefined) => {
+    const lanes = sources.find((source) => source.id === id)?.lanes ?? [];
+    const selected = lanes.filter((lane) => laneKey === undefined || lane.key === laneKey);
+    return [...new Set(selected.map((lane) => mixLaneSummary(draft, id, lane, format)))].join(
+      " · "
+    );
+  };
+  const saveDraft = (throwOnError = false) =>
+    save({ throwOnError, referenceRoles: followFormat.fallback ? undefined : followFormat.roles });
+  const routeChoices =
+    routingSource?.lanes.flatMap((lane) => {
+      const resolved = resolveMixLane(draft, routeId, lane, format);
+      const custom = resolved.automatic ? [] : resolved.routing;
+      return [
+        {
+          id: `route:auto:${lane.key}`,
+          label: `${lane.label} · Reset to Auto`,
+          run: () => setRoute(routeId, lane.key, undefined),
+        },
+        {
+          id: `route:omit:${lane.key}`,
+          label: `${lane.label} · Omit`,
+          run: () => setRoute(routeId, lane.key, []),
+        },
+        ...custom.flatMap(([target, gain]) => [
+          {
+            id: `route:remove:${lane.key}:${target}`,
+            label: `Remove ${lane.label} → ${target}`,
+            run: () =>
+              setRoute(
+                routeId,
+                lane.key,
+                custom.filter(([role]) => role !== target)
+              ),
+          },
+          ...[-1, 1].map((step) => ({
+            id: `route:gain:${lane.key}:${target}:${step > 0 ? "up" : "down"}`,
+            label: `${lane.label} → ${target} · ${step > 0 ? "+" : "−"}1 dB`,
+            run: () =>
+              setRoute(
+                routeId,
+                lane.key,
+                custom.map(([role, value]) => [
+                  role,
+                  role === target ? linearMixGain(mixGainDb(gain) + step) : value,
+                ])
+              ),
+          })),
+        ]),
+        ...format.roles.map((target) => ({
+          id: `route:add:${lane.key}:${target}`,
+          label: `${lane.label} → ${target}`,
+          selected: custom.some(([role]) => role === target),
+          run: () => setRoute(routeId, lane.key, addMixDestination(custom, target)),
+        })),
+      ];
+    }) ?? [];
+  const pairs = routingSource ? mixStereoPairs(routingSource, format) : [];
   const mixNotice =
     draft.output && checked.size > 0
       ? "Deselect applications to save a Mix with an output."
-      : draft.output && draft.input
-        ? "If the input is monitored through this output, it will be counted twice."
-        : null;
+      : !compiled
+        ? "Fix the unavailable channel routes to save this Mix."
+        : draft.output && selectedInputs.length > 0
+          ? "If the input is monitored through this output, it will be counted twice."
+          : null;
 
   useUiSurface({
     kind: "sourceMixEditor",
@@ -164,11 +293,41 @@ export function SourceMixEditor({ owner, applications, inputs = [], outputs = []
             run: () => toggle({ id: member.id, label: applicationSourceName(member) }),
           }))
         : []),
+      ...MIX_FORMATS.map(({ id, name }) => ({
+        id: `format:${id.replaceAll(".", "-")}`,
+        label: id === "follow" ? `${name} · ${followFormat.name}` : name,
+        selected: format.id === id,
+        run: () => setFormat(id),
+      })),
+      ...sources.map(({ id, label }) => ({
+        id: `routing:${id}`,
+        label: `Routing · ${label}`,
+        selected: routeId === id,
+        run: () => chooseRouting(id),
+      })),
+      ...routeChoices,
+      ...(routingSource
+        ? Object.keys(draft.routes?.[routeId] ?? {})
+            .filter((key) => !routingSource.lanes.some((lane) => lane.key === key))
+            .map((key) => ({
+              id: `route:auto:${key}`,
+              label: `Remove unavailable ${key} override`,
+              run: () => setRoute(routeId, key, undefined),
+            }))
+        : []),
+      ...pairs.map(([left, right]) => ({
+        id: `route:pair:${left}:${right}`,
+        label: `${left} / ${right}`,
+        run: () => {
+          setRoute(routeId, "L", [[left, 1]]);
+          setRoute(routeId, "R", [[right, 1]]);
+        },
+      })),
       {
         id: "save",
         label: "Save",
         disabled: !canSave,
-        run: () => save({ throwOnError: true }),
+        run: () => saveDraft(true),
       },
       { id: "cancel", label: "Cancel", run: cancel },
     ],
@@ -235,7 +394,7 @@ export function SourceMixEditor({ owner, applications, inputs = [], outputs = []
             label="Input"
             open={inputOpen}
             onToggle={() => setInputOpen(!inputOpen)}
-            count={selectedChannels.length}
+            count={selectedChannels}
           >
             {inputChoices.length === 0 && (
               <p className="px-2 text-muted-foreground">No Inputs Available</p>
@@ -246,7 +405,7 @@ export function SourceMixEditor({ owner, applications, inputs = [], outputs = []
                 label={formatAudioDeviceLabel(device.label).full}
                 open={expandedDevice === device.id}
                 onToggle={() => toggleDevice(device.id)}
-                count={draft.input?.id === device.id ? selectedChannels.length : 0}
+                count={selectedInputs.find(({ id }) => id === device.id)?.channels.length ?? 0}
                 unavailable={typeof device.channels !== "number"}
               >
                 {expandedDevice === device.id &&
@@ -257,6 +416,8 @@ export function SourceMixEditor({ owner, applications, inputs = [], outputs = []
                       checked={activeChannels.includes(channel)}
                       onChange={() => toggleInputChannel(device, channel)}
                       unavailable={channel >= channelCount}
+                      summary={sourceSummary(device.id, String(channel))}
+                      onRoute={() => chooseRouting(device.id)}
                     />
                   ))}
               </MixGroup>
@@ -278,6 +439,8 @@ export function SourceMixEditor({ owner, applications, inputs = [], outputs = []
                 checked={device.id === draft.output?.id}
                 unavailable={!isMixOutputDevice(device)}
                 onChange={() => toggleOutput(device)}
+                summary={sourceSummary(device.id)}
+                onRoute={() => chooseRouting(device.id)}
               />
             ))}
           </MixGroup>
@@ -300,10 +463,48 @@ export function SourceMixEditor({ owner, applications, inputs = [], outputs = []
                   checked={checked.has(member.id)}
                   onChange={() => toggle({ id: member.id, label })}
                   unavailable={!available.has(member.id)}
+                  summary={sourceSummary(member.id)}
+                  onRoute={() => chooseRouting(member.id)}
                 />
               );
             })}
           </MixGroup>
+          <label className="flex items-center gap-2 border-t border-border px-2 py-2">
+            <span className="flex-1 font-medium">Mix Format</span>
+            <select
+              aria-label="mix format"
+              value={draft.format ?? "follow"}
+              title={format.id === "follow" ? followFormat.referenceLabel : undefined}
+              onChange={(event) => setFormat(event.target.value)}
+              className="plvs-input h-[var(--ui-control-h)] min-w-0 max-w-[65%] rounded-md border border-input bg-card px-2"
+            >
+              {MIX_FORMATS.map(({ id, name }) => (
+                <option key={id} value={id}>
+                  {id === "follow"
+                    ? `${name} · ${followFormat.fallback ? "Stereo Fallback" : followFormat.name}`
+                    : name}
+                </option>
+              ))}
+            </select>
+          </label>
+          {routingSource && (
+            <section ref={routingRef} className="border-t border-border">
+              <div className="flex items-center gap-2 px-2 py-1">
+                <span className="min-w-0 flex-1 truncate font-medium">
+                  Routing · {routingSource.label}
+                </span>
+                <Button variant="ghost" onClick={() => setRouteId(null)}>
+                  Done
+                </Button>
+              </div>
+              <MixSourceRouting
+                draft={draft}
+                source={routingSource}
+                format={format}
+                setRoute={setRoute}
+              />
+            </section>
+          )}
         </fieldset>
       </div>
       <div className="flex shrink-0 items-center justify-end gap-2 border-t border-border px-3 py-2">
@@ -318,7 +519,7 @@ export function SourceMixEditor({ owner, applications, inputs = [], outputs = []
         <Button variant="ghost" disabled={saving} onClick={cancel}>
           Cancel
         </Button>
-        <Button disabled={saving || !canSave} onClick={() => void save()}>
+        <Button disabled={saving || !canSave} onClick={() => void saveDraft()}>
           Save
         </Button>
       </div>

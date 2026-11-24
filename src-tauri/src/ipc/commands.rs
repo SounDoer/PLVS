@@ -184,11 +184,34 @@ pub(crate) fn read_audio_device_preview(device_id: &str) -> Result<AudioDevicePr
   // Other platforms capture the requested output itself.
   #[cfg(not(target_os = "macos"))]
   let signature_prefix = String::new();
-  let plan = crate::audio::source_layout::device_plan(&device, supported.channels(), output);
+  #[cfg(target_os = "windows")]
+  let (plan, reference_roles) = if output {
+    let layout = crate::audio::windows_layout::read_output(&device, supported.channels());
+    let reference_roles = layout
+      .as_ref()
+      .and_then(|layout| layout.reference_roles.clone());
+    let plan = crate::audio::source_layout::plan_device_layout(
+      supported.channels(),
+      true,
+      layout.map(|layout| layout.into_layout()),
+    );
+    (plan, reference_roles)
+  } else {
+    (
+      crate::audio::source_layout::device_plan(&device, supported.channels(), output),
+      None,
+    )
+  };
+  #[cfg(not(target_os = "windows"))]
+  let (plan, reference_roles) = (
+    crate::audio::source_layout::device_plan(&device, supported.channels(), output),
+    None,
+  );
   let sample_rate_hz = supported.sample_rate();
   let channels = plan.channels();
   Ok(AudioDevicePreview {
     label,
+    reference_roles,
     endpoint_id: device.id().ok().map(|id| id.to_string()),
     monitor_signature: output.then(|| format!("{signature_prefix}{}", plan.signature())),
     sample_rate_hz,
@@ -240,6 +263,8 @@ pub fn audio_start(
   mix_application_ids: Option<Vec<String>>,
   mix_input: Option<crate::audio::capture::MixInput>,
   mix_output_id: Option<String>,
+  mix_inputs: Option<Vec<crate::audio::capture::MixInput>>,
+  mix_routing: Option<crate::audio::capture::MixRouting>,
   continue_session: Option<bool>,
   on_frame: tauri::ipc::Channel<tauri::ipc::InvokeResponseBody>,
   state: State<'_, AppState>,
@@ -251,17 +276,31 @@ pub fn audio_start(
   {
     return Err("audio_start accepts only one application source selector".into());
   }
-  if (mix_input.is_some() || mix_output_id.is_some()) && mix_application_ids.is_none() {
+  if (mix_input.is_some()
+    || mix_inputs.is_some()
+    || mix_output_id.is_some()
+    || mix_routing.is_some())
+    && mix_application_ids.is_none()
+  {
     return Err("mix endpoints require a mix source selector".into());
   }
-  if let Some(ids) = &mix_application_ids {
-    #[cfg(target_os = "windows")]
-    validate_mix_sources(ids, mix_input.as_ref(), mix_output_id.as_deref())?;
-    #[cfg(not(target_os = "windows"))]
-    {
-      let _ = ids;
-      return Err("application mixes are not available on this platform".into());
+  #[cfg(target_os = "windows")]
+  let mix_inputs = {
+    if mix_input.is_some() && mix_inputs.is_some() {
+      return Err("Supply either a single Mix input or a list of inputs.".into());
     }
+    let inputs = mix_inputs.unwrap_or_else(|| mix_input.into_iter().collect());
+    if let Some(ids) = &mix_application_ids {
+      validate_mix_sources(ids, &inputs, mix_output_id.as_deref())?;
+      if let Some(routing) = &mix_routing {
+        routing.validate(ids, &inputs, mix_output_id.as_deref())?;
+      }
+    }
+    inputs
+  };
+  #[cfg(not(target_os = "windows"))]
+  if mix_application_ids.is_some() {
+    return Err("mix sources are not available on this platform".into());
   }
   {
     // Stop any active source (live or file) before starting live capture; only one runs at a time.
@@ -346,8 +385,9 @@ pub fn audio_start(
       start_process_session(
         ProcessCaptureSource::Mix {
           applications: ids,
-          input: mix_input,
+          inputs: mix_inputs,
           output_id: mix_output_id,
+          routing: mix_routing,
         },
         48_000,
         2,
@@ -485,7 +525,7 @@ pub fn audio_start(
 #[cfg(target_os = "windows")]
 fn validate_mix_sources(
   ids: &[String],
-  input: Option<&crate::audio::capture::MixInput>,
+  inputs: &[crate::audio::capture::MixInput],
   output_id: Option<&str>,
 ) -> Result<(), String> {
   let mut seen = HashSet::new();
@@ -497,7 +537,7 @@ fn validate_mix_sources(
       return Err("a mix output requires a playback device ID".into());
     }
   }
-  if input.is_none() && ids.is_empty() && output_id.is_none() {
+  if inputs.is_empty() && ids.is_empty() && output_id.is_none() {
     return Err("a mix requires at least one source".into());
   }
   if ids
@@ -506,8 +546,14 @@ fn validate_mix_sources(
   {
     return Err("a mix requires distinct application IDs".into());
   }
-  if let Some(input) = input {
-    if !crate::audio::device_id::is_stable_capture_id(&input.id) || !input.has_valid_channels() {
+  if inputs.len() > 16 {
+    return Err("A Mix supports up to 16 input devices.".into());
+  }
+  for input in inputs {
+    if !crate::audio::device_id::is_stable_capture_id(&input.id)
+      || !input.has_valid_channels()
+      || !seen.insert(&input.id)
+    {
       return Err("a mix input requires a capture device ID and a valid channel selection".into());
     }
   }
@@ -1394,29 +1440,37 @@ mod tests {
   fn live_mix_accepts_single_sources_and_rejects_empty_or_invalid_selections() {
     let first = format!("app-{}", "1".repeat(32));
     let second = format!("app-{}", "2".repeat(32));
-    assert!(super::validate_mix_sources(&[], None, None).is_err());
-    assert!(super::validate_mix_sources(std::slice::from_ref(&first), None, None).is_ok());
-    assert!(super::validate_mix_sources(&[first.clone(), first.clone()], None, None).is_err());
-    assert!(super::validate_mix_sources(&[first.clone(), "default".into()], None, None).is_err());
+    assert!(super::validate_mix_sources(&[], &[], None).is_err());
+    assert!(super::validate_mix_sources(std::slice::from_ref(&first), &[], None).is_ok());
+    assert!(super::validate_mix_sources(&[first.clone(), first.clone()], &[], None).is_err());
+    assert!(super::validate_mix_sources(&[first.clone(), "default".into()], &[], None).is_err());
     let mut input = crate::audio::capture::MixInput {
       id: format!("cap-{}", "3".repeat(32)),
       channels: vec![0],
     };
-    assert!(super::validate_mix_sources(std::slice::from_ref(&first), Some(&input), None).is_ok());
-    assert!(super::validate_mix_sources(&[], Some(&input), None).is_ok());
+    assert!(super::validate_mix_sources(
+      std::slice::from_ref(&first),
+      std::slice::from_ref(&input),
+      None
+    )
+    .is_ok());
+    assert!(super::validate_mix_sources(&[], std::slice::from_ref(&input), None).is_ok());
     let output = format!("lb-{}", "4".repeat(32));
-    assert!(super::validate_mix_sources(&[], None, Some(&output)).is_ok());
-    assert!(super::validate_mix_sources(&[], Some(&input), Some(&output)).is_ok());
-    assert!(
-      super::validate_mix_sources(std::slice::from_ref(&first), None, Some(&output)).is_err()
-    );
-    assert!(super::validate_mix_sources(&[], None, Some(&input.id)).is_err());
+    assert!(super::validate_mix_sources(&[], &[], Some(&output)).is_ok());
+    assert!(super::validate_mix_sources(&[], std::slice::from_ref(&input), Some(&output)).is_ok());
+    assert!(super::validate_mix_sources(std::slice::from_ref(&first), &[], Some(&output)).is_err());
+    assert!(super::validate_mix_sources(&[], &[], Some(&input.id)).is_err());
     input.channels = vec![0, 2];
-    assert!(super::validate_mix_sources(&[], Some(&input), None).is_ok());
+    assert!(super::validate_mix_sources(&[], std::slice::from_ref(&input), None).is_ok());
     input.channels.clear();
-    assert!(super::validate_mix_sources(&[], Some(&input), None).is_err());
+    assert!(super::validate_mix_sources(&[], std::slice::from_ref(&input), None).is_err());
     input.channels = vec![1, 1];
-    assert!(super::validate_mix_sources(std::slice::from_ref(&first), Some(&input), None).is_err());
-    assert!(super::validate_mix_sources(&[first, second], None, None).is_ok());
+    assert!(super::validate_mix_sources(
+      std::slice::from_ref(&first),
+      std::slice::from_ref(&input),
+      None
+    )
+    .is_err());
+    assert!(super::validate_mix_sources(&[first, second], &[], None).is_ok());
   }
 }

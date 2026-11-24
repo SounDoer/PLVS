@@ -29,6 +29,62 @@ impl MixInput {
   }
 }
 
+pub type MixLaneRoutes = Vec<Vec<(usize, f32)>>;
+
+#[derive(serde::Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct MixRouting {
+  pub roles: Vec<String>,
+  pub routes: std::collections::HashMap<String, MixLaneRoutes>,
+  pub output_roles: Option<Vec<String>>,
+}
+
+#[cfg(target_os = "windows")]
+impl MixRouting {
+  pub fn validate(
+    &self,
+    applications: &[String],
+    inputs: &[MixInput],
+    output: Option<&str>,
+  ) -> Result<(), String> {
+    let valid_size = super::windows_layout::valid_mix_roles(&self.roles)
+      && self
+        .output_roles
+        .as_ref()
+        .is_none_or(|roles| super::windows_layout::valid_mix_roles(roles))
+      && output.is_some() == self.output_roles.is_some();
+    let expected = applications
+      .iter()
+      .map(|id| (id.as_str(), 2))
+      .chain(
+        inputs
+          .iter()
+          .map(|input| (input.id.as_str(), input.channels.len())),
+      )
+      .chain(output.zip(self.output_roles.as_ref().map(Vec::len)));
+    if !valid_size
+      || self.routes.len() != applications.len() + inputs.len() + usize::from(output.is_some())
+      || expected.into_iter().any(|(id, lanes)| {
+        self.routes.get(id).is_none_or(|routes| {
+          routes.len() != lanes
+            || routes.iter().any(|lane| {
+              lane.len() > self.roles.len()
+                || lane.iter().enumerate().any(|(index, (to, gain))| {
+                  *to >= self.roles.len()
+                    || !gain.is_finite()
+                    || gain.abs() > 16.0
+                    || lane[..index].iter().any(|(previous, _)| previous == to)
+                })
+            })
+        })
+      })
+    {
+      return Err("The Mix has invalid channel routes.".into());
+    }
+    Ok(())
+  }
+}
+
 /// One PCM buffer from the device; channel count is never hard-coded to stereo.
 #[derive(Clone, Debug, PartialEq)]
 pub struct PcmFrame {

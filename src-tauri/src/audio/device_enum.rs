@@ -195,20 +195,29 @@ pub(crate) fn build_device_list() -> Result<Vec<DeviceInfo>, String> {
     let label = device_list_label(&device)?;
     let id = device_id::alloc_loopback_id(&key, &mut used_lb);
     #[cfg(target_os = "windows")]
-    let (plan, mix_stereo_output) = {
+    let (plan, mix_stereo_output, mix_output_roles, reference_roles) = {
       let observed = super::windows_layout::read_output(&device, cfg.channels());
-      let mix_stereo_output = observed.as_ref().is_some_and(|(_, stereo)| *stereo);
+      let mix_stereo_output = observed.as_ref().is_some_and(|value| value.stereo);
+      let mix_output_roles = observed
+        .as_ref()
+        .and_then(|value| value.monitor_plan(cfg.channels()).ok()?.roles)
+        .filter(|roles| super::windows_layout::valid_mix_roles(roles));
+      let reference_roles = observed
+        .as_ref()
+        .and_then(|value| value.reference_roles.clone());
       let plan = super::source_layout::plan_device_layout(
         cfg.channels(),
         true,
-        observed.map(|(layout, _)| layout),
+        observed.map(|value| value.into_layout()),
       );
-      (plan, mix_stereo_output)
+      (plan, mix_stereo_output, mix_output_roles, reference_roles)
     };
     #[cfg(not(target_os = "windows"))]
-    let (plan, mix_stereo_output) = (
+    let (plan, mix_stereo_output, mix_output_roles, reference_roles) = (
       super::source_layout::device_plan(&device, cfg.channels(), true),
       false,
+      None,
+      None,
     );
     out.push(DeviceInfo {
       id,
@@ -218,6 +227,8 @@ pub(crate) fn build_device_list() -> Result<Vec<DeviceInfo>, String> {
       default_sample_rate: cfg.sample_rate(),
       channels: plan.channels(),
       mix_stereo_output,
+      mix_output_roles,
+      reference_roles,
       monitor_signature: Some(plan.signature()),
       core_audio_output_uid: None,
     });
@@ -243,6 +254,8 @@ pub(crate) fn append_input_devices(out: &mut Vec<DeviceInfo>) -> Result<(), Stri
       default_sample_rate: cfg.sample_rate(),
       channels: cfg.channels(),
       mix_stereo_output: false,
+      mix_output_roles: None,
+      reference_roles: None,
       monitor_signature: None,
       core_audio_output_uid: None,
     });
@@ -525,6 +538,8 @@ mod substring_tests {
       default_sample_rate: 48000,
       channels: 2,
       mix_stereo_output: false,
+      mix_output_roles: None,
+      reference_roles: None,
       monitor_signature: None,
       core_audio_output_uid: None,
     }

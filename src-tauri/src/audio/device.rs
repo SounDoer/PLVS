@@ -19,6 +19,10 @@ pub struct DeviceInfo {
   #[serde(default, skip_serializing_if = "std::ops::Not::not")]
   pub mix_stereo_output: bool,
   #[serde(default, skip_serializing_if = "Option::is_none")]
+  pub mix_output_roles: Option<Vec<String>>,
+  #[serde(default, skip_serializing_if = "Option::is_none")]
+  pub reference_roles: Option<Vec<String>>,
+  #[serde(default, skip_serializing_if = "Option::is_none")]
   pub monitor_signature: Option<String>,
   /// macOS 14.2+ Core Audio output device UID (loopback rows only). Omitted on other platforms.
   #[serde(skip_serializing_if = "Option::is_none")]

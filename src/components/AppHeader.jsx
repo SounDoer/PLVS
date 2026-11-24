@@ -59,6 +59,7 @@ const TOOLBAR_TRIGGER_OPEN_CLASS =
  *   isTauriApp: boolean,
  *   audioDevices: any[],
  *   audioOutputs: any[],
+ *   defaultOutputReference?: { label: string, referenceRoles?: string[] },
  *   audioInputs: any[],
  *   captureApplications?: any[],
  *   sourceMixes?: ReturnType<typeof import("../hooks/useSourceMixes.js").useSourceMixes>,
@@ -112,6 +113,7 @@ export function AppHeader({
   isTauriApp,
   audioDevices,
   audioOutputs,
+  defaultOutputReference,
   audioInputs,
   captureApplications = [],
   sourceMixes,
@@ -262,6 +264,7 @@ export function AppHeader({
                 <p className={`${POPOVER_HEADER_CLASS} ${POPOVER_TITLE_CLASS}`}>Sources</p>
                 <DeviceSelectionContent
                   audioOutputs={audioOutputs}
+                  defaultOutputReference={defaultOutputReference}
                   audioInputs={audioInputs}
                   captureApplications={captureApplications}
                   sourceMixes={

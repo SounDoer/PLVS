@@ -1,9 +1,18 @@
 //! Bounded PCM sum on a frame timeline owned by the mix worker.
 
-#[derive(Clone, Copy, Default)]
-struct MixFrame {
-  samples: [f32; 2],
+#[derive(Clone, Copy)]
+struct MixFrame<const N: usize> {
+  samples: [f32; N],
   members: usize,
+}
+
+impl<const N: usize> Default for MixFrame<N> {
+  fn default() -> Self {
+    Self {
+      samples: [0.0; N],
+      members: 0,
+    }
+  }
 }
 
 #[derive(Debug, Default, PartialEq, Eq)]
@@ -13,8 +22,8 @@ pub(super) struct MixCoverage {
   pub empty: usize,
 }
 
-pub(super) struct StereoMixTimeline {
-  frames: Vec<MixFrame>,
+pub(super) struct StereoMixTimeline<const N: usize = 2> {
+  frames: Vec<MixFrame<N>>,
   next_member_frame: Vec<i64>,
   cursor: i64,
 }
@@ -25,7 +34,7 @@ pub(super) enum MixInsert {
   Overflow,
 }
 
-impl StereoMixTimeline {
+impl<const N: usize> StereoMixTimeline<N> {
   pub fn new(members: usize, capacity: usize) -> Self {
     assert!(members > 0 && capacity > 0);
     Self {
@@ -41,7 +50,7 @@ impl StereoMixTimeline {
 
   /// Insert an ordered packet. Overlap with released or previously inserted frames is ignored.
   /// A packet beyond the bounded buffer is rejected without changing the timeline.
-  pub fn push(&mut self, member: usize, start: i64, pcm: &[[f32; 2]]) -> MixInsert {
+  pub fn push(&mut self, member: usize, start: i64, pcm: &[[f32; N]]) -> MixInsert {
     let end = start + pcm.len() as i64;
     if end > self.cursor + self.frames.len() as i64 {
       return MixInsert::Overflow;
@@ -58,15 +67,16 @@ impl StereoMixTimeline {
     let capacity = self.frames.len();
     for (offset, input) in pcm[(first - start) as usize..].iter().enumerate() {
       let frame = &mut self.frames[(first as usize + offset) % capacity];
-      frame.samples[0] += input[0];
-      frame.samples[1] += input[1];
+      for (sum, value) in frame.samples.iter_mut().zip(input) {
+        *sum += value;
+      }
       frame.members += 1;
     }
     MixInsert::Accepted { late_frames }
   }
 
   /// Finalize a block after its deadline. Missing input contributes zero.
-  pub fn render(&mut self, output: &mut [[f32; 2]]) -> MixCoverage {
+  pub fn render(&mut self, output: &mut [[f32; N]]) -> MixCoverage {
     assert!(output.len() <= self.frames.len());
     let mut coverage = MixCoverage::default();
     let capacity = self.frames.len();

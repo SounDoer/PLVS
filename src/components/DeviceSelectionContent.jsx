@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { mixInputs, resolveMixFormat } from "../lib/mixRouting.js";
 import { ChevronRight, SlidersHorizontal, Trash2 } from "lucide-react";
 import {
   applicationSourceName,
@@ -164,6 +165,7 @@ export function DeviceSelectionContent({
   audioInputs = [],
   captureApplications = [],
   safeAudioDeviceId = "default",
+  defaultOutputReference = undefined,
   sourceMixes = null,
   onSelect,
 }) {
@@ -221,7 +223,7 @@ export function DeviceSelectionContent({
             {sourceMixes.list.map((mix) => {
               const unavailable =
                 mix.members.filter(({ id }) => !available.has(id)).length +
-                Number(Boolean(mix.input && !mixInputAvailable(mix.input, audioInputs))) +
+                mixInputs(mix).filter((input) => !mixInputAvailable(input, audioInputs)).length +
                 Number(
                   Boolean(
                     mix.output &&
@@ -232,7 +234,7 @@ export function DeviceSelectionContent({
                 );
               const members = sourceMixMemberCount(mix);
               const count = unavailable || members;
-              const detail = `${count} ${count === 1 ? "Source" : "Sources"} ${unavailable ? "Unavailable" : "· Stereo"}`;
+              const detail = `${count} ${count === 1 ? "Source" : "Sources"} ${unavailable ? "Unavailable" : `· ${resolveMixFormat(mix, audioOutputs, defaultOutputReference).name}`}`;
               return (
                 <SourceRow
                   key={mix.id}

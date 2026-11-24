@@ -190,7 +190,8 @@ describe("AppHeader", () => {
     expect(onRefreshSources).toHaveBeenCalledOnce();
     fireEvent.click(screen.getByRole("button", { name: /^Applications/ }));
     const application = screen.getByRole("button", { name: "VLC application audio" });
-    expect(within(application).getByText("reference.wav - VLC")).toBeTruthy();
+    expect(within(application).getByText("VLC")).toBeTruthy();
+    expect(within(application).queryByText("reference.wav - VLC")).toBeNull();
     fireEvent.click(application);
     expect(setCaptureDeviceId).toHaveBeenCalledWith("app-00112233445566778899aabbccddeeff");
   });
@@ -288,7 +289,7 @@ describe("AppHeader", () => {
     expect(applicationRows.getAttribute("aria-hidden")).toBe("true");
     expect(applicationRows.hasAttribute("inert")).toBe(true);
 
-    expect(applicationRows.textContent).toContain("A much longer application window title");
+    expect(applicationRows.textContent).toContain("Example Application");
 
     fireEvent.click(applications);
     expect(applicationRows.hasAttribute("aria-hidden")).toBe(false);

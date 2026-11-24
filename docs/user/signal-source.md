@@ -108,20 +108,31 @@ them without extra routing.
 
 ## Mixes on Windows
 
-In the normal window, choose **Add Mix** at the bottom of **Sources**. Check applications,
-channels from one input device, or both. You can save a Mix with a single application or a
-single input channel. Under **Output**, you can select one stereo playback device on its own
-or with channels from one input device. Output and application selections cannot be saved together.
+In the normal window, choose **Add Mix** at the bottom of **Sources**. Check applications or
+channels from one or more input devices. Under **Output**, choose one mapped playback device on
+its own or with input channels. One checked source is enough to save. Output and application
+selections cannot be saved together.
 PLVS generates a name from the selection. Use the pencil to enter your own name.
 **Save** adds the Mix under **Mixes** and selects it for the current Workbench.
 You can also select a saved Mix under **Mixes** in the Dock toolbar's **Sources** menu or in the
 system Tray's **Source** submenu for your Workbench.
 
-PLVS sums the sources into one stereo signal for measurement. A mono input goes to both sides at
-−3 dB per side. When several channels are checked, PLVS adds them at unity gain before placing
-the result at the center. The output keeps its left and right channels. If the selected input
-is already audible through the selected output or an application in the Mix, PLVS counts that
-input twice. If one source goes away, capture can continue with the others while
+**Mix Format** defaults to **Follow Output**. It uses the selected playback device's layout or the
+system default output's layout if the Mix contains no output. You can choose a fixed format from
+Mono through 9.1.6. If the reference layout is temporarily unavailable, PLVS uses its last
+confirmed layout or falls back to Stereo. The Mix
+format affects PLVS measurements while Windows continues to play through its existing route.
+
+Auto passes matching speaker roles through and folds roles missing from the target format. A
+physical input channel defaults to Center where available, or to both Stereo sides at −3 dB
+per side. A Stereo source leaves other channels silent in a larger layout. Open **Routing** beside
+a checked source to set destinations and gains, move a stereo pair, omit a source channel,
+or reset to Auto. The Mix format also supplies the channel roles used in Settings. A format
+change that removes a custom destination requires a routing edit before the new measurement can
+start. Saving a valid change that alters the measured signal starts a new measurement.
+
+If the selected input is already audible through the selected output or an application in the
+Mix, PLVS counts that input twice. If one source goes away, capture can continue with the others while
 PLVS waits for it to return. The Live transport clock continues while capture remains running,
 even during gaps without audio. The Mix row shows unavailable members. Applications with no
 current audio can stay selected.

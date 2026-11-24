@@ -130,6 +130,7 @@ export function DockAccessoriesProvider({ children }) {
   const presentation = normalizePanelPresentation(view.panelPresentation, view.focusView);
   const {
     audioOutputs,
+    defaultOutputReference,
     audioInputs,
     captureApplications,
     safeAudioDeviceId,
@@ -588,6 +589,7 @@ export function DockAccessoriesProvider({ children }) {
       dockSurfaceOpacity: view.dockSurfaceOpacity,
       device: {
         audioOutputs,
+        defaultOutputReference,
         audioInputs,
         captureApplications,
         safeAudioDeviceId,
@@ -632,6 +634,7 @@ export function DockAccessoriesProvider({ children }) {
       presentation.dock.hideAxesAndLabels,
       view.dockSurfaceOpacity,
       audioOutputs,
+      defaultOutputReference,
       audioInputs,
       captureApplications,
       safeAudioDeviceId,

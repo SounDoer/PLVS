@@ -61,8 +61,10 @@ System-output rows precede physical or virtual input rows in the GUI's order. Ea
 opaque stable ID, display label, `kind`, `direction`, loopback classification, default sample rate,
 and channel count. Unknown numeric capabilities are `null`. Results contain at most 256 rows and
 each label contains at most 512 Unicode scalar values; `truncated: true` means the internal
-inventory was longer. Windows output rows with `mixStereoOutput: true` are eligible for
-the Mix editor's Output group.
+inventory was longer. A Windows output row with `mixOutputRoles` is eligible for the Mix
+editor. These roles describe the measured playback stream. `referenceRoles` describes the
+configured layout used by Follow Output and can differ from the measured stream. The Automatic
+preview can also include `referenceRoles`.
 
 `applications` lists the running applications offered in the Sources menu's Applications group.
 `device list` refreshes them first, as opening Sources does, so an application that has just

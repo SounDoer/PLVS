@@ -16,6 +16,7 @@ import {
   useMeterRuntimeAssembly,
 } from "./MeterRuntimeContext.jsx";
 import { useSharedTimeViewport } from "../workspace/useSharedTimeViewport.js";
+import { SourceProvider } from "./SourceContext.jsx";
 import { SourceActionsProvider } from "./SourceActionsContext.jsx";
 import { DisplaySnapshotProvider } from "./DisplaySnapshotContext.jsx";
 import { AnalysisSessionProvider, useAnalysisSession } from "./AnalysisSessionContext.jsx";
@@ -32,11 +33,13 @@ function Providers({ children }) {
               <SettingsProvider>
                 <SceneGuardProvider>
                   <DockProvider>
-                    <SourceActionsProvider>
-                      <DisplaySnapshotProvider>
-                        <AnalysisSessionProvider>{children}</AnalysisSessionProvider>
-                      </DisplaySnapshotProvider>
-                    </SourceActionsProvider>
+                    <SourceProvider>
+                      <SourceActionsProvider>
+                        <DisplaySnapshotProvider>
+                          <AnalysisSessionProvider>{children}</AnalysisSessionProvider>
+                        </DisplaySnapshotProvider>
+                      </SourceActionsProvider>
+                    </SourceProvider>
                   </DockProvider>
                 </SceneGuardProvider>
               </SettingsProvider>

@@ -25,6 +25,8 @@ function normalizeDevice(device) {
     loopback: systemOutput || device.isLoopback === true,
     sampleRateHz: positiveIntegerOrNull(device.defaultSampleRate),
     channelCount: positiveIntegerOrNull(device.channels),
+    ...(Array.isArray(device.mixOutputRoles) ? { mixOutputRoles: device.mixOutputRoles } : {}),
+    ...(Array.isArray(device.referenceRoles) ? { referenceRoles: device.referenceRoles } : {}),
     ...(systemOutput && device.mixStereoOutput === true ? { mixStereoOutput: true } : {}),
     ...(typeof device.monitorSignature === "string"
       ? { monitorSignature: device.monitorSignature }
@@ -46,6 +48,9 @@ function normalizeAutomatic(preview) {
     resolved: available
       ? {
           label: boundedLabel(preview.label),
+          ...(Array.isArray(preview.referenceRoles)
+            ? { referenceRoles: preview.referenceRoles }
+            : {}),
           ...(typeof preview.endpointId === "string" ? { endpointId: preview.endpointId } : {}),
           sampleRateHz: positiveIntegerOrNull(preview.sampleRateHz),
           channelCount: positiveIntegerOrNull(preview.channels),

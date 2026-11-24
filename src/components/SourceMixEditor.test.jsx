@@ -88,7 +88,7 @@ it("exposes edit choices with generation checks and keeps the draft name out of 
   expect(ui().inspectUi().surfaces).toHaveLength(0);
 });
 
-it("saves one application with one input and its chosen channel through Agent Control", async () => {
+it("keeps checked channels from two input devices and saves them with an application", async () => {
   const cable = { id: `cap-${"3".repeat(32)}`, label: "Cable", channels: 2 };
   const mic = { id: `cap-${"4".repeat(32)}`, label: "Microphone", channels: 1 };
   const { ui } = mountEditor(vi.fn(), [mic, cable]);
@@ -115,13 +115,19 @@ it("saves one application with one input and its chosen channel through Agent Co
   );
   expect(screen.getByRole("checkbox", { name: "Channel 1" })).toHaveProperty("checked", false);
   await decide("input-toggle:1");
-  expect(screen.getByRole("button", { name: "Microphone" }).textContent).not.toContain("Selected");
+  expect(screen.getByRole("button", { name: "Microphone 1 Selected" })).toHaveProperty(
+    "type",
+    "button"
+  );
   await decide("group:applications");
   await decide(`toggle:${applications[0].id}`);
   await decide("save");
   expect(vi.mocked(sourceMixesStore.persist).mock.calls[0][0].list[0]).toMatchObject({
     members: [applications[0]],
-    input: { id: cable.id, label: cable.label, channels: [1] },
+    inputs: [
+      { id: mic.id, channels: [0] },
+      { id: cable.id, label: cable.label, channels: [1] },
+    ],
   });
 });
 
@@ -191,7 +197,7 @@ it.each([{ channels: [0] }, { channels: [0, 2] }])(
     await decide("save");
     expect(vi.mocked(sourceMixesStore.persist).mock.calls[0][0].list[0]).toMatchObject({
       members: [],
-      input: { id: input.id, channels },
+      inputs: [{ id: input.id, channels }],
     });
   }
 );
@@ -232,7 +238,46 @@ it("retains selections on conflict and saves a stereo output with input channels
   await decide("save");
   expect(vi.mocked(sourceMixesStore.persist).mock.calls[0][0].list[0]).toMatchObject({
     members: [],
-    input: { id: input.id, channels: [0] },
+    inputs: [{ id: input.id, channels: [0] }],
     output: { id: output.id, label: output.label },
+  });
+});
+
+it("edits a mono route in 5.1 and requires repair when switching to stereo", async () => {
+  const input = { id: `cap-${"3".repeat(32)}`, label: "Microphone", channels: 1 };
+  const { ui } = mountEditor(vi.fn(), [input]);
+  const decide = async (choice) => {
+    const state = ui().inspectUi();
+    await act(async () => {
+      await ui().decideSurface({
+        surfaceId: state.surfaces[0].surfaceId,
+        choice,
+        expectedRevision: 3,
+        expectedUiGeneration: state.uiGeneration,
+      });
+    });
+  };
+  await decide("group:input");
+  await decide(`input:${input.id}`);
+  await decide("input-toggle:0");
+  await decide("format:5-1");
+  await decide(`routing:${input.id}`);
+  expect(screen.getByText("Auto · C")).toBeTruthy();
+  await decide("route:add:0:Ls");
+  expect(screen.getByRole("combobox", { name: "destination for Channel 1" })).toHaveProperty(
+    "value",
+    "Ls"
+  );
+  await decide("format:stereo");
+  expect(screen.getByRole("button", { name: "Save" })).toHaveProperty("disabled", true);
+  expect(screen.getByRole("status").textContent).toContain("Fix the unavailable channel routes");
+  await decide("route:auto:0");
+  expect(screen.getByRole("button", { name: "Save" })).toHaveProperty("disabled", false);
+  await decide("format:5-1");
+  await decide("route:add:0:Ls");
+  await decide("save");
+  expect(vi.mocked(sourceMixesStore.persist).mock.calls[0][0].list[0]).toMatchObject({
+    format: "5.1",
+    routes: { [input.id]: { 0: [["Ls", 1]] } },
   });
 });

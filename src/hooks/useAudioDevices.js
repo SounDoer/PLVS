@@ -439,6 +439,8 @@ export function useAudioDevices({
         isLoopback: device.loopback,
         defaultSampleRate: device.sampleRateHz,
         channels: device.channelCount,
+        ...(device.mixOutputRoles ? { mixOutputRoles: device.mixOutputRoles } : {}),
+        ...(device.referenceRoles ? { referenceRoles: device.referenceRoles } : {}),
         ...(device.mixStereoOutput ? { mixStereoOutput: true } : {}),
         ...(device.monitorSignature ? { monitorSignature: device.monitorSignature } : {}),
       })),
@@ -462,5 +464,6 @@ export function useAudioDevices({
       ? JSON.stringify(snapshot.automatic.resolved)
       : "",
     defaultOutputLabel: snapshot.automatic.resolved?.label ?? "",
+    defaultOutputReference: snapshot.automatic.resolved,
   };
 }

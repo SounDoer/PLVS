@@ -53,6 +53,8 @@ const CAPTURE_INVALIDATION_RETRY_STEP_MS = 300;
  *   captureFormatSignature?: string,
  *   mixApplicationIds?: string[],
  *   mixOutputId?: string,
+ *   mixCaptureInputs?: { id: string, channels: number[] }[],
+ *   mixRouting?: { roles: string[], routes: Record<string, any>, outputRoles?: string[] },
  *   mixInput?: { id: string, channels: number[] },
  *   captureDeviceUnavailable?: boolean,
  *   histMaxSamples: number,
@@ -77,6 +79,8 @@ export function useAudioEngine({
   mixApplicationIds,
   mixInput,
   mixOutputId,
+  mixCaptureInputs,
+  mixRouting,
   /** When channels/default rate change for the active device, bumps to restart WASAPI/session (e.g. Windows speaker layout). */
   captureFormatSignature = "",
   captureDeviceUnavailable = false,
@@ -207,8 +211,10 @@ export function useAudioEngine({
       setSelectedOffset(-1);
       raiseNotice(
         "warning",
-        "Source Disconnected",
-        "Reconnect the device or choose another in Sources, then select Start.",
+        mixRouting === null ? "Mix Routing Needs Attention" : "Source Disconnected",
+        mixRouting === null
+          ? "Open the Mix editor and choose valid channel routes, then select Start."
+          : "Reconnect the device or choose another in Sources, then select Start.",
         { requiresAttention: true, helpTopic: "audio-capture" }
       );
     };
@@ -375,6 +381,8 @@ export function useAudioEngine({
               ...(mixApplicationIds ? { mixApplicationIds } : {}),
               ...(mixInput ? { mixInput } : {}),
               ...(mixOutputId ? { mixOutputId } : {}),
+              ...(mixCaptureInputs ? { mixInputs: mixCaptureInputs } : {}),
+              ...(mixRouting ? { mixRouting } : {}),
               continueSession,
               onFrame: applyFrame,
             });
@@ -442,6 +450,8 @@ export function useAudioEngine({
     mixApplicationIds,
     mixInput,
     mixOutputId,
+    mixCaptureInputs,
+    mixRouting,
     beginMixCapture,
     updateMixCapture,
     captureFormatSignature,

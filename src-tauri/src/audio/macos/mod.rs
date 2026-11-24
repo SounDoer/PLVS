@@ -182,6 +182,8 @@ fn list_loopback_rows_macos() -> Result<Vec<DeviceInfo>, String> {
       default_sample_rate: cfg.sample_rate(),
       channels: plan.channels(),
       mix_stereo_output: false,
+      mix_output_roles: None,
+      reference_roles: None,
       monitor_signature: Some(signature),
       core_audio_output_uid: core_uid,
     });

@@ -1,5 +1,5 @@
 //! WASAPI speaker positions for the exact cpal endpoint, not a device-name match.
-use super::source_layout::{wave_layout, NativeLayout};
+use super::source_layout::{wave_layout, wave_roles, MonitoringPlan, NativeLayout};
 use cpal::traits::DeviceTrait;
 use windows::core::PCWSTR;
 use windows::Win32::Foundation::RPC_E_CHANGED_MODE;
@@ -18,7 +18,7 @@ pub(crate) fn read_device(
   channels: u16,
   output: bool,
 ) -> Option<NativeLayout> {
-  read_roles(device.id().ok()?.id(), channels, output, false).map(|(layout, _)| layout)
+  read_roles(device.id().ok()?.id(), channels, output, false).map(|observation| observation.layout)
 }
 
 pub(crate) fn read_capture_device(
@@ -26,11 +26,36 @@ pub(crate) fn read_capture_device(
   channels: u16,
   output: bool,
 ) -> Option<NativeLayout> {
-  read_roles(device.id().ok()?.id(), channels, output, true).map(|(layout, _)| layout)
+  read_roles(device.id().ok()?.id(), channels, output, true).map(|observation| observation.layout)
 }
 
-pub(crate) fn read_output(device: &cpal::Device, channels: u16) -> Option<(NativeLayout, bool)> {
+pub(crate) struct OutputLayout {
+  layout: NativeLayout,
+  pub reference_roles: Option<Vec<String>>,
+  pub stereo: bool,
+}
+
+impl OutputLayout {
+  pub fn monitor_plan(&self, channels: u16) -> Result<MonitoringPlan, String> {
+    MonitoringPlan::require_system_scope(channels, Some(self.layout.clone()))
+  }
+  pub fn into_layout(self) -> NativeLayout {
+    self.layout
+  }
+}
+
+pub(crate) fn read_output(device: &cpal::Device, channels: u16) -> Option<OutputLayout> {
   read_roles(device.id().ok()?.id(), channels, true, false)
+}
+
+pub(crate) fn valid_mix_roles(roles: &[String]) -> bool {
+  !roles.is_empty()
+    && roles.len() <= 16
+    && roles.iter().enumerate().all(|(index, role)| {
+      role != "generic"
+        && crate::dsp::channel_layouts::role_weight(role).is_some()
+        && !roles[..index].contains(role)
+    })
 }
 
 fn supports_mix_stereo(layout: &NativeLayout, configured_mask: Option<u32>) -> bool {
@@ -57,7 +82,7 @@ fn read_roles(
   channels: u16,
   output: bool,
   diagnostics: bool,
-) -> Option<(NativeLayout, bool)> {
+) -> Option<OutputLayout> {
   // Called on an ordinary discovery/capture worker. COM must be initialized on that thread.
   unsafe {
     let uninitialize = initialize_com()?;
@@ -108,8 +133,25 @@ fn read_roles(
       }
       CoTaskMemFree(Some(format.cast()));
       roles.map(|layout| {
-        let mix_stereo = output && supports_mix_stereo(&layout, configured_mask);
-        (layout, mix_stereo)
+        let stereo = output && supports_mix_stereo(&layout, configured_mask);
+        let reference_roles = if output {
+          configured_mask
+            .filter(|mask| *mask != 0)
+            .and_then(|mask| wave_roles(mask, mask.count_ones() as u16))
+            .or_else(|| {
+              MonitoringPlan::require_system_scope(channels, Some(layout.clone()))
+                .ok()?
+                .roles
+            })
+            .filter(|roles| valid_mix_roles(roles))
+        } else {
+          None
+        };
+        OutputLayout {
+          layout,
+          reference_roles,
+          stereo,
+        }
       })
     })();
     if uninitialize {

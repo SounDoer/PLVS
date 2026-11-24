@@ -32,6 +32,7 @@ import {
   useMeterRuntime,
   useMeterRuntimeAssembly,
 } from "./MeterRuntimeContext.jsx";
+import { useSource } from "./SourceContext.jsx";
 import { useSourceActions } from "./SourceActionsContext.jsx";
 import { useDisplaySnapshot } from "./DisplaySnapshotContext.jsx";
 import { useRuntimeBackendSync } from "./useRuntimeBackendSync.js";
@@ -40,6 +41,7 @@ import { UI_PREFERENCES } from "../uiPreferences.js";
 /**
  * @typedef {ReturnType<typeof useRuntimeBackendSync> & {
  *   channelCount: number,
+ *   channelLayoutLocked: boolean,
  *   channelLabelRuntime: ReturnType<typeof deriveChannelLabelRuntime>,
  *   peakLabelContext: any,
  *   setChannelLabelToken: (index: number, token: string) => void,
@@ -79,6 +81,8 @@ export function AnalysisSessionProvider({ children }) {
   const { setSelectedOffset, raiseNotice } = useMeterDisplayState();
   const { liveIntakeRef, fileRequestInputsRef } = useMeterRuntimeAssembly();
   const { channelCount, displayAudio } = useDisplaySnapshot();
+  const { selectedSource } = useSource();
+  const channelLayoutLocked = sourceMode === "live" && selectedSource?.type === "Mix";
   const autoRolesKey = JSON.stringify(displayAudio?.autoChannelRoles ?? null);
   const autoChannelRoles = useMemo(() => JSON.parse(autoRolesKey), [autoRolesKey]);
   const { fileSession, dialogueGating, resetLiveDisplayControls } = useSourceActions();
@@ -120,8 +124,13 @@ export function AnalysisSessionProvider({ children }) {
   }, [historyRetentionSec, sourceMode, setSelectedOffset]);
 
   const channelLabelRuntime = useMemo(
-    () => deriveChannelLabelRuntime({ channelCount, channelLabelOverrides, autoChannelRoles }),
-    [channelCount, channelLabelOverrides, autoChannelRoles]
+    () =>
+      deriveChannelLabelRuntime({
+        channelCount,
+        channelLabelOverrides: channelLayoutLocked ? {} : channelLabelOverrides,
+        autoChannelRoles,
+      }),
+    [channelCount, channelLabelOverrides, autoChannelRoles, channelLayoutLocked]
   );
   const peakLabelContext = channelLabelRuntime.peakLabelContext;
 
@@ -247,7 +256,7 @@ export function AnalysisSessionProvider({ children }) {
 
   const commitChannelRoles = useCallback(
     (roles) => {
-      if (JSON.stringify(roles) === JSON.stringify(channelRoles)) return;
+      if (channelLayoutLocked || JSON.stringify(roles) === JSON.stringify(channelRoles)) return;
       return applyMeasurementEdit({ channelRoles: roles }, () =>
         setChannelLabelOverrides((current) => {
           const updated = { ...current };
@@ -257,7 +266,13 @@ export function AnalysisSessionProvider({ children }) {
         })
       );
     },
-    [applyMeasurementEdit, channelCount, channelRoles, setChannelLabelOverrides]
+    [
+      applyMeasurementEdit,
+      channelCount,
+      channelLayoutLocked,
+      channelRoles,
+      setChannelLabelOverrides,
+    ]
   );
 
   const setChannelLabelToken = useCallback(
@@ -287,6 +302,7 @@ export function AnalysisSessionProvider({ children }) {
   const value = useMemo(
     () => ({
       channelCount,
+      channelLayoutLocked,
       channelLabelRuntime,
       peakLabelContext,
       changeDialogueVadEngine,
@@ -306,6 +322,7 @@ export function AnalysisSessionProvider({ children }) {
     }),
     [
       channelCount,
+      channelLayoutLocked,
       channelLabelRuntime,
       peakLabelContext,
       changeDialogueVadEngine,

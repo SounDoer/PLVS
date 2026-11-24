@@ -137,6 +137,8 @@ pub struct MixDropDiagnostics {
 #[serde(rename_all = "camelCase")]
 pub struct AudioDevicePreview {
   pub label: String,
+  #[serde(default, skip_serializing_if = "Option::is_none")]
+  pub reference_roles: Option<Vec<String>>,
   #[serde(skip_serializing_if = "Option::is_none")]
   pub endpoint_id: Option<String>,
   #[serde(skip_serializing_if = "Option::is_none")]

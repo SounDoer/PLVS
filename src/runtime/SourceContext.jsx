@@ -5,6 +5,7 @@ import { errorDetails } from "../lib/errorDetails.js";
 import { formatAudioDeviceLabel } from "@/lib/audioDeviceLabels.js";
 import { isTauri } from "../ipc/env.js";
 import { isWindows } from "../lib/platform.js";
+import { compileMixRouting, mixInputs, resolveMixFormat } from "../lib/mixRouting.js";
 import { isSourceMixId } from "../lib/sourceMixes.js";
 import { usesTransactionalPersistence } from "../persistence/index.js";
 import { useSourceMixes } from "../hooks/useSourceMixes.js";
@@ -20,7 +21,8 @@ import { useMeterDisplayState, useMeterRuntime } from "./MeterRuntimeContext.jsx
  *   sourceMixes: ReturnType<typeof useSourceMixes>,
  *   mixApplicationIds: string[] | undefined,
  *   mixOutputId: string | undefined,
- *   mixInput: { id: string, channels: number[] } | undefined,
+ *   mixCaptureInputs: { id: string, channels: number[] }[] | undefined,
+ *   mixRouting: ReturnType<typeof compileMixRouting> | undefined,
  *   selectedSource: { type: string, label: string } | null,
  *   sourceDisplayName: string | null,
  *   footerSourceLabel: string,
@@ -40,6 +42,7 @@ export function SourceProvider({ children }) {
     captureDeviceId,
     selectCaptureDevice,
     defaultOutputFormatSig,
+    defaultOutputReference,
     defaultOutputLabel,
     refreshCaptureApplications,
   } = devices;
@@ -88,15 +91,39 @@ export function SourceProvider({ children }) {
     () => (mixMembers ? JSON.parse(mixMembers) : undefined),
     [mixMembers]
   );
-  const inputSignature = selectedMix?.input
-    ? JSON.stringify({
-        id: selectedMix.input.id,
-        channels: selectedMix.input.channels,
-      })
+  const inputSignature = selectedMix
+    ? JSON.stringify(mixInputs(selectedMix).map(({ id, channels }) => ({ id, channels })))
     : "";
-  const mixInput = useMemo(
+  const mixCaptureInputs = useMemo(
     () => (inputSignature ? JSON.parse(inputSignature) : undefined),
     [inputSignature]
+  );
+  const lastMixReference = useRef(new Map());
+  let routingSignature = "";
+  if (selectedMix) {
+    const previous = lastMixReference.current.get(selectedMix.id);
+    const liveOutput = audioOutputs.find(({ id }) => id === selectedMix.output?.id);
+    const selection = {
+      ...selectedMix,
+      referenceRoles: previous?.referenceRoles ?? selectedMix.referenceRoles,
+      output: selectedMix.output && {
+        ...selectedMix.output,
+        roles: liveOutput?.mixOutputRoles ?? previous?.outputRoles ?? selectedMix.output.roles,
+      },
+    };
+    const resolved = resolveMixFormat(selection, audioOutputs, defaultOutputReference);
+    lastMixReference.current.set(selectedMix.id, {
+      referenceRoles:
+        resolved.id === "follow" && !resolved.fallback ? resolved.roles : previous?.referenceRoles,
+      outputRoles: selection.output?.roles,
+    });
+    routingSignature = JSON.stringify(
+      compileMixRouting(selection, audioOutputs, defaultOutputReference)
+    );
+  }
+  const mixRouting = useMemo(
+    () => (routingSignature ? JSON.parse(routingSignature) : undefined),
+    [routingSignature]
   );
   const mixOutputId = selectedMix?.output?.id;
   const editingMix = sourceMixes.draft !== null;
@@ -109,7 +136,9 @@ export function SourceProvider({ children }) {
   const captureFormatSignature = useMemo(() => {
     if (!isTauri()) return "";
     if (selectionIsMix)
-      return mixMembers ? `2:48000|${mixMembers}|${inputSignature}|${mixOutputId ?? ""}` : "";
+      return mixMembers
+        ? `2:48000|${mixMembers}|${inputSignature}|${mixOutputId ?? ""}|${routingSignature}`
+        : "";
     if (/^app-[0-9a-f]{32}$/.test(captureDeviceId)) {
       const application = captureApplications.find((candidate) => candidate.id === captureDeviceId);
       const processSignature = application?.processIds?.length
@@ -133,9 +162,10 @@ export function SourceProvider({ children }) {
     mixMembers,
     inputSignature,
     mixOutputId,
+    routingSignature,
   ]);
   const captureDeviceUnavailable = selectionIsMix
-    ? !selectedMix
+    ? !selectedMix || !mixRouting
     : devices.snapshot.inventoryReady &&
       captureDeviceId !== "default" &&
       !/^app-[0-9a-f]{32}$/.test(captureDeviceId) &&
@@ -200,7 +230,8 @@ export function SourceProvider({ children }) {
         captureDeviceUnavailable,
         sourceMixes,
         mixApplicationIds,
-        mixInput,
+        mixCaptureInputs,
+        mixRouting,
         mixOutputId,
         selectedSource,
         sourceDisplayName,

@@ -63,10 +63,15 @@ On Windows, the normal-window Sources surface declares Mix choices through `ui i
 also exposes `select:<mix-id>` for each saved Mix. The normal-window `sourceMixEditor`
 surface exposes `group:input` and `group:applications` to expand or collapse a group. In Input,
 `input:<device-id>` expands a device and exposes its `input-toggle:<index>` checkbox choices
-with zero-based indices. Checking a channel from a different input replaces the previous
-input selection. Applications exposes `toggle:<application-id>`. Save requires at least one
-checked application, input channel, or stereo output. Use `group:output` and `output:<device-id>`
-to choose a single whole output. A draft with both an output and applications disables Save.
+with zero-based indices. Input selections accumulate across devices. Applications exposes `toggle:<application-id>`. Save requires at least one
+checked application, input channel, or mapped playback device. Use `group:output` and
+`output:<device-id>` to choose one whole device. A draft with both an output and applications
+disables Save. `format:<key>` sets the Mix format. Hyphens replace dots in choice IDs, for
+example `format:5-1`. The Follow Output choice includes the resolved format. Open
+`routing:<source-id>` to see channel choices. The open source offers `route:add:<lane>:<role>`,
+`route:remove:<lane>:<role>`, `route:gain:<lane>:<role>:<up|down>` in 1 dB steps,
+`route:auto:<lane>`, `route:omit:<lane>`, and eligible `route:pair:<left>:<right>` choices.
+An invalid custom route disables Save.
 Use the latest surface ID,
 revision and UI generation for each decision. These choices run the same handlers as the editor
 controls. The editor's draft name stays private to the UI.

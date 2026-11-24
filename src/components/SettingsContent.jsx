@@ -211,6 +211,7 @@ export function visibleSettingsSection(scroller, nodes) {
  *   channelLabelTokens?: any[],
  *   channelLabelHasOverride?: boolean,
  *   selectedLayoutId?: string,
+ *   channelLayoutLocked?: boolean,
  *   setChannelLayout?: (...args: any[]) => any,
  *   setChannelLabelToken?: (...args: any[]) => any,
  *   resetChannelLabels?: (...args: any[]) => any,
@@ -290,6 +291,7 @@ export function SettingsContent({
   channelLabelTokens = [],
   channelLabelHasOverride = false,
   selectedLayoutId = null,
+  channelLayoutLocked = false,
   setChannelLayout = () => {},
   setChannelLabelToken = () => {},
   resetChannelLabels = () => {},
@@ -377,8 +379,10 @@ export function SettingsContent({
   const channelLayouts = layoutsForChannelCount(channelCount);
   const selectedStandardLayout = channelLayouts.find((layout) => layout.id === selectedLayoutId);
   const showChannelLayoutSelect =
-    channelLayouts.length > 1 ||
-    (channelLayouts.length === 1 && (selectedLayoutId === null || selectedLayoutId === "custom"));
+    !channelLayoutLocked &&
+    (channelLayouts.length > 1 ||
+      (channelLayouts.length === 1 &&
+        (selectedLayoutId === null || selectedLayoutId === "custom")));
   const channelLayoutLabel =
     selectedLayoutId === "custom"
       ? "Custom"
@@ -895,7 +899,7 @@ export function SettingsContent({
               </span>
             }
           >
-            {channelCount > 0 ? (
+            {channelCount > 0 && !channelLayoutLocked ? (
               <ResetAction
                 label="Reset channel labels"
                 data-ui-target="setting:channels.resetLabels"
@@ -939,33 +943,39 @@ export function SettingsContent({
                   </span>
                 )}
               </SettingsRow>
-              {channelLabelTokens.map((token, i) => (
-                <SettingsRow
-                  key={i}
-                  labelNode={
-                    <span className="shrink-0 tabular-nums font-mono text-[length:var(--ui-fs-axis)] text-muted-foreground">
-                      {i + 1}
-                    </span>
-                  }
-                >
-                  <Select value={token} onValueChange={(v) => setChannelLabelToken(i, v)}>
-                    <SelectTrigger
-                      variant="flush"
-                      aria-label={`Channel ${i + 1} role`}
-                      data-ui-target={`setting:channels.role.${i + 1}`}
-                    >
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent position="popper" variant="flush">
-                      {CHANNEL_ROLE_VOCABULARY.map((role) => (
-                        <SelectItem key={role.id} value={role.id}>
-                          {role.label}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </SettingsRow>
-              ))}
+              {channelLayoutLocked && (
+                <p className="px-2 pb-2 text-muted-foreground">
+                  Channel roles follow the Mix format.
+                </p>
+              )}
+              {!channelLayoutLocked &&
+                channelLabelTokens.map((token, i) => (
+                  <SettingsRow
+                    key={i}
+                    labelNode={
+                      <span className="shrink-0 tabular-nums font-mono text-[length:var(--ui-fs-axis)] text-muted-foreground">
+                        {i + 1}
+                      </span>
+                    }
+                  >
+                    <Select value={token} onValueChange={(v) => setChannelLabelToken(i, v)}>
+                      <SelectTrigger
+                        variant="flush"
+                        aria-label={`Channel ${i + 1} role`}
+                        data-ui-target={`setting:channels.role.${i + 1}`}
+                      >
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent position="popper" variant="flush">
+                        {CHANNEL_ROLE_VOCABULARY.map((role) => (
+                          <SelectItem key={role.id} value={role.id}>
+                            {role.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </SettingsRow>
+                ))}
             </div>
           ) : (
             <span className="px-2 text-[length:var(--ui-fs-axis)] text-muted-foreground">

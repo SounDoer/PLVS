@@ -229,13 +229,15 @@ function AppContent() {
     safeAudioDeviceId,
     refreshInventory,
     audioOutputs,
+    defaultOutputReference,
     audioInputs,
     onSelectCaptureDevice,
     captureFormatSignature,
     captureDeviceUnavailable,
     sourceMixes,
     mixApplicationIds,
-    mixInput,
+    mixCaptureInputs,
+    mixRouting,
     mixOutputId,
     footerSourceLabel,
   } = useSource();
@@ -278,6 +280,7 @@ function AppContent() {
     sourceMode === "file" && (fileSessions.length > 0 || fileQueue.items.length > 0);
   const {
     channelLabelRuntime,
+    channelLayoutLocked,
     changeDialogueVadEngine,
     setChannelLabelToken,
     setChannelLayout,
@@ -299,7 +302,8 @@ function AppContent() {
   const runtimeEnginesProps = {
     captureDeviceId,
     mixApplicationIds,
-    mixInput,
+    mixCaptureInputs,
+    mixRouting,
     mixOutputId,
     captureFormatSignature,
     captureDeviceUnavailable,
@@ -346,6 +350,7 @@ function AppContent() {
     isTauriApp: isTauri(),
     audioDevices,
     audioOutputs,
+    defaultOutputReference,
     audioInputs,
     captureApplications,
     sourceMixes,
@@ -578,6 +583,7 @@ function AppContent() {
               channelLabelTokens,
               channelLabelHasOverride: !!channelLabelOverride,
               selectedLayoutId: channelLabelRuntime.selectedLayoutId,
+              channelLayoutLocked,
               setChannelLayout,
               setChannelLabelToken,
               resetChannelLabels,
@@ -599,6 +605,7 @@ function AppContent() {
             applications={captureApplications}
             inputs={audioInputs}
             outputs={audioOutputs}
+            defaultOutputReference={defaultOutputReference}
           />
         ) : null}
         <CloseConfirmDialog
