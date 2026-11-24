@@ -2,7 +2,6 @@ import React from "react";
 import { createRoot } from "react-dom/client";
 import App from "./App";
 import "./index.css";
-import { DockHeaderApp } from "./dock/accessories/DockHeaderApp.jsx";
 import { DockEditorApp } from "./dock/accessories/DockEditorApp.jsx";
 import { DockImportApp } from "./dock/accessories/DockImportApp.jsx";
 import { applyDocumentSurface } from "./dock/accessories/documentSurface.js";
@@ -23,9 +22,7 @@ if (!DOCK_ACCESSORY_SURFACES.includes(surface)) {
 initializeDocumentPresentation(surface);
 
 const root =
-  surface === "dock-header" ? (
-    <DockHeaderApp />
-  ) : surface === "dock-editor" ? (
+  surface === "dock-editor" ? (
     <DockEditorApp />
   ) : surface === "dock-import" ? (
     <DockImportApp />

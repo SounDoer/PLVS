@@ -19,6 +19,7 @@ fn accessory_builder<'a, R: tauri::Runtime, M: Manager<R>>(
 ) -> WebviewWindowBuilder<'a, R, M> {
   // Each accessory's label is also its frontend surface name.
   let page = match label {
+    DOCK_HEADER_LABEL => "dock-header.html",
     DOCK_UPDATE_LABEL => "dock-update.html",
     DOCK_SETTINGS_LABEL | DOCK_AUTHORING_LABEL => "dock-settings.html",
     _ => "index.html",

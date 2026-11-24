@@ -750,7 +750,8 @@ focus rule that closes it when the user clicks another application.
 
 Dock accessories are created on demand. `useDockAccessoryVisibility` prepares `dock-header` on the
 first Dock entry (including a docked boot), and `dock-editor` only when a toolbar panel is first
-requested. The shared panel host stays reusable while Dock is active. After leaving Dock, both hosts
+requested. The toolbar loads `dock-header.html` separately from the workspace entry point.
+The shared panel host stays reusable while Dock is active. After leaving Dock, both hosts
 stay warm for 60 seconds, then retire. A quick return cancels that timer. Preparation and retirement
 are serialized; completion triggers any newly requested preparation. Native retirement checks the
 actual Dock flag and destroys the hosts together on the UI thread, refusing a stale retirement after
