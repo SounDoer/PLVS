@@ -17,7 +17,8 @@ describe("update preference controls", () => {
         installationSupported
       />
     );
-    fireEvent.click(screen.getByRole("switch", { name: "automatically check for updates" }));
+    fireEvent.click(screen.getByText("Auto Check for Updates"));
+    expect(onChange).toHaveBeenCalledOnce();
     expect(onChange).toHaveBeenLastCalledWith({ autoCheck: false, autoDownload: false });
     rerender(
       <UpdatePreferencesControls

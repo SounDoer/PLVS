@@ -133,9 +133,7 @@ describe("Settings owner and accessory integration", () => {
     );
     fireEvent.click(screen.getByRole("switch", { name: "Open at Login" }));
     await waitFor(() =>
-      expect(screen.getByRole("switch", { name: "Open at Login" }).getAttribute("data-state")).toBe(
-        "checked"
-      )
+      expect(screen.getByRole("switch", { name: "Open at Login", checked: true })).toBeTruthy()
     );
     fireEvent.click(screen.getByRole("button", { name: "Export complete setup" }));
     await waitFor(() => expect(view.exported).toHaveBeenCalledWith());

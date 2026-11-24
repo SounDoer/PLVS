@@ -2,7 +2,6 @@ import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react
 import { CircleHelp, ExternalLink } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 import { Button } from "@/components/ui/button";
-import { COMPACT_SWITCH_CLASS, COMPACT_SWITCH_THUMB_CLASS } from "@/components/ui/controlStyles.js";
 import {
   Select,
   SelectContent,
@@ -61,10 +60,6 @@ const ROW_LABEL_CLASS =
   "whitespace-nowrap text-[length:var(--ui-fs-control)] text-muted-foreground";
 
 const ROW_VALUE_CLASS = "flex min-w-0 items-center justify-end";
-
-const SWITCH_CLASS = COMPACT_SWITCH_CLASS;
-
-const SWITCH_THUMB_CLASS = COMPACT_SWITCH_THUMB_CLASS;
 
 const FOOTER_LINK_CLASS =
   "inline-flex items-center gap-1 whitespace-nowrap text-[length:var(--ui-fs-metric-meta)] cursor-pointer outline-none disabled:cursor-default disabled:opacity-50";
@@ -134,17 +129,6 @@ function SettingsLabelWithTip({ label, tip }) {
 
 function SettingsDivider() {
   return <div className="border-t border-border" />;
-}
-
-/** @param {{ className?: string, [key: string]: any }} props */
-function SettingsSwitch({ className, ...props }) {
-  return (
-    <Switch
-      className={cn(SWITCH_CLASS, className)}
-      thumbClassName={SWITCH_THUMB_CLASS}
-      {...props}
-    />
-  );
 }
 
 function IconButton({ children, className, ...props }) {
@@ -624,7 +608,7 @@ export function SettingsContent({
         {/* Behavior */}
         <SettingsSection sectionId="behavior" sectionRef={bindSection("behavior")}>
           <SettingsRow label="Open at Login" uiTarget="setting:behavior.openAtLogin">
-            <SettingsSwitch
+            <Switch
               aria-label="Open at Login"
               checked={autostartEnabled}
               onCheckedChange={setAutostartEnabled}
@@ -697,7 +681,7 @@ export function SettingsContent({
                       disabled={!shortcutsReady}
                     />
                     <HoverTip tip="Works Outside PLVS" side="top" className="inline-flex shrink-0">
-                      <SettingsSwitch
+                      <Switch
                         aria-label={`${action.label} works outside PLVS`}
                         checked={binding.global}
                         onCheckedChange={(global) => setShortcutGlobal(action.id, global)}
@@ -1092,7 +1076,7 @@ export function SettingsContent({
               <SettingsRow
                 labelNode={<SettingsLabelWithTip label="Agent Control" tip={agentControlMessage} />}
               >
-                <SettingsSwitch
+                <Switch
                   aria-label="Agent Control"
                   data-ui-target="setting:agentControl.enabled"
                   checked={agentControlEnabled}
@@ -1152,7 +1136,7 @@ export function SettingsContent({
               />
             }
           >
-            <SettingsSwitch
+            <Switch
               aria-label="ask to send crash reports"
               data-ui-target="setting:updates.askToSendCrashReports"
               checked={askToSendCrashReports}

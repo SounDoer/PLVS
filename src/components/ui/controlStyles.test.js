@@ -8,8 +8,8 @@ import { COMPACT_SWITCH_CLASS, COMPACT_SWITCH_THUMB_CLASS } from "./controlStyle
 
 describe("control visual semantics", () => {
   it("uses Input, Primary, and an opaque thumb for compact switches", () => {
-    expect(COMPACT_SWITCH_CLASS).toContain("data-[state=unchecked]:bg-input");
-    expect(COMPACT_SWITCH_CLASS).toContain("data-[state=checked]:bg-primary");
+    expect(COMPACT_SWITCH_CLASS).toContain(" bg-input ");
+    expect(COMPACT_SWITCH_CLASS).toContain("checked:bg-primary");
     expect(COMPACT_SWITCH_THUMB_CLASS).toContain("bg-background");
     expect(COMPACT_SWITCH_THUMB_CLASS).not.toMatch(/bg-[^ ]+\/[0-9]+/);
   });

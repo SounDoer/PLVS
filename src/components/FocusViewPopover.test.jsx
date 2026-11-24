@@ -65,21 +65,11 @@ describe("FocusViewPopoverContent", () => {
       />
     );
 
-    expect(screen.getByRole("switch", { name: "Always on Top" }).getAttribute("data-state")).toBe(
-      "unchecked"
-    );
-    expect(
-      screen.getByRole("switch", { name: "Auto-hide Controls" }).getAttribute("data-state")
-    ).toBe("checked");
-    expect(
-      screen.getByRole("switch", { name: "Hide Panel Headers" }).getAttribute("data-state")
-    ).toBe("unchecked");
-    expect(
-      screen.getByRole("switch", { name: "Hide Window Frame" }).getAttribute("data-state")
-    ).toBe("unchecked");
-    expect(screen.getByRole("switch", { name: "Glass" }).getAttribute("data-state")).toBe(
-      "checked"
-    );
+    expect(screen.getByRole("switch", { name: "Always on Top", checked: false })).toBeTruthy();
+    expect(screen.getByRole("switch", { name: "Auto-hide Controls", checked: true })).toBeTruthy();
+    expect(screen.getByRole("switch", { name: "Hide Panel Headers", checked: false })).toBeTruthy();
+    expect(screen.getByRole("switch", { name: "Hide Window Frame", checked: false })).toBeTruthy();
+    expect(screen.getByRole("switch", { name: "Glass", checked: true })).toBeTruthy();
   });
 
   it("reflects the current opacity in the range control", () => {

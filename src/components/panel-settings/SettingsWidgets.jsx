@@ -12,8 +12,6 @@ import { useEffect, useRef, useState } from "react";
 import { Check, ChevronDown, ChevronUp, RotateCcw } from "lucide-react";
 
 import { cn } from "@/lib/utils";
-import { Switch } from "@/components/ui/switch";
-import { COMPACT_SWITCH_CLASS, COMPACT_SWITCH_THUMB_CLASS } from "@/components/ui/controlStyles.js";
 import { POPOVER_SURFACE_CLASS } from "@/components/ui/surfaceStyles.js";
 import { useHoverTip } from "@/components/HoverTip.jsx";
 import { IconAction } from "@/components/ui/icon-action";
@@ -37,10 +35,6 @@ const SETTINGS_CHOICE_ROW_CLASS =
   "min-h-[var(--ui-control-h)] min-w-0 gap-1 py-0 text-popover-foreground outline-none hover:text-foreground focus-visible:bg-ui-hover focus-visible:text-foreground";
 
 const SETTINGS_CHOICE_CHECK_CLASS = "flex size-3 items-center justify-center text-primary";
-
-const SETTINGS_SWITCH_CLASS = COMPACT_SWITCH_CLASS;
-
-const SETTINGS_SWITCH_THUMB_CLASS = COMPACT_SWITCH_THUMB_CLASS;
 
 export function SettingsGroup({ children }) {
   return <div className="flex w-full min-w-0 max-w-full flex-col gap-0">{children}</div>;
@@ -113,16 +107,6 @@ function settingsValueClass(open, className) {
     SETTINGS_SELECT_TRIGGER_CLASS,
     open ? SETTINGS_VALUE_OPEN_CLASS : SETTINGS_VALUE_IDLE_CLASS,
     className
-  );
-}
-
-export function SettingsSwitch(props) {
-  return (
-    <Switch
-      className={SETTINGS_SWITCH_CLASS}
-      thumbClassName={SETTINGS_SWITCH_THUMB_CLASS}
-      {...props}
-    />
   );
 }
 

@@ -1,7 +1,6 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
-import { COMPACT_SWITCH_CLASS, COMPACT_SWITCH_THUMB_CLASS } from "@/components/ui/controlStyles.js";
 import {
   Select,
   SelectContent,
@@ -11,10 +10,6 @@ import {
 } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogFooter, DialogTitle } from "@/components/ui/dialog";
 import { useUiSurface } from "../uiNavigation/UiNavigationContext.jsx";
-
-const SWITCH_CLASS = COMPACT_SWITCH_CLASS;
-
-const SWITCH_THUMB_CLASS = COMPACT_SWITCH_THUMB_CLASS;
 
 const ROW_LABEL_CLASS = "text-[length:var(--ui-fs-control)] font-medium text-muted-foreground";
 
@@ -108,13 +103,7 @@ export function CloseConfirmDialog({
 
             <div className="mb-3 flex min-h-[var(--ui-shell-h)] items-center justify-between gap-4 rounded-md px-2">
               <span className={ROW_LABEL_CLASS}>Don&apos;t ask again</span>
-              <Switch
-                aria-label="Don't ask again"
-                checked={dontAsk}
-                onCheckedChange={setDontAsk}
-                className={SWITCH_CLASS}
-                thumbClassName={SWITCH_THUMB_CLASS}
-              />
+              <Switch aria-label="Don't ask again" checked={dontAsk} onCheckedChange={setDontAsk} />
             </div>
           </>
         ) : null}

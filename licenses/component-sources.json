@@ -2918,10 +2918,6 @@
       "license": "MIT",
       "noticeSha256": "c054fe1030104a7dbe2c80d59086b32f72f4489acebc0228506e920ca69bd266"
     },
-    "npm:@radix-ui/react-switch@1.4.1": {
-      "license": "MIT",
-      "noticeSha256": "c054fe1030104a7dbe2c80d59086b32f72f4489acebc0228506e920ca69bd266"
-    },
     "npm:@radix-ui/react-use-callback-ref@1.1.5": {
       "license": "MIT",
       "noticeSha256": "c054fe1030104a7dbe2c80d59086b32f72f4489acebc0228506e920ca69bd266"

@@ -435,10 +435,10 @@ describe("PanelSettingsContent", () => {
     };
     const { rerender } = render(<PanelSettingsContent {...props} />);
 
-    expect(screen.getByLabelText("waveform frequency color").getAttribute("aria-checked")).toBe(
-      "false"
-    );
-    expect(screen.getByLabelText("waveform centroid").getAttribute("aria-checked")).toBe("false");
+    expect(
+      screen.getByRole("switch", { name: "waveform frequency color", checked: false })
+    ).toBeTruthy();
+    expect(screen.getByRole("switch", { name: "waveform centroid", checked: false })).toBeTruthy();
     expect(screen.queryByLabelText("waveform low mid split")).toBeNull();
     expect(screen.queryByText(/legend/i)).toBeNull();
 
@@ -657,7 +657,7 @@ describe("PanelSettingsContent", () => {
     expect(screen.queryByRole("switch", { name: "level meter playback max" })).toBeNull();
     expect(screen.getByText("TP Max")).toBeTruthy();
     const switchButton = screen.getByRole("switch", { name: "level meter TP Max" });
-    expect(switchButton.getAttribute("aria-checked")).toBe("false");
+    expect(/** @type {HTMLInputElement} */ (switchButton).checked).toBe(false);
 
     fireEvent.click(switchButton);
 
@@ -690,9 +690,9 @@ describe("PanelSettingsContent", () => {
     expect(screen.getByText("Floating Value")).toBeTruthy();
     expect(screen.queryByText("TP Max")).toBeNull();
     const playbackMaxSwitch = screen.getByRole("switch", { name: "level meter playback max" });
-    expect(playbackMaxSwitch.getAttribute("aria-checked")).toBe("false");
+    expect(/** @type {HTMLInputElement} */ (playbackMaxSwitch).checked).toBe(false);
     const switchButton = screen.getByRole("switch", { name: "level meter floating value" });
-    expect(switchButton.getAttribute("aria-checked")).toBe("false");
+    expect(/** @type {HTMLInputElement} */ (switchButton).checked).toBe(false);
 
     fireEvent.click(playbackMaxSwitch);
     expect(onPanelControlsChange).toHaveBeenCalledWith({
@@ -1280,7 +1280,7 @@ describe("PanelSettingsContent", () => {
       );
 
       const grid = screen.getByRole("switch", { name: "stereo map grid" });
-      expect(grid.getAttribute("aria-checked")).toBe("false");
+      expect(/** @type {HTMLInputElement} */ (grid).checked).toBe(false);
       fireEvent.click(grid);
       expect(onPanelControlsChange).toHaveBeenCalledWith({
         ...DEFAULT_PANEL_CONTROLS,
@@ -1489,7 +1489,7 @@ describe("PanelSettingsContent", () => {
     );
 
     const grid = screen.getByRole("switch", { name: "loudness grid" });
-    expect(grid.getAttribute("aria-checked")).toBe("false");
+    expect(/** @type {HTMLInputElement} */ (grid).checked).toBe(false);
     fireEvent.click(grid);
     expect(onPanelControlsChange).toHaveBeenCalledWith({
       ...DEFAULT_PANEL_CONTROLS,
@@ -1660,7 +1660,7 @@ describe("PanelSettingsContent", () => {
     );
 
     const grid = screen.getByRole("switch", { name: "spectrum grid" });
-    expect(grid.getAttribute("aria-checked")).toBe("false");
+    expect(/** @type {HTMLInputElement} */ (grid).checked).toBe(false);
     expect(container.textContent.indexOf("Smoothing")).toBeLessThan(
       container.textContent.indexOf("Grid")
     );
@@ -2118,8 +2118,8 @@ describe("PanelSettingsContent", () => {
 
     expect(screen.getByRole("switch", { name: "spectrogram 3d colorize" })).toBeTruthy();
     expect(
-      screen.getByRole("switch", { name: "spectrogram 3d grid" }).getAttribute("aria-checked")
-    ).toBe("false");
+      screen.getByRole("switch", { name: "spectrogram 3d grid", checked: false })
+    ).toBeTruthy();
     expect(screen.getByLabelText("spectrogram 3d height scale")).toBeTruthy();
     expect(screen.getByLabelText("spectrogram 3d elevation")).toBeTruthy();
   });

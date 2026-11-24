@@ -259,7 +259,8 @@ button:not(:disabled):is(:active, [data-state="open"])[class~="hover:text-foregr
 html[data-keyboard-nav="true"] button:not(:disabled):focus-visible[class~="hover:text-foreground"] {
   color: var(--foreground);
 }
-[data-slot="switch"]:not(:disabled):is(:hover, :focus-visible, :active) [data-slot="switch-thumb"] {
+[data-slot="switch"]:not(:disabled):is(:hover, :focus-visible, :active)
+  + [data-slot="switch-thumb"] {
   box-shadow: inset 0 0 0 1px var(--border);
 }
 

@@ -1,28 +1,40 @@
-import * as React from "react";
-import * as SwitchPrimitive from "@radix-ui/react-switch";
+import { forwardRef } from "react";
 import { cn } from "@/lib/utils";
+import { COMPACT_SWITCH_CLASS, COMPACT_SWITCH_THUMB_CLASS } from "./controlStyles.js";
 
-/** @type {React.ForwardRefExoticComponent<React.ComponentPropsWithoutRef<typeof SwitchPrimitive.Root> & { thumbClassName?: string } & React.RefAttributes<React.ElementRef<typeof SwitchPrimitive.Root>>>} */
-const Switch = React.forwardRef(function Switch({ className, thumbClassName, ...props }, ref) {
+/** @type {import("react").ForwardRefExoticComponent<Omit<import("react").ComponentPropsWithoutRef<"input">, "type" | "onChange"> & { onCheckedChange?: (checked: boolean) => void } & import("react").RefAttributes<HTMLInputElement>>} */
+export const Switch = forwardRef(function Switch(
+  { className, onCheckedChange, onKeyDown, ...props },
+  ref
+) {
   return (
-    <SwitchPrimitive.Root
-      ref={ref}
-      data-slot="switch"
-      className={cn(
-        "peer inline-flex h-5 w-9 shrink-0 cursor-pointer items-center rounded-full border-2 border-transparent disabled:cursor-not-allowed disabled:opacity-50 data-[state=checked]:bg-primary data-[state=unchecked]:bg-input",
-        className
-      )}
-      {...props}
-    >
-      <SwitchPrimitive.Thumb
-        data-slot="switch-thumb"
+    <span className="relative inline-flex shrink-0 items-center has-[:disabled]:opacity-50">
+      <input
+        {...props}
+        ref={ref}
+        type="checkbox"
+        role="switch"
+        data-slot="switch"
         className={cn(
-          "pointer-events-none block h-4 w-4 rounded-full bg-background ring-0 transition-transform data-[state=checked]:translate-x-4 data-[state=unchecked]:translate-x-0",
-          thumbClassName
+          "peer cursor-pointer appearance-none rounded-full disabled:cursor-not-allowed",
+          COMPACT_SWITCH_CLASS,
+          className
         )}
+        onChange={(event) => onCheckedChange?.(event.currentTarget.checked)}
+        onKeyDown={(event) => {
+          onKeyDown?.(event);
+          // Preserve Enter activation from the previous button-backed switch.
+          if (event.key === "Enter" && !event.defaultPrevented) {
+            event.preventDefault();
+            event.currentTarget.click();
+          }
+        }}
       />
-    </SwitchPrimitive.Root>
+      <span
+        aria-hidden="true"
+        data-slot="switch-thumb"
+        className={`pointer-events-none absolute left-px rounded-full transition-transform ${COMPACT_SWITCH_THUMB_CLASS}`}
+      />
+    </span>
   );
 });
-
-export { Switch };

@@ -8,7 +8,6 @@ import { Switch } from "./ui/switch";
 import { Button } from "./ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./ui/select";
 import { INTERFACE_SIZE_OPTIONS } from "../preferences/interfaceSize.js";
-import { COMPACT_SWITCH_CLASS, COMPACT_SWITCH_THUMB_CLASS } from "./ui/controlStyles.js";
 
 export function UpdatePreferencesControls({
   preferences,
@@ -29,8 +28,6 @@ export function UpdatePreferencesControls({
       <label className="flex min-h-[var(--ui-shell-h)] items-center justify-between gap-4 text-muted-foreground">
         <span>Auto Check for Updates</span>
         <Switch
-          className={COMPACT_SWITCH_CLASS}
-          thumbClassName={COMPACT_SWITCH_THUMB_CLASS}
           aria-label="automatically check for updates"
           data-ui-target={uiTargets ? "setting:updates.autoCheck" : undefined}
           checked={preferences.autoCheck}
@@ -61,8 +58,6 @@ export function UpdatePreferencesControls({
           </HoverTip>
         </div>
         <Switch
-          className={COMPACT_SWITCH_CLASS}
-          thumbClassName={COMPACT_SWITCH_THUMB_CLASS}
           aria-label="automatically download updates"
           data-ui-target={uiTargets ? "setting:updates.autoDownload" : undefined}
           checked={preferences.autoDownload}
@@ -184,8 +179,6 @@ export function UpdateSetupContent({
             </HoverTip>
           </div>
           <Switch
-            className={COMPACT_SWITCH_CLASS}
-            thumbClassName={COMPACT_SWITCH_THUMB_CLASS}
             aria-label="ask to send crash reports"
             checked={askToSendCrashReports}
             disabled={busy}

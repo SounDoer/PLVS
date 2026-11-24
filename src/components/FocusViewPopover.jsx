@@ -11,7 +11,6 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
-import { COMPACT_SWITCH_CLASS, COMPACT_SWITCH_THUMB_CLASS } from "@/components/ui/controlStyles.js";
 import { POPOVER_HEADER_CLASS, POPOVER_TITLE_CLASS } from "@/components/ui/surfaceStyles.js";
 import { isMacOS } from "@/lib/platform.js";
 import { useDropdownNavigation } from "@/uiNavigation/useDropdownNavigation.js";
@@ -31,8 +30,6 @@ export function FocusSwitch({ id, label, checked, onCheckedChange, uiTarget }) {
         data-ui-target={uiTarget}
         checked={checked}
         onCheckedChange={onCheckedChange}
-        className={COMPACT_SWITCH_CLASS}
-        thumbClassName={COMPACT_SWITCH_THUMB_CLASS}
       />
     </div>
   );

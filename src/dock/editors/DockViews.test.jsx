@@ -39,9 +39,7 @@ describe("Dock Views", () => {
     window.__PLVS_INITIAL_STATE__ = { agentControl: { dockCapabilities: { supported: true } } };
     try {
       render(<DockViews state={{ edge: "bottom", reserveSpace: true }} onAction={vi.fn()} />);
-      expect(
-        screen.getByRole("switch", { name: "Reserve Space" }).getAttribute("aria-checked")
-      ).toBe("true");
+      expect(screen.getByRole("switch", { name: "Reserve Space", checked: true })).toBeTruthy();
       expect(screen.queryByRole("switch", { name: "Above Full Screen" })).toBeNull();
     } finally {
       delete window.__PLVS_INITIAL_STATE__;
@@ -54,8 +52,7 @@ describe("Dock Views", () => {
       Object.defineProperty(navigator, "platform", { configurable: true, value: platform });
       const onAction = vi.fn();
       render(<DockViews state={{ edge: "bottom", aboveFullScreen: true }} onAction={onAction} />);
-      const toggle = screen.getByRole("switch", { name: "Above Full Screen" });
-      expect(toggle.getAttribute("aria-checked")).toBe("true");
+      const toggle = screen.getByRole("switch", { name: "Above Full Screen", checked: true });
       fireEvent.click(toggle);
       expect(onAction).toHaveBeenCalledWith("toggle-above-full-screen");
     }

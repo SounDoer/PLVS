@@ -342,7 +342,7 @@ describe("SettingsPanel", () => {
     );
 
     const toggle = screen.getByLabelText("ask to send crash reports");
-    expect(toggle.getAttribute("data-state")).toBe("checked");
+    expect(/** @type {HTMLInputElement} */ (toggle).checked).toBe(true);
     fireEvent.click(toggle);
     expect(onAskToSendCrashReports).toHaveBeenCalledWith(false);
   });
@@ -486,7 +486,7 @@ describe("SettingsPanel", () => {
     ).toBeTruthy();
 
     const toggle = screen.getByRole("switch", { name: "Agent Control" });
-    expect(toggle.getAttribute("aria-checked")).toBe("false");
+    expect(/** @type {HTMLInputElement} */ (toggle).checked).toBe(false);
     fireEvent.click(toggle);
     expect(onSetAgentControlEnabled).toHaveBeenCalledWith(true);
   });
@@ -526,9 +526,7 @@ describe("SettingsPanel", () => {
     );
 
     // The switch keeps showing the granted permission; the line below it carries the failure.
-    expect(screen.getByRole("switch", { name: "Agent Control" }).getAttribute("aria-checked")).toBe(
-      "true"
-    );
+    expect(screen.getByRole("switch", { name: "Agent Control", checked: true })).toBeTruthy();
     expect(
       screen.getByText(
         "Enabled, but not listening: unable to bind plvs-agent-control-dev: Access is denied."
@@ -1125,7 +1123,7 @@ describe("SettingsPanel", () => {
     render(<SettingsPanel {...BASE_PROPS} {...SYSTEM_PROPS} />);
     const toggle = screen.getByRole("switch", { name: /open at login/i });
     expect(toggle).toBeTruthy();
-    expect(/** @type {HTMLButtonElement} */ (toggle).disabled).toBe(true);
+    expect(/** @type {HTMLInputElement} */ (toggle).disabled).toBe(true);
   });
 
   it("renders Open at login switch checked when autostartEnabled is true", () => {
@@ -1138,8 +1136,8 @@ describe("SettingsPanel", () => {
       />
     );
     const toggle = screen.getByRole("switch", { name: /open at login/i });
-    expect(toggle.getAttribute("data-state")).toBe("checked");
-    expect(/** @type {HTMLButtonElement} */ (toggle).disabled).toBe(false);
+    expect(/** @type {HTMLInputElement} */ (toggle).checked).toBe(true);
+    expect(/** @type {HTMLInputElement} */ (toggle).disabled).toBe(false);
   });
 
   it("renders Close Behavior select with current value", () => {

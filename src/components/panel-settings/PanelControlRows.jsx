@@ -5,6 +5,7 @@ import {
   normalizePanelControls,
   panelControlUiRows,
 } from "@/lib/panelControls.js";
+import { Switch } from "@/components/ui/switch";
 import { axisKindForRangeRow } from "@/workspace/axisViewports.js";
 import { usePanelInstanceData } from "@/workspace/AudioDataContext.jsx";
 
@@ -16,7 +17,6 @@ import {
   SettingsRow,
   SettingsSelect,
   SettingsSlider,
-  SettingsSwitch,
   SettingsThresholdInputs,
 } from "./SettingsWidgets.jsx";
 
@@ -121,7 +121,7 @@ function renderPanelControlWidget(row, tab, controls, commit, openKey, setOpenKe
 
   if (ui.widget === "switch") {
     return (
-      <SettingsSwitch
+      <Switch
         aria-label={ui.ariaLabel}
         checked={controls[row.key]}
         onCheckedChange={(checked) => commit({ [row.key]: checked })}
