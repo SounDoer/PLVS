@@ -167,6 +167,11 @@ methods stay absent from capabilities, generated reference, help and completion.
 The same private boundary has fixed `dev.performance.inspect` and `dev.performance.stall` methods
 for desktop-performance acceptance. Inspect combines the production native UI-frame diagnostics
 with a continuously maintained renderer animation-frame snapshot; it never waits for a new frame.
+For Windows Mix capture, `native.mixDrops` reports `invalidTimestamps`, `ingressQueueRejected`,
+`timelineOverflow`, `lateFrames`, and `analysisQueueRejected` separately. The first three count
+source packets, `lateFrames` counts source frames that missed the timeline deadline, and
+`analysisQueueRejected` counts mixed blocks rejected by the meter delivery path, including
+unavailable PCM buffers. Counters can be inspected after Stop and reset on each native Live start.
 Stall accepts only an integer from 100 through 10,000 milliseconds and blocks the renderer main
 thread for that bounded interval. Neither method accepts source text or arbitrary evaluation, and
 both remain unavailable outside the dev identity.

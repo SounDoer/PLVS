@@ -7,7 +7,7 @@ use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
 use cpal::traits::DeviceTrait;
 use serde::Serialize;
-use tauri::{AppHandle, Emitter};
+use tauri::{AppHandle, Emitter, Manager};
 use windows::core::{implement, IUnknown, Interface, Ref, HRESULT, PCWSTR};
 use windows::Win32::Foundation::{CloseHandle, ERROR_NO_MORE_FILES, WAIT_OBJECT_0, WAIT_TIMEOUT};
 use windows::Win32::Media::Audio::{
@@ -43,12 +43,13 @@ use super::cpal_backend::{
   emit_capture_failure, pooled_pcm_buffer_capacity, run_meter_pipeline_bridge_thread,
   PcmBufferPool, PcmCallbackForwarder, PcmDeliveryQueue, PCM_QUEUE_CAP,
 };
-use super::stereo_mix_timeline::{MixCoverage, StereoMixTimeline};
+use super::stereo_mix_timeline::{MixCoverage, MixInsert, StereoMixTimeline};
 use super::windows_capture_apps::{application_id_for_process, resolve_capture_application};
 use crate::dsp::channel_layouts::ChannelSelection;
 use crate::dsp::speech::VadEngineKind;
 use crate::dsp::summary_meter::{SummaryMeter, SummaryMetrics};
 use crate::ipc::types::FrameSubscribers;
+use crate::state::{AppState, MixDropStage, UiFrameDiagnosticsCounters};
 
 const DEFAULT_SAMPLE_RATE: u32 = 48_000;
 const DEFAULT_CHANNELS: u16 = 2;
@@ -578,16 +579,26 @@ pub fn start_process_session(
             forwarder.forward_f32(pcm);
           },
         ),
-        ProcessCaptureSource::Mix(applications, input) => run_live_mix(
-          applications,
-          input,
-          stop_rx,
-          &dropped_chunks,
-          &failure_app,
-          |pcm| {
-            forwarder.forward_f32(pcm);
-          },
-        ),
+        ProcessCaptureSource::Mix(applications, input) => {
+          let diagnostics = failure_app
+            .try_state::<AppState>()
+            .map(|state| state.ui_frame_diagnostics.clone())
+            .unwrap_or_default();
+          diagnostics.begin_mix();
+          run_live_mix(
+            applications,
+            input,
+            stop_rx,
+            &dropped_chunks,
+            &diagnostics,
+            &failure_app,
+            |pcm| {
+              if !forwarder.forward_f32(pcm) {
+                diagnostics.record_mix_drop(MixDropStage::AnalysisQueue, 1);
+              }
+            },
+          )
+        }
       };
       delivery.stop_producer();
       let _ = bridge.join();
@@ -610,6 +621,7 @@ fn run_live_mix(
   input: Option<MixInput>,
   stop_rx: mpsc::Receiver<()>,
   dropped: &AtomicU64,
+  diagnostics: &UiFrameDiagnosticsCounters,
   app: &AppHandle,
   mut on_pcm: impl FnMut(&[f32]),
 ) -> Result<(), String> {
@@ -620,6 +632,10 @@ fn run_live_mix(
     .chain(input.iter().map(|input| input.id.as_str()))
     .collect::<Vec<_>>();
   let readiness: Vec<_> = member_ids.iter().map(|_| AtomicBool::new(false)).collect();
+  let on_packet_drop = |stage| {
+    diagnostics.record_mix_drop(stage, 1);
+    dropped.fetch_add(1, Ordering::Relaxed);
+  };
   std::thread::scope(|scope| {
     let member_count = member_ids.len();
     let (tx, rx) = mpsc::sync_channel(16 * member_count);
@@ -630,7 +646,7 @@ fn run_live_mix(
       if let Err(error) = std::thread::Builder::new()
         .name("mix-member-capture".into())
         .spawn_scoped(scope, move || {
-          capture_live_member(member, app_id, &tx, stopping, available, dropped)
+          capture_live_member(member, app_id, &tx, stopping, available, on_packet_drop)
         })
       {
         stopping.store(true, Ordering::Relaxed);
@@ -645,7 +661,7 @@ fn run_live_mix(
       if let Err(error) = std::thread::Builder::new()
         .name("mix-input-capture".into())
         .spawn_scoped(scope, move || {
-          capture_mix_input(input, member, &tx, stopping, available, dropped)
+          capture_mix_input(input, member, &tx, stopping, available, on_packet_drop)
         })
       {
         stopping.store(true, Ordering::Relaxed);
@@ -701,8 +717,12 @@ fn run_live_mix(
           on_pcm(pcm);
         }
       },
-      || {
-        dropped.fetch_add(1, Ordering::Relaxed);
+      |outcome| match outcome {
+        MixInsert::Overflow => on_packet_drop(MixDropStage::TimelineOverflow),
+        MixInsert::Accepted { late_frames } if late_frames > 0 => {
+          diagnostics.record_mix_drop(MixDropStage::LateFrames, late_frames as u64);
+        }
+        _ => {}
       },
     );
     stopping.store(true, Ordering::Relaxed);
@@ -763,21 +783,25 @@ fn capture_mix_input(
   tx: &mpsc::SyncSender<MixPacket>,
   stopping: &AtomicBool,
   available: &AtomicBool,
-  dropped: &AtomicU64,
+  on_drop: impl Fn(MixDropStage) + Copy,
 ) {
   let stopped = || stopping.load(Ordering::Relaxed);
+  let mut last_error = None;
   while !stopped() {
     let result = run_mix_input_stream(
       input,
       member,
       &mut |packet| tx.try_send(packet).is_ok(),
-      dropped,
+      on_drop,
       stopped,
       || available.store(true, Ordering::Relaxed),
     );
     available.store(false, Ordering::Relaxed);
     if let Err(error) = result {
-      log::debug!("Mix input capture interrupted: {error}");
+      if last_error.as_ref() != Some(&error) {
+        log::warn!("Mix input capture interrupted: {error}");
+        last_error = Some(error);
+      }
     }
     wait_for_mix_retry(stopping);
   }
@@ -787,7 +811,7 @@ fn run_mix_input_stream(
   input: &MixInput,
   member: usize,
   send: &mut impl FnMut(MixPacket) -> bool,
-  dropped: &AtomicU64,
+  mut on_drop: impl FnMut(MixDropStage),
   stopped: impl FnMut() -> bool,
   on_start: impl FnOnce(),
 ) -> Result<(), String> {
@@ -817,11 +841,11 @@ fn run_mix_input_stream(
           previous.end_qpc = Some(timing.qpc);
         }
         if !send(previous) {
-          dropped.fetch_add(1, Ordering::Relaxed);
+          on_drop(MixDropStage::IngressQueue);
         }
       }
       if !timing.has_qpc() {
-        dropped.fetch_add(1, Ordering::Relaxed);
+        on_drop(MixDropStage::InvalidTimestamp);
       }
     },
   )
@@ -841,7 +865,7 @@ fn capture_live_member(
   tx: &mpsc::SyncSender<MixPacket>,
   stopping: &AtomicBool,
   available: &AtomicBool,
-  dropped: &AtomicU64,
+  on_drop: impl Fn(MixDropStage),
 ) {
   let stopped = || stopping.load(Ordering::Relaxed);
   while !stopped() {
@@ -858,8 +882,10 @@ fn capture_live_member(
             || stopped() || exited(),
             || available.store(true, Ordering::Relaxed),
             |timing, pcm| {
-              if !stopped() && !exited() && !queue_mix_packet(tx, member, timing, pcm) {
-                dropped.fetch_add(1, Ordering::Relaxed);
+              if !stopped() && !exited() {
+                if let Err(stage) = queue_mix_packet(tx, member, timing, pcm) {
+                  on_drop(stage);
+                }
               }
             },
           );
@@ -945,7 +971,7 @@ pub fn capture_stereo_mix_probe(
         if unsafe { WaitForSingleObject(process.0, 0) } == WAIT_OBJECT_0 {
           return;
         }
-        if !queue_mix_packet(tx, member, timing, packet) {
+        if queue_mix_packet(tx, member, timing, packet).is_err() {
           dropped += 1;
         }
       },
@@ -1025,7 +1051,7 @@ pub fn capture_input_mix_probe(
         DEFAULT_CHANNELS,
         None,
         |timing, pcm| {
-          if !queue_mix_packet(&app_tx, 0, timing, pcm) {
+          if queue_mix_packet(&app_tx, 0, timing, pcm).is_err() {
             dropped.fetch_add(1, Ordering::Relaxed);
           }
         },
@@ -1036,7 +1062,9 @@ pub fn capture_input_mix_probe(
         &input,
         1,
         &mut |packet| tx.try_send(packet).is_ok(),
-        dropped,
+        |_| {
+          dropped.fetch_add(1, Ordering::Relaxed);
+        },
         || Instant::now() >= deadline,
         || {},
       )
@@ -1121,16 +1149,17 @@ fn queue_mix_packet(
   member: usize,
   timing: PacketTiming,
   pcm: &[f32],
-) -> bool {
-  timing.has_qpc()
-    && tx
-      .try_send(MixPacket {
-        member,
-        qpc: timing.qpc,
-        end_qpc: None,
-        frames: Vec::from(pcm.as_chunks::<2>().0),
-      })
-      .is_ok()
+) -> Result<(), MixDropStage> {
+  if !timing.has_qpc() {
+    return Err(MixDropStage::InvalidTimestamp);
+  }
+  tx.try_send(MixPacket {
+    member,
+    qpc: timing.qpc,
+    end_qpc: None,
+    frames: Vec::from(pcm.as_chunks::<2>().0),
+  })
+  .map_err(|_| MixDropStage::IngressQueue)
 }
 
 #[derive(Debug, Serialize)]
@@ -1185,8 +1214,10 @@ fn measure_streaming_stereo(rx: mpsc::Receiver<MixPacket>) -> Result<MixProbeMea
         }
       }
     },
-    || {
-      dropped += 1;
+    |outcome| {
+      if outcome == MixInsert::Overflow {
+        dropped += 1;
+      }
     },
   );
   if !started {
@@ -1209,9 +1240,20 @@ fn measure_streaming_stereo(rx: mpsc::Receiver<MixPacket>) -> Result<MixProbeMea
 fn run_mix_timeline(
   rx: mpsc::Receiver<MixPacket>,
   member_count: usize,
+  stopped: impl FnMut() -> bool,
+  on_block: impl FnMut(&[f32], MixCoverage),
+  on_insert: impl FnMut(MixInsert),
+) -> bool {
+  run_mix_timeline_with_clock(rx, member_count, stopped, on_block, on_insert, Instant::now)
+}
+
+fn run_mix_timeline_with_clock(
+  rx: mpsc::Receiver<MixPacket>,
+  member_count: usize,
   mut stopped: impl FnMut() -> bool,
   mut on_block: impl FnMut(&[f32], MixCoverage),
-  mut on_drop: impl FnMut(),
+  mut on_insert: impl FnMut(MixInsert),
+  mut now: impl FnMut() -> Instant,
 ) -> bool {
   const DELAY: Duration = Duration::from_millis(80);
   const POLL: Duration = Duration::from_millis(5);
@@ -1236,7 +1278,7 @@ fn run_mix_timeline(
     let scaled = ticks * RATE as i128;
     ((scaled + scaled.signum() * 5_000_000) / 10_000_000) as i64
   };
-  let started = Instant::now();
+  let started = now();
   let mut observed_end = 0;
   let mut pending = Ok(first);
 
@@ -1248,18 +1290,24 @@ fn run_mix_timeline(
         .and_then(|end| usize::try_from(frame_at(end) - position).ok())
         .and_then(|len| adjust_input_clock(&packet.frames, len, &mut adjusted))
         .unwrap_or(&packet.frames);
-      if timeline.push(packet.member, position, frames) {
+      let outcome = timeline.push(packet.member, position, frames);
+      if outcome != MixInsert::Overflow {
         observed_end = observed_end.max(position + frames.len() as i64);
-      } else {
-        on_drop();
       }
+      on_insert(outcome);
     }
     let finished = matches!(pending, Err(mpsc::RecvTimeoutError::Disconnected)) || stopped();
     let release_at = if finished {
       observed_end
     } else {
-      let elapsed = started.elapsed().saturating_sub(DELAY);
-      (elapsed.as_nanos() * RATE as u128 / 1_000_000_000) as i64
+      let elapsed = now()
+        .saturating_duration_since(started)
+        .saturating_sub(DELAY);
+      let due = (elapsed.as_nanos() * RATE as u128 / 1_000_000_000) as i64;
+      // Independent packet cadences can wake the mixer several times within one meter block.
+      // Keep the delivery rate independent of those wakes and release the short tail on stop.
+      let block_frames = block.len() as i64;
+      due - due % block_frames
     };
     while timeline.cursor() < release_at {
       let count = ((release_at - timeline.cursor()) as usize).min(block.len());
@@ -1393,8 +1441,107 @@ mod tests {
       2,
       || true,
       |_, _| panic!("unexpected PCM"),
-      || panic!("unexpected drop")
+      |_| panic!("unexpected drop")
     ));
+  }
+
+  #[test]
+  fn mix_distinguishes_bad_timestamps_from_a_saturated_ingress_queue() {
+    use super::{queue_mix_packet, MixDropStage, PacketTiming};
+    let (tx, rx) = std::sync::mpsc::sync_channel(1);
+    let mut timing = PacketTiming {
+      qpc: 10_000,
+      ..PacketTiming::default()
+    };
+    assert!(queue_mix_packet(&tx, 0, timing, &[0.25, 0.0]).is_ok());
+    assert_eq!(
+      queue_mix_packet(&tx, 0, timing, &[0.25, 0.0]),
+      Err(MixDropStage::IngressQueue)
+    );
+    timing.flags = AUDCLNT_BUFFERFLAGS_TIMESTAMP_ERROR.0 as u32;
+    assert_eq!(
+      queue_mix_packet(&tx, 0, timing, &[0.25, 0.0]),
+      Err(MixDropStage::InvalidTimestamp)
+    );
+    assert_eq!(rx.try_iter().count(), 1);
+  }
+
+  #[test]
+  fn interleaved_packets_keep_fixed_blocks_through_clock_drift_and_input_restart() {
+    use super::{run_mix_timeline_with_clock, Duration, Instant, MixInsert};
+    const BLOCK: usize = 480;
+    const PACKETS: usize = 800;
+    let position = |index| index * BLOCK + index / 10;
+    let qpc = |frame: usize| 1_000_000 + ((frame as u64 * 10_000_000 + 24_000) / 48_000);
+    let time = |frame: usize| Duration::from_nanos(frame as u64 * 1_000_000_000 / 48_000);
+    let mut arrivals = Vec::new();
+    for index in 0..=PACKETS {
+      let frames = if index == PACKETS { BLOCK / 2 } else { BLOCK };
+      let at = index * BLOCK;
+      arrivals.push((
+        time(at + index % 5 * 29),
+        MixPacket {
+          member: 0,
+          qpc: qpc(at),
+          end_qpc: None,
+          frames: vec![[0.25, 0.0]; frames],
+        },
+      ));
+      if index < PACKETS && !(200..280).contains(&index) {
+        let at = position(index);
+        arrivals.push((
+          time(at + 96 + index % 7 * 31),
+          MixPacket {
+            member: 1,
+            qpc: qpc(at),
+            end_qpc: Some(qpc(position(index + 1))),
+            frames: vec![[0.125, 0.5]; BLOCK],
+          },
+        ));
+      }
+    }
+    arrivals.sort_by_key(|(time, _)| *time);
+    let (tx, rx) = std::sync::mpsc::sync_channel(arrivals.len());
+    let mut ticks = vec![Duration::ZERO];
+    for (arrival, packet) in arrivals {
+      ticks.push(arrival);
+      tx.send(packet).unwrap();
+    }
+    drop(tx);
+    let now = Instant::now();
+    let mut ticks = ticks.into_iter();
+    let mut rendered = 0;
+    let mut block_sizes = Vec::new();
+    assert!(run_mix_timeline_with_clock(
+      rx,
+      2,
+      || false,
+      |pcm, coverage| {
+        let mut full = 0;
+        let frames = pcm.as_chunks::<2>().0;
+        block_sizes.push(frames.len());
+        for (index, frame) in frames.iter().enumerate() {
+          let at = rendered + index;
+          let input = !(position(200)..position(280)).contains(&at) && at < position(PACKETS);
+          assert_eq!(
+            *frame,
+            if input { [0.375, 0.5] } else { [0.25, 0.0] },
+            "frame {at}"
+          );
+          full += usize::from(input);
+        }
+        assert_eq!(coverage.full, full);
+        assert_eq!(coverage.partial, frames.len() - full);
+        assert_eq!(coverage.empty, 0);
+        rendered += frames.len();
+      },
+      |outcome| assert_eq!(outcome, MixInsert::Accepted { late_frames: 0 }),
+      || now + ticks.next().unwrap(),
+    ));
+    let (&tail, full) = block_sizes.split_last().unwrap();
+    assert!(full.iter().all(|&size| size == BLOCK));
+    assert_eq!(tail, BLOCK / 2);
+    assert_eq!(rendered, PACKETS * BLOCK + BLOCK / 2);
   }
 
   #[test]

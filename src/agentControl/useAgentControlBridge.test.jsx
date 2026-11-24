@@ -2576,7 +2576,18 @@ describe("useAgentControlBridge", () => {
   it("routes only fixed development performance actions while development control is enabled", async () => {
     const inspect = vi.fn(async () => ({
       sampledAt: "2026-10-18T00:00:00.000Z",
-      native: { sentFrames: 10, droppedFrames: 0, audioDroppedChunks: 0 },
+      native: {
+        sentFrames: 10,
+        droppedFrames: 0,
+        audioDroppedChunks: 0,
+        mixDrops: {
+          invalidTimestamps: 0,
+          ingressQueueRejected: 0,
+          timelineOverflow: 0,
+          lateFrames: 23,
+          analysisQueueRejected: 0,
+        },
+      },
       renderer: { animationFrame: { count: 20, latestAgeMs: 4, maxGapMs: 18 } },
     }));
     const stall = vi.fn(async (milliseconds) => ({ requestedMs: milliseconds, elapsedMs: 101 }));
@@ -2588,7 +2599,7 @@ describe("useAgentControlBridge", () => {
 
     const inspection = await send(request("dev.performance.inspect", {}, "performance-inspect"));
     expect(inspection.result).toMatchObject({
-      native: { sentFrames: 10 },
+      native: { sentFrames: 10, mixDrops: { lateFrames: 23 } },
       renderer: { animationFrame: { count: 20 } },
     });
     expect(inspect).toHaveBeenCalledOnce();

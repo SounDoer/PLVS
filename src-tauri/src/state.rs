@@ -1,6 +1,6 @@
 //! Global application state (engine, device selection, etc.).
 
-use std::sync::atomic::{AtomicU64, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::sync::{Arc, Mutex};
 
 use crate::audio::capture::{AudioCaptureSession, MeasuredPcmSubscriptions};
@@ -16,6 +16,18 @@ pub struct UiFrameDiagnosticsCounters {
   dropped_frames: AtomicU64,
   audio_dropped_chunks: AtomicU64,
   max_inflight_frames: AtomicU64,
+  mix_active: AtomicBool,
+  mix_drops: [AtomicU64; 5],
+}
+
+#[cfg(target_os = "windows")]
+#[derive(Debug, PartialEq, Eq)]
+pub(crate) enum MixDropStage {
+  InvalidTimestamp,
+  IngressQueue,
+  TimelineOverflow,
+  LateFrames,
+  AnalysisQueue,
 }
 
 impl UiFrameDiagnosticsCounters {
@@ -24,6 +36,20 @@ impl UiFrameDiagnosticsCounters {
     self.dropped_frames.store(0, Ordering::Relaxed);
     self.audio_dropped_chunks.store(0, Ordering::Relaxed);
     self.max_inflight_frames.store(0, Ordering::Relaxed);
+    self.mix_active.store(false, Ordering::Relaxed);
+    for counter in &self.mix_drops {
+      counter.store(0, Ordering::Relaxed);
+    }
+  }
+
+  #[cfg(target_os = "windows")]
+  pub(crate) fn begin_mix(&self) {
+    self.mix_active.store(true, Ordering::Relaxed);
+  }
+
+  #[cfg(target_os = "windows")]
+  pub(crate) fn record_mix_drop(&self, stage: MixDropStage, count: u64) {
+    self.mix_drops[stage as usize].fetch_add(count, Ordering::Relaxed);
   }
 
   pub fn record_sent(&self, sent_frames: u64, acked_frames: u64) {
@@ -56,6 +82,17 @@ impl UiFrameDiagnosticsCounters {
       current_inflight_frames: sent_frames.saturating_sub(acked_frames),
       max_inflight_frames: self.max_inflight_frames.load(Ordering::Relaxed),
       inflight_limit,
+      mix_drops: self.mix_active.load(Ordering::Relaxed).then(|| {
+        let [invalid_timestamps, ingress_queue_rejected, timeline_overflow, late_frames, analysis_queue_rejected] =
+          self.mix_drops.each_ref().map(|counter| counter.load(Ordering::Relaxed));
+        crate::ipc::types::MixDropDiagnostics {
+          invalid_timestamps,
+          ingress_queue_rejected,
+          timeline_overflow,
+          late_frames,
+          analysis_queue_rejected,
+        }
+      }),
     }
   }
 }
@@ -121,6 +158,30 @@ impl Default for AppState {
 mod tests {
   use super::UiFrameDiagnosticsCounters;
 
+  #[cfg(target_os = "windows")]
+  #[test]
+  fn mix_diagnostics_keep_loss_stages_separate_until_next_source_start() {
+    use super::MixDropStage;
+    let counters = UiFrameDiagnosticsCounters::default();
+    assert!(counters.snapshot(0, 120).mix_drops.is_none());
+    counters.begin_mix();
+    counters.record_mix_drop(MixDropStage::InvalidTimestamp, 1);
+    counters.record_mix_drop(MixDropStage::IngressQueue, 2);
+    counters.record_mix_drop(MixDropStage::TimelineOverflow, 3);
+    counters.record_mix_drop(MixDropStage::LateFrames, 47);
+    counters.record_mix_drop(MixDropStage::AnalysisQueue, 4);
+    let drops = counters.snapshot(0, 120).mix_drops.unwrap();
+    assert_eq!(drops.invalid_timestamps, 1);
+    assert_eq!(drops.ingress_queue_rejected, 2);
+    assert_eq!(drops.timeline_overflow, 3);
+    assert_eq!(drops.late_frames, 47);
+    assert_eq!(drops.analysis_queue_rejected, 4);
+    counters.reset();
+    assert!(counters.snapshot(0, 120).mix_drops.is_none());
+    counters.begin_mix();
+    assert_eq!(counters.snapshot(0, 120).mix_drops.unwrap().late_frames, 0);
+  }
+
   #[test]
   fn diagnostics_distinguish_sent_dropped_and_acknowledged_frames() {
     let counters = UiFrameDiagnosticsCounters::default();
@@ -158,6 +219,7 @@ mod tests {
         current_inflight_frames: 0,
         max_inflight_frames: 0,
         inflight_limit: 120,
+        mix_drops: None,
       }
     );
   }

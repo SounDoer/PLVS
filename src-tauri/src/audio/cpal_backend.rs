@@ -1016,7 +1016,7 @@ pub(crate) fn run_meter_pipeline_bridge_thread(
       let dropped = dropped_worker.swap(0, Ordering::Relaxed);
       if dropped > 0 {
         ui_frame_diagnostics.record_audio_dropped_chunks(dropped);
-        log::warn!("cpal→meter queue dropped {dropped} audio chunks (callback backpressure)");
+        log::warn!("Capture dropped {dropped} audio chunks before analysis");
         let _ = app.emit(
           "engine-backpressure",
           EngineBackpressurePayload {

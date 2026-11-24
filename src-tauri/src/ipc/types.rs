@@ -118,6 +118,18 @@ pub struct UiFrameDiagnostics {
   pub current_inflight_frames: u64,
   pub max_inflight_frames: u64,
   pub inflight_limit: u64,
+  #[serde(default, skip_serializing_if = "Option::is_none")]
+  pub mix_drops: Option<MixDropDiagnostics>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct MixDropDiagnostics {
+  pub invalid_timestamps: u64,
+  pub ingress_queue_rejected: u64,
+  pub timeline_overflow: u64,
+  pub late_frames: u64,
+  pub analysis_queue_rejected: u64,
 }
 
 /// Resolved device identity and format for the WebView.
