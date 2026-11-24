@@ -54,7 +54,8 @@ toolbar surface. Use the resulting `sourceMixEditor` surface ID with `editor-dra
 The document includes the draft name, selected source IDs and channels, format, and per-channel
 destination overrides. Each override is one speaker role or `off`. An absent override means
 Auto. Inspect and Patch also report `mix.resolvedFormat`, the ordered
-destination `mix.roles`, and `mix.canSave`. Use [Device Control](devices.md) to discover source IDs.
+destination `mix.roles`, `mix.canSave`, and `mix.previewActive`. Use [Device Control](devices.md)
+to discover source IDs.
 
 - `setName` sets the draft name. An empty string restores automatic naming on Save.
 - `setFormat` takes the format ID from `editor-draft describe mix`, such as `follow` or `5.1`.
@@ -71,6 +72,9 @@ The patch applies source and format edits before route edits and rejects the com
 the resulting sources or routes are incompatible. Source and format changes can be paired
 with their new routes in the same patch. An empty draft remains editable. Save requires a
 non-empty valid Mix and uses the same persistence and selection behavior as the editor button.
+Valid edits preview immediately while Live is running. During an invalid edit, Live continues
+with its last valid capture. Cancel ends the preview and restores the original source
+configuration. A change of capture configuration starts a new measurement.
 Mix has no Undo or Redo and `ui cancel` closes the draft using the editor's Cancel behavior.
 Use [Mix Control](mixes.md) to inspect or manage saved Mixes.
 

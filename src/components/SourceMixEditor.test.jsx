@@ -327,12 +327,12 @@ it("edits a mono route in 5.1 and requires repair when switching to stereo", asy
   fireEvent.click(screen.getByRole("button", { name: "Microphone" }));
   fireEvent.click(screen.getByRole("checkbox", { name: "Channel 1" }));
   const setFormat = (value) =>
-    fireEvent.change(screen.getByRole("combobox", { name: "mix format" }), { target: { value } });
+    chooseOption(screen.getByRole("combobox", { name: "mix format" }), value);
   setFormat("5.1");
   const route = screen.getByRole("combobox", { name: "route for Channel 1" });
   expect(route.textContent).toBe("Auto · C");
   chooseOption(route, "Ls");
-  setFormat("stereo");
+  setFormat("Stereo");
   expect(screen.getByRole("button", { name: "Save" })).toHaveProperty("disabled", true);
   expect(screen.getByRole("status").textContent).toContain("Fix the unavailable channel routes");
   chooseOption(route, "Auto · L / R");
@@ -360,9 +360,7 @@ it("routes mono and stereo from their row dropdowns and opens details beneath on
   fireEvent.click(screen.getByRole("button", { name: "Microphone" }));
   fireEvent.click(screen.getByRole("checkbox", { name: "Channel 1" }));
   fireEvent.click(screen.getByRole("checkbox", { name: "Channel 2" }));
-  fireEvent.change(screen.getByRole("combobox", { name: "mix format" }), {
-    target: { value: "5.1" },
-  });
+  chooseOption(screen.getByRole("combobox", { name: "mix format" }), "5.1");
   const first = screen.getByRole("combobox", { name: "route for Channel 1" });
   const second = screen.getByRole("combobox", { name: "route for Channel 2" });
   expect(first.textContent).toContain("Auto · C");

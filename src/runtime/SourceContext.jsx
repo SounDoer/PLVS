@@ -1,4 +1,12 @@
-import { createContext, useCallback, useContext, useEffect, useMemo, useRef } from "react";
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { useAudioDevices } from "../hooks/useAudioDevices.js";
 import { automaticOutputChangeNotice } from "../lib/captureHealth.js";
 import { errorDetails } from "../lib/errorDetails.js";
@@ -6,7 +14,7 @@ import { formatAudioDeviceLabel } from "@/lib/audioDeviceLabels.js";
 import { isTauri } from "../ipc/env.js";
 import { isWindows } from "../lib/platform.js";
 import { compileMixRouting, mixInputs, resolveMixFormat } from "../lib/mixRouting.js";
-import { isSourceMixId } from "../lib/sourceMixes.js";
+import { canSaveSourceMix, isSourceMixId, sourceMixName } from "../lib/sourceMixes.js";
 import { usesTransactionalPersistence } from "../persistence/index.js";
 import { useSourceMixes } from "../hooks/useSourceMixes.js";
 import { useMeterDisplayState, useMeterRuntime } from "./MeterRuntimeContext.jsx";
@@ -18,6 +26,8 @@ import { useMeterDisplayState, useMeterRuntime } from "./MeterRuntimeContext.jsx
  *   onSelectCaptureDevice: (deviceId: string) => Promise<boolean>,
  *   captureFormatSignature: string,
  *   captureDeviceUnavailable: boolean,
+ *   captureRuntimeDeviceId: string,
+ *   mixPreviewActive: boolean,
  *   sourceMixes: ReturnType<typeof useSourceMixes>,
  *   mixApplicationIds: string[] | undefined,
  *   mixOutputId: string | undefined,
@@ -29,6 +39,18 @@ import { useMeterDisplayState, useMeterRuntime } from "./MeterRuntimeContext.jsx
  * }} SourceOwner
  */
 const SourceContext = createContext(/** @type {SourceOwner | null} */ (null));
+
+function mixCapturePlan(mix, outputs, defaultReference) {
+  if (!mix || !canSaveSourceMix(mix)) return null;
+  const routing = compileMixRouting(mix, outputs, defaultReference);
+  if (!routing) return null;
+  return {
+    members: mix.members.map(({ id }) => id).sort(),
+    inputs: mixInputs(mix).map(({ id, channels }) => ({ id, channels })),
+    outputId: mix.output?.id,
+    routing,
+  };
+}
 
 /** The capture source: the device inventory, the selection, and the labels derived from it. */
 export function SourceProvider({ children }) {
@@ -83,23 +105,9 @@ export function SourceProvider({ children }) {
   const selectedMix = sourceMixes.supported
     ? sourceMixes.list.find(({ id }) => id === captureDeviceId)
     : null;
-  const selectionIsMix = isSourceMixId(captureDeviceId);
-  const mixMembers = selectedMix
-    ? JSON.stringify(selectedMix.members.map(({ id }) => id).sort())
-    : "";
-  const mixApplicationIds = useMemo(
-    () => (mixMembers ? JSON.parse(mixMembers) : undefined),
-    [mixMembers]
-  );
-  const inputSignature = selectedMix
-    ? JSON.stringify(mixInputs(selectedMix).map(({ id, channels }) => ({ id, channels })))
-    : "";
-  const mixCaptureInputs = useMemo(
-    () => (inputSignature ? JSON.parse(inputSignature) : undefined),
-    [inputSignature]
-  );
   const lastMixReference = useRef(new Map());
-  let routingSignature = "";
+  let savedPlan = null;
+  let savedSelection = selectedMix;
   if (selectedMix) {
     const previous = lastMixReference.current.get(selectedMix.id);
     const liveOutput = audioOutputs.find(({ id }) => id === selectedMix.output?.id);
@@ -117,15 +125,51 @@ export function SourceProvider({ children }) {
         resolved.id === "follow" && !resolved.fallback ? resolved.roles : previous?.referenceRoles,
       outputRoles: selection.output?.roles,
     });
-    routingSignature = JSON.stringify(
-      compileMixRouting(selection, audioOutputs, defaultOutputReference)
-    );
+    savedSelection = selection;
+    savedPlan = mixCapturePlan(selection, audioOutputs, defaultOutputReference);
   }
-  const mixRouting = useMemo(
-    () => (routingSignature ? JSON.parse(routingSignature) : undefined),
+
+  const draft = sourceMode === "live" ? sourceMixes.draft : null;
+  const draftId = draft?.id ?? draft?.previewId;
+  const draftSelection =
+    draft && draft.id && draft.id === savedSelection?.id
+      ? {
+          ...draft,
+          referenceRoles: savedSelection.referenceRoles,
+          output:
+            draft.output?.id === savedSelection.output?.id ? savedSelection.output : draft.output,
+        }
+      : draft;
+  const draftPlan =
+    draftSelection && mixCapturePlan(draftSelection, audioOutputs, defaultOutputReference);
+  const originalPlan =
+    draft?.id === selectedMix?.id
+      ? savedPlan
+      : mixCapturePlan(draft?.original, audioOutputs, defaultOutputReference);
+  const draftSignature = draftPlan && JSON.stringify(draftPlan);
+  const changedPreview =
+    draftSignature && draftSignature !== JSON.stringify(originalPlan) ? draftSignature : null;
+  const [lastPreview, setLastPreview] = useState({ id: undefined, signature: null });
+  // A draft can be temporarily unroutable while changing layout or membership. Keep auditioning
+  // the last valid edit until the draft is repaired, closed, or the Workbench leaves Live mode.
+  if (lastPreview.id !== draftId || (draftPlan && lastPreview.signature !== changedPreview)) {
+    setLastPreview({ id: draftId, signature: changedPreview });
+  }
+  const previewSignature =
+    draftId &&
+    (draftPlan ? changedPreview : lastPreview.id === draftId ? lastPreview.signature : null);
+  const mixPreviewActive = running && Boolean(previewSignature);
+  const captureRuntimeDeviceId = previewSignature ? draftId : captureDeviceId;
+  const selectionIsMix = isSourceMixId(captureRuntimeDeviceId);
+  const routingSignature = previewSignature || (savedPlan && JSON.stringify(savedPlan));
+  const plan = useMemo(
+    () => (routingSignature ? JSON.parse(routingSignature) : null),
     [routingSignature]
   );
-  const mixOutputId = selectedMix?.output?.id;
+  const mixApplicationIds = plan?.members;
+  const mixCaptureInputs = plan?.inputs;
+  const mixRouting = plan?.routing ?? (selectionIsMix ? null : undefined);
+  const mixOutputId = plan?.outputId;
   const editingMix = sourceMixes.draft !== null;
   useEffect(() => {
     if (!editingMix || selectionIsMix || captureDeviceId.startsWith("app-")) return;
@@ -135,10 +179,7 @@ export function SourceProvider({ children }) {
 
   const captureFormatSignature = useMemo(() => {
     if (!isTauri()) return "";
-    if (selectionIsMix)
-      return mixMembers
-        ? `2:48000|${mixMembers}|${inputSignature}|${mixOutputId ?? ""}|${routingSignature}`
-        : "";
+    if (selectionIsMix) return routingSignature ? `2:48000|${routingSignature}` : "";
     if (/^app-[0-9a-f]{32}$/.test(captureDeviceId)) {
       const application = captureApplications.find((candidate) => candidate.id === captureDeviceId);
       const processSignature = application?.processIds?.length
@@ -159,13 +200,10 @@ export function SourceProvider({ children }) {
     captureApplications,
     defaultOutputFormatSig,
     selectionIsMix,
-    mixMembers,
-    inputSignature,
-    mixOutputId,
     routingSignature,
   ]);
   const captureDeviceUnavailable = selectionIsMix
-    ? !selectedMix || !mixRouting
+    ? !plan
     : devices.snapshot.inventoryReady &&
       captureDeviceId !== "default" &&
       !/^app-[0-9a-f]{32}$/.test(captureDeviceId) &&
@@ -173,6 +211,7 @@ export function SourceProvider({ children }) {
 
   const selectedSource = useMemo(() => {
     if (!isTauri()) return null;
+    if (mixPreviewActive && draft) return { type: "Mix", label: sourceMixName(draft) };
     if (selectedMix) return { type: "Mix", label: selectedMix.name };
     if (captureDeviceId === "default") {
       const label =
@@ -189,7 +228,15 @@ export function SourceProvider({ children }) {
       type: device.isSystemOutputMonitor ? "Output" : "Input",
       label: device.label,
     };
-  }, [captureDeviceId, audioDevices, captureApplications, defaultOutputLabel, selectedMix]);
+  }, [
+    captureDeviceId,
+    audioDevices,
+    captureApplications,
+    defaultOutputLabel,
+    selectedMix,
+    mixPreviewActive,
+    draft,
+  ]);
   const sourceDisplayName = useMemo(() => {
     if (!selectedSource) return null;
     if (selectedSource.type === "Application" || selectedSource.type === "Mix")
@@ -216,7 +263,7 @@ export function SourceProvider({ children }) {
   }, [defaultOutputLabel]);
   const footerSourceLabel =
     selectedSource && sourceDisplayName
-      ? `${selectedSource.type} · ${sourceDisplayName}`
+      ? `${mixPreviewActive ? "Mix Preview" : selectedSource.type} · ${sourceDisplayName}`
       : "Not connected";
 
   return (
@@ -228,6 +275,8 @@ export function SourceProvider({ children }) {
         onSelectCaptureDevice,
         captureFormatSignature,
         captureDeviceUnavailable,
+        captureRuntimeDeviceId,
+        mixPreviewActive,
         sourceMixes,
         mixApplicationIds,
         mixCaptureInputs,

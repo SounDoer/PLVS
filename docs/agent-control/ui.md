@@ -68,7 +68,8 @@ checked application, input channel, or mapped playback device. Use `group:output
 `output:<device-id>` to choose one whole device. A draft with both an output and applications
 disables Save. `format:<key>` sets the Mix format. Hyphens replace dots in choice IDs, for
 example `format:5-1`. The Follow Output choice includes the resolved format. For visual
-inspection, the selected rows expose `mix-routing:<source-id>` dropdown targets, with a
+inspection, use the `mix-format:select` dropdown target. Selected rows expose
+`mix-routing:<source-id>` dropdown targets, with a
 `:<lane>` suffix for an individual channel dropdown. Open or hide a multi-channel source's
 per-channel settings with `routing:<source-id>`. The open rows offer
 `route:to:<lane>:<role>`, `route:auto:<lane>`, `route:off:<lane>`, and eligible

@@ -131,8 +131,13 @@ pair, turn a mono route **Off**, or restore Auto. **Per-Channel Settings** expan
 multi-channel source into one dropdown per original channel. Each dropdown offers Auto, one
 speaker role, or Off. The Mix format also supplies the channel
 roles used in Settings. A format
-change that removes a custom destination requires a routing edit before the new measurement can
-start. Saving a valid change that alters the measured signal starts a new measurement.
+change that removes a custom destination requires a routing edit before the new configuration
+can be measured.
+
+While Live is running, valid edits preview immediately. **Live Preview** identifies the draft
+measurement. An edit that temporarily leaves a route invalid keeps the last valid capture.
+**Cancel** restores the original source configuration. **Save** keeps the edits. Switching
+between different capture configurations starts a new measurement.
 
 If the selected input is already audible through the selected output or an application in the
 Mix, PLVS counts that input twice. If one source goes away, capture can continue with the others while

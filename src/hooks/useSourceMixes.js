@@ -27,7 +27,14 @@ export function useSourceMixes({ supported, onSelect, onError }) {
     setDraft(
       mix
         ? { ...mix, inputs: mixInputs(mix), original: mix }
-        : { id: null, name: "", members: [], inputs: [], original: null }
+        : {
+            id: null,
+            previewId: `mix-${crypto.randomUUID()}`,
+            name: "",
+            members: [],
+            inputs: [],
+            original: null,
+          }
     );
   }
 

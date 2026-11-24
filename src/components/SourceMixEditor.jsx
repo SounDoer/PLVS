@@ -27,6 +27,7 @@ import {
 } from "./MixSourceRouting.jsx";
 import { cn } from "../lib/utils.js";
 import { useUiSurface } from "../uiNavigation/UiNavigationContext.jsx";
+import { useDropdownNavigation } from "../uiNavigation/useDropdownNavigation.js";
 import {
   EditorDraftRegistryError,
   useEditorDraftSurface,
@@ -37,6 +38,7 @@ import { Button } from "./ui/button";
 import { Checkbox } from "./ui/checkbox";
 import { IconAction } from "./ui/icon-action";
 import { MenuRow } from "./ui/row";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./ui/select.jsx";
 import { FLOATING_EDITOR_CLASS } from "./ui/surfaceStyles.js";
 
 function MixGroup({ label, open, onToggle, count, unavailable = false, children }) {
@@ -101,6 +103,7 @@ export function SourceMixEditor({
   inputs = [],
   outputs = [],
   defaultOutputReference = undefined,
+  mixPreviewActive = false,
 }) {
   const {
     draft,
@@ -149,10 +152,17 @@ export function SourceMixEditor({
   const outputChoices =
     draft.output && !outputAvailable ? [...supportedOutputs, draft.output] : supportedOutputs;
   const format = resolveMixFormat(draft, outputs, defaultOutputReference);
+  const formatDropdown = useDropdownNavigation("mix-format:select", {
+    blockingEditorId: "sourceMix",
+  });
   const followFormat =
     format.id === "follow"
       ? format
       : resolveMixFormat({ ...draft, format: "follow" }, outputs, defaultOutputReference);
+  const formatTip = useHoverTip({
+    tip: format.id === "follow" ? followFormat.referenceLabel : undefined,
+    align: "end",
+  });
   const sources = mixRoutingSources(draft, outputs);
   const routingSource = sources.find(({ id }) => id === routeId);
   const compiled = compileMixRouting(draft, outputs, defaultOutputReference);
@@ -336,7 +346,12 @@ export function SourceMixEditor({
         draftGeneration: draftVersion.generation,
         dirty,
         stale,
-        mix: { resolvedFormat: format.name, roles: format.roles, canSave },
+        mix: {
+          resolvedFormat: format.name,
+          roles: format.roles,
+          canSave,
+          previewActive: mixPreviewActive,
+        },
         inventory: { applications, inputs: inputDevices, outputs, defaultOutputReference },
       }),
       commitDraftDocument: (next) => {
@@ -489,34 +504,50 @@ export function SourceMixEditor({
               );
             })}
           </MixGroup>
-          <label className="flex items-center gap-2 border-t border-border px-2 py-2">
+          <div className="flex items-center gap-2 border-t border-border px-2 py-2">
             <span className="flex-1 font-medium">Mix Format</span>
-            <select
-              aria-label="mix format"
+            <Select
               value={draft.format ?? "follow"}
-              title={format.id === "follow" ? followFormat.referenceLabel : undefined}
-              onChange={(event) => setFormat(event.target.value)}
-              className="plvs-input h-[var(--ui-control-h)] min-w-0 max-w-[65%] rounded-md border border-input bg-card px-2"
+              onValueChange={setFormat}
+              disabled={saving}
+              {...formatDropdown.rootProps}
             >
-              {MIX_FORMATS.map(({ id, name }) => (
-                <option key={id} value={id}>
-                  {id === "follow"
-                    ? `${name} · ${followFormat.fallback ? "Stereo Fallback" : followFormat.name}`
-                    : name}
-                </option>
-              ))}
-            </select>
-          </label>
+              <SelectTrigger
+                aria-label="mix format"
+                variant="inline"
+                className="max-w-[65%]"
+                ref={formatTip.anchorRef}
+                onMouseEnter={formatTip.showTip}
+                onMouseLeave={formatTip.hideTip}
+                onFocus={formatTip.showTip}
+                onBlur={formatTip.hideTip}
+                {...formatDropdown.triggerProps}
+              >
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent variant="inline" align="end">
+                {MIX_FORMATS.map(({ id, name }) => (
+                  <SelectItem key={id} value={id}>
+                    {id === "follow"
+                      ? `${name} · ${followFormat.fallback ? "Stereo Fallback" : followFormat.name}`
+                      : name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            {formatTip.tipNode}
+          </div>
         </fieldset>
       </div>
       <div className="flex shrink-0 items-center justify-end gap-2 border-t border-border px-3 py-2">
-        {mixNotice && (
-          <span
+        {(mixPreviewActive || mixNotice) && (
+          <div
             role="status"
             className="min-w-0 flex-1 text-[length:var(--ui-fs-caption)] text-muted-foreground"
           >
-            {mixNotice}
-          </span>
+            {mixPreviewActive && <div>Live Preview</div>}
+            {mixNotice && <div>{mixNotice}</div>}
+          </div>
         )}
         <Button variant="ghost" disabled={saving} onClick={cancel}>
           Cancel

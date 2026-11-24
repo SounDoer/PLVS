@@ -136,6 +136,7 @@ screen, and the abbreviations on compact surfaces only make sense against the En
 | Playback Max               | Level Meter readout showing the latest playback max while the bar stays live          |
 | Correlation                | Phase correlation of a channel pair, from −1 to +1                                    |
 | Mix Format                 | The channel layout that a Mix produces for measurement                                |
+| Live Preview               | Temporary Live measurement using the valid capture configuration of an open Mix draft |
 | Follow Output              | The Mix Format choice that follows the selected or system default playback device     |
 | Routing                    | Assignment of source channels to destinations within a Mix                            |
 | Per-Channel Settings       | Inline Mix dropdowns for setting a destination for each source channel                |

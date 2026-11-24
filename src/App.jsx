@@ -225,7 +225,6 @@ function AppContent() {
   const {
     audioDevices,
     captureApplications,
-    captureDeviceId,
     safeAudioDeviceId,
     refreshInventory,
     audioOutputs,
@@ -234,6 +233,8 @@ function AppContent() {
     onSelectCaptureDevice,
     captureFormatSignature,
     captureDeviceUnavailable,
+    captureRuntimeDeviceId,
+    mixPreviewActive,
     sourceMixes,
     mixApplicationIds,
     mixCaptureInputs,
@@ -300,7 +301,7 @@ function AppContent() {
   // its native checkpoint cadence to the complete file duration; its summary remains full-rate and
   // authoritative for the whole file.
   const runtimeEnginesProps = {
-    captureDeviceId,
+    captureDeviceId: captureRuntimeDeviceId,
     mixApplicationIds,
     mixCaptureInputs,
     mixRouting,
@@ -602,6 +603,7 @@ function AppContent() {
         {!docked && sourceMixes.draft ? (
           <SourceMixEditor
             owner={sourceMixes}
+            mixPreviewActive={mixPreviewActive}
             applications={captureApplications}
             inputs={audioInputs}
             outputs={audioOutputs}
