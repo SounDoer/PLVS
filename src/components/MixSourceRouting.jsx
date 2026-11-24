@@ -1,6 +1,4 @@
-import { useEffect, useState } from "react";
-import { Button } from "./ui/button";
-import { linearMixGain, mixGainDb, resolveMixLane } from "../lib/mixRouting.js";
+import { resolveMixLane } from "../lib/mixRouting.js";
 import { useDropdownNavigation } from "../uiNavigation/useDropdownNavigation.js";
 import {
   Select,
@@ -11,20 +9,6 @@ import {
   SelectValue,
 } from "./ui/select.jsx";
 
-function mixLaneSummary({ routing, valid }) {
-  if (!valid) return "Needs Routing";
-  return routing.length ? routing.map(([role]) => role).join(" / ") : "Omitted";
-}
-
-export function addMixDestination(lane, target) {
-  return lane.some(([role]) => role === target) ? lane : [...lane, [target, 1]];
-}
-
-export function mixDestinationRoute({ routing, automatic }, target) {
-  const gain = !automatic && routing?.length === 1 ? routing[0][1] : 1;
-  return [[target, gain]];
-}
-
 export function mixStereoPairs(source, format) {
   if (source.lanes.length !== 2 || source.lanes[0].role !== "L" || source.lanes[1].role !== "R")
     return [];
@@ -33,59 +17,74 @@ export function mixStereoPairs(source, format) {
     .filter((roles) => roles.every((role) => format.roles.includes(role)));
 }
 
-export function MixRouteSelect({ draft, source, laneKey, format, onDetails, setRoute }) {
+export function orphanedMixLanes(draft, source) {
+  return Object.keys(draft.routes?.[source.id] ?? {}).filter(
+    (key) => !source.lanes.some((lane) => lane.key === key)
+  );
+}
+
+export function MixRouteSelect({
+  draft,
+  source,
+  laneKey = undefined,
+  format,
+  label,
+  expanded = false,
+  onToggle = undefined,
+  setRoute,
+}) {
   const dropdown = useDropdownNavigation(
     `mix-routing:${source.id}${laneKey === undefined ? "" : `:${laneKey}`}`,
     { blockingEditorId: "sourceMix" }
   );
-  const lanes = source.lanes.filter(({ key }) => laneKey === undefined || key === laneKey);
-  const resolved = lanes.map((lane) => resolveMixLane(draft, source.id, lane, format));
-  const summaries = resolved.map(mixLaneSummary);
-  const automatic = resolved.every(({ automatic }) => automatic);
-  const autoSummary = [
-    ...new Set(lanes.map((lane) => mixLaneSummary(resolveMixLane({}, source.id, lane, format)))),
-  ].join(" / ");
-  const summary = [...new Set(summaries)].join(" / ");
+  const lanes =
+    laneKey === undefined ? source.lanes : source.lanes.filter(({ key }) => key === laneKey);
+  const orphaned = laneKey === undefined ? orphanedMixLanes(draft, source) : [];
+  const values = lanes.map(({ key }) => draft.routes?.[source.id]?.[key]);
+  const autoRoutes = lanes.map((lane) => resolveMixLane({}, source.id, lane, format));
+  const autoDestinations = [
+    ...new Set(autoRoutes.flatMap(({ routing }) => routing?.map(([role]) => role) ?? [])),
+  ];
+  const autoLabel = autoDestinations.length ? `Auto · ${autoDestinations.join(" / ")}` : "Auto";
   const mono = lanes.length === 1;
   const options = mono ? format.roles.map((role) => [role]) : mixStereoPairs(source, format);
-  const selected = options.find((roles) =>
-    resolved.every(
-      ({ routing, automatic }, index) =>
-        !automatic && routing?.length === 1 && routing[0][0] === roles[index]
-    )
-  );
-  const value = automatic
-    ? "auto"
-    : selected
-      ? selected.join(":")
-      : mono && !resolved[0].routing?.length
-        ? "omit"
-        : "custom";
+  const pair = options.find((roles) => roles.every((role, index) => role === values[index]));
+  const automatic = values.every((value) => value === undefined);
+  const off = !automatic && values.every((value) => value === "off");
+  const invalid =
+    orphaned.length > 0 ||
+    lanes.some((lane) => !resolveMixLane(draft, source.id, lane, format).valid);
+  const value = invalid
+    ? "custom"
+    : automatic
+      ? "auto"
+      : off && mono
+        ? "off"
+        : pair
+          ? pair.join(":")
+          : "custom";
+  const summary = invalid
+    ? "Needs Routing"
+    : automatic
+      ? autoLabel
+      : off
+        ? "Off"
+        : pair
+          ? pair.join(" / ")
+          : "Custom";
 
   function choose(next) {
     if (next === "details") {
-      onDetails();
+      onToggle?.();
       return;
     }
     if (next === "auto") {
-      const keys =
-        laneKey === undefined
-          ? new Set([
-              ...lanes.map(({ key }) => key),
-              ...Object.keys(draft.routes?.[source.id] ?? {}),
-            ])
-          : [laneKey];
-      for (const key of keys) setRoute(source.id, key, undefined);
+      for (const { key } of lanes) setRoute(source.id, key, undefined);
+      for (const key of orphaned) setRoute(source.id, key, undefined);
       return;
     }
     const roles = next.split(":");
-    lanes.forEach(({ key }, index) =>
-      setRoute(
-        source.id,
-        key,
-        next === "omit" ? [] : mixDestinationRoute(resolved[index], roles[index])
-      )
-    );
+    for (const [index, { key }] of lanes.entries()) setRoute(source.id, key, roles[index]);
   }
 
   return (
@@ -93,167 +92,67 @@ export function MixRouteSelect({ draft, source, laneKey, format, onDetails, setR
       <SelectTrigger
         variant="inline"
         className="max-w-[45%]"
-        aria-label={`route for ${laneKey === undefined ? source.label : lanes[0].label}`}
+        aria-label={label}
         {...dropdown.triggerProps}
       >
-        <SelectValue>{automatic ? `Auto · ${autoSummary}` : summary}</SelectValue>
+        <SelectValue>{summary}</SelectValue>
       </SelectTrigger>
       <SelectContent variant="inline" align="end">
-        <SelectItem value="auto">Auto · {autoSummary}</SelectItem>
+        <SelectItem value="auto">{autoLabel}</SelectItem>
         {options.map((roles) => (
           <SelectItem key={roles.join(":")} value={roles.join(":")}>
             {roles.join(" / ")}
           </SelectItem>
         ))}
-        {mono && <SelectItem value="omit">Omit</SelectItem>}
-        <SelectSeparator />
-        <SelectItem value="details">Per-Channel Settings</SelectItem>
+        {mono && <SelectItem value="off">Off</SelectItem>}
+        {onToggle && (
+          <>
+            <SelectSeparator />
+            <SelectItem value="details">
+              {expanded ? "Hide Channel Settings" : "Per-Channel Settings"}
+            </SelectItem>
+          </>
+        )}
       </SelectContent>
     </Select>
   );
 }
 
-function RouteGain({ gain, label, target, onSet }) {
-  const [value, setValue] = useState(String(mixGainDb(gain)));
-  useEffect(() => {
-    setValue(String(mixGainDb(gain)));
-  }, [gain]);
-  function commit() {
-    const parsed = Number(value);
-    if (value.trim() && Number.isFinite(parsed)) {
-      const db = Math.min(24, Math.max(-60, parsed));
-      onSet(linearMixGain(db));
-      setValue(String(db));
-    } else {
-      setValue(String(mixGainDb(gain)));
-    }
-  }
+export function MixSourceRouting({ draft, source, format, setRoute }) {
   return (
-    <label className="flex items-center gap-1 text-muted-foreground">
-      <input
-        aria-label={`gain for ${label} to ${target}`}
-        type="number"
-        min={-60}
-        max={24}
-        step="any"
-        value={value}
-        onChange={(event) => setValue(event.target.value)}
-        onBlur={commit}
-        onKeyDown={(event) => {
-          if (event.key === "Enter") event.currentTarget.blur();
-        }}
-        className="plvs-input h-[var(--ui-control-h)] w-20 rounded-md border border-input bg-transparent px-2 text-foreground"
-      />
-      dB
-    </label>
-  );
-}
-
-export function MixSourceRouting({ draft, source, laneKey, format, setRoute, onDone }) {
-  const orphaned =
-    laneKey === undefined
-      ? Object.keys(draft.routes?.[source.id] ?? {}).filter(
-          (key) => !source.lanes.some((lane) => lane.key === key)
-        )
-      : [];
-  const lanes = source.lanes.filter(({ key }) => laneKey === undefined || key === laneKey);
-  return (
-    <div className="space-y-2 pt-1 pb-2 pl-4" role="group" aria-label="per-channel settings">
-      {lanes.map((lane) => {
-        const { routing, valid, automatic } = resolveMixLane(draft, source.id, lane, format);
-        const custom = automatic ? [] : routing;
-        const targets = format.roles.filter((role) => !custom.some(([target]) => target === role));
-        const set = (routes) => setRoute(source.id, lane.key, routes);
-        return (
-          <div key={lane.key} className="space-y-1 rounded-md border border-border p-2">
-            <div className="flex flex-wrap items-center gap-2">
-              <span className="font-medium">{lane.label}</span>
-              <span className="flex-1 text-muted-foreground">
-                {automatic
-                  ? `Auto · ${mixLaneSummary({ routing, valid })}`
-                  : !valid
-                    ? "Destination Unavailable"
-                    : !custom.length
-                      ? "Omitted"
-                      : "Custom"}
-              </span>
-              {!automatic && (
-                <Button variant="ghost" onClick={() => set(undefined)}>
-                  Reset to Auto
-                </Button>
-              )}
-              <Button variant="ghost" onClick={() => set([])}>
-                Omit
-              </Button>
-            </div>
-            {custom.map(([role, gain], index) => (
-              <div key={role} className="flex flex-wrap items-center gap-2">
-                <select
-                  aria-label={`destination for ${lane.label}`}
-                  value={role}
-                  onChange={(event) =>
-                    set(
-                      custom.map((route, i) => (i === index ? [event.target.value, gain] : route))
-                    )
-                  }
-                  className="plvs-input h-[var(--ui-control-h)] rounded-md border border-input bg-card px-2"
-                >
-                  <option value={role}>
-                    {role}
-                    {format.roles.includes(role) ? "" : " · Unavailable"}
-                  </option>
-                  {targets.map((target) => (
-                    <option key={target} value={target}>
-                      {target}
-                    </option>
-                  ))}
-                </select>
-                <RouteGain
-                  gain={gain}
-                  label={lane.label}
-                  target={role}
-                  onSet={(value) =>
-                    set(custom.map((route, i) => (i === index ? [role, value] : route)))
-                  }
-                />
-                <Button variant="ghost" onClick={() => set(custom.filter((_, i) => i !== index))}>
-                  Remove
-                </Button>
-              </div>
-            ))}
-            {!!targets.length && (
-              <select
-                aria-label={`add destination for ${lane.label}`}
-                value=""
-                onChange={(event) => set(addMixDestination(custom, event.target.value))}
-                className="plvs-input h-[var(--ui-control-h)] rounded-md border border-input bg-card px-2"
-              >
-                <option value="" disabled>
-                  {automatic ? "Choose Destination" : "Add Destination"}
-                </option>
-                {targets.map((target) => (
-                  <option key={target} value={target}>
-                    {target}
-                  </option>
-                ))}
-              </select>
-            )}
-          </div>
-        );
-      })}
-      {orphaned.map((key) => (
-        <div key={key} className="flex items-center gap-2 text-muted-foreground">
-          <span className="flex-1">{key} · Source Channel Unavailable</span>
-          <Button variant="ghost" onClick={() => setRoute(source.id, key, undefined)}>
-            Remove Override
-          </Button>
+    <div className="pb-1 pl-8" role="group" aria-label="per-channel settings">
+      {source.lanes.map(({ key, label }) => (
+        <div
+          key={key}
+          className="flex min-h-[var(--ui-control-h)] items-center justify-between gap-2 pl-2"
+        >
+          <span className="text-muted-foreground">{label}</span>
+          <MixRouteSelect
+            draft={draft}
+            source={source}
+            format={format}
+            laneKey={key}
+            label={`destination for ${label}`}
+            setRoute={setRoute}
+          />
         </div>
       ))}
-      <div className="flex justify-end">
-        <Button variant="ghost" onClick={onDone}>
-          Done
-        </Button>
-      </div>
+      {orphanedMixLanes(draft, source).map((key) => (
+        <div
+          key={key}
+          className="flex min-h-[var(--ui-control-h)] items-center justify-between gap-2 pl-2"
+        >
+          <span className="text-muted-foreground">{key} · Unavailable</span>
+          <Select value="unavailable" onValueChange={() => setRoute(source.id, key, undefined)}>
+            <SelectTrigger variant="inline" aria-label={`destination for unavailable ${key}`}>
+              <SelectValue>Needs Routing</SelectValue>
+            </SelectTrigger>
+            <SelectContent align="end" variant="inline">
+              <SelectItem value="auto">Auto</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+      ))}
     </div>
   );
 }

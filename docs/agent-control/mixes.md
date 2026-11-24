@@ -1,8 +1,8 @@
 # Mix Control
 
 PLVS advertises `mix.*` methods on Windows. `mix list --json` returns saved Mixes in Library
-order, including their names, format modes, selected sources and channels, and route overrides
-in dB. `activeId` is the Mix selected in the current Workbench, or `null`. Select a saved Mix
+order, including their names, format modes, selected sources and channels, and route overrides.
+`activeId` is the Mix selected in the current Workbench, or `null`. Select a saved Mix
 through [Device Control](devices.md), or from the main window or Dock Sources choices.
 
 Use [Editor Draft Control](editor-drafts.md#mix-drafts-on-windows) to author or edit a Mix.

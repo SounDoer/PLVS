@@ -1,4 +1,10 @@
-import { MIX_AUTO_VERSION, MIX_FORMATS, mixInputs, validMixRoles } from "./mixRouting.js";
+import {
+  MIX_AUTO_VERSION,
+  MIX_FORMATS,
+  isMixDestination,
+  mixInputs,
+  validMixRoles,
+} from "./mixRouting.js";
 
 export function isSourceMixId(value) {
   return (
@@ -6,16 +12,45 @@ export function isSourceMixId(value) {
   );
 }
 
+// Retain identity across reads so the editor can detect changes from another Workbench.
+const normalizedMixes = new WeakMap();
+
+function normalizeLegacyRoutes(mix) {
+  if (!mix || typeof mix !== "object" || !mix.routes || Array.isArray(mix.routes)) return mix;
+  if (normalizedMixes.has(mix)) return normalizedMixes.get(mix);
+  let legacy = false;
+  const routes = Object.create(null);
+  for (const [id, lanes] of Object.entries(mix.routes)) {
+    if (!lanes || typeof lanes !== "object" || Array.isArray(lanes)) return mix;
+    const next = Object.create(null);
+    for (const [lane, value] of Object.entries(lanes)) {
+      if (!Array.isArray(value)) next[lane] = value;
+      else {
+        legacy = true;
+        // Retain Off and a single explicit target. A former multi-destination route becomes Auto.
+        if (!value.length) next[lane] = "off";
+        else if (value.length === 1 && isMixDestination(value[0]?.[0])) next[lane] = value[0][0];
+      }
+    }
+    if (Object.keys(next).length) routes[id] = next;
+  }
+  const normalized = legacy ? { ...mix, routes } : mix;
+  normalizedMixes.set(mix, normalized);
+  return normalized;
+}
+
 export function readSourceMixes(store) {
   return Array.isArray(store.list)
-    ? store.list.filter(
-        (mix) =>
-          isSourceMixId(mix?.id) &&
-          typeof mix.name === "string" &&
-          mix.name.trim() &&
-          Array.isArray(mix.members) &&
-          canSaveSourceMix(mix)
-      )
+    ? store.list
+        .map(normalizeLegacyRoutes)
+        .filter(
+          (mix) =>
+            isSourceMixId(mix?.id) &&
+            typeof mix.name === "string" &&
+            mix.name.trim() &&
+            Array.isArray(mix.members) &&
+            canSaveSourceMix(mix)
+        )
     : [];
 }
 
@@ -44,17 +79,8 @@ export function canSaveSourceMix(mix) {
           (lanes) =>
             lanes &&
             typeof lanes === "object" &&
-            Object.values(lanes).every(
-              (lane) =>
-                Array.isArray(lane) &&
-                lane.every(
-                  (edge) =>
-                    Array.isArray(edge) &&
-                    typeof edge[0] === "string" &&
-                    Number.isFinite(edge[1]) &&
-                    Math.abs(edge[1]) <= 16
-                )
-            )
+            !Array.isArray(lanes) &&
+            Object.values(lanes).every(isMixDestination)
         ))) &&
     (output == null ||
       (/^lb-[0-9a-f]{32}$/.test(output.id) &&

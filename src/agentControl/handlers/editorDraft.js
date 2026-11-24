@@ -1,11 +1,11 @@
 import { describeEditorDraft, planEditorDraftPatch } from "../editorDraftControl.js";
 import { semanticFailure, SETTLEMENT_TIMEOUT_MS, COMMIT_NOT_OBSERVED } from "../bridge/failures.js";
 import { themeStateSignature, loudnessProfileStateSignature } from "../bridge/signatures.js";
-import { mixDraftDocument, publicMixDocument } from "../mixDraftControl.js";
+import { mixDraftDocument } from "../mixDraftControl.js";
 import { mixInputs } from "../../lib/mixRouting.js";
 
-function authoredDocument(kind, document) {
-  const { id: _id, ...authored } = kind === "mix" ? publicMixDocument(document) : document;
+function authoredDocument(document) {
+  const { id: _id, ...authored } = document;
   return authored;
 }
 
@@ -91,7 +91,7 @@ async function inspect(ctx) {
         -32042
       );
     }
-    const document = authoredDocument(kind, snapshot.document);
+    const document = authoredDocument(snapshot.document);
     return {
       requestId,
       result: {
@@ -255,7 +255,7 @@ async function act(ctx) {
           );
         }
       }
-      const document = authoredDocument(kind, saved.document);
+      const document = authoredDocument(saved.document);
       return {
         requestId,
         result: {
@@ -337,7 +337,7 @@ async function act(ctx) {
       : { ui: uiBefore, snapshot: before };
     const uiAfter = settled.ui;
     const after = settled.snapshot;
-    const document = authoredDocument(kind, after.document);
+    const document = authoredDocument(after.document);
     return {
       requestId,
       result: {

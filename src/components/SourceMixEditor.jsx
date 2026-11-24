@@ -15,19 +15,15 @@ import {
 import {
   MIX_FORMATS,
   compileMixRouting,
-  linearMixGain,
-  mixGainDb,
   resolveMixFormat,
-  resolveMixLane,
   mixInputs,
   mixRoutingSources,
 } from "../lib/mixRouting.js";
 import {
   MixSourceRouting,
   MixRouteSelect,
-  addMixDestination,
-  mixDestinationRoute,
   mixStereoPairs,
+  orphanedMixLanes,
 } from "./MixSourceRouting.jsx";
 import { cn } from "../lib/utils.js";
 import { useUiSurface } from "../uiNavigation/UiNavigationContext.jsx";
@@ -123,7 +119,7 @@ export function SourceMixEditor({
   const [renaming, setRenaming] = useState(false);
   const selectedInputs = mixInputs(draft);
   const [inputOpen, setInputOpen] = useState(selectedInputs.length > 0);
-  const [routing, setRouting] = useState(null);
+  const [routeId, setRouteId] = useState(null);
   const [outputOpen, setOutputOpen] = useState(Boolean(draft.output));
   const [applicationsOpen, setApplicationsOpen] = useState(draft.members.length > 0);
   const [expandedDevice, setExpandedDevice] = useState(selectedInputs[0]?.id ?? null);
@@ -158,53 +154,38 @@ export function SourceMixEditor({
       ? format
       : resolveMixFormat({ ...draft, format: "follow" }, outputs, defaultOutputReference);
   const sources = mixRoutingSources(draft, outputs);
-  const routeId = routing?.id;
   const routingSource = sources.find(({ id }) => id === routeId);
-  const routingLanes = routingSource?.lanes.filter(
-    ({ key }) => routing.laneKey === undefined || key === routing.laneKey
-  );
   const compiled = compileMixRouting(draft, outputs, defaultOutputReference);
   const canSave = canSaveSourceMix(draft) && Boolean(compiled);
-  const isRouting = (id, laneKey) => routeId === id && routing?.laneKey === laneKey;
-  const toggleRoutingForControl = (id, laneKey) => {
-    if (isRouting(id, laneKey)) {
-      setRouting(null);
-      return;
-    }
-    if (laneKey !== undefined) {
-      setInputOpen(true);
-      setExpandedDevice(id);
-    } else if (draft.output?.id === id) {
-      setOutputOpen(true);
-    } else {
-      setApplicationsOpen(true);
-    }
-    setRouting({ id, laneKey });
+  const hasChannelSettings = (source) =>
+    !isMixInputId(source.id) &&
+    (source.lanes.length > 1 || orphanedMixLanes(draft, source).length > 0);
+  const toggleChannelSettings = (id) => {
+    setRouteId((current) => (current === id ? null : id));
+    if (draft.output?.id === id) setOutputOpen(true);
+    else setApplicationsOpen(true);
   };
   const routingControls = (id, laneKey = undefined) => {
     const source = sources.find((source) => source.id === id);
-    if (!source || (laneKey !== undefined && !source.lanes.some(({ key }) => key === laneKey)))
-      return {};
+    const lane = source?.lanes.find(({ key }) => key === laneKey);
+    if (!source || (laneKey !== undefined && !lane)) return {};
+    const expandable = laneKey === undefined && hasChannelSettings(source);
+    const expanded = expandable && routeId === id;
     return {
       route: (
         <MixRouteSelect
           draft={draft}
           source={source}
           laneKey={laneKey}
+          label={`route for ${lane?.label ?? source.label}`}
           format={format}
           setRoute={setRoute}
-          onDetails={() => setRouting({ id, laneKey })}
+          expanded={expanded}
+          onToggle={expandable ? () => toggleChannelSettings(id) : undefined}
         />
       ),
-      details: isRouting(id, laneKey) ? (
-        <MixSourceRouting
-          draft={draft}
-          source={source}
-          laneKey={laneKey}
-          format={format}
-          setRoute={setRoute}
-          onDone={() => setRouting(null)}
-        />
+      details: expanded ? (
+        <MixSourceRouting draft={draft} source={source} format={format} setRoute={setRoute} />
       ) : undefined,
     };
   };
@@ -224,52 +205,17 @@ export function SourceMixEditor({
     draft.id && owner.list && owner.list.find(({ id }) => id === draft.id) !== draft.original
   );
   const routeChoices =
-    routingLanes?.flatMap((lane) => {
-      const resolved = resolveMixLane(draft, routeId, lane, format);
-      const custom = resolved.automatic ? [] : resolved.routing;
-      return [
-        {
-          id: `route:auto:${lane.key}`,
-          label: `${lane.label} · Reset to Auto`,
-          run: () => setRoute(routeId, lane.key, undefined),
-        },
-        {
-          id: `route:omit:${lane.key}`,
-          label: `${lane.label} · Omit`,
-          run: () => setRoute(routeId, lane.key, []),
-        },
-        ...custom.flatMap(([target, gain]) => [
-          {
-            id: `route:remove:${lane.key}:${target}`,
-            label: `Remove ${lane.label} → ${target}`,
-            run: () =>
-              setRoute(
-                routeId,
-                lane.key,
-                custom.filter(([role]) => role !== target)
-              ),
-          },
-          ...[-1, 1].map((step) => ({
-            id: `route:gain:${lane.key}:${target}:${step > 0 ? "up" : "down"}`,
-            label: `${lane.label} → ${target} · ${step > 0 ? "+" : "−"}1 dB`,
-            run: () =>
-              setRoute(
-                routeId,
-                lane.key,
-                custom.map(([role, value]) => [
-                  role,
-                  role === target ? linearMixGain(mixGainDb(gain) + step) : value,
-                ])
-              ),
-          })),
-        ]),
-        ...format.roles.map((target) => ({
-          id: `route:add:${lane.key}:${target}`,
-          label: `${lane.label} → ${target}`,
-          selected: custom.some(([role]) => role === target),
-          run: () => setRoute(routeId, lane.key, addMixDestination(custom, target)),
-        })),
-      ];
+    routingSource?.lanes.flatMap((lane) => {
+      const current = draft.routes?.[routeId]?.[lane.key] ?? "auto";
+      return ["auto", ...format.roles, "off"].map((destination) => ({
+        id:
+          destination === "auto" || destination === "off"
+            ? `route:${destination}:${lane.key}`
+            : `route:to:${lane.key}:${destination}`,
+        label: `${lane.label} → ${destination === "auto" ? "Auto" : destination === "off" ? "Off" : destination}`,
+        selected: current === destination,
+        run: () => setRoute(routeId, lane.key, destination === "auto" ? undefined : destination),
+      }));
     }) ?? [];
   const pairs = routingSource ? mixStereoPairs(routingSource, format) : [];
   const mixNotice =
@@ -350,50 +296,27 @@ export function SourceMixEditor({
         selected: format.id === id,
         run: () => setFormat(id),
       })),
-      ...sources.flatMap(({ id, label, lanes }) => {
-        const input = isMixInputId(id);
-        const first = input ? lanes[0]?.key : undefined;
-        return [
-          {
-            id: `routing:${id}`,
-            label: `Per-Channel Settings · ${label}`,
-            selected: isRouting(id, first),
-            run: () => toggleRoutingForControl(id, first),
-          },
-          ...(input && lanes.length > 1
-            ? lanes.map(({ key, label: laneLabel }) => ({
-                id: `routing:${id}:${key}`,
-                label: `Per-Channel Settings · ${label} · ${laneLabel}`,
-                selected: isRouting(id, key),
-                run: () => toggleRoutingForControl(id, key),
-              }))
-            : []),
-        ];
-      }),
+      ...sources.filter(hasChannelSettings).map(({ id, label }) => ({
+        id: `routing:${id}`,
+        label: `Per-Channel Settings · ${label}`,
+        selected: routeId === id,
+        run: () => toggleChannelSettings(id),
+      })),
       ...routeChoices,
-      ...(routingSource && routing.laneKey === undefined
-        ? Object.keys(draft.routes?.[routeId] ?? {})
-            .filter((key) => !routingSource.lanes.some((lane) => lane.key === key))
-            .map((key) => ({
-              id: `route:auto:${key}`,
-              label: `Remove unavailable ${key} override`,
-              run: () => setRoute(routeId, key, undefined),
-            }))
+      ...(routingSource
+        ? orphanedMixLanes(draft, routingSource).map((key) => ({
+            id: `route:auto:${key}`,
+            label: `Remove unavailable ${key} override`,
+            run: () => setRoute(routeId, key, undefined),
+          }))
         : []),
       ...pairs.map(([left, right]) => ({
         id: `route:pair:${left}:${right}`,
         label: `${left} / ${right}`,
-        run: () =>
-          routingSource.lanes.forEach((lane, index) =>
-            setRoute(
-              routeId,
-              lane.key,
-              mixDestinationRoute(
-                resolveMixLane(draft, routeId, lane, format),
-                index === 0 ? left : right
-              )
-            )
-          ),
+        run: () => {
+          setRoute(routeId, "L", left);
+          setRoute(routeId, "R", right);
+        },
       })),
       {
         id: "save",

@@ -52,7 +52,8 @@ not; attempting those actions returns `draftActionUnavailable`.
 Open **Sources** through UI Navigation and choose `add-mix` or `edit:<mix-id>` from the
 toolbar surface. Use the resulting `sourceMixEditor` surface ID with `editor-draft inspect mix`.
 The document includes the draft name, selected source IDs and channels, format, and per-channel
-overrides with gain in dB. Inspect and Patch also report `mix.resolvedFormat`, the ordered
+destination overrides. Each override is one speaker role or `off`. An absent override means
+Auto. Inspect and Patch also report `mix.resolvedFormat`, the ordered
 destination `mix.roles`, and `mix.canSave`. Use [Device Control](devices.md) to discover source IDs.
 
 - `setName` sets the draft name. An empty string restores automatic naming on Save.
@@ -61,11 +62,10 @@ destination `mix.roles`, and `mix.canSave`. Use [Device Control](devices.md) to 
 - `setInputChannels` takes `sourceId` and the complete list of zero-based `channels`. An empty
   list removes that input device.
 - `setOutput` takes a mapped playback `sourceId` or `null` to remove it.
-- `setRoute` takes `sourceId`, `lane`, and `destinations`. The lane is a string containing
-  a zero-based physical input channel index or a source speaker role. Each destination is an
-  object with a speaker `role` and numeric `gainDb`, including fractional values. Pass
-  `null` for Auto or an empty array to omit a channel. For example,
-  `{"op":"setRoute","sourceId":"<input-id>","lane":"0","destinations":[{"role":"Ls","gainDb":-2.5}]}`.
+- `setRoute` takes `sourceId`, `lane`, and one `destination`. The lane is a string containing
+  a zero-based physical input channel index or a source speaker role. Choose a destination
+  role, `auto`, or `off`. For example,
+  `{"op":"setRoute","sourceId":"<input-id>","lane":"0","destination":"Ls"}`.
 
 The patch applies source and format edits before route edits and rejects the complete batch if
 the resulting sources or routes are incompatible. Source and format changes can be paired

@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { CHANNEL_LAYOUTS } from "../math/channelLayoutTable.js";
 import { autoMixRoute, compileMixRouting, resolveMixFormat } from "./mixRouting.js";
+import { readSourceMixes } from "./sourceMixes.js";
 
 const rolesFor = (id) => CHANNEL_LAYOUTS.find((layout) => layout.id === id).roles;
 
@@ -53,7 +54,7 @@ describe("Mix channel conversion", () => {
     });
   });
 
-  it("compiles separate gains for multiple inputs and retains invalid overrides for repair", () => {
+  it("compiles one destination per manual lane at unity and supports Off", () => {
     const first = `cap-${"1".repeat(32)}`;
     const second = `cap-${"2".repeat(32)}`;
     const mix = {
@@ -63,23 +64,49 @@ describe("Mix channel conversion", () => {
         { id: first, channels: [2] },
         { id: second, channels: [0] },
       ],
-      routes: {
-        [first]: {
-          2: [
-            ["Ls", 0.5],
-            ["LFE", 0.25],
-          ],
-        },
-      },
+      routes: { [first]: { 2: "Ls" } },
     };
     const plan = compileMixRouting(mix, [], null);
-    expect(plan.routes[first]).toEqual([
-      [
-        [4, 0.5],
-        [3, 0.25],
-      ],
-    ]);
+    expect(plan.routes[first]).toEqual([[[4, 1]]]);
     expect(plan.routes[second]).toEqual([[[2, 1]]]);
     expect(compileMixRouting({ ...mix, format: "stereo" }, [], null)).toBeNull();
+    expect(
+      compileMixRouting({ ...mix, routes: { [first]: { 2: "off" } } }, [], null).routes[first]
+    ).toEqual([[]]);
+  });
+
+  it("normalizes former overrides without dropping saved Mixes or changing their read identity", () => {
+    const id = `cap-${"a".repeat(32)}`;
+    const store = {
+      list: [
+        {
+          id: "mix-00000000-0000-0000-0000-000000000001",
+          name: "Mix",
+          members: [],
+          inputs: [{ id, label: "Input", channels: [0, 1, 2] }],
+          routes: {
+            [id]: {
+              0: [["L", 0.5]],
+              1: [
+                ["L", 1],
+                ["R", 1],
+              ],
+              2: [],
+            },
+          },
+        },
+      ],
+    };
+    const [mix] = readSourceMixes(store);
+    expect(mix.routes).toEqual({ [id]: { 0: "L", 2: "off" } });
+    expect(readSourceMixes(store)[0]).toBe(mix);
+    expect(compileMixRouting(mix, [], null).routes[id]).toEqual([
+      [[0, 1]],
+      [
+        [0, Math.SQRT1_2],
+        [1, Math.SQRT1_2],
+      ],
+      [],
+    ]);
   });
 });

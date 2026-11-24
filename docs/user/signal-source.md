@@ -126,9 +126,10 @@ format affects PLVS measurements while Windows continues to play through its exi
 Auto passes matching speaker roles through and folds roles missing from the target format. A
 physical input channel defaults to Center where available, or to both Stereo sides at −3 dB
 per side. A Stereo source leaves other channels silent in a larger layout. The dropdown beside
-each checked source shows its current route. Use it to choose a destination or stereo pair,
-omit a mono source, or restore Auto. **Per-Channel Settings** expands below that row for
-individual destinations, gains, and additional routes. The Mix format also supplies the channel
+each checked source shows its current route. Use it to choose one destination or a stereo
+pair, turn a mono route **Off**, or restore Auto. **Per-Channel Settings** expands a
+multi-channel source into one dropdown per original channel. Each dropdown offers Auto, one
+speaker role, or Off. The Mix format also supplies the channel
 roles used in Settings. A format
 change that removes a custom destination requires a routing edit before the new measurement can
 start. Saving a valid change that alters the measured signal starts a new measurement.

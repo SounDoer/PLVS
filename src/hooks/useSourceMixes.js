@@ -1,7 +1,12 @@
 import { useEffect, useRef, useState } from "react";
 import { sourceMixesStore } from "../persistence/index.js";
 import { canSaveSourceMix, readSourceMixes, sourceMixName } from "../lib/sourceMixes.js";
-import { MIX_AUTO_VERSION, mixInputs, validMixRoles } from "../lib/mixRouting.js";
+import {
+  MIX_AUTO_VERSION,
+  mixInputs,
+  validMixRoles,
+  withMixLaneDestination,
+} from "../lib/mixRouting.js";
 import { useBlockingEditor } from "./BlockingEditorsContext.jsx";
 
 export function useSourceMixes({ supported, onSelect, onError }) {
@@ -80,16 +85,10 @@ export function useSourceMixes({ supported, onSelect, onError }) {
     });
   }
 
-  function setRoute(id, lane, routes) {
+  function setRoute(id, lane, destination) {
     setDraft((current) => {
       if (!current || writing.current) return current;
-      const source = { ...current.routes?.[id] };
-      if (routes === undefined) delete source[lane];
-      else source[lane] = routes;
-      const next = { ...current.routes };
-      if (Object.keys(source).length) next[id] = source;
-      else delete next[id];
-      return { ...current, routes: next };
+      return { ...current, routes: withMixLaneDestination(current.routes, id, lane, destination) };
     });
   }
 

@@ -137,8 +137,8 @@ screen, and the abbreviations on compact surfaces only make sense against the En
 | Correlation                | Phase correlation of a channel pair, from −1 to +1                                    |
 | Mix Format                 | The channel layout that a Mix produces for measurement                                |
 | Follow Output              | The Mix Format choice that follows the selected or system default playback device     |
-| Routing                    | Assignment of source channels to destinations and gains within a Mix                  |
-| Per-Channel Settings       | Inline Mix controls for assigning individual destinations and gains                   |
+| Routing                    | Assignment of source channels to destinations within a Mix                            |
+| Per-Channel Settings       | Inline Mix dropdowns for setting a destination for each source channel                |
 | Channel Pair               | The two channels a stereo panel reads                                                 |
 | Dialogue-Gated Loudness    | The family of readouts based on detected speech                                       |
 | Dialogue Detection         | The on-device voice detector those readouts depend on                                 |

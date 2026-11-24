@@ -3,18 +3,12 @@ import { canSaveSourceMix, isMixOutputDevice } from "../lib/sourceMixes.js";
 import {
   MIX_FORMATS,
   compileMixRouting,
-  linearMixGain,
-  mixGainDb,
+  isMixDestination,
   mixRoutingSources,
+  withMixLaneDestination,
 } from "../lib/mixRouting.js";
 
 const id = { type: "string" };
-const route = {
-  type: "object",
-  required: ["role", "gainDb"],
-  additionalProperties: false,
-  properties: { role: id, gainDb: { type: "number", minimum: -60, maximum: 24 } },
-};
 export const MIX_DRAFT_FIELDS = {
   setName: { name: { type: "string" } },
   setFormat: { format: { enum: MIX_FORMATS.map(({ id }) => id) } },
@@ -24,7 +18,11 @@ export const MIX_DRAFT_FIELDS = {
     channels: { type: "array", items: { type: "integer", minimum: 0, maximum: 255 } },
   },
   setOutput: { sourceId: { type: ["string", "null"] } },
-  setRoute: { sourceId: id, lane: id, destinations: { type: ["array", "null"], items: route } },
+  setRoute: {
+    sourceId: id,
+    lane: id,
+    destination: { type: "string", description: "auto, off, or one destination speaker role." },
+  },
 };
 
 export function mixDraftOperationTarget(operation) {
@@ -54,21 +52,6 @@ export function mixDraftDocument(draft) {
     routes: draft.routes ?? {},
     referenceRoles: draft.referenceRoles ?? null,
   };
-}
-
-export function publicMixDocument(document) {
-  const routes = Object.fromEntries(
-    Object.entries(document.routes).map(([sourceId, lanes]) => [
-      sourceId,
-      Object.fromEntries(
-        Object.entries(lanes).map(([lane, destinations]) => [
-          lane,
-          destinations.map(([role, gain]) => ({ role, gainDb: mixGainDb(gain) })),
-        ])
-      ),
-    ])
-  );
-  return { ...document, routes };
 }
 
 export function applyMixDraftOperations(document, operations, inventory, issues) {
@@ -174,14 +157,14 @@ export function applyMixDraftOperations(document, operations, inventory, issues)
   for (const { operation, index } of ordered.filter(
     ({ operation }) => operation.op === "setRoute"
   )) {
-    const { sourceId, lane, destinations } = operation;
+    const { sourceId, lane, destination } = operation;
     const source = sources.find(({ id }) => id === sourceId);
     const previous = document.routes[sourceId];
     if (
       !source ||
       typeof lane !== "string" ||
       (!source.lanes.some(({ key }) => key === lane) &&
-        !(destinations === null && Object.hasOwn(previous ?? {}, lane)))
+        !(destination === "auto" && Object.hasOwn(previous ?? {}, lane)))
     ) {
       issues.push({
         code: "invalidValue",
@@ -190,21 +173,18 @@ export function applyMixDraftOperations(document, operations, inventory, issues)
       });
       continue;
     }
-    if (destinations === null) {
-      if (previous) {
-        delete previous[lane];
-        if (!Object.keys(previous).length) delete document.routes[sourceId];
-      }
-    } else if (validDestinations(destinations)) {
-      (document.routes[sourceId] ??= {})[lane] = destinations.map(({ role, gainDb }) => [
-        role,
-        linearMixGain(gainDb),
-      ]);
+    if (destination === "auto" || isMixDestination(destination)) {
+      document.routes = withMixLaneDestination(
+        document.routes,
+        sourceId,
+        lane,
+        destination === "auto" ? undefined : destination
+      );
     } else {
       issues.push({
         code: "invalidValue",
-        path: `$.operations[${index}].destinations`,
-        message: "Destinations require distinct roles and a gain from −60 to +24 dB.",
+        path: `$.operations[${index}].destination`,
+        message: "Choose Auto, Off, or one speaker role.",
       });
     }
   }
@@ -219,22 +199,4 @@ export function applyMixDraftOperations(document, operations, inventory, issues)
       message: "The resulting Mix has incompatible sources or unavailable routes.",
     });
   }
-}
-
-function validDestinations(value) {
-  return (
-    Array.isArray(value) &&
-    value.length <= 16 &&
-    value.every(
-      (edge) =>
-        edge &&
-        typeof edge === "object" &&
-        Object.keys(edge).length === 2 &&
-        typeof edge.role === "string" &&
-        Number.isFinite(edge.gainDb) &&
-        edge.gainDb >= -60 &&
-        edge.gainDb <= 24
-    ) &&
-    new Set(value.map(({ role }) => role)).size === value.length
-  );
 }

@@ -1,6 +1,6 @@
 import { mixInputs } from "../../lib/mixRouting.js";
 import { semanticFailure } from "../bridge/failures.js";
-import { mixDraftDocument, publicMixDocument } from "../mixDraftControl.js";
+import { mixDraftDocument } from "../mixDraftControl.js";
 import { assertExpectedRevision } from "./shared.js";
 
 /** @param {import("../bridge/types.js").BridgeContext} ctx */
@@ -17,9 +17,7 @@ async function mixControl(ctx) {
         revision: clock.current(),
         activeId:
           owner.list.find(({ id }) => id === current.device.snapshot?.requestedId)?.id ?? null,
-        mixes: owner.list.map((mix) =>
-          publicMixDocument(mixDraftDocument({ ...mix, inputs: mixInputs(mix) }))
-        ),
+        mixes: owner.list.map((mix) => mixDraftDocument({ ...mix, inputs: mixInputs(mix) })),
       },
     };
   }

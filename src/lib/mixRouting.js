@@ -4,14 +4,6 @@ const G = Math.SQRT1_2;
 export const MIX_FORMATS = [{ id: "follow", name: "Follow Output" }, ...CHANNEL_LAYOUTS];
 export const MIX_AUTO_VERSION = 1;
 
-export function mixGainDb(gain) {
-  return Number((20 * Math.log10(gain)).toFixed(10));
-}
-
-export function linearMixGain(db) {
-  return 10 ** (Math.min(24, Math.max(-60, db)) / 20);
-}
-
 export function validMixRoles(roles) {
   return (
     Array.isArray(roles) &&
@@ -155,15 +147,32 @@ export function mixRoutingSources(mix, outputs) {
 }
 
 export function resolveMixLane(mix, sourceId, lane, format) {
-  const custom = mix.routes?.[sourceId]?.[lane.key];
-  const routing = custom ?? autoMixRoute(lane.role, format.roles, format.name !== "Custom");
-  const valid =
-    routing !== null &&
-    routing.every(
-      ([target, gain]) =>
-        format.roles.includes(target) && Number.isFinite(gain) && Math.abs(gain) <= 16
-    );
-  return { routing, valid, automatic: custom === undefined };
+  const destination = mix.routes?.[sourceId]?.[lane.key];
+  const automatic = destination === undefined;
+  const routing = automatic
+    ? autoMixRoute(lane.role, format.roles, format.name !== "Custom")
+    : destination === "off"
+      ? []
+      : [[destination, 1]];
+  return {
+    routing,
+    valid: routing !== null && routing.every(([role]) => format.roles.includes(role)),
+    automatic,
+  };
+}
+
+export function isMixDestination(value) {
+  return value === "off" || (typeof value === "string" && validMixRoles([value]));
+}
+
+export function withMixLaneDestination(routes, sourceId, lane, destination) {
+  const next = { ...routes };
+  const source = { ...next[sourceId] };
+  if (destination === undefined) delete source[lane];
+  else source[lane] = destination;
+  if (Object.keys(source).length) next[sourceId] = source;
+  else delete next[sourceId];
+  return next;
 }
 
 export function compileMixRouting(mix, outputs, defaultReference) {

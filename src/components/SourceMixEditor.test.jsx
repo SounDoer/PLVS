@@ -12,7 +12,6 @@ import {
   useEditorDraftRegistry,
 } from "../agentControl/EditorDraftContext.jsx";
 import { planEditorDraftPatch } from "../agentControl/editorDraftControl.js";
-import { publicMixDocument } from "../agentControl/mixDraftControl.js";
 
 vi.mock("../persistence/index.js", () => ({
   sourceMixesStore: { read: vi.fn(), persist: vi.fn(), subscribe: vi.fn(() => () => {}) },
@@ -62,14 +61,14 @@ function mountEditor(onSelect = vi.fn(), inputs = [], outputs = []) {
   return { onSelect, scene: () => registry, ui: () => navigation, drafts: () => draftControl };
 }
 
-it("patches a complete named Mix with exact gains atomically and saves through the editor", async () => {
+it("patches a complete named Mix with single destinations atomically and saves through the editor", async () => {
   const input = { id: `cap-${"3".repeat(32)}`, label: "Microphone", channels: 2 };
   const { ui, drafts, onSelect } = mountEditor(vi.fn(), [input]);
   const { surfaceId } = ui().inspectUi().surfaces[0];
   const before = drafts().inspect("mix", surfaceId);
   const operations = [
     { op: "setName", name: "My Mix" },
-    { op: "setRoute", sourceId: input.id, lane: "0", destinations: [{ role: "Ls", gainDb: -2.5 }] },
+    { op: "setRoute", sourceId: input.id, lane: "0", destination: "Ls" },
     { op: "setFormat", format: "5.1" },
     { op: "setInputChannels", sourceId: input.id, channels: [0] },
   ];
@@ -79,23 +78,44 @@ it("patches a complete named Mix with exact gains atomically and saves through t
     {
       operations: [
         ...operations,
-        { op: "setRoute", sourceId: input.id, lane: "1", destinations: [] },
+        { op: "setRoute", sourceId: input.id, lane: "1", destination: "off" },
       ],
     },
     before.inventory
   );
   expect(invalid.changed).toBe(false);
   expect(invalid.document).toBe(before.document);
+  for (const removedField of [
+    { destinations: [{ role: "L", gainDb: -2 }] },
+    { destination: ["L", "R"] },
+    { destination: "L", gainDb: -2 },
+  ]) {
+    const removed = planEditorDraftPatch(
+      "mix",
+      before.document,
+      {
+        operations: [
+          operations[2],
+          operations[3],
+          { op: "setRoute", sourceId: input.id, lane: "0", ...removedField },
+        ],
+      },
+      before.inventory
+    );
+    expect(removed.issues).not.toHaveLength(0);
+    expect(removed.document).toBe(before.document);
+  }
+
   const patch = planEditorDraftPatch("mix", before.document, { operations }, before.inventory);
   expect(patch.issues).toEqual([]);
   act(() => drafts().commit("mix", surfaceId, patch.document));
   const after = drafts().inspect("mix", surfaceId);
   expect(after.draftGeneration).toBeGreaterThan(before.draftGeneration);
   expect(after.dirty).toBe(true);
-  expect(publicMixDocument(after.document)).toMatchObject({
+  expect(after.document).toMatchObject({
     name: "My Mix",
     format: "5.1",
-    routes: { [input.id]: { 0: [{ role: "Ls", gainDb: -2.5 }] } },
+    routes: { [input.id]: { 0: "Ls" } },
   });
   expect(sourceMixesStore.persist).not.toHaveBeenCalled();
   expect(() => drafts().save("mix", surfaceId, before.draftGeneration)).toThrow(
@@ -302,44 +322,36 @@ it("retains selections on conflict and saves a stereo output with input channels
 
 it("edits a mono route in 5.1 and requires repair when switching to stereo", async () => {
   const input = { id: `cap-${"3".repeat(32)}`, label: "Microphone", channels: 1 };
-  const { ui } = mountEditor(vi.fn(), [input]);
-  const decide = async (choice) => {
-    const state = ui().inspectUi();
-    await act(async () => {
-      await ui().decideSurface({
-        surfaceId: state.surfaces[0].surfaceId,
-        choice,
-        expectedRevision: 3,
-        expectedUiGeneration: state.uiGeneration,
-      });
-    });
-  };
-  await decide("group:input");
-  await decide(`input:${input.id}`);
-  await decide("input-toggle:0");
-  await decide("format:5-1");
-  await decide(`routing:${input.id}`);
-  expect(
-    within(screen.getByRole("group", { name: "per-channel settings" })).getByText("Auto · C")
-  ).toBeTruthy();
-  await decide("route:add:0:Ls");
-  expect(screen.getByRole("combobox", { name: "destination for Channel 1" })).toHaveProperty(
-    "value",
-    "Ls"
-  );
-  await decide("format:stereo");
+  mountEditor(vi.fn(), [input]);
+  fireEvent.click(screen.getByRole("button", { name: "Input" }));
+  fireEvent.click(screen.getByRole("button", { name: "Microphone" }));
+  fireEvent.click(screen.getByRole("checkbox", { name: "Channel 1" }));
+  const setFormat = (value) =>
+    fireEvent.change(screen.getByRole("combobox", { name: "mix format" }), { target: { value } });
+  setFormat("5.1");
+  const route = screen.getByRole("combobox", { name: "route for Channel 1" });
+  expect(route.textContent).toBe("Auto · C");
+  chooseOption(route, "Ls");
+  setFormat("stereo");
   expect(screen.getByRole("button", { name: "Save" })).toHaveProperty("disabled", true);
   expect(screen.getByRole("status").textContent).toContain("Fix the unavailable channel routes");
-  await decide("route:auto:0");
+  chooseOption(route, "Auto · L / R");
   expect(screen.getByRole("button", { name: "Save" })).toHaveProperty("disabled", false);
-  await decide("format:5-1");
-  await decide("route:add:0:Ls");
-  await decide("save");
+  setFormat("5.1");
+  chooseOption(route, "Ls");
+  await act(async () => {
+    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+  });
   expect(vi.mocked(sourceMixesStore.persist).mock.calls[0][0].list[0]).toMatchObject({
     format: "5.1",
-    routes: { [input.id]: { 0: [["Ls", 1]] } },
+    routes: { [input.id]: { 0: "Ls" } },
   });
 });
+
+function chooseOption(trigger, option) {
+  fireEvent.keyDown(trigger, { key: "ArrowDown" });
+  fireEvent.click(screen.getByRole("option", { name: option }));
+}
 
 it("routes mono and stereo from their row dropdowns and opens details beneath only that row", () => {
   const input = { id: `cap-${"3".repeat(32)}`, label: "Microphone", channels: 2 };
@@ -353,40 +365,37 @@ it("routes mono and stereo from their row dropdowns and opens details beneath on
   });
   const first = screen.getByRole("combobox", { name: "route for Channel 1" });
   const second = screen.getByRole("combobox", { name: "route for Channel 2" });
-  const choose = (trigger, option) => {
-    fireEvent.keyDown(trigger, { key: "ArrowDown" });
-    fireEvent.click(screen.getByRole("option", { name: option }));
-  };
   expect(first.textContent).toContain("Auto · C");
-  choose(first, "Ls");
+  chooseOption(first, "Ls");
   expect(first.textContent).toBe("Ls");
   expect(second.textContent).toBe("Auto · C");
   expect(screen.queryByRole("group", { name: "per-channel settings" })).toBeNull();
 
-  choose(first, "Per-Channel Settings");
-  const details = screen.getByRole("group", { name: "per-channel settings" });
-  expect(
-    within(details).getByRole("spinbutton", { name: "gain for Channel 1 to Ls" })
-  ).toBeTruthy();
-  expect(within(details).queryByText("Channel 2")).toBeNull();
-  expect(details.previousElementSibling.contains(first)).toBe(true);
-  fireEvent.click(within(details).getByRole("button", { name: "Done" }));
-  expect(screen.queryByRole("group", { name: "per-channel settings" })).toBeNull();
+  fireEvent.keyDown(first, { key: "ArrowDown" });
+  expect(screen.queryByRole("option", { name: "Per-Channel Settings" })).toBeNull();
+  fireEvent.click(screen.getByRole("option", { name: "Off" }));
+  expect(first.textContent).toBe("Off");
 
   fireEvent.click(screen.getByRole("button", { name: "Applications" }));
   fireEvent.click(screen.getByRole("checkbox", { name: "Player" }));
   const stereo = screen.getByRole("combobox", { name: "route for Player" });
   expect(stereo.textContent).toBe("Auto · L / R");
-  choose(stereo, "Ls / Rs");
+  chooseOption(stereo, "Ls / Rs");
   expect(stereo.textContent).toBe("Ls / Rs");
-  choose(stereo, "Per-Channel Settings");
+  chooseOption(stereo, "Per-Channel Settings");
   const stereoDetails = screen.getByRole("group", { name: "per-channel settings" });
-  expect(within(stereoDetails).getByRole("combobox", { name: "destination for L" })).toHaveProperty(
-    "value",
-    "Ls"
-  );
-  expect(within(stereoDetails).getByRole("combobox", { name: "destination for R" })).toHaveProperty(
-    "value",
-    "Rs"
-  );
+  expect(stereoDetails.previousElementSibling.contains(stereo)).toBe(true);
+  const right = within(stereoDetails).getByRole("combobox", { name: "destination for R" });
+  expect(right.textContent).toBe("Rs");
+  chooseOption(right, "Off");
+  expect(right.textContent).toBe("Off");
+  expect(
+    within(stereoDetails).getByRole("combobox", { name: "destination for L" }).textContent
+  ).toBe("Ls");
+  expect(within(stereoDetails).queryByRole("spinbutton")).toBeNull();
+  expect(stereo.textContent).toBe("Custom");
+  chooseOption(stereo, "Hide Channel Settings");
+  expect(screen.queryByRole("group", { name: "per-channel settings" })).toBeNull();
+  chooseOption(stereo, "Per-Channel Settings");
+  expect(screen.getByRole("combobox", { name: "destination for R" }).textContent).toBe("Off");
 });

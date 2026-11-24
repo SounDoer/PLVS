@@ -69,15 +69,15 @@ checked application, input channel, or mapped playback device. Use `group:output
 disables Save. `format:<key>` sets the Mix format. Hyphens replace dots in choice IDs, for
 example `format:5-1`. The Follow Output choice includes the resolved format. For visual
 inspection, the selected rows expose `mix-routing:<source-id>` dropdown targets, with a
-`:<index>` suffix for a physical input channel. Open per-channel settings inline with
-`routing:<source-id>` or choose a specific input channel with `routing:<source-id>:<index>`
-when several channels are selected on that input. The open row offers `route:add:<lane>:<role>`,
-`route:remove:<lane>:<role>`, `route:gain:<lane>:<role>:<up|down>` in 1 dB steps,
-`route:auto:<lane>`, `route:omit:<lane>`, and eligible `route:pair:<left>:<right>` choices.
+`:<lane>` suffix for an individual channel dropdown. Open or hide a multi-channel source's
+per-channel settings with `routing:<source-id>`. The open rows offer
+`route:to:<lane>:<role>`, `route:auto:<lane>`, `route:off:<lane>`, and eligible
+`route:pair:<left>:<right>` choices. Use **Editor Draft Control** for all sources, including
+individual physical input channels.
 An invalid custom route disables Save.
 Use the latest surface ID, revision and UI generation for each decision. These choices run the
 same handlers as the editor controls. Use [Editor Draft Control](editor-drafts.md#mix-drafts-on-windows)
-to inspect or patch the full draft, including the name and exact gains.
+to inspect or patch the full draft, including the name and channel destinations.
 
 `add-panel` and `source-group` act inside an open menu: open the Panels or Sources menu first, or
 the request is `surfaceUnavailable`. `dropdown` takes a target id from `ui targets`, such as
