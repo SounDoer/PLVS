@@ -439,6 +439,7 @@ export function useAudioDevices({
         isLoopback: device.loopback,
         defaultSampleRate: device.sampleRateHz,
         channels: device.channelCount,
+        ...(device.mixStereoOutput ? { mixStereoOutput: true } : {}),
         ...(device.monitorSignature ? { monitorSignature: device.monitorSignature } : {}),
       })),
     [snapshot.allDevices]

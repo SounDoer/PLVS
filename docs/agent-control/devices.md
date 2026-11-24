@@ -61,7 +61,8 @@ System-output rows precede physical or virtual input rows in the GUI's order. Ea
 opaque stable ID, display label, `kind`, `direction`, loopback classification, default sample rate,
 and channel count. Unknown numeric capabilities are `null`. Results contain at most 256 rows and
 each label contains at most 512 Unicode scalar values; `truncated: true` means the internal
-inventory was longer.
+inventory was longer. Windows output rows with `mixStereoOutput: true` are eligible for
+the Mix editor's Output group.
 
 `applications` lists the running applications offered in the Sources menu's Applications group.
 `device list` refreshes them first, as opening Sources does, so an application that has just

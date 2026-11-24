@@ -25,6 +25,7 @@ function normalizeDevice(device) {
     loopback: systemOutput || device.isLoopback === true,
     sampleRateHz: positiveIntegerOrNull(device.defaultSampleRate),
     channelCount: positiveIntegerOrNull(device.channels),
+    ...(systemOutput && device.mixStereoOutput === true ? { mixStereoOutput: true } : {}),
     ...(typeof device.monitorSignature === "string"
       ? { monitorSignature: device.monitorSignature }
       : {}),

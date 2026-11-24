@@ -6,7 +6,12 @@ import {
   applicationWindowContext,
   formatAudioDeviceLabel,
 } from "../lib/audioDeviceLabels.js";
-import { canSaveSourceMix, isMixInputId, sourceMixName } from "../lib/sourceMixes.js";
+import {
+  canSaveSourceMix,
+  isMixInputId,
+  isMixOutputDevice,
+  sourceMixName,
+} from "../lib/sourceMixes.js";
 import { cn } from "../lib/utils.js";
 import { useUiSurface } from "../uiNavigation/UiNavigationContext.jsx";
 import { useHoverTip } from "./HoverTip.jsx";
@@ -58,12 +63,13 @@ function MixCheckRow({ label, checked, onChange, unavailable = false, tip = unde
   );
 }
 
-export function SourceMixEditor({ owner, applications, inputs = [] }) {
-  const { draft, saving, rename, cancel, save, toggle, toggleInputChannel } = owner;
+export function SourceMixEditor({ owner, applications, inputs = [], outputs = [] }) {
+  const { draft, saving, rename, cancel, save, toggle, toggleInputChannel, toggleOutput } = owner;
   const ref = useRef(null);
   const [position, setPosition] = useState(null);
   const [renaming, setRenaming] = useState(false);
   const [inputOpen, setInputOpen] = useState(Boolean(draft.input));
+  const [outputOpen, setOutputOpen] = useState(Boolean(draft.output));
   const [applicationsOpen, setApplicationsOpen] = useState(draft.members.length > 0);
   const [expandedDevice, setExpandedDevice] = useState(draft.input?.id ?? null);
   const originalName = useRef("");
@@ -86,7 +92,17 @@ export function SourceMixEditor({ owner, applications, inputs = [] }) {
     ...new Set([...Array.from({ length: channelCount }, (_, index) => index), ...activeChannels]),
   ].sort((a, b) => a - b);
   const toggleDevice = (id) => setExpandedDevice((current) => (current === id ? null : id));
+  const stereoOutputs = outputs.filter(isMixOutputDevice);
+  const outputAvailable = stereoOutputs.some(({ id }) => id === draft.output?.id);
+  const outputChoices =
+    draft.output && !outputAvailable ? [...stereoOutputs, draft.output] : stereoOutputs;
   const canSave = canSaveSourceMix(draft);
+  const mixNotice =
+    draft.output && checked.size > 0
+      ? "Deselect applications to save a Mix with an output."
+      : draft.output && draft.input
+        ? "If the input is monitored through this output, it will be counted twice."
+        : null;
 
   useUiSurface({
     kind: "sourceMixEditor",
@@ -103,6 +119,12 @@ export function SourceMixEditor({ owner, applications, inputs = [] }) {
         label: "Input",
         selected: inputOpen,
         run: () => setInputOpen(!inputOpen),
+      },
+      {
+        id: "group:output",
+        label: "Output",
+        selected: outputOpen,
+        run: () => setOutputOpen(!outputOpen),
       },
       {
         id: "group:applications",
@@ -124,6 +146,14 @@ export function SourceMixEditor({ owner, applications, inputs = [] }) {
             label: `Channel ${channel + 1}`,
             selected: activeChannels.includes(channel),
             run: () => toggleInputChannel(expandedInput, channel),
+          }))
+        : []),
+      ...(outputOpen
+        ? outputChoices.map((device) => ({
+            id: `output:${device.id}`,
+            label: device.label,
+            selected: draft.output?.id === device.id,
+            run: () => toggleOutput(device),
           }))
         : []),
       ...(applicationsOpen
@@ -196,67 +226,95 @@ export function SourceMixEditor({ owner, applications, inputs = [] }) {
           </>
         )}
       </div>
-      <fieldset
-        disabled={saving}
+      <div
         data-settings-editor-body
         className="min-h-0 min-w-0 overflow-y-auto px-3 py-2 text-[length:var(--ui-fs-control)]"
       >
-        <MixGroup
-          label="Input"
-          open={inputOpen}
-          onToggle={() => setInputOpen(!inputOpen)}
-          count={selectedChannels.length}
-        >
-          {inputChoices.length === 0 && (
-            <p className="px-2 text-muted-foreground">No Inputs Available</p>
-          )}
-          {inputChoices.map((device) => (
-            <MixGroup
-              key={device.id}
-              label={formatAudioDeviceLabel(device.label).full}
-              open={expandedDevice === device.id}
-              onToggle={() => toggleDevice(device.id)}
-              count={draft.input?.id === device.id ? selectedChannels.length : 0}
-              unavailable={typeof device.channels !== "number"}
-            >
-              {expandedDevice === device.id &&
-                channels.map((channel) => (
-                  <MixCheckRow
-                    key={channel}
-                    label={`Channel ${channel + 1}`}
-                    checked={activeChannels.includes(channel)}
-                    onChange={() => toggleInputChannel(device, channel)}
-                    unavailable={channel >= channelCount}
-                  />
-                ))}
-            </MixGroup>
-          ))}
-        </MixGroup>
-        <MixGroup
-          label="Applications"
-          open={applicationsOpen}
-          onToggle={() => setApplicationsOpen(!applicationsOpen)}
-          count={checked.size}
-        >
-          {choices.length === 0 && (
-            <p className="px-2 text-muted-foreground">No Applications Available</p>
-          )}
-          {choices.map((member) => {
-            const label = applicationSourceName(member);
-            return (
+        <fieldset disabled={saving} className="min-w-0">
+          <MixGroup
+            label="Input"
+            open={inputOpen}
+            onToggle={() => setInputOpen(!inputOpen)}
+            count={selectedChannels.length}
+          >
+            {inputChoices.length === 0 && (
+              <p className="px-2 text-muted-foreground">No Inputs Available</p>
+            )}
+            {inputChoices.map((device) => (
+              <MixGroup
+                key={device.id}
+                label={formatAudioDeviceLabel(device.label).full}
+                open={expandedDevice === device.id}
+                onToggle={() => toggleDevice(device.id)}
+                count={draft.input?.id === device.id ? selectedChannels.length : 0}
+                unavailable={typeof device.channels !== "number"}
+              >
+                {expandedDevice === device.id &&
+                  channels.map((channel) => (
+                    <MixCheckRow
+                      key={channel}
+                      label={`Channel ${channel + 1}`}
+                      checked={activeChannels.includes(channel)}
+                      onChange={() => toggleInputChannel(device, channel)}
+                      unavailable={channel >= channelCount}
+                    />
+                  ))}
+              </MixGroup>
+            ))}
+          </MixGroup>
+          <MixGroup
+            label="Output"
+            open={outputOpen}
+            onToggle={() => setOutputOpen(!outputOpen)}
+            count={Number(Boolean(draft.output))}
+          >
+            {outputChoices.length === 0 && (
+              <p className="px-2 text-muted-foreground">No Stereo Outputs Available</p>
+            )}
+            {outputChoices.map((device) => (
               <MixCheckRow
-                key={member.id}
-                label={label}
-                tip={applicationWindowContext(member)}
-                checked={checked.has(member.id)}
-                onChange={() => toggle({ id: member.id, label })}
-                unavailable={!available.has(member.id)}
+                key={device.id}
+                label={formatAudioDeviceLabel(device.label).full}
+                checked={device.id === draft.output?.id}
+                unavailable={!isMixOutputDevice(device)}
+                onChange={() => toggleOutput(device)}
               />
-            );
-          })}
-        </MixGroup>
-      </fieldset>
-      <div className="flex items-center justify-end gap-2 border-t border-border px-3 py-2">
+            ))}
+          </MixGroup>
+          <MixGroup
+            label="Applications"
+            open={applicationsOpen}
+            onToggle={() => setApplicationsOpen(!applicationsOpen)}
+            count={checked.size}
+          >
+            {choices.length === 0 && (
+              <p className="px-2 text-muted-foreground">No Applications Available</p>
+            )}
+            {choices.map((member) => {
+              const label = applicationSourceName(member);
+              return (
+                <MixCheckRow
+                  key={member.id}
+                  label={label}
+                  tip={applicationWindowContext(member)}
+                  checked={checked.has(member.id)}
+                  onChange={() => toggle({ id: member.id, label })}
+                  unavailable={!available.has(member.id)}
+                />
+              );
+            })}
+          </MixGroup>
+        </fieldset>
+      </div>
+      <div className="flex shrink-0 items-center justify-end gap-2 border-t border-border px-3 py-2">
+        {mixNotice && (
+          <span
+            role="status"
+            className="min-w-0 flex-1 text-[length:var(--ui-fs-caption)] text-muted-foreground"
+          >
+            {mixNotice}
+          </span>
+        )}
         <Button variant="ghost" disabled={saving} onClick={cancel}>
           Cancel
         </Button>

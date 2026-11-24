@@ -110,7 +110,8 @@ them without extra routing.
 
 In the normal window, choose **Add Mix** at the bottom of **Sources**. Check applications,
 channels from one input device, or both. You can save a Mix with a single application or a
-single input channel.
+single input channel. Under **Output**, you can select one stereo playback device on its own
+or with channels from one input device. Output and application selections cannot be saved together.
 PLVS generates a name from the selection. Use the pencil to enter your own name.
 **Save** adds the Mix under **Mixes** and selects it for the current Workbench.
 You can also select a saved Mix under **Mixes** in the Dock toolbar's **Sources** menu or in the
@@ -118,8 +119,9 @@ system Tray's **Source** submenu for your Workbench.
 
 PLVS sums the sources into one stereo signal for measurement. A mono input goes to both sides at
 −3 dB per side. When several channels are checked, PLVS adds them at unity gain before placing
-the result at the center. If the selected input is already audible through an application in the Mix, PLVS
-will count that signal twice. If one source goes away, capture can continue with the others while
+the result at the center. The output keeps its left and right channels. If the selected input
+is already audible through the selected output or an application in the Mix, PLVS counts that
+input twice. If one source goes away, capture can continue with the others while
 PLVS waits for it to return. The Live transport clock continues while capture remains running,
 even during gaps without audio. The Mix row shows unavailable members. Applications with no
 current audio can stay selected.

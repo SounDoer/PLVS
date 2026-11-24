@@ -65,7 +65,9 @@ surface exposes `group:input` and `group:applications` to expand or collapse a g
 `input:<device-id>` expands a device and exposes its `input-toggle:<index>` checkbox choices
 with zero-based indices. Checking a channel from a different input replaces the previous
 input selection. Applications exposes `toggle:<application-id>`. Save requires at least one
-checked application or input channel. Use the latest surface ID,
+checked application, input channel, or stereo output. Use `group:output` and `output:<device-id>`
+to choose a single whole output. A draft with both an output and applications disables Save.
+Use the latest surface ID,
 revision and UI generation for each decision. These choices run the same handlers as the editor
 controls. The editor's draft name stays private to the UI.
 

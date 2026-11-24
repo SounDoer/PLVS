@@ -236,6 +236,7 @@ function AppContent() {
     sourceMixes,
     mixApplicationIds,
     mixInput,
+    mixOutputId,
     footerSourceLabel,
   } = useSource();
 
@@ -299,6 +300,7 @@ function AppContent() {
     captureDeviceId,
     mixApplicationIds,
     mixInput,
+    mixOutputId,
     captureFormatSignature,
     captureDeviceUnavailable,
     histMaxSamples,
@@ -596,6 +598,7 @@ function AppContent() {
             owner={sourceMixes}
             applications={captureApplications}
             inputs={audioInputs}
+            outputs={audioOutputs}
           />
         ) : null}
         <CloseConfirmDialog

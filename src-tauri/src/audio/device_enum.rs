@@ -194,7 +194,22 @@ pub(crate) fn build_device_list() -> Result<Vec<DeviceInfo>, String> {
     let key = device_id_key(&device)?;
     let label = device_list_label(&device)?;
     let id = device_id::alloc_loopback_id(&key, &mut used_lb);
-    let plan = super::source_layout::device_plan(&device, cfg.channels(), true);
+    #[cfg(target_os = "windows")]
+    let (plan, mix_stereo_output) = {
+      let observed = super::windows_layout::read_output(&device, cfg.channels());
+      let mix_stereo_output = observed.as_ref().is_some_and(|(_, stereo)| *stereo);
+      let plan = super::source_layout::plan_device_layout(
+        cfg.channels(),
+        true,
+        observed.map(|(layout, _)| layout),
+      );
+      (plan, mix_stereo_output)
+    };
+    #[cfg(not(target_os = "windows"))]
+    let (plan, mix_stereo_output) = (
+      super::source_layout::device_plan(&device, cfg.channels(), true),
+      false,
+    );
     out.push(DeviceInfo {
       id,
       label,
@@ -202,6 +217,7 @@ pub(crate) fn build_device_list() -> Result<Vec<DeviceInfo>, String> {
       is_loopback: true,
       default_sample_rate: cfg.sample_rate(),
       channels: plan.channels(),
+      mix_stereo_output,
       monitor_signature: Some(plan.signature()),
       core_audio_output_uid: None,
     });
@@ -226,6 +242,7 @@ pub(crate) fn append_input_devices(out: &mut Vec<DeviceInfo>) -> Result<(), Stri
       is_loopback,
       default_sample_rate: cfg.sample_rate(),
       channels: cfg.channels(),
+      mix_stereo_output: false,
       monitor_signature: None,
       core_audio_output_uid: None,
     });
@@ -507,6 +524,7 @@ mod substring_tests {
       is_loopback: false,
       default_sample_rate: 48000,
       channels: 2,
+      mix_stereo_output: false,
       monitor_signature: None,
       core_audio_output_uid: None,
     }

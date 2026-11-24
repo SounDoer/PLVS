@@ -23,7 +23,7 @@ beforeEach(() => {
   vi.mocked(sourceMixesStore.persist).mockResolvedValue(undefined);
 });
 
-function mountEditor(onSelect = vi.fn(), inputs = []) {
+function mountEditor(onSelect = vi.fn(), inputs = [], outputs = []) {
   let registry;
   let navigation;
   function Harness() {
@@ -31,7 +31,12 @@ function mountEditor(onSelect = vi.fn(), inputs = []) {
     registry = useBlockingEditors();
     navigation = useUiNavigation();
     return owner.draft ? (
-      <SourceMixEditor owner={owner} applications={applications} inputs={inputs} />
+      <SourceMixEditor
+        owner={owner}
+        applications={applications}
+        inputs={inputs}
+        outputs={outputs}
+      />
     ) : (
       <button onClick={() => owner.open()}>Add Mix</button>
     );
@@ -190,3 +195,44 @@ it.each([{ channels: [0] }, { channels: [0, 2] }])(
     });
   }
 );
+
+it("retains selections on conflict and saves a stereo output with input channels", async () => {
+  const input = { id: `cap-${"3".repeat(32)}`, label: "Interface", channels: 2 };
+  const output = { id: `lb-${"4".repeat(32)}`, label: "Speakers", mixStereoOutput: true };
+  const surround = { id: `lb-${"5".repeat(32)}`, label: "Surround" };
+  const { ui } = mountEditor(vi.fn(), [input], [output, surround]);
+  const decide = async (choice) => {
+    const state = ui().inspectUi();
+    await act(async () => {
+      await ui().decideSurface({
+        surfaceId: state.surfaces[0].surfaceId,
+        choice,
+        expectedRevision: 3,
+        expectedUiGeneration: state.uiGeneration,
+      });
+    });
+  };
+
+  await decide("group:applications");
+  await decide(`toggle:${applications[0].id}`);
+  await decide("group:output");
+  await decide(`output:${output.id}`);
+  expect(screen.queryByRole("checkbox", { name: "Surround" })).toBeNull();
+  expect(screen.getByRole("checkbox", { name: "Player" })).toHaveProperty("checked", true);
+  expect(screen.getByRole("checkbox", { name: "Speakers" })).toHaveProperty("checked", true);
+  expect(screen.getByRole("button", { name: "Save" })).toHaveProperty("disabled", true);
+  expect(screen.getByRole("status").textContent).toContain("Deselect applications");
+  await decide(`toggle:${applications[0].id}`);
+  expect(screen.getByRole("button", { name: "Save" })).toHaveProperty("disabled", false);
+
+  await decide("group:input");
+  await decide(`input:${input.id}`);
+  await decide("input-toggle:0");
+  expect(screen.getByRole("status").textContent).toContain("counted twice");
+  await decide("save");
+  expect(vi.mocked(sourceMixesStore.persist).mock.calls[0][0].list[0]).toMatchObject({
+    members: [],
+    input: { id: input.id, channels: [0] },
+    output: { id: output.id, label: output.label },
+  });
+});

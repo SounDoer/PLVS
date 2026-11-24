@@ -16,7 +16,12 @@ import {
   MANAGEMENT_ROW_CLASS,
   ManagementIconAction,
 } from "./ManagementRow.jsx";
-import { isSourceMixId, mixInputAvailable, sourceMixMemberCount } from "../lib/sourceMixes.js";
+import {
+  isMixOutputDevice,
+  isSourceMixId,
+  mixInputAvailable,
+  sourceMixMemberCount,
+} from "../lib/sourceMixes.js";
 import { useUiNavigationTarget, useUiSurface } from "../uiNavigation/UiNavigationContext.jsx";
 
 const SOURCE_LEADING_CLASS = "grid w-[1em] shrink-0 place-items-center";
@@ -216,7 +221,15 @@ export function DeviceSelectionContent({
             {sourceMixes.list.map((mix) => {
               const unavailable =
                 mix.members.filter(({ id }) => !available.has(id)).length +
-                Number(Boolean(mix.input && !mixInputAvailable(mix.input, audioInputs)));
+                Number(Boolean(mix.input && !mixInputAvailable(mix.input, audioInputs))) +
+                Number(
+                  Boolean(
+                    mix.output &&
+                    !audioOutputs.some(
+                      (device) => device.id === mix.output.id && isMixOutputDevice(device)
+                    )
+                  )
+                );
               const members = sourceMixMemberCount(mix);
               const count = unavailable || members;
               const detail = `${count} ${count === 1 ? "Source" : "Sources"} ${unavailable ? "Unavailable" : "· Stereo"}`;

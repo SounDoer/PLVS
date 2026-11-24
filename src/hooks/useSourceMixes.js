@@ -45,6 +45,18 @@ export function useSourceMixes({ supported, onSelect, onError }) {
     });
   }
 
+  function toggleOutput(device) {
+    setDraft((current) =>
+      !current || writing.current
+        ? current
+        : {
+            ...current,
+            output:
+              current.output?.id === device.id ? null : { id: device.id, label: device.label },
+          }
+    );
+  }
+
   async function save({ throwOnError = false } = {}) {
     if (writing.current || !draft || !canSaveSourceMix(draft)) return;
     writing.current = true;
@@ -61,6 +73,7 @@ export function useSourceMixes({ supported, onSelect, onError }) {
         id: draft.id ?? `mix-${crypto.randomUUID()}`,
         name: sourceMixName(draft),
         members: draft.members,
+        ...(draft.output && { output: draft.output }),
         ...(draft.input && {
           input: { id: draft.input.id, label: draft.input.label, channels: draft.input.channels },
         }),
@@ -106,6 +119,7 @@ export function useSourceMixes({ supported, onSelect, onError }) {
     open,
     toggle,
     toggleInputChannel,
+    toggleOutput,
     save,
     remove,
     rename: (name) => setDraft((current) => current && { ...current, name }),

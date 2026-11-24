@@ -52,6 +52,7 @@ const CAPTURE_INVALIDATION_RETRY_STEP_MS = 300;
  *   captureDeviceId?: string,
  *   captureFormatSignature?: string,
  *   mixApplicationIds?: string[],
+ *   mixOutputId?: string,
  *   mixInput?: { id: string, channels: number[] },
  *   captureDeviceUnavailable?: boolean,
  *   histMaxSamples: number,
@@ -75,6 +76,7 @@ export function useAudioEngine({
   captureDeviceId = "default",
   mixApplicationIds,
   mixInput,
+  mixOutputId,
   /** When channels/default rate change for the active device, bumps to restart WASAPI/session (e.g. Windows speaker layout). */
   captureFormatSignature = "",
   captureDeviceUnavailable = false,
@@ -372,6 +374,7 @@ export function useAudioEngine({
               ...(applicationId ? { applicationId } : {}),
               ...(mixApplicationIds ? { mixApplicationIds } : {}),
               ...(mixInput ? { mixInput } : {}),
+              ...(mixOutputId ? { mixOutputId } : {}),
               continueSession,
               onFrame: applyFrame,
             });
@@ -438,6 +441,7 @@ export function useAudioEngine({
     captureDeviceId,
     mixApplicationIds,
     mixInput,
+    mixOutputId,
     beginMixCapture,
     updateMixCapture,
     captureFormatSignature,

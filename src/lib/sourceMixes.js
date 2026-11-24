@@ -21,9 +21,17 @@ export function isMixInputId(id) {
   return /^cap-[0-9a-f]{32}$/.test(id);
 }
 
-export function canSaveSourceMix({ members, input }) {
+export function isMixOutputDevice(device) {
+  return /^lb-[0-9a-f]{32}$/.test(device.id) && device.mixStereoOutput === true;
+}
+
+export function canSaveSourceMix({ members, input, output }) {
   return (
-    (input != null || members.length > 0) &&
+    (input != null || output != null || members.length > 0) &&
+    (output == null ||
+      (/^lb-[0-9a-f]{32}$/.test(output.id) &&
+        typeof output.label === "string" &&
+        members.length === 0)) &&
     members.every(
       (member) => /^app-[0-9a-f]{32}$/.test(member?.id) && typeof member.label === "string"
     ) &&
@@ -43,11 +51,11 @@ export function canSaveSourceMix({ members, input }) {
 }
 
 export function sourceMixMembers(mix) {
-  return mix.input ? [...mix.members, mix.input] : mix.members;
+  return [...mix.members, ...(mix.input ? [mix.input] : []), ...(mix.output ? [mix.output] : [])];
 }
 
 export function sourceMixMemberCount(mix) {
-  return mix.members.length + (mix.input?.channels.length ?? 0);
+  return mix.members.length + (mix.input?.channels.length ?? 0) + Number(Boolean(mix.output));
 }
 
 export function mixInputAvailable(input, devices) {
@@ -65,6 +73,7 @@ export function sourceMixName(draft) {
             `${draft.input.label} · ${draft.input.channels.map((channel) => channel + 1).join(" + ")}`,
           ]
         : []),
+      ...(draft.output ? [draft.output.label] : []),
     ].join(" + ") ||
     "Untitled"
   );

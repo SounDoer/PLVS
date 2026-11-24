@@ -19,6 +19,7 @@ import { useMeterDisplayState, useMeterRuntime } from "./MeterRuntimeContext.jsx
  *   captureDeviceUnavailable: boolean,
  *   sourceMixes: ReturnType<typeof useSourceMixes>,
  *   mixApplicationIds: string[] | undefined,
+ *   mixOutputId: string | undefined,
  *   mixInput: { id: string, channels: number[] } | undefined,
  *   selectedSource: { type: string, label: string } | null,
  *   sourceDisplayName: string | null,
@@ -97,6 +98,7 @@ export function SourceProvider({ children }) {
     () => (inputSignature ? JSON.parse(inputSignature) : undefined),
     [inputSignature]
   );
+  const mixOutputId = selectedMix?.output?.id;
   const editingMix = sourceMixes.draft !== null;
   useEffect(() => {
     if (!editingMix || selectionIsMix || captureDeviceId.startsWith("app-")) return;
@@ -106,7 +108,8 @@ export function SourceProvider({ children }) {
 
   const captureFormatSignature = useMemo(() => {
     if (!isTauri()) return "";
-    if (selectionIsMix) return mixMembers ? `2:48000|${mixMembers}|${inputSignature}` : "";
+    if (selectionIsMix)
+      return mixMembers ? `2:48000|${mixMembers}|${inputSignature}|${mixOutputId ?? ""}` : "";
     if (/^app-[0-9a-f]{32}$/.test(captureDeviceId)) {
       const application = captureApplications.find((candidate) => candidate.id === captureDeviceId);
       const processSignature = application?.processIds?.length
@@ -129,6 +132,7 @@ export function SourceProvider({ children }) {
     selectionIsMix,
     mixMembers,
     inputSignature,
+    mixOutputId,
   ]);
   const captureDeviceUnavailable = selectionIsMix
     ? !selectedMix
@@ -197,6 +201,7 @@ export function SourceProvider({ children }) {
         sourceMixes,
         mixApplicationIds,
         mixInput,
+        mixOutputId,
         selectedSource,
         sourceDisplayName,
         footerSourceLabel,

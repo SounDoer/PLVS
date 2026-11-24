@@ -167,7 +167,15 @@ pub(crate) fn device_layout(
 }
 
 pub(crate) fn device_plan(device: &cpal::Device, channels: u16, output: bool) -> MonitoringPlan {
-  let layout = device_layout(device, channels, output).or_else(|| {
+  plan_device_layout(channels, output, device_layout(device, channels, output))
+}
+
+pub(crate) fn plan_device_layout(
+  channels: u16,
+  output: bool,
+  layout: Option<NativeLayout>,
+) -> MonitoringPlan {
+  let layout = layout.or_else(|| {
     output.then(|| NativeLayout {
       roles: vec!["generic".into(); usize::from(channels)],
       speakers: None,

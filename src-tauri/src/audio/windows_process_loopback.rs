@@ -1,4 +1,4 @@
-//! Windows process-loopback capture for individual applications and stereo application mixes.
+//! Windows process and device loopback capture with a shared stereo Mix timeline.
 
 use std::mem::{size_of, ManuallyDrop};
 use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
@@ -510,7 +510,11 @@ impl AudioCaptureSession for ProcessLoopbackSession {
 
 pub enum ProcessCaptureSource {
   Single(u32),
-  Mix(Vec<String>, Option<MixInput>),
+  Mix {
+    applications: Vec<String>,
+    input: Option<MixInput>,
+    output_id: Option<String>,
+  },
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -579,7 +583,11 @@ pub fn start_process_session(
             forwarder.forward_f32(pcm);
           },
         ),
-        ProcessCaptureSource::Mix(applications, input) => {
+        ProcessCaptureSource::Mix {
+          applications,
+          input,
+          output_id,
+        } => {
           let diagnostics = failure_app
             .try_state::<AppState>()
             .map(|state| state.ui_frame_diagnostics.clone())
@@ -588,6 +596,7 @@ pub fn start_process_session(
           run_live_mix(
             applications,
             input,
+            output_id,
             stop_rx,
             &dropped_chunks,
             &diagnostics,
@@ -616,9 +625,11 @@ pub fn start_process_session(
   }))
 }
 
+#[allow(clippy::too_many_arguments)]
 fn run_live_mix(
   applications: Vec<String>,
   input: Option<MixInput>,
+  output_id: Option<String>,
   stop_rx: mpsc::Receiver<()>,
   dropped: &AtomicU64,
   diagnostics: &UiFrameDiagnosticsCounters,
@@ -630,6 +641,7 @@ fn run_live_mix(
     .iter()
     .map(String::as_str)
     .chain(input.iter().map(|input| input.id.as_str()))
+    .chain(output_id.as_deref())
     .collect::<Vec<_>>();
   let readiness: Vec<_> = member_ids.iter().map(|_| AtomicBool::new(false)).collect();
   let on_packet_drop = |stage| {
@@ -653,19 +665,23 @@ fn run_live_mix(
         return Err(format!("could not start mix capture: {error}"));
       }
     }
-    if let Some(input) = &input {
+    let devices = input
+      .as_ref()
+      .map(MixDevice::Input)
+      .into_iter()
+      .chain(output_id.as_deref().map(MixDevice::Output));
+    for (member, device) in (applications.len()..).zip(devices) {
       let tx = tx.clone();
       let stopping = &stopping;
-      let member = applications.len();
       let available = &readiness[member];
       if let Err(error) = std::thread::Builder::new()
-        .name("mix-input-capture".into())
+        .name("mix-device-capture".into())
         .spawn_scoped(scope, move || {
-          capture_mix_input(input, member, &tx, stopping, available, on_packet_drop)
+          capture_mix_device(device, member, &tx, stopping, available, on_packet_drop)
         })
       {
         stopping.store(true, Ordering::Relaxed);
-        return Err(format!("could not start mix input capture: {error}"));
+        return Err(format!("could not start mix device capture: {error}"));
       }
     }
     drop(tx);
@@ -737,8 +753,24 @@ struct MixCaptureStatus<'a> {
   partial_at: Option<u64>,
 }
 
-fn open_mix_input(input: &MixInput) -> Result<(IAudioClient, CaptureFormat, u16), String> {
-  let (device, _) = super::device_enum::resolve_device(&input.id)?;
+#[derive(Clone, Copy)]
+enum MixDevice<'a> {
+  Input(&'a MixInput),
+  Output(&'a str),
+}
+
+fn open_mix_device(source: MixDevice<'_>) -> Result<(IAudioClient, CaptureFormat, u16), String> {
+  let device_id = match source {
+    MixDevice::Input(input) => &input.id,
+    MixDevice::Output(id) => id,
+  };
+  let (device, config) = super::device_enum::resolve_device(device_id)?;
+  if matches!(source, MixDevice::Output(_))
+    && !super::windows_layout::read_output(&device, config.channels())
+      .is_some_and(|(_, stereo)| stereo)
+  {
+    return Err("Mix output requires a stereo playback device".into());
+  }
   let endpoint = device.id().map_err(|error| error.to_string())?;
   let id: Vec<u16> = endpoint.id().encode_utf16().chain(Some(0)).collect();
   let (client, channels, mask) = unsafe {
@@ -752,7 +784,7 @@ fn open_mix_input(input: &MixInput) -> Result<(IAudioClient, CaptureFormat, u16)
       .map_err(|error| error.to_string())?;
     let format = client.GetMixFormat().map_err(|error| error.to_string())?;
     if format.is_null() {
-      return Err("input returned no mix format".into());
+      return Err("device returned no mix format".into());
     }
     let channels = (*format).nChannels;
     let mask = if (*format).wFormatTag == WAVE_FORMAT_EXTENSIBLE && (*format).cbSize >= 22 {
@@ -763,12 +795,19 @@ fn open_mix_input(input: &MixInput) -> Result<(IAudioClient, CaptureFormat, u16)
     CoTaskMemFree(Some(format.cast()));
     (client, channels, mask)
   };
-  if channels == 0
-    || channels > 256
-    || !input.has_valid_channels()
-    || input.channels.iter().any(|&channel| channel >= channels)
-  {
-    return Err("selected input channels are unavailable".into());
+  match source {
+    MixDevice::Input(input)
+      if channels == 0
+        || channels > 256
+        || !input.has_valid_channels()
+        || input.channels.iter().any(|&channel| channel >= channels) =>
+    {
+      return Err("selected input channels are unavailable".into());
+    }
+    MixDevice::Output(_) if channels != 2 || !matches!(mask, 0 | 3) => {
+      return Err("Mix output requires a stereo playback device".into());
+    }
+    _ => {}
   }
   Ok((
     client,
@@ -777,8 +816,8 @@ fn open_mix_input(input: &MixInput) -> Result<(IAudioClient, CaptureFormat, u16)
   ))
 }
 
-fn capture_mix_input(
-  input: &MixInput,
+fn capture_mix_device(
+  source: MixDevice<'_>,
   member: usize,
   tx: &mpsc::SyncSender<MixPacket>,
   stopping: &AtomicBool,
@@ -788,8 +827,8 @@ fn capture_mix_input(
   let stopped = || stopping.load(Ordering::Relaxed);
   let mut last_error = None;
   while !stopped() {
-    let result = run_mix_input_stream(
-      input,
+    let result = run_mix_device_stream(
+      source,
       member,
       &mut |packet| tx.try_send(packet).is_ok(),
       on_drop,
@@ -799,7 +838,7 @@ fn capture_mix_input(
     available.store(false, Ordering::Relaxed);
     if let Err(error) = result {
       if last_error.as_ref() != Some(&error) {
-        log::warn!("Mix input capture interrupted: {error}");
+        log::warn!("Mix device capture interrupted: {error}");
         last_error = Some(error);
       }
     }
@@ -807,8 +846,8 @@ fn capture_mix_input(
   }
 }
 
-fn run_mix_input_stream(
-  input: &MixInput,
+fn run_mix_device_stream(
+  source: MixDevice<'_>,
   member: usize,
   send: &mut impl FnMut(MixPacket) -> bool,
   mut on_drop: impl FnMut(MixDropStage),
@@ -816,13 +855,17 @@ fn run_mix_input_stream(
   on_start: impl FnOnce(),
 ) -> Result<(), String> {
   let _com = ComApartment::initialize()?;
-  let (client, format, channels) = open_mix_input(input)?;
+  let (client, format, channels) = open_mix_device(source)?;
+  let flags = match source {
+    MixDevice::Input(_) => 0,
+    MixDevice::Output(_) => AUDCLNT_STREAMFLAGS_LOOPBACK,
+  };
   let mut pending: Option<MixPacket> = None;
   run_wasapi_stream(
     client,
     &format,
     channels,
-    0,
+    flags,
     true,
     stopped,
     on_start,
@@ -833,9 +876,24 @@ fn run_mix_input_stream(
         end_qpc: None,
         frames: pcm
           .chunks_exact(usize::from(channels))
-          .map(|frame| mix_input_stereo_frame(frame, &input.channels))
+          .map(|frame| match source {
+            MixDevice::Input(input) => mix_input_stereo_frame(frame, &input.channels),
+            MixDevice::Output(_) => [frame[0], frame[1]],
+          })
           .collect(),
       });
+      if matches!(source, MixDevice::Output(_)) {
+        // Loopback can become idle after this packet. Submit it without waiting for a successor.
+        match next {
+          Some(packet) => {
+            if !send(packet) {
+              on_drop(MixDropStage::IngressQueue);
+            }
+          }
+          None => on_drop(MixDropStage::InvalidTimestamp),
+        }
+        return;
+      }
       if let Some(mut previous) = std::mem::replace(&mut pending, next) {
         if timing.has_qpc() && timing.flags & AUDCLNT_BUFFERFLAGS_DATA_DISCONTINUITY.0 as u32 == 0 {
           previous.end_qpc = Some(timing.qpc);
@@ -1058,8 +1116,8 @@ pub fn capture_input_mix_probe(
       )
     });
     let device = scope.spawn(move || {
-      run_mix_input_stream(
-        &input,
+      run_mix_device_stream(
+        MixDevice::Input(&input),
         1,
         &mut |packet| tx.try_send(packet).is_ok(),
         |_| {
@@ -1582,6 +1640,20 @@ mod tests {
       super::mix_input_stereo_frame(&frame, &[0, 2]),
       [-0.25 * std::f32::consts::FRAC_1_SQRT_2; 2]
     );
+  }
+
+  #[test]
+  fn mix_preserves_independent_output_channels_and_adds_centered_input() {
+    let mut timeline = super::StereoMixTimeline::new(2, 8);
+    let input = super::mix_input_stereo_frame(&[0.25, 0.99, 0.125], &[0, 2]);
+    let output = [0.125, -0.5];
+    timeline.push(0, 0, &[input]);
+    timeline.push(1, 0, &[output]);
+    let mut mixed = [[0.0; 2]];
+    let coverage = timeline.render(&mut mixed);
+    assert_eq!(coverage.full, 1);
+    let centered = 0.375 * std::f32::consts::FRAC_1_SQRT_2;
+    assert_eq!(mixed, [[0.125 + centered, -0.5 + centered]]);
   }
 
   #[test]

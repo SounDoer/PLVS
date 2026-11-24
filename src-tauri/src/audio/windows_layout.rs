@@ -18,7 +18,7 @@ pub(crate) fn read_device(
   channels: u16,
   output: bool,
 ) -> Option<NativeLayout> {
-  read_roles(device.id().ok()?.id(), channels, output, false)
+  read_roles(device.id().ok()?.id(), channels, output, false).map(|(layout, _)| layout)
 }
 
 pub(crate) fn read_capture_device(
@@ -26,7 +26,17 @@ pub(crate) fn read_capture_device(
   channels: u16,
   output: bool,
 ) -> Option<NativeLayout> {
-  read_roles(device.id().ok()?.id(), channels, output, true)
+  read_roles(device.id().ok()?.id(), channels, output, true).map(|(layout, _)| layout)
+}
+
+pub(crate) fn read_output(device: &cpal::Device, channels: u16) -> Option<(NativeLayout, bool)> {
+  read_roles(device.id().ok()?.id(), channels, true, false)
+}
+
+fn supports_mix_stereo(layout: &NativeLayout, configured_mask: Option<u32>) -> bool {
+  configured_mask.is_none_or(|mask| mask == 0 || mask == 3)
+    && layout.roles == ["L", "R"]
+    && layout.speakers.as_deref() == Some(&[0, 1])
 }
 
 // CPAL initializes STA on the calling thread. Reuse that apartment instead of treating the
@@ -47,11 +57,11 @@ fn read_roles(
   channels: u16,
   output: bool,
   diagnostics: bool,
-) -> Option<NativeLayout> {
+) -> Option<(NativeLayout, bool)> {
   // Called on an ordinary discovery/capture worker. COM must be initialized on that thread.
   unsafe {
     let uninitialize = initialize_com()?;
-    let result = (|| -> Option<NativeLayout> {
+    let result = (|| {
       let enumerator: IMMDeviceEnumerator =
         CoCreateInstance(&MMDeviceEnumerator, None, CLSCTX_ALL).ok()?;
       let id: Vec<u16> = endpoint.encode_utf16().chain(Some(0)).collect();
@@ -97,7 +107,10 @@ fn read_roles(
         );
       }
       CoTaskMemFree(Some(format.cast()));
-      roles
+      roles.map(|layout| {
+        let mix_stereo = output && supports_mix_stereo(&layout, configured_mask);
+        (layout, mix_stereo)
+      })
     })();
     if uninitialize {
       CoUninitialize();
@@ -110,6 +123,16 @@ fn read_roles(
 mod tests {
   use super::*;
   use windows::Win32::System::Com::COINIT_APARTMENTTHREADED;
+
+  #[test]
+  fn mix_accepts_stereo_playback_and_rejects_surround_even_during_stereo_fallback() {
+    let stereo = wave_layout(3, 2, Some(3), true).unwrap();
+    assert!(supports_mix_stereo(&stereo, Some(3)));
+    let surround = wave_layout(0x3f, 6, Some(0x3f), true).unwrap();
+    assert!(!supports_mix_stereo(&surround, Some(0x3f)));
+    let stereo_fallback = wave_layout(3, 2, Some(0x3f), true).unwrap();
+    assert!(!supports_mix_stereo(&stereo_fallback, Some(0x3f)));
+  }
 
   #[test]
   fn discovery_reuses_cpals_sta_without_uninitializing_it() {
