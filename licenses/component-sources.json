@@ -60,7 +60,7 @@
       "license": "Apache-2.0 OR MIT",
       "noticeSha256": "a3b7109568db99f59a1a6d87c884feb555d3dfdaac4597b63d909b19efaf389d"
     },
-    "rust:async-executor@1.14.0": {
+    "rust:async-executor@1.14.1": {
       "license": "Apache-2.0 OR MIT",
       "noticeSha256": "a3b7109568db99f59a1a6d87c884feb555d3dfdaac4597b63d909b19efaf389d"
     },
@@ -255,16 +255,16 @@
       "license": "MIT OR Apache-2.0",
       "noticeSha256": "cc2c7f027fae3d2cfa0b72dc10b46e0c3a9ef8e1154f1505c7055c8e0d0776e0"
     },
-    "rust:clipboard-win@5.4.1": {
+    "rust:clipboard-win@5.4.3": {
       "license": "BSL-1.0",
       "supplements": [
         {
           "file": "licenses/upstream/c9bff75738922193e67fa726fa225535870d2aa1059f91452c411736284ad566.txt",
-          "url": "https://raw.githubusercontent.com/DoumanAsh/clipboard-win/3b27cf2bfd1adcfa6e0264eb51c1025ddaf0f342/LICENSE",
+          "url": "https://raw.githubusercontent.com/DoumanAsh/clipboard-win/ed27008ae5d1f10cfbb266de039f0fb35fd05a56/LICENSE",
           "sha256": "c9bff75738922193e67fa726fa225535870d2aa1059f91452c411736284ad566"
         }
       ],
-      "noticeSha256": "66290f576b264a53f6a9469d77d97c61f6bb20e9ea66109807281e536caa987a"
+      "noticeSha256": "f610d270630d461debe417dfddfbe277abefb468d391c2155343f8d063a8236f"
     },
     "rust:combine@4.6.8": {
       "license": "MIT",

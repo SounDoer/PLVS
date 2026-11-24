@@ -4387,9 +4387,9 @@ DEALINGS IN THE SOFTWARE.
 
 
 ========================================================================
-rust:async-executor@1.14.0
+rust:async-executor@1.14.1
 Declared license: Apache-2.0 OR MIT
-Source: https://crates.io/api/v1/crates/async-executor/1.14.0/download
+Source: https://crates.io/api/v1/crates/async-executor/1.14.1/download
 
 --- LICENSE-APACHE ---
                               Apache License
@@ -12735,11 +12735,11 @@ limitations under the License.
 
 
 ========================================================================
-rust:clipboard-win@5.4.1
+rust:clipboard-win@5.4.3
 Declared license: BSL-1.0
-Source: https://crates.io/api/v1/crates/clipboard-win/5.4.1/download
+Source: https://crates.io/api/v1/crates/clipboard-win/5.4.3/download
 
---- licenses/upstream/c9bff75738922193e67fa726fa225535870d2aa1059f91452c411736284ad566.txt (https://raw.githubusercontent.com/DoumanAsh/clipboard-win/3b27cf2bfd1adcfa6e0264eb51c1025ddaf0f342/LICENSE) ---
+--- licenses/upstream/c9bff75738922193e67fa726fa225535870d2aa1059f91452c411736284ad566.txt (https://raw.githubusercontent.com/DoumanAsh/clipboard-win/ed27008ae5d1f10cfbb266de039f0fb35fd05a56/LICENSE) ---
 Boost Software License - Version 1.0 - August 17th, 2003
 
 Permission is hereby granted, free of charge, to any person or organization
