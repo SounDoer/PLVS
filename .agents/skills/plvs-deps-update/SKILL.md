@@ -1,6 +1,6 @@
 ---
 name: "plvs-deps-update"
-description: "Applies the open Dependabot proposals to main: compatible updates are applied, license-reviewed, gated and pushed; incompatible ones and license problems are reported. Use for the weekly scheduled run or when asked to handle dependency updates or Dependabot pull requests."
+description: "Applies the open Dependabot proposals and fixable security advisories to main: compatible updates are applied, license-reviewed, gated and pushed; incompatible ones, blocked advisories and license problems are reported. Use for the weekly scheduled run or when asked to handle dependency updates or Dependabot pull requests."
 ---
 
 # PLVS Dependency Update
@@ -50,9 +50,11 @@ The branch is temporary: the commit lands on main by pushing `HEAD:main`, and th
 branch are removed at the end.
 
 Use the Node version in `.nvmrc`. Check GitHub authentication and registry/network access before
-installing. Before exiting for an empty proposal list, read the recorded backlog decisions and
-check their reassessment conditions. If there are neither proposals nor authorized repository changes,
-report any due decisions and release the lease without creating a worktree.
+installing. Before exiting for an empty proposal list, read the recorded backlog decisions, check
+their reassessment conditions, and collect the open security advisories (see
+[Security advisories](#security-advisories)). If there are no proposals, no fixable advisories and
+no authorized repository changes, report any due decisions and open advisories and release the
+lease without creating a worktree.
 
 ## 2. Collect and classify
 
@@ -95,6 +97,38 @@ side has no matching release yet, hold both. `scripts/tauriDependencyContract.te
 
 Then confirm with a lockfile diff that
 nothing beyond the intended packages and their transitive dependencies moved.
+
+### Security advisories
+
+Version proposals do not cover advisories: a vulnerable transitive dependency can sit unchanged
+while every direct dependency is current. Check both sources on every run:
+
+```bash
+gh api --paginate 'repos/{owner}/{repo}/dependabot/alerts?state=open&per_page=100'
+npm audit --json
+```
+
+Dependabot alerts cover npm and Cargo, including RustSec advisories, against the lockfiles on the
+default branch. `npm audit` repeats the npm check against the worktree; it exits non-zero when it
+finds anything, so read its JSON rather than its status. Run it again after applying
+the proposals, since an update can resolve or introduce a finding. A failed or unauthenticated
+query is reported as unverified, never as "no advisories".
+
+For each advisory, read the patched version and trace the vulnerable package to its dependents
+(`npm ls <pkg>`; `cargo tree --manifest-path src-tauri/Cargo.toml -i <crate>@<version>
+--target all`).
+
+- **Fixable here** — a patched version is reachable by a compatible update, as defined above, of
+  the vulnerable package or of the dependency that pins it. Apply it like a proposal, including the
+  license review. For a transitive Cargo crate, `cargo update -p <crate> --precise <version>` moves
+  the lockfile without editing a manifest.
+- **Blocked** — the fix needs an incompatible update, has no patched release, or an upstream
+  requirement pins the vulnerable version. Do not apply it. Report whether PLVS reaches the affected
+  code: search for the named API (`rg`), and note the platforms and build targets that compile the
+  package. Record "not reached" only with that evidence.
+
+Never dismiss an alert or change alert settings. Dismissal is the maintainer's decision; when the
+evidence shows PLVS does not reach the affected code, recommend dismissal with that reason.
 
 **Capture layer.** An update to a crate imported under `src-tauri/src/audio`, `dsp` or `engine`
 (`rg -o '^use \w+' src-tauri/src/{audio,dsp,engine} | sort -u`; for example `cpal`, `rubato`,
@@ -141,6 +175,8 @@ One commit, Conventional Commits with scope:
 chore(deps): apply weekly dependency updates
 
 Apply the compatible updates proposed in #<n>, #<n>, ...: <pkg> <old> → <new>, ...
+
+Fix security advisories (omit when none): <pkg> <old> → <new> (<advisory ID>), ...
 
 <License sentence: which expressions and notice fingerprints matched; native-component keys
 renamed and why no native code changed.>
@@ -252,14 +288,17 @@ End with a short report in the maintainer's language:
 
 1. **Applied** — packages and versions; the pushed commit SHA and CI result, or why nothing was
    pushed. Include retained branch/worktree paths when cleanup was not possible.
-2. **Needs a decision** — license stop conditions, with what changed and the options.
-3. **Not applied (incompatible)** — each with a one-line effort estimate.
-4. **Capture layer** — affected crates and the reminder to run `smoke:capture` and `soak:capture`.
-5. **Backlog** — open PRs / limit by update entry, capacity warnings, oldest long-lived proposals,
+2. **Security** — advisories fixed in this commit; blocked advisories with severity, the blocking
+   dependency, whether PLVS reaches the affected code, and any recommended dismissal; or that the
+   query could not be verified.
+3. **Needs a decision** — license stop conditions, with what changed and the options.
+4. **Not applied (incompatible)** — each with a one-line effort estimate.
+5. **Capture layer** — affected crates and the reminder to run `smoke:capture` and `soak:capture`.
+6. **Backlog** — open PRs / limit by update entry, capacity warnings, oldest long-lived proposals,
    and links to recorded decisions. Separate new or due decisions from unchanged deferred items.
 
-When there are no open Dependabot pull requests and no recorded decisions due for reassessment,
-say so in one line. Otherwise report due decisions even when ignored versions have no open PR.
+When there are no open Dependabot pull requests, no open advisories and no recorded decisions due
+for reassessment, say so in one line. Otherwise report due decisions even when ignored versions have no open PR.
 
 ## Scheduled run
 
