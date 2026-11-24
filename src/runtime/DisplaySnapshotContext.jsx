@@ -1,4 +1,4 @@
-import { createContext, useContext, useMemo } from "react";
+import { createContext, useContext, useMemo, useSyncExternalStore } from "react";
 import { HIST_SAMPLE_SEC } from "../hooks/useLoudnessHistory.js";
 import { useSnapshot } from "../hooks/useSnapshot";
 import { latestHistoryTimestampMs } from "../lib/historyTimestamps.js";
@@ -39,7 +39,12 @@ export function DisplaySnapshotProvider({ children }) {
   const { selectedOffset, selectedSnapshotTimeMs } = useMeterDisplayState();
   const { fileSession, fileImport, fileQueue } = useSourceActions();
   const { audio } = display;
-  const { elapsedMsRef } = display.clock;
+  const { elapsedMsRef, getElapsedSecond, subscribe } = display.clock;
+  const liveClockVisible = sourceMode === "live" && running && selectedOffset < 0;
+  // An unavailable Mix can remain running without publishing any meter frames.
+  const elapsedSecond = useSyncExternalStore(subscribe, () =>
+    liveClockVisible ? getElapsedSecond() : null
+  );
   const snapshot = useSnapshot({
     selectedOffset,
     sampleSec: HIST_SAMPLE_SEC,
@@ -74,7 +79,7 @@ export function DisplaySnapshotProvider({ children }) {
     liveLifecycle,
     selectedOffset,
     latestTimestampMs,
-    elapsedMs: elapsedMsRef.current,
+    elapsedMs: elapsedSecond === null ? elapsedMsRef.current : elapsedSecond * 1_000,
     selectedSnapshotTimeMs,
     selectedMediaTimeMs,
     fileSession,

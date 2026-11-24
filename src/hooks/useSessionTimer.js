@@ -12,28 +12,39 @@ export function formatClock(ms) {
 }
 
 /**
- * Session timer driven by rAF, decoupled from React render cycle.
- *
- * Attach `clockRef` to a DOM text node to get ~10Hz clock updates without
- * triggering React re-renders. Read `elapsedMsRef.current` for accumulated ms.
- * Read `canClearRef.current` to gate the Clear button.
+ * Session timer driven by rAF. The transport subscribes to whole-second changes, while
+ * history snapshots read `elapsedMsRef.current` for subsecond precision.
  */
 export function useSessionTimer() {
   const runStartedAtRef = useRef(null);
   const accumulatedMsRef = useRef(0); // ms from previous start/stop cycles
   const rafIdRef = useRef(0);
   const lastTickMsRef = useRef(0);
-  const clockRef = useRef(null); // attach to a DOM text node
   const elapsedMsRef = useRef(0); // current total elapsed ms
-  const canClearRef = useRef(false);
+  const listenersRef = useRef(new Set());
   // Stable wrapper ref so RAF loop can reschedule itself without self-reference in useCallback
   const loopRef = useRef(null);
 
-  const updateClockDom = useCallback(() => {
-    if (clockRef.current) {
-      clockRef.current.textContent = formatClock(elapsedMsRef.current);
-    }
+  const getElapsedSecond = useCallback(() => Math.floor(elapsedMsRef.current / 1000), []);
+
+  const subscribe = useCallback((/** @type {() => void} */ listener) => {
+    const listeners = listenersRef.current;
+    listeners.add(listener);
+    return () => {
+      listeners.delete(listener);
+    };
   }, []);
+
+  const updateElapsed = useCallback(
+    (/** @type {number} */ elapsedMs) => {
+      const previousSecond = getElapsedSecond();
+      elapsedMsRef.current = elapsedMs;
+      if (getElapsedSecond() !== previousSecond) {
+        for (const listener of listenersRef.current) listener();
+      }
+    },
+    [getElapsedSecond]
+  );
 
   useEffect(() => {
     loopRef.current = (/** @type {number} */ now) => {
@@ -41,13 +52,10 @@ export function useSessionTimer() {
       if (now - lastTickMsRef.current < 100) return; // ~10 Hz throttle
       lastTickMsRef.current = now;
       if (runStartedAtRef.current !== null) {
-        elapsedMsRef.current =
-          accumulatedMsRef.current + (performance.now() - runStartedAtRef.current);
-        canClearRef.current = true;
-        updateClockDom();
+        updateElapsed(accumulatedMsRef.current + (performance.now() - runStartedAtRef.current));
       }
     };
-  }, [updateClockDom]);
+  }, [updateElapsed]);
 
   const startTimer = useCallback(() => {
     if (runStartedAtRef.current !== null) return; // already running
@@ -60,26 +68,25 @@ export function useSessionTimer() {
     if (runStartedAtRef.current === null) return;
     accumulatedMsRef.current += performance.now() - runStartedAtRef.current;
     runStartedAtRef.current = null;
-    elapsedMsRef.current = accumulatedMsRef.current;
-    canClearRef.current = accumulatedMsRef.current > 0;
     cancelAnimationFrame(rafIdRef.current);
-    updateClockDom();
-  }, [updateClockDom]);
+    updateElapsed(accumulatedMsRef.current);
+  }, [updateElapsed]);
 
-  const resetTimer = useCallback(({ restart = false } = {}) => {
-    cancelAnimationFrame(rafIdRef.current);
-    accumulatedMsRef.current = 0;
-    elapsedMsRef.current = 0;
-    canClearRef.current = false;
-    runStartedAtRef.current = restart ? performance.now() : null;
-    lastTickMsRef.current = 0;
-    if (clockRef.current) clockRef.current.textContent = restart ? formatClock(0) : "";
-    if (restart) rafIdRef.current = requestAnimationFrame(loopRef.current);
-  }, []);
+  const resetTimer = useCallback(
+    ({ restart = false } = {}) => {
+      cancelAnimationFrame(rafIdRef.current);
+      accumulatedMsRef.current = 0;
+      runStartedAtRef.current = restart ? performance.now() : null;
+      lastTickMsRef.current = 0;
+      updateElapsed(0);
+      if (restart) rafIdRef.current = requestAnimationFrame(loopRef.current);
+    },
+    [updateElapsed]
+  );
 
   useEffect(() => {
     return () => cancelAnimationFrame(rafIdRef.current);
   }, []);
 
-  return { clockRef, elapsedMsRef, canClearRef, startTimer, stopTimer, resetTimer };
+  return { elapsedMsRef, getElapsedSecond, subscribe, startTimer, stopTimer, resetTimer };
 }

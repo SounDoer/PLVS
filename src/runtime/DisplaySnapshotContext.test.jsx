@@ -1,5 +1,5 @@
 /** @vitest-environment jsdom */
-import { beforeEach, describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { act, render, renderHook } from "@testing-library/react";
 import { WorkspaceProvider } from "../workspace/WorkspaceContext.jsx";
 import { BlockingEditorsProvider } from "../hooks/BlockingEditorsContext.jsx";
@@ -86,6 +86,32 @@ describe("DisplaySnapshotProvider", () => {
       chromeState: "live",
       actionKind: "stopLive",
     });
+  });
+
+  it("advances the running transport clock without meter frames", async () => {
+    vi.useFakeTimers();
+    try {
+      const seen = mount();
+      await act(async () => {
+        seen.runtime.startLive();
+      });
+
+      expect(seen.snapshot.sourceTransportState.statusLabel).toBe("00:00:00");
+      act(() => vi.advanceTimersByTime(2_200));
+
+      expect(seen.snapshot.channelCount).toBe(0);
+      expect(seen.snapshot.sourceTransportState.statusLabel).toBe("00:00:02");
+
+      act(() => seen.assembly.display.selectSnapshot(0.5));
+      const snapshotTime = seen.snapshot.sourceTransportState.statusLabel;
+      act(() => vi.advanceTimersByTime(2_000));
+      expect(seen.snapshot.sourceTransportState.statusLabel).toBe(snapshotTime);
+
+      act(() => seen.assembly.display.clearSnapshot());
+      expect(seen.snapshot.sourceTransportState.statusLabel).toBe("00:00:04");
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it("refuses the hook outside the provider", () => {

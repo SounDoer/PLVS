@@ -129,8 +129,9 @@ PLVS sums the sources into one stereo signal for measurement. A mono input goes 
 −3 dB per side. When several channels are checked, PLVS adds them at unity gain before placing
 the result at the center. If the selected input is already audible through an application in the Mix, PLVS
 will count that signal twice. If one source goes away, capture can continue with the others while
-PLVS waits for it to return. The Mix row shows unavailable members. Applications with no current
-audio can stay selected.
+PLVS waits for it to return. The Live transport clock continues while capture remains running,
+even during gaps without audio. The Mix row shows unavailable members. Applications with no
+current audio can stay selected.
 **Status Notices** identifies unavailable members. After they return, **Incomplete Mix
 Measurement** indicates that Integrated and Max include the incomplete intervals. Clear or a new
 measurement clears that indication.
