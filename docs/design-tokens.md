@@ -225,6 +225,8 @@ Choose the primitive by the button's role and placement.
 `Button` variants are Primary (`default`), `secondary`, `ghost`, `quiet`, `outline`, `destructive`,
 and `link`. Use `quiet` for low-emphasis controls with muted idle text and a neutral highlight.
 A dialog's dismissing action is `ghost`. Its confirming action is Primary or `destructive`.
+`Button` renders a native `button` and defaults to `type="button"`. Use `type="submit"` for a
+button that submits a form.
 
 The [app header](../src/components/AppHeader.jsx) uses `IconButton` for shell-sized actions with a
 built-in tooltip. The [Files menu](../src/components/FileAnalysisHistoryMenu.jsx) uses
