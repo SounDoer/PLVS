@@ -43,6 +43,24 @@ describe("synthesizeSignal", () => {
     }
   );
 
+  it("writes the offset tone continuously across the one-second repeat", async () => {
+    const path = join(tmpdir(), `plvs-rig-beat-${Date.now()}.wav`);
+    try {
+      const freqHz = SIGNAL.freqHz + 1;
+      await synthesizeSignal(path, { seconds: 1.01, freqHz, peakLDb: 0, peakRDb: -Infinity });
+      const wav = readFileSync(path);
+      const frame = 100;
+      const expected = Math.round(
+        Math.sin((2 * Math.PI * freqHz * frame) / SIGNAL.sampleRateHz) * 32767
+      );
+      expect(wav.readInt16LE(44 + frame * 4)).toBe(expected);
+      expect(wav.readInt16LE(44 + (SIGNAL.sampleRateHz + frame) * 4)).toBe(expected);
+      expect(wav.readInt16LE(46 + frame * 4)).toBe(0);
+    } finally {
+      await rm(path, { force: true });
+    }
+  });
+
   it("writes a WAV whose header matches the declared format", async () => {
     const path = join(tmpdir(), `plvs-rig-test-${Date.now()}.wav`);
     try {

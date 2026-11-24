@@ -905,12 +905,16 @@ pub struct MixProbeMeasurement {
   true_peak_max_dbtp: f64,
   sample_peak_max_l_db: f64,
   sample_peak_max_r_db: f64,
+  min_full_window_peak_l_db: Option<f64>,
 }
 
 fn measure_streaming_stereo(rx: mpsc::Receiver<MixPacket>) -> Result<MixProbeMeasurement, String> {
   let mut meter = SummaryMeter::new(DEFAULT_SAMPLE_RATE, DEFAULT_CHANNELS);
   let mut coverage = MixCoverage::default();
   let mut dropped = 0;
+  let mut window_frames = 0;
+  let mut window_peak = 0.0_f32;
+  let mut min_window_peak = None::<f32>;
   let started = run_mix_timeline(
     rx,
     2,
@@ -921,6 +925,25 @@ fn measure_streaming_stereo(rx: mpsc::Receiver<MixPacket>) -> Result<MixProbeMea
       coverage.empty += rendered.empty;
       if rendered.full + rendered.partial > 0 {
         meter.push_interleaved(pcm);
+      }
+      // Compare the beat envelope in contiguous 10 ms windows after capture has settled.
+      if coverage.full < DEFAULT_SAMPLE_RATE as usize || rendered.full != pcm.len() / 2 {
+        window_frames = 0;
+        window_peak = 0.0;
+        return;
+      }
+      for frame in pcm.as_chunks::<2>().0 {
+        window_peak = window_peak.max(frame[0].abs());
+        window_frames += 1;
+        if window_frames == DEFAULT_SAMPLE_RATE / 100 {
+          // The two frequencies cannot cancel to digital silence for an entire window.
+          if window_peak > 0.0 {
+            min_window_peak =
+              Some(min_window_peak.map_or(window_peak, |peak| peak.min(window_peak)));
+          }
+          window_frames = 0;
+          window_peak = 0.0;
+        }
       }
     },
     || {
@@ -940,6 +963,7 @@ fn measure_streaming_stereo(rx: mpsc::Receiver<MixPacket>) -> Result<MixProbeMea
     true_peak_max_dbtp: metrics.true_peak_max_dbtp,
     sample_peak_max_l_db: metrics.sample_peak_max_l_db,
     sample_peak_max_r_db: metrics.sample_peak_max_r_db,
+    min_full_window_peak_l_db: min_window_peak.map(|peak| 20.0 * f64::from(peak).log10()),
   })
 }
 

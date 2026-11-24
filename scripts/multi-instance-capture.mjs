@@ -279,8 +279,14 @@ async function runProcessTimingProbe(index) {
   if (!Number.isSafeInteger(seconds)) throw new RigError("--seconds must be an integer.");
   const measureMix = process.argv.includes("--measure-mix");
   if (measureMix && seconds > 60) throw new RigError("Mix measurement accepts up to 60 seconds.");
+  const measurePhase = process.argv.includes("--measure-mix-phase");
   const restartMember = process.argv.includes("--restart-mix-member");
   const dropMember = restartMember || process.argv.includes("--drop-mix-member");
+  if (measurePhase && (!measureMix || dropMember || seconds < 4)) {
+    throw new RigError(
+      "--measure-mix-phase requires --measure-mix for at least 4 seconds without a member exit."
+    );
+  }
   if (restartMember && (!measureMix || seconds < 12)) {
     throw new RigError("--restart-mix-member requires --measure-mix for at least 12 seconds.");
   }
@@ -290,6 +296,7 @@ async function runProcessTimingProbe(index) {
   const wav = join(tmpdir(), `plvs-process-timing-${process.pid}.wav`);
   const secondWav = measureMix ? join(tmpdir(), `plvs-process-mix-right-${process.pid}.wav`) : wav;
   const returnPeak = -12;
+  const phasePeak = -4;
   const returnWav = restartMember
     ? join(tmpdir(), `plvs-process-mix-return-${process.pid}.wav`)
     : null;
@@ -301,6 +308,7 @@ async function runProcessTimingProbe(index) {
         await synthesizeSignal(wav, {
           seconds: seconds + 15,
           ...(measureMix ? { peakRDb: -Infinity } : {}),
+          ...(measurePhase ? { peakLDb: phasePeak } : {}),
         });
         if (measureMix)
           await synthesizeSignal(secondWav, {
@@ -308,6 +316,9 @@ async function runProcessTimingProbe(index) {
               ? SETTLE_MS / 1000 + seconds / (restartMember ? 3 : 2)
               : seconds + 15,
             peakLDb: -Infinity,
+            ...(measurePhase
+              ? { peakLDb: phasePeak, peakRDb: -Infinity, freqHz: SIGNAL.freqHz + 1 }
+              : {}),
           });
         if (returnWav) {
           await synthesizeSignal(returnWav, {
@@ -366,7 +377,10 @@ async function runProcessTimingProbe(index) {
           const mixed = report.mix?.Ok;
           if (!mixed)
             throw new RigError(`Mix could not be measured: ${report.mix?.Err}. Report: ${path}`);
-          if (left.samplePeakMaxRDb !== null || right.samplePeakMaxLDb !== null) {
+          if (
+            left.samplePeakMaxRDb !== null ||
+            (measurePhase ? right.samplePeakMaxRDb : right.samplePeakMaxLDb) !== null
+          ) {
             throw new RigError(
               `The process captures did not isolate the two test signals. Report: ${path}`
             );
@@ -380,6 +394,27 @@ async function runProcessTimingProbe(index) {
             (!dropMember && mixed.partialFrames >= SIGNAL.sampleRateHz)
           ) {
             throw new Error(`Mix coverage did not match the test scenario. Report: ${path}`);
+          }
+          if (measurePhase) {
+            // The 1 Hz beat sweeps both phase extremes regardless of when each player starts.
+            const expectedFullPeak = phasePeak + 20 * Math.log10(2);
+            if (
+              !Number.isFinite(left.samplePeakMaxLDb) ||
+              !Number.isFinite(right.samplePeakMaxLDb) ||
+              Math.abs(left.samplePeakMaxLDb - phasePeak) > 0.2 ||
+              Math.abs(right.samplePeakMaxLDb - phasePeak) > 0.2 ||
+              !Number.isFinite(mixed.samplePeakMaxLDb) ||
+              Math.abs(mixed.samplePeakMaxLDb - expectedFullPeak) > 0.2 ||
+              !Number.isFinite(mixed.truePeakMaxDbtp) ||
+              Math.abs(mixed.truePeakMaxDbtp - expectedFullPeak) > 0.2 ||
+              !Number.isFinite(mixed.minFullWindowPeakLDb) ||
+              mixed.minFullWindowPeakLDb > phasePeak - 25
+            ) {
+              throw new Error(
+                `Mix beat missed its addition or cancellation target. Report: ${path}`
+              );
+            }
+            return path;
           }
           const rightCoverage = dropMember
             ? mixed.comparedFrames / (mixed.comparedFrames + mixed.partialFrames)

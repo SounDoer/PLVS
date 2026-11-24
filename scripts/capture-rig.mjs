@@ -68,9 +68,17 @@ export class RigError extends Error {}
 
 export async function synthesizeSignal(
   path,
-  { seconds = SIGNAL.seconds, peakLDb = SIGNAL.peakLDb, peakRDb = SIGNAL.peakRDb } = {}
+  {
+    seconds = SIGNAL.seconds,
+    peakLDb = SIGNAL.peakLDb,
+    peakRDb = SIGNAL.peakRDb,
+    freqHz = SIGNAL.freqHz,
+  } = {}
 ) {
-  const { sampleRateHz, freqHz } = SIGNAL;
+  const { sampleRateHz } = SIGNAL;
+  if (!Number.isSafeInteger(freqHz) || freqHz <= 0 || freqHz >= sampleRateHz / 2) {
+    throw new RigError("Signal frequency must be a whole number below Nyquist.");
+  }
   const ampL = 10 ** (peakLDb / 20);
   const ampR = 10 ** (peakRDb / 20);
   const frames = Math.round(sampleRateHz * seconds);

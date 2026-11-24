@@ -336,6 +336,12 @@ official corpus is an opt-in local input with no CI or release-job dependency.
 
 ### Capture hardware and soak evidence
 
+For Windows application Mixes, build the `process_loopback_probe` Cargo example. Run
+`npm run smoke:capture:multi -- --process-timing-probe <probe.exe> --measure-mix --measure-mix-phase --wait`
+to capture two independent players with left-channel tones at 1,000 and 1,001 Hz. Their beat lets
+the probe check the near-in-phase peak above 0 dBFS and the near-opposite-phase dip without aligning
+player start times. The dip uses only 10 ms windows with both sources present.
+
 The self-hosted capture jobs run the rig's generated stereo signal. Weekly soak comparison
 reads the tracked numeric baselines in `fixtures/capture-soak-baselines/`. HDMI Atmos checks
 still require a compatible playback route and a receiver that reports its input format.
