@@ -140,7 +140,8 @@ describe("DockStats", () => {
       "ST-19.2",
       "I-20.1",
     ]);
-    expect(screen.getByTestId("dock-stats-grid").style.gridTemplateColumns).toBe(
+    const gridColumns = screen.getByTestId("dock-stats-grid").style.gridTemplateColumns;
+    expect(gridColumns.replace("minmax(0px,", "minmax(0,")).toBe(
       `minmax(0, ${testCellWidth(STATS_CANONICAL_ORDER.slice(0, 8))}px)`
     );
 

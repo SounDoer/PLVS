@@ -401,6 +401,7 @@ describe("useDockAccessoryVisibility", () => {
     act(() => result.current.openEditor("modules"));
     // The editor is hidden while it still claims focus and never reports the blur.
     act(() => result.current.onAccessoryFocus({ surface: "dock-editor", focused: true }));
+    blurStrip();
     act(() => result.current.closeEditor());
 
     act(() => result.current.onAccessoryFocus({ surface: "dock-header", focused: true }));

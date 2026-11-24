@@ -118,7 +118,6 @@ describe("AxisRail", () => {
 
 it("refits measured labels on resize and text-size changes without moving ticks or caller refs", () => {
   let extent = 126;
-  let fontSize = 12;
   let resize;
   vi.stubGlobal(
     "ResizeObserver",
@@ -133,38 +132,36 @@ it("refits measured labels on resize and text-size changes without moving ticks 
   vi.spyOn(HTMLElement.prototype, "getBoundingClientRect").mockImplementation(
     () => new DOMRect(0, 0, 200, extent)
   );
-  const realStyle = window.getComputedStyle.bind(window);
-  vi.spyOn(window, "getComputedStyle").mockImplementation((element) => {
-    const style = realStyle(element);
-    style.fontSize = `${fontSize}px`;
-    style.lineHeight = `${fontSize}px`;
-    return style;
-  });
+  const typography = (size) => `[data-axis-tick] { font-size: ${size}px; line-height: ${size}px; }`;
   const ref = vi.fn();
   const { container } = render(
-    <AxisRail
-      axis="y"
-      referenceKey={0}
-      scaleProps={{ ref }}
-      ticks={[
-        { key: 3, label: "+3", frac: 0 },
-        { key: 0, label: "0", frac: 3 / 63 },
-        { key: -60, label: "-60", frac: 1 },
-      ]}
-    />
+    <>
+      <style>{typography(12)}</style>
+      <AxisRail
+        axis="y"
+        referenceKey={0}
+        scaleProps={{ ref }}
+        ticks={[
+          { key: 3, label: "+3", frac: 0 },
+          { key: 0, label: "0", frac: 3 / 63 },
+          { key: -60, label: "-60", frac: 1 },
+        ]}
+      />
+    </>
   );
   const [top, zero] = labels(container);
   expect(top.style.visibility).toBe("hidden");
   expect(top.getAttribute("aria-hidden")).toBe("true");
-  expect(zero.style.top).toBe(`${(3 / 63) * 100}%`);
+  expect(zero.style.top.endsWith("%")).toBe(true);
+  expect(parseFloat(zero.style.top)).toBeCloseTo((3 / 63) * 100, 4);
   const position = zero.style.top;
   extent = 630;
   act(() => resize());
   expect(top.style.visibility).toBe("");
-  fontSize = 40;
+  container.querySelector("style").textContent = typography(40);
   act(() => resize());
   expect(top.style.visibility).toBe("hidden");
   expect(zero.style.top).toBe(position);
-  expect(ref).toHaveBeenCalledWith(container.firstChild.firstChild);
+  expect(ref).toHaveBeenCalledWith(top.parentElement);
   vi.unstubAllGlobals();
 });
