@@ -11,8 +11,8 @@ use std::time::{Duration, Instant};
 
 use serde::Serialize;
 use tauri::AppHandle;
-use windows::core::{implement, IUnknown, Interface, Ref};
-use windows::Win32::Foundation::{CloseHandle, WAIT_OBJECT_0, WAIT_TIMEOUT};
+use windows::core::{implement, IUnknown, Interface, Ref, HRESULT};
+use windows::Win32::Foundation::{CloseHandle, ERROR_NO_MORE_FILES, WAIT_OBJECT_0, WAIT_TIMEOUT};
 use windows::Win32::Media::Audio::{
   ActivateAudioInterfaceAsync, IActivateAudioInterfaceAsyncOperation,
   IActivateAudioInterfaceCompletionHandler, IActivateAudioInterfaceCompletionHandler_Impl,
@@ -29,6 +29,9 @@ use windows::Win32::System::Com::StructuredStorage::{
   PROPVARIANT, PROPVARIANT_0, PROPVARIANT_0_0, PROPVARIANT_0_0_0,
 };
 use windows::Win32::System::Com::{CoInitializeEx, CoUninitialize, BLOB, COINIT_MULTITHREADED};
+use windows::Win32::System::Diagnostics::ToolHelp::{
+  CreateToolhelp32Snapshot, Process32FirstW, Process32NextW, PROCESSENTRY32W, TH32CS_SNAPPROCESS,
+};
 use windows::Win32::System::Threading::{
   CreateEventW, OpenProcess, WaitForSingleObject, PROCESS_SYNCHRONIZE,
 };
@@ -549,7 +552,7 @@ pub fn capture_process_to_summary_with_format(
 pub fn capture_stereo_mix_probe(
   process_ids: [u32; 2],
   seconds: u64,
-  replacement_pid: Option<impl FnOnce(Instant) -> Result<u32, String> + Send>,
+  restart_parent_pid: Option<u32>,
 ) -> Result<StereoMixProbeResult, String> {
   if !(1..=60).contains(&seconds) {
     return Err("mix probe duration must be between 1 and 60 seconds".to_string());
@@ -595,22 +598,18 @@ pub fn capture_stereo_mix_probe(
     let deadline = Instant::now() + duration;
     let first = scope.spawn(move || capture(0, process_ids[0], duration, &left_tx));
     let second = scope.spawn(move || {
-      let app_id = replacement_pid
-        .as_ref()
-        .map(|_| {
-          application_id_for_process(process_ids[1]).ok_or("could not identify the original app")
-        })
-        .transpose()?;
+      let restart = match restart_parent_pid {
+        Some(parent_pid) => Some((
+          parent_pid,
+          application_id_for_process(process_ids[1])
+            .ok_or("could not identify the original app")?,
+        )),
+        None => None,
+      };
       let (right, mut dropped) = capture(1, process_ids[1], duration, &tx)?;
       let mut replacement = None;
-      if let Some(resolve_pid) = replacement_pid {
-        let pid = resolve_pid(deadline)?;
-        if pid == 0 || process_ids.contains(&pid) {
-          return Err("replacement must have a new process ID".to_string());
-        }
-        if application_id_for_process(pid) != app_id {
-          return Err("replacement process does not match the original application ID".into());
-        }
+      if let Some((parent_pid, app_id)) = restart {
+        let pid = wait_for_rig_replacement(parent_pid, &app_id, process_ids, deadline)?;
         let remaining = deadline.saturating_duration_since(Instant::now());
         let (report, replacement_dropped) = capture(1, pid, remaining, &tx)?;
         replacement = Some(report);
@@ -634,6 +633,57 @@ pub fn capture_stereo_mix_probe(
       measurement: mixed,
     })
   })
+}
+
+// The rig uses windowless players. Restrict discovery to its launcher so an unrelated
+// desktop application with the same executable cannot be picked up by the probe.
+fn wait_for_rig_replacement(
+  parent_pid: u32,
+  app_id: &str,
+  previous: [u32; 2],
+  deadline: Instant,
+) -> Result<u32, String> {
+  while Instant::now() < deadline {
+    if let Some(pid) = find_rig_replacement(parent_pid, app_id, previous)? {
+      return Ok(pid);
+    }
+    std::thread::sleep(Duration::from_millis(100));
+  }
+  Err("the original application did not restart before the probe ended".into())
+}
+
+fn find_rig_replacement(
+  parent_pid: u32,
+  app_id: &str,
+  previous: [u32; 2],
+) -> Result<Option<u32>, String> {
+  let snapshot = CaptureHandle(
+    unsafe { CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0) }
+      .map_err(|error| format!("could not list rig processes: {error}"))?,
+  );
+  let mut entry = PROCESSENTRY32W {
+    dwSize: size_of::<PROCESSENTRY32W>() as u32,
+    ..Default::default()
+  };
+  unsafe { Process32FirstW(snapshot.0, &mut entry) }
+    .map_err(|error| format!("could not read rig processes: {error}"))?;
+  let mut candidate = None;
+  loop {
+    let pid = entry.th32ProcessID;
+    if entry.th32ParentProcessID == parent_pid
+      && !previous.contains(&pid)
+      && application_id_for_process(pid).as_deref() == Some(app_id)
+      && candidate.replace(pid).is_some()
+    {
+      return Ok(None);
+    }
+    match unsafe { Process32NextW(snapshot.0, &mut entry) } {
+      Ok(()) => {}
+      Err(error) if error.code() == HRESULT::from_win32(ERROR_NO_MORE_FILES.0) => break,
+      Err(error) => return Err(format!("could not read rig processes: {error}")),
+    }
+  }
+  Ok(candidate)
 }
 
 pub struct StereoMixProbeResult {

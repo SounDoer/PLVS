@@ -1,7 +1,6 @@
 #[cfg(target_os = "windows")]
 fn main() -> Result<(), String> {
-  use std::path::Path;
-  use std::time::{Duration, Instant};
+  use std::time::Duration;
 
   use app_lib::{
     capture_process_to_summary_with_format, capture_stereo_mix_probe, list_capture_applications,
@@ -9,24 +8,7 @@ fn main() -> Result<(), String> {
   };
   use serde_json::json;
 
-  const USAGE: &str = "usage: process_loopback_probe <pid> [seconds] [--channels <n>] [--sample-rate <hz>] [--with-pid <pid> [--mix [--replacement-pid-file <path>]]] [--json]";
-
-  fn wait_for_replacement(path: &Path, deadline: Instant) -> Result<u32, String> {
-    while Instant::now() < deadline {
-      match std::fs::read_to_string(path) {
-        Ok(pid) => {
-          return pid
-            .trim()
-            .parse()
-            .map_err(|_| "invalid replacement PID".into())
-        }
-        Err(error) if error.kind() == std::io::ErrorKind::NotFound => {}
-        Err(error) => return Err(format!("could not read replacement PID: {error}")),
-      }
-      std::thread::sleep(Duration::from_millis(50));
-    }
-    Err("replacement did not arrive before the probe ended".into())
-  }
+  const USAGE: &str = "usage: process_loopback_probe <pid> [seconds] [--channels <n>] [--sample-rate <hz>] [--with-pid <pid> [--mix [--restart-parent-pid <pid>]]] [--json]";
 
   fn json_report(result: &ProcessLoopbackProbeResult) -> serde_json::Value {
     json!({
@@ -69,7 +51,7 @@ fn main() -> Result<(), String> {
   let mut json_output = false;
   let mut seconds_arg = None;
   let mut second_pid = None;
-  let mut replacement_file = None;
+  let mut restart_parent_pid = None;
   let mut mix = false;
   let mut channels = 2u16;
   let mut sample_rate = 48_000u32;
@@ -107,9 +89,13 @@ fn main() -> Result<(), String> {
         mix = true;
         index += 1;
       }
-      "--replacement-pid-file" if replacement_file.is_none() => {
-        let path = rest.get(index + 1).ok_or_else(|| USAGE.to_string())?;
-        replacement_file = Some(Path::new(path));
+      "--restart-parent-pid" if restart_parent_pid.is_none() => {
+        let pid = rest
+          .get(index + 1)
+          .and_then(|value| value.parse::<u32>().ok())
+          .filter(|pid| *pid != 0)
+          .ok_or("--restart-parent-pid requires a positive process ID")?;
+        restart_parent_pid = Some(pid);
         index += 2;
       }
       value if seconds_arg.is_none() => {
@@ -127,19 +113,15 @@ fn main() -> Result<(), String> {
   let capture = |pid| {
     capture_process_to_summary_with_format(pid, Duration::from_secs(seconds), sample_rate, channels)
   };
-  if replacement_file.is_some() && !mix {
-    return Err("a replacement PID file requires --mix".into());
+  if restart_parent_pid.is_some() && !mix {
+    return Err("--restart-parent-pid requires --mix".into());
   }
   if mix {
     let second_pid = second_pid.ok_or("--mix requires --with-pid")?;
     if sample_rate != 48_000 || channels != 2 {
       return Err("--mix requires 48 kHz stereo".to_string());
     }
-    let result = capture_stereo_mix_probe(
-      [process_id, second_pid],
-      seconds,
-      replacement_file.map(|path| move |deadline| wait_for_replacement(path, deadline)),
-    )?;
+    let result = capture_stereo_mix_probe([process_id, second_pid], seconds, restart_parent_pid)?;
     println!(
       "{}",
       json!({

@@ -1,9 +1,8 @@
 #!/usr/bin/env node
 
 import { spawn, spawnSync } from "node:child_process";
-import { randomUUID } from "node:crypto";
 import { once } from "node:events";
-import { existsSync, mkdirSync, renameSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, writeFileSync } from "node:fs";
 import { rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
@@ -291,8 +290,9 @@ async function runProcessTimingProbe(index) {
   const wav = join(tmpdir(), `plvs-process-timing-${process.pid}.wav`);
   const secondWav = measureMix ? join(tmpdir(), `plvs-process-mix-right-${process.pid}.wav`) : wav;
   const returnPeak = -12;
-  const handoff = restartMember ? join(tmpdir(), `plvs-mix-${randomUUID()}`) : null;
-  const returnWav = handoff ? `${handoff}.wav` : null;
+  const returnWav = restartMember
+    ? join(tmpdir(), `plvs-process-mix-return-${process.pid}.wav`)
+    : null;
   const reportPath = await withCaptureRig(
     async () => {
       const players = [];
@@ -335,9 +335,9 @@ async function runProcessTimingProbe(index) {
           "--with-pid",
           second,
           ...(measureMix ? ["--mix"] : []),
-          ...(handoff ? ["--replacement-pid-file", handoff] : []),
+          ...(restartMember ? ["--restart-parent-pid", String(process.pid)] : []),
         ];
-        const [probe, replacementPid] = handoff
+        const [probe, replacementPid] = restartMember
           ? await runRestartProbe(resolve(executable), args, async () => {
               const original = players[1];
               if (original.exitCode === null && original.signalCode === null) {
@@ -347,8 +347,6 @@ async function runProcessTimingProbe(index) {
               const child = await startPlayer(endpoint, returnWav, { independent: true });
               players.push(child);
               if (child.pid === undefined) await once(child, "spawn");
-              writeFileSync(`${handoff}.tmp`, String(child.pid), { flag: "wx" });
-              renameSync(`${handoff}.tmp`, handoff);
               return child.pid;
             })
           : [runCli(resolve(executable), args), null];
@@ -435,11 +433,7 @@ async function runProcessTimingProbe(index) {
         for (const player of players) stopPlayer(player, { keepLease: true });
         await rm(wav, { force: true });
         if (measureMix) await rm(secondWav, { force: true });
-        if (handoff) {
-          await rm(returnWav, { force: true });
-          await rm(handoff, { force: true });
-          await rm(`${handoff}.tmp`, { force: true });
-        }
+        if (returnWav) await rm(returnWav, { force: true });
       }
     },
     { wait: process.argv.includes("--wait") }
