@@ -34,6 +34,18 @@ Keep this reference current with shared UI changes. Use the implementation on `m
 behavior. Document component selection, the source of each shared rule, and any intentional
 exceptions. Update the affected section when its rule changes.
 
+### Choosing a control implementation
+
+- Use a native HTML element when it provides the needed interaction. The shared `Label` styles a
+  native `label` and connects it to a control with `htmlFor`. Use headings for sections and text for
+  captions that stand on their own.
+- Use the existing Radix-backed wrappers for dialogs, selects, and popovers. They supply behavior
+  such as focus management, keyboard navigation, and dismissal. PLVS applies its own styling and
+  wires the controls to the feature.
+- Implement PLVS-specific behavior in the owning component. For example, `RangeInput` adds the
+  value tooltip and gesture lifecycle around a native slider, while instruments own their plots
+  and measurement interactions.
+
 ---
 
 ## Architecture

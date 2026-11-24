@@ -121,10 +121,9 @@ describe("ThemeEditor", () => {
     render(<ThemeEditor {...BASE_PROPS} />);
     fireEvent.click(screen.getByRole("tab", { name: "Palettes" }));
 
-    expect(screen.getByText("Status")).toBeTruthy();
-    expect(screen.getByText("Intensity")).toBeTruthy();
-    expect(screen.getByText("Frequency")).toBeTruthy();
-    expect(screen.getByText("Interface")).toBeTruthy();
+    for (const name of ["Status", "Intensity", "Frequency", "Interface"]) {
+      expect(screen.getByRole("heading", { name })).toBeTruthy();
+    }
     expect(screen.getByLabelText("Intensity palette preview")).toBeTruthy();
   });
 

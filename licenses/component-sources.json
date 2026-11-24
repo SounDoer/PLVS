@@ -2898,10 +2898,6 @@
       "license": "MIT",
       "noticeSha256": "c054fe1030104a7dbe2c80d59086b32f72f4489acebc0228506e920ca69bd266"
     },
-    "npm:@radix-ui/react-label@2.1.17": {
-      "license": "MIT",
-      "noticeSha256": "c054fe1030104a7dbe2c80d59086b32f72f4489acebc0228506e920ca69bd266"
-    },
     "npm:@radix-ui/react-popover@1.3.1": {
       "license": "MIT",
       "noticeSha256": "c054fe1030104a7dbe2c80d59086b32f72f4489acebc0228506e920ca69bd266"

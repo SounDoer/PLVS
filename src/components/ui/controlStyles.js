@@ -1,3 +1,5 @@
+export const LABEL_TEXT_CLASS = "text-[length:var(--ui-fs-body)] leading-none font-medium";
+
 export const COMPACT_SWITCH_CLASS =
   "h-[var(--ui-switch-h)] w-[var(--ui-switch-w)] border border-input data-[state=unchecked]:bg-input data-[state=checked]:border-primary data-[state=checked]:bg-primary";
 

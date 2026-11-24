@@ -5,7 +5,7 @@ import { AddButton } from "../AddButton.jsx";
 import { ColorControl } from "../ColorControl.jsx";
 import { IconButton } from "../IconButton.jsx";
 import { ResetAction } from "../ResetAction.jsx";
-import { Label } from "../ui/label.jsx";
+import { LABEL_TEXT_CLASS } from "../ui/controlStyles.js";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../ui/select.jsx";
 import { findMatchingPalettePresetId, listPalettePresets } from "../../theme/palettePresets.js";
 
@@ -108,7 +108,7 @@ function SimplePalette({ title, description, kind, palette, colors, onColor, onA
   return (
     <section className="flex flex-col gap-2">
       <div className="flex items-center justify-between gap-2">
-        <Label>{title}</Label>
+        <h3 className={LABEL_TEXT_CLASS}>{title}</h3>
         <PalettePresetControl kind={kind} palette={palette} onApplyPreset={onApplyPreset} />
       </div>
       <p className="text-[length:var(--ui-fs-metric-meta)] text-muted-foreground">{description}</p>
@@ -184,7 +184,7 @@ function IntensityPalette({ palette, onStop, onStops, onApplyPreset }) {
   return (
     <section className="flex flex-col gap-2">
       <div className="flex items-center justify-between gap-2">
-        <Label>Intensity</Label>
+        <h3 className={LABEL_TEXT_CLASS}>Intensity</h3>
         <div className="flex items-center gap-1">
           <div className={resetArmed ? "invisible" : undefined}>
             <PalettePresetSelect

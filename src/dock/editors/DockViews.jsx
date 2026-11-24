@@ -19,9 +19,9 @@ export function DockViews({ state, onAction }) {
     <DockEditorShell title="Views">
       <div className="grid gap-1 p-1">
         <div className="flex items-center justify-between gap-3 px-2 py-1">
-          <Label className="min-w-0 text-[length:var(--ui-fs-control)] font-normal text-foreground">
+          <span className="min-w-0 text-[length:var(--ui-fs-control)] leading-none font-normal text-foreground">
             Dock
-          </Label>
+          </span>
           <SettingsSelect
             label={positions.find((position) => position.key === state.edge)?.label ?? "Bottom"}
             ariaLabel="Dock position"

@@ -2,7 +2,7 @@ import { FLOATING_EDITOR_CLASS } from "@/components/ui/surfaceStyles.js";
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { Check, Eye, Pencil, Redo2, Undo2, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Label } from "@/components/ui/label";
+import { LABEL_TEXT_CLASS } from "@/components/ui/controlStyles.js";
 import { ColorControl } from "./ColorControl.jsx";
 import { ConfirmDialog } from "@/components/ConfirmDialog.jsx";
 import { ResetAction } from "@/components/ResetAction.jsx";
@@ -422,7 +422,9 @@ export function ThemeEditor({
             <section aria-labelledby="theme-core-title" className="flex flex-col gap-3">
               <div>
                 <div className="flex items-center justify-between gap-2">
-                  <Label id="theme-core-title">Core Colors</Label>
+                  <h3 id="theme-core-title" className={LABEL_TEXT_CLASS}>
+                    Core Colors
+                  </h3>
                   <ResetAction
                     data-core-reset-action
                     label={`Reset Core Colors to ${draft.colorScheme === "dark" ? "Dark" : "Light"} defaults`}

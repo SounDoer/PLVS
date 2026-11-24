@@ -87,6 +87,8 @@ describe("FocusViewPopoverContent", () => {
 
     const opacityRange = screen.getByRole("slider", { name: "Surface opacity" });
     expect(/** @type {HTMLInputElement} */ (opacityRange).value).toBe("42");
+    const label = /** @type {HTMLLabelElement} */ (screen.getByText("Surface Opacity"));
+    expect(label.control).toBe(opacityRange);
   });
 
   it("routes switch changes to callers", () => {
@@ -108,7 +110,7 @@ describe("FocusViewPopoverContent", () => {
       />
     );
 
-    fireEvent.click(screen.getByRole("switch", { name: "Always on Top" }));
+    fireEvent.click(screen.getByText("Always on Top"));
     fireEvent.click(screen.getByRole("switch", { name: "Auto-hide Controls" }));
     fireEvent.click(screen.getByRole("switch", { name: "Hide Panel Headers" }));
     fireEvent.click(screen.getByRole("switch", { name: "Hide Window Frame" }));
