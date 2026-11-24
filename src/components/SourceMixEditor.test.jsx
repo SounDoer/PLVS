@@ -136,7 +136,7 @@ it("blocks scene mutation from an open draft and discards it on Cancel", () => {
   expect(onSelect).not.toHaveBeenCalled();
 });
 
-it("requires two members and selects the named Mix only after saving it", async () => {
+it("saves a single application and selects the named Mix after persistence", async () => {
   let finishSave;
   vi.mocked(sourceMixesStore.persist).mockImplementation(
     () =>
@@ -147,9 +147,9 @@ it("requires two members and selects the named Mix only after saving it", async 
   const { onSelect } = mountEditor();
   const save = screen.getByRole("button", { name: "Save" });
   fireEvent.click(screen.getByRole("button", { name: "Applications" }));
+  expect(save).toHaveProperty("disabled", true);
   fireEvent.click(screen.getByRole("checkbox", { name: "Player" }));
-  expect(save.hasAttribute("disabled")).toBe(true);
-  fireEvent.click(screen.getByRole("checkbox", { name: "DAW" }));
+  expect(save).toHaveProperty("disabled", false);
   fireEvent.click(screen.getByRole("button", { name: "rename mix" }));
   fireEvent.change(screen.getByRole("textbox", { name: "mix name" }), {
     target: { value: "My Mix" },
@@ -157,7 +157,8 @@ it("requires two members and selects the named Mix only after saving it", async 
   fireEvent.click(save);
   expect(onSelect).not.toHaveBeenCalled();
   const mix = vi.mocked(sourceMixesStore.persist).mock.calls[0][0].list[0];
-  expect(mix).toMatchObject({ name: "My Mix", members: applications });
+  expect(mix).toMatchObject({ name: "My Mix", members: [applications[0]] });
+  expect(mix.input).toBeUndefined();
   await act(async () => finishSave());
   await waitFor(() => expect(onSelect).toHaveBeenCalledWith(mix.id));
 });

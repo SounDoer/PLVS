@@ -483,8 +483,8 @@ fn validate_mix_sources(
   input: Option<&crate::audio::capture::MixInput>,
 ) -> Result<(), String> {
   let mut seen = HashSet::new();
-  if input.is_none() && ids.len() < 2 {
-    return Err("an applications-only mix requires at least two applications".into());
+  if input.is_none() && ids.is_empty() {
+    return Err("a mix requires at least one source".into());
   }
   if ids
     .iter()
@@ -1377,10 +1377,11 @@ mod tests {
 
   #[cfg(target_os = "windows")]
   #[test]
-  fn live_mix_rejects_single_duplicate_and_invalid_application_ids() {
+  fn live_mix_accepts_single_sources_and_rejects_empty_or_invalid_selections() {
     let first = format!("app-{}", "1".repeat(32));
     let second = format!("app-{}", "2".repeat(32));
-    assert!(super::validate_mix_sources(std::slice::from_ref(&first), None).is_err());
+    assert!(super::validate_mix_sources(&[], None).is_err());
+    assert!(super::validate_mix_sources(std::slice::from_ref(&first), None).is_ok());
     assert!(super::validate_mix_sources(&[first.clone(), first.clone()], None).is_err());
     assert!(super::validate_mix_sources(&[first.clone(), "default".into()], None).is_err());
     let mut input = crate::audio::capture::MixInput {

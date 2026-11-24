@@ -108,9 +108,9 @@ them without extra routing.
 
 ## Mixes on Windows
 
-In the normal window, choose **Add Mix** at the bottom of **Sources**. Select two or more
-applications, or expand one device under **Input** and check one or more channels. You can also
-combine those channels with applications. A single checked input channel is enough to save.
+In the normal window, choose **Add Mix** at the bottom of **Sources**. Check applications,
+channels from one input device, or both. You can save a Mix with a single application or a
+single input channel.
 PLVS generates a name from the selection. Use the pencil to enter your own name.
 **Save** adds the Mix under **Mixes** and selects it for the current Workbench.
 You can also select a saved Mix under **Mixes** in the Dock toolbar's **Sources** menu or in the

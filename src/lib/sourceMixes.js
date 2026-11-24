@@ -23,7 +23,7 @@ export function isMixInputId(id) {
 
 export function canSaveSourceMix({ members, input }) {
   return (
-    (input != null || members.length >= 2) &&
+    (input != null || members.length > 0) &&
     members.every(
       (member) => /^app-[0-9a-f]{32}$/.test(member?.id) && typeof member.label === "string"
     ) &&
