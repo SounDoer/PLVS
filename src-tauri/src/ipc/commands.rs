@@ -159,6 +159,10 @@ pub fn preview_audio_device(device_id: String) -> Result<AudioDevicePreview, Str
 pub(crate) fn read_audio_device_preview(device_id: &str) -> Result<AudioDevicePreview, String> {
   use cpal::traits::DeviceTrait;
 
+  #[cfg(target_os = "windows")]
+  let selection = crate::audio::device_id::split_channel_source(device_id);
+  #[cfg(target_os = "windows")]
+  let device_id = selection.map_or(device_id, |(base, _)| base);
   let (device, supported) = crate::audio::device_enum::resolve_device(device_id)?;
   let label = crate::audio::device_enum::device_list_label(&device)?;
   let output = device_id.is_empty()
@@ -185,6 +189,20 @@ pub(crate) fn read_audio_device_preview(device_id: &str) -> Result<AudioDevicePr
   #[cfg(not(target_os = "macos"))]
   let signature_prefix = String::new();
   let plan = crate::audio::source_layout::device_plan(&device, supported.channels(), output);
+  #[cfg(target_os = "windows")]
+  let plan = if let Some((_, channel)) = selection {
+    let plan = if output {
+      crate::audio::source_layout::MonitoringPlan::require_system_scope(
+        supported.channels(),
+        crate::audio::source_layout::device_layout(&device, supported.channels(), true),
+      )?
+    } else {
+      plan
+    };
+    plan.select_channel(channel, output)?
+  } else {
+    plan
+  };
   let sample_rate_hz = supported.sample_rate();
   let channels = plan.channels();
   Ok(AudioDevicePreview {
@@ -483,7 +501,12 @@ fn validate_mix_sources(
   input: Option<&crate::audio::capture::MixInput>,
 ) -> Result<(), String> {
   let mut seen = HashSet::new();
-  if ids.len() < if input.is_some() { 1 } else { 2 }
+  let min_apps = match input {
+    Some(input) if input.mode == Some(crate::audio::capture::MixInputMode::Sum) => 0,
+    Some(_) => 1,
+    None => 2,
+  };
+  if ids.len() < min_apps
     || ids
       .iter()
       .any(|id| !crate::audio::windows_capture_apps::is_application_id(id) || !seen.insert(id))
@@ -491,13 +514,8 @@ fn validate_mix_sources(
     return Err("a mix requires distinct application IDs and at least two sources".into());
   }
   if let Some(input) = input {
-    if !crate::audio::device_id::is_stable_capture_id(&input.id)
-      || !matches!(input.channels.as_slice(), [left] if *left < 256)
-        && !matches!(input.channels.as_slice(), [left, right] if left < right && *right < 256)
-    {
-      return Err(
-        "a mix input requires a capture device ID and one channel or an ordered stereo pair".into(),
-      );
+    if !crate::audio::device_id::is_stable_capture_id(&input.id) || !input.has_valid_channels() {
+      return Err("a mix input requires a capture device ID and a valid channel selection".into());
     }
   }
   Ok(())
@@ -1389,8 +1407,13 @@ mod tests {
     let mut input = crate::audio::capture::MixInput {
       id: format!("cap-{}", "3".repeat(32)),
       channels: vec![0, 1],
+      mode: None,
     };
     assert!(super::validate_mix_sources(std::slice::from_ref(&first), Some(&input)).is_ok());
+    assert!(super::validate_mix_sources(&[], Some(&input)).is_err());
+    input.mode = Some(crate::audio::capture::MixInputMode::Sum);
+    input.channels = vec![0, 2, 4];
+    assert!(super::validate_mix_sources(&[], Some(&input)).is_ok());
     input.channels = vec![1, 1];
     assert!(super::validate_mix_sources(std::slice::from_ref(&first), Some(&input)).is_err());
     assert!(super::validate_mix_sources(&[first, second], None).is_ok());

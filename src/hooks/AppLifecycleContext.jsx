@@ -193,8 +193,16 @@ export function AppLifecycleProvider({ children }) {
     sourceLabel: sourceDisplayName,
     running,
     trayState: {
-      audioOutputs: audioOutputs.map(({ id, label }) => ({ id, label })),
-      audioInputs: audioInputs.map(({ id, label }) => ({ id, label })),
+      audioOutputs: audioOutputs.map(({ id, label, channelSelectors }) => ({
+        id,
+        label,
+        channelSelectors,
+      })),
+      audioInputs: audioInputs.map(({ id, label, channelSelectors }) => ({
+        id,
+        label,
+        channelSelectors,
+      })),
       captureApplications: captureApplications.map(({ id, label }) => ({ id, label })),
       sourceMixes: trayMixes,
       safeAudioDeviceId,

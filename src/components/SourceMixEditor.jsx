@@ -4,7 +4,7 @@ import { useFloatingPanelDrag } from "../hooks/useFloatingPanelDrag.js";
 import {
   canSaveSourceMix,
   isMixInputId,
-  sourceMixMembers,
+  sourceMixMemberCount,
   sourceMixName,
 } from "../lib/sourceMixes.js";
 import { useUiSurface } from "../uiNavigation/UiNavigationContext.jsx";
@@ -28,7 +28,18 @@ function inputChannelChoices(count) {
 }
 
 export function SourceMixEditor({ owner, applications, inputs = [] }) {
-  const { draft, saving, rename, cancel, save, toggle, toggleInput, selectInputChannels } = owner;
+  const {
+    draft,
+    saving,
+    rename,
+    cancel,
+    save,
+    toggle,
+    toggleInput,
+    selectInputChannels,
+    sumInputChannels,
+    toggleInputChannel,
+  } = owner;
   const ref = useRef(null);
   const [position, setPosition] = useState(null);
   const [renaming, setRenaming] = useState(false);
@@ -51,12 +62,22 @@ export function SourceMixEditor({ owner, applications, inputs = [] }) {
   const inputChoices =
     draft.input && !selectedInput ? [...inputDevices, draft.input] : inputDevices;
   const channelChoices = inputChannelChoices(Math.min(256, selectedInput?.channels ?? 0));
-  const channelValue = draft.input?.channels.join("-");
+  const isSumming = draft.input?.mode === "sum";
+  const channelValue = isSumming ? "sum" : draft.input?.channels.join("-");
+  const canSum = (selectedInput?.channels ?? 0) >= 2;
+  const summableChannels = isSumming
+    ? [
+        ...new Set([
+          ...Array.from({ length: Math.min(256, selectedInput?.channels ?? 0) }, (_, i) => i),
+          ...draft.input.channels,
+        ]),
+      ].sort((a, b) => a - b)
+    : [];
   const selectedChannelsAvailable = channelChoices.some(
     ({ channels }) => channels.join("-") === channelValue
   );
   const canSave = canSaveSourceMix(draft);
-  const memberCount = sourceMixMembers(draft).length;
+  const memberCount = sourceMixMemberCount(draft);
   useUiSurface({
     kind: "sourceMixEditor",
     origin: "navigable",
@@ -84,6 +105,22 @@ export function SourceMixEditor({ owner, applications, inputs = [] }) {
         label,
         selected: channels.join("-") === channelValue,
         run: () => selectInputChannels(channels),
+      })),
+      ...(canSum
+        ? [
+            {
+              id: "input-mode:sum",
+              label: "Sum Channels",
+              selected: isSumming,
+              run: sumInputChannels,
+            },
+          ]
+        : []),
+      ...summableChannels.map((channel) => ({
+        id: `input-toggle:${channel}`,
+        label: `Channel ${channel + 1}`,
+        selected: draft.input.channels.includes(channel),
+        run: () => toggleInputChannel(channel),
       })),
       {
         id: "save",
@@ -151,27 +188,7 @@ export function SourceMixEditor({ owner, applications, inputs = [] }) {
         className="min-h-0 overflow-y-auto px-3 py-2 text-[length:var(--ui-fs-control)]"
       >
         <fieldset disabled={saving}>
-          <legend className="pt-2 font-medium text-muted-foreground">Applications</legend>
-          {choices.length === 0 ? (
-            <p className="text-muted-foreground">No Applications Available</p>
-          ) : null}
-          {choices.map((member) => (
-            <label
-              key={member.id}
-              className="flex min-h-[var(--ui-control-h)] cursor-pointer items-center gap-2 rounded-md px-1 hover:bg-ui-hover"
-            >
-              <Checkbox checked={checked.has(member.id)} onChange={() => toggle(member)} />
-              <span className="min-w-0 flex-1 truncate">
-                {available.get(member.id)?.label ?? member.label}
-              </span>
-              {available.has(member.id) ? null : (
-                <span className="text-muted-foreground">Unavailable</span>
-              )}
-            </label>
-          ))}
-        </fieldset>
-        <fieldset disabled={saving} className="mt-2">
-          <legend className="font-medium text-muted-foreground">Input</legend>
+          <legend className="pt-2 font-medium text-muted-foreground">Input</legend>
           {inputChoices.length === 0 ? (
             <p className="text-muted-foreground">No Inputs Available</p>
           ) : null}
@@ -193,13 +210,18 @@ export function SourceMixEditor({ owner, applications, inputs = [] }) {
           {draft.input && selectedInput && (
             <Select
               disabled={saving}
-              value={selectedChannelsAvailable ? channelValue : ""}
-              onValueChange={(value) => selectInputChannels(value.split("-").map(Number))}
+              value={selectedChannelsAvailable || (isSumming && canSum) ? channelValue : ""}
+              onValueChange={(value) =>
+                value === "sum"
+                  ? sumInputChannels()
+                  : selectInputChannels(value.split("-").map(Number))
+              }
             >
               <SelectTrigger aria-label="input channels">
                 <SelectValue placeholder="Selected Channels Unavailable" />
               </SelectTrigger>
               <SelectContent variant="inline">
+                {canSum && <SelectItem value="sum">Sum Channels</SelectItem>}
                 {channelChoices.map(({ channels, label }) => (
                   <SelectItem key={channels.join("-")} value={channels.join("-")}>
                     {label}
@@ -208,6 +230,41 @@ export function SourceMixEditor({ owner, applications, inputs = [] }) {
               </SelectContent>
             </Select>
           )}
+          {summableChannels.map((channel) => (
+            <label
+              key={channel}
+              className="flex min-h-[var(--ui-control-h)] cursor-pointer items-center gap-2 rounded-md px-1 hover:bg-ui-hover"
+            >
+              <Checkbox
+                checked={draft.input.channels.includes(channel)}
+                onChange={() => toggleInputChannel(channel)}
+              />
+              <span className="min-w-0 flex-1">Channel {channel + 1}</span>
+              {channel >= (selectedInput?.channels ?? 0) && (
+                <span className="text-muted-foreground">Unavailable</span>
+              )}
+            </label>
+          ))}
+        </fieldset>
+        <fieldset disabled={saving} className="mt-2">
+          <legend className="font-medium text-muted-foreground">Applications</legend>
+          {choices.length === 0 ? (
+            <p className="text-muted-foreground">No Applications Available</p>
+          ) : null}
+          {choices.map((member) => (
+            <label
+              key={member.id}
+              className="flex min-h-[var(--ui-control-h)] cursor-pointer items-center gap-2 rounded-md px-1 hover:bg-ui-hover"
+            >
+              <Checkbox checked={checked.has(member.id)} onChange={() => toggle(member)} />
+              <span className="min-w-0 flex-1 truncate">
+                {available.get(member.id)?.label ?? member.label}
+              </span>
+              {available.has(member.id) ? null : (
+                <span className="text-muted-foreground">Unavailable</span>
+              )}
+            </label>
+          ))}
         </fieldset>
       </div>
       <div className="flex items-center gap-2 border-t border-border px-3 py-2">

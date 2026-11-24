@@ -125,6 +125,9 @@ fn normalize_capture_device_id(value: Option<&Value>) -> Value {
 }
 
 fn is_device_id_shape(id: &str) -> bool {
+  if crate::audio::device_id::split_channel_source(id).is_some() {
+    return true;
+  }
   if let Some(rest) = id.strip_prefix("in:").or_else(|| id.strip_prefix("out:")) {
     return !rest.is_empty() && rest.chars().all(|c| c.is_ascii_digit());
   }

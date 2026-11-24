@@ -51,9 +51,27 @@ export function useSourceMixes({ supported, onSelect, onError }) {
   function selectInputChannels(channels) {
     setDraft((current) =>
       current?.input && !writing.current
-        ? { ...current, input: { ...current.input, channels } }
+        ? { ...current, input: { ...current.input, mode: undefined, channels } }
         : current
     );
+  }
+
+  function sumInputChannels() {
+    setDraft((current) =>
+      current?.input && !writing.current
+        ? { ...current, input: { ...current.input, mode: "sum" } }
+        : current
+    );
+  }
+
+  function toggleInputChannel(channel) {
+    setDraft((current) => {
+      if (current?.input?.mode !== "sum" || writing.current) return current;
+      const channels = current.input.channels.includes(channel)
+        ? current.input.channels.filter((value) => value !== channel)
+        : [...current.input.channels, channel].sort((a, b) => a - b);
+      return { ...current, input: { ...current.input, channels } };
+    });
   }
 
   async function save({ throwOnError = false } = {}) {
@@ -116,6 +134,8 @@ export function useSourceMixes({ supported, onSelect, onError }) {
     toggle,
     toggleInput,
     selectInputChannels,
+    sumInputChannels,
+    toggleInputChannel,
     save,
     remove,
     rename: (name) => setDraft((current) => current && { ...current, name }),

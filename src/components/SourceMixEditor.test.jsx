@@ -148,3 +148,29 @@ it("requires two members and selects the named Mix only after saving it", async 
   await act(async () => finishSave());
   await waitFor(() => expect(onSelect).toHaveBeenCalledWith(mix.id));
 });
+
+it("saves only the checked channels from an input without requiring an application", async () => {
+  const input = { id: `cap-${"3".repeat(32)}`, label: "Interface", channels: 3 };
+  const { ui } = mountEditor(vi.fn(), [input]);
+  const decide = async (choice) => {
+    const state = ui().inspectUi();
+    await act(async () => {
+      await ui().decideSurface({
+        surfaceId: state.surfaces[0].surfaceId,
+        choice,
+        expectedRevision: 3,
+        expectedUiGeneration: state.uiGeneration,
+      });
+    });
+  };
+  await decide(`input:${input.id}`);
+  await decide("input-mode:sum");
+  await decide("input-toggle:1");
+  expect(screen.getByRole("button", { name: "Save" })).toHaveProperty("disabled", true);
+  await decide("input-toggle:2");
+  await decide("save");
+  expect(vi.mocked(sourceMixesStore.persist).mock.calls[0][0].list[0]).toMatchObject({
+    members: [],
+    input: { id: input.id, channels: [0, 2], mode: "sum" },
+  });
+});

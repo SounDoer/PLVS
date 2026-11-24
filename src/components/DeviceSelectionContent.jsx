@@ -13,13 +13,28 @@ import {
   MANAGEMENT_ROW_CLASS,
   ManagementIconAction,
 } from "./ManagementRow.jsx";
-import { isSourceMixId, mixInputAvailable, sourceMixMembers } from "../lib/sourceMixes.js";
+import { isSourceMixId, mixInputAvailable, sourceMixMemberCount } from "../lib/sourceMixes.js";
+import {
+  deviceChannelChoices,
+  findDeviceSource,
+  splitChannelSource,
+} from "../lib/channelSources.js";
+import { IconAction } from "./ui/icon-action";
 import { useUiNavigationTarget, useUiSurface } from "../uiNavigation/UiNavigationContext.jsx";
 
 const SOURCE_LEADING_CLASS = "grid w-[1em] shrink-0 place-items-center";
 
-/** @param {{ primary: string, secondary?: string, selected: boolean, onSelect: (...args: any[]) => any, ariaLabel: string, uiTarget?: string, actions?: import("react").ReactNode }} props */
-function SourceRow({ primary, secondary, selected, onSelect, ariaLabel, uiTarget, actions }) {
+/** @param {{ primary: string, secondary?: string, selected: boolean, onSelect: (...args: any[]) => any, ariaLabel: string, uiTarget?: string, actions?: import("react").ReactNode, showActions?: boolean }} props */
+function SourceRow({
+  primary,
+  secondary,
+  selected,
+  onSelect,
+  ariaLabel,
+  uiTarget,
+  actions,
+  showActions,
+}) {
   const Row = actions ? RowAction : MenuRow;
   const row = (
     <Row
@@ -49,28 +64,76 @@ function SourceRow({ primary, secondary, selected, onSelect, ariaLabel, uiTarget
   return (
     <div className={MANAGEMENT_ROW_CLASS}>
       {row}
-      <span className={MANAGEMENT_ROW_ACTIONS_CLASS}>{actions}</span>
+      <span className={showActions ? "flex shrink-0 items-center" : MANAGEMENT_ROW_ACTIONS_CLASS}>
+        {actions}
+      </span>
     </div>
   );
 }
 
-function AudioDeviceOption({ device, selected, onSelect }) {
+function AudioDeviceOption({ device, selectedId, onSelect }) {
+  const choices = deviceChannelChoices(device);
+  const selectedChannel = choices.find(({ id }) => id === selectedId);
+  const [open, setOpen] = useState(Boolean(selectedChannel));
   const label = formatAudioDeviceLabel(device.label);
+  const listId = `source-channels-${device.id}`;
+  const detail = [
+    label.secondary,
+    choices.length > 0
+      ? `${choices.length} ${choices.length === 1 ? "Channel" : "Channels"}`
+      : null,
+    !open ? selectedChannel?.label : null,
+  ]
+    .filter(Boolean)
+    .join(" · ");
   return (
-    <SourceRow
-      uiTarget={`source:${device.id}`}
-      ariaLabel={label.full}
-      primary={label.primary}
-      secondary={label.secondary}
-      selected={selected}
-      onSelect={onSelect}
-    />
+    <>
+      <SourceRow
+        uiTarget={`source:${device.id}`}
+        ariaLabel={label.full}
+        primary={label.primary}
+        secondary={detail}
+        selected={device.id === selectedId}
+        onSelect={() => onSelect(device.id)}
+        showActions
+        actions={
+          choices.length > 0 ? (
+            <IconAction
+              aria-label={`channels for ${label.full}`}
+              aria-expanded={open}
+              aria-controls={listId}
+              onClick={() => setOpen(!open)}
+            >
+              <ChevronRight className={cn("size-[1em]", open && "rotate-90")} />
+            </IconAction>
+          ) : null
+        }
+      />
+      {choices.length > 0 ? (
+        <div id={listId} hidden={!open} className="pl-4">
+          {open &&
+            choices.map((choice) => (
+              <SourceRow
+                key={choice.id}
+                uiTarget={`source:${choice.id}`}
+                ariaLabel={`${label.full} · ${choice.label}`}
+                primary={choice.label}
+                selected={choice.id === selectedId}
+                onSelect={() => onSelect(choice.id)}
+              />
+            ))}
+        </div>
+      ) : null}
+    </>
   );
 }
 
 function selectedDeviceSummary(devices, selectedId) {
-  const selected = devices.find((device) => device.id === selectedId);
+  const selected = findDeviceSource(devices, selectedId);
   if (!selected) return null;
+  if (selected.channelLabel) {
+    return `${formatAudioDeviceLabel(devices.find(({ id }) => id === selected.parentId).label).primary} · ${selected.channelLabel}`;
+  }
   return formatAudioDeviceLabel(selected.label).primary;
 }
 
@@ -147,8 +210,8 @@ export function DeviceSelectionContent({
   onSelect,
 }) {
   const [sourceSectionsOpen, setSourceSectionsOpen] = useState({
-    output: false,
-    input: false,
+    output: splitChannelSource(safeAudioDeviceId)?.deviceId.startsWith("lb-") ?? false,
+    input: splitChannelSource(safeAudioDeviceId)?.deviceId.startsWith("cap-") ?? false,
     applications: false,
     mixes: isSourceMixId(safeAudioDeviceId),
   });
@@ -203,7 +266,7 @@ export function DeviceSelectionContent({
                 Number(Boolean(mix.input && !mixInputAvailable(mix.input, audioInputs)));
               const count = unavailable
                 ? `${unavailable} ${unavailable === 1 ? "Source" : "Sources"} Unavailable`
-                : `${sourceMixMembers(mix).length} Sources · Stereo`;
+                : `${sourceMixMemberCount(mix)} Sources · Stereo`;
               return (
                 <SourceRow
                   key={mix.id}
@@ -262,8 +325,8 @@ export function DeviceSelectionContent({
               <AudioDeviceOption
                 key={device.id}
                 device={device}
-                selected={safeAudioDeviceId === device.id}
-                onSelect={() => onSelect(device.id)}
+                selectedId={safeAudioDeviceId}
+                onSelect={onSelect}
               />
             ))}
           </SourceSection>
@@ -282,8 +345,8 @@ export function DeviceSelectionContent({
               <AudioDeviceOption
                 key={device.id}
                 device={device}
-                selected={safeAudioDeviceId === device.id}
-                onSelect={() => onSelect(device.id)}
+                selectedId={safeAudioDeviceId}
+                onSelect={onSelect}
               />
             ))}
           </SourceSection>

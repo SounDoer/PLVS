@@ -63,8 +63,10 @@ On Windows, the normal-window Sources surface declares Mix choices through `ui i
 also exposes `select:<mix-id>` for each saved Mix. The normal-window `sourceMixEditor`
 surface exposes `toggle:<application-id>` and `input:<device-id>` choices with their selection
 state. Toggling another input replaces the current input. The available `input-channels:<key>`
-choices carry labels showing the channel numbers and Mono or Stereo. Save requires two
-applications or at least one application and one input. Use the latest surface ID,
+choices carry labels showing the channel numbers and Mono or Stereo. Use `input-mode:sum` to
+show individual channel choices, then use `input-toggle:<index>` with the published zero-based
+indices to change their selection. Save supports two applications, one or more applications
+with an input, or a sum of at least two channels from one input without applications. Use the latest surface ID,
 revision and UI generation for each decision. These choices run the same handlers as the editor
 controls. The editor's draft name stays private to the UI.
 

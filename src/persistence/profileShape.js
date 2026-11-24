@@ -2,6 +2,7 @@ import { normalizeKeyboardShortcuts } from "../data/keyboardShortcutActions.js";
 import { LOUDNESS_PROFILE_OFF, parseSelection } from "../lib/loudnessProfileCatalog.js";
 import { normalizeLoudnessProfiles } from "../lib/loudnessProfileNormalize.js";
 import { sanitizeChannelLabelOverrides } from "../math/channelRoles.js";
+import { splitChannelSource } from "../lib/channelSources.js";
 import { normalizeFileSummaryMetrics } from "../lib/fileSummaryPreferences.js";
 import {
   normalizeSurfaceOpacity,
@@ -42,7 +43,9 @@ function clonePlainObject(value) {
 function normalizeCaptureDeviceId(value) {
   if (value === "default") return "default";
   if (typeof value !== "string") return "default";
-  return /^(in|out):\d+$/.test(value) || /^(lb|cap|app)-[0-9a-f]{32}$/.test(value)
+  return /^(in|out):\d+$/.test(value) ||
+    /^(lb|cap|app)-[0-9a-f]{32}$/.test(value) ||
+    splitChannelSource(value)
     ? value
     : "default";
 }

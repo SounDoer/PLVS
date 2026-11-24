@@ -52,7 +52,7 @@ const CAPTURE_INVALIDATION_RETRY_STEP_MS = 300;
  *   captureDeviceId?: string,
  *   captureFormatSignature?: string,
  *   mixApplicationIds?: string[],
- *   mixInput?: { id: string, channels: number[] },
+ *   mixInput?: { id: string, channels: number[], mode?: "sum" },
  *   captureDeviceUnavailable?: boolean,
  *   histMaxSamples: number,
  *   visualMaxSamples: number,

@@ -195,6 +195,15 @@ pub(crate) fn build_device_list() -> Result<Vec<DeviceInfo>, String> {
     let label = device_list_label(&device)?;
     let id = device_id::alloc_loopback_id(&key, &mut used_lb);
     let plan = super::source_layout::device_plan(&device, cfg.channels(), true);
+    #[cfg(target_os = "windows")]
+    let channel_selectors = super::source_layout::MonitoringPlan::require_system_scope(
+      cfg.channels(),
+      super::source_layout::device_layout(&device, cfg.channels(), true),
+    )
+    .map(|plan| plan.speaker_selectors())
+    .unwrap_or_default();
+    #[cfg(not(target_os = "windows"))]
+    let channel_selectors = Vec::new();
     out.push(DeviceInfo {
       id,
       label,
@@ -202,6 +211,7 @@ pub(crate) fn build_device_list() -> Result<Vec<DeviceInfo>, String> {
       is_loopback: true,
       default_sample_rate: cfg.sample_rate(),
       channels: plan.channels(),
+      channel_selectors,
       monitor_signature: Some(plan.signature()),
       core_audio_output_uid: None,
     });
@@ -226,6 +236,13 @@ pub(crate) fn append_input_devices(out: &mut Vec<DeviceInfo>) -> Result<(), Stri
       is_loopback,
       default_sample_rate: cfg.sample_rate(),
       channels: cfg.channels(),
+      channel_selectors: if cfg!(target_os = "windows") {
+        (1..=cfg.channels().min(256))
+          .map(|index| index.to_string())
+          .collect()
+      } else {
+        Vec::new()
+      },
       monitor_signature: None,
       core_audio_output_uid: None,
     });
@@ -507,6 +524,7 @@ mod substring_tests {
       is_loopback: false,
       default_sample_rate: 48000,
       channels: 2,
+      channel_selectors: Vec::new(),
       monitor_signature: None,
       core_audio_output_uid: None,
     }

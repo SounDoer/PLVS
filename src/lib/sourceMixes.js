@@ -22,8 +22,9 @@ export function isMixInputId(id) {
 }
 
 export function canSaveSourceMix({ members, input }) {
+  const summing = input?.mode === "sum";
   return (
-    members.length >= (input ? 1 : 2) &&
+    members.length >= (summing ? 0 : input ? 1 : 2) &&
     members.every(
       (member) => /^app-[0-9a-f]{32}$/.test(member?.id) && typeof member.label === "string"
     ) &&
@@ -32,16 +33,27 @@ export function canSaveSourceMix({ members, input }) {
       (isMixInputId(input.id) &&
         typeof input.label === "string" &&
         Array.isArray(input.channels) &&
-        [1, 2].includes(input.channels.length) &&
+        (summing
+          ? input.channels.length >= 2
+          : input.mode == null && [1, 2].includes(input.channels.length)) &&
         input.channels.every(
           (channel) => Number.isInteger(channel) && channel >= 0 && channel < 256
         ) &&
-        (input.channels.length === 1 || input.channels[0] < input.channels[1])))
+        input.channels.every(
+          (channel, index) => index === 0 || channel > input.channels[index - 1]
+        )))
   );
 }
 
 export function sourceMixMembers(mix) {
   return mix.input ? [...mix.members, mix.input] : mix.members;
+}
+
+export function sourceMixMemberCount(mix) {
+  return (
+    mix.members.length +
+    (mix.input?.mode === "sum" ? mix.input.channels.length : Number(Boolean(mix.input)))
+  );
 }
 
 export function mixInputAvailable(input, devices) {
@@ -52,9 +64,16 @@ export function mixInputAvailable(input, devices) {
 export function sourceMixName(draft) {
   return (
     draft.name.trim() ||
-    sourceMixMembers(draft)
-      .map(({ label }) => label)
-      .join(" + ") ||
+    [
+      ...draft.members.map(({ label }) => label),
+      ...(draft.input
+        ? [
+            draft.input.mode === "sum"
+              ? `${draft.input.label} · ${draft.input.channels.map((channel) => channel + 1).join(" + ")}`
+              : draft.input.label,
+          ]
+        : []),
+    ].join(" + ") ||
     "Untitled"
   );
 }

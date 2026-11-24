@@ -123,6 +123,50 @@ impl MonitoringPlan {
     self.indices.len() as u16
   }
 
+  #[cfg(target_os = "windows")]
+  pub fn speaker_selectors(&self) -> Vec<String> {
+    self.roles.as_ref().map_or_else(Vec::new, |roles| {
+      roles
+        .iter()
+        .filter(|role| {
+          role.as_str() != "generic"
+            && roles.iter().filter(|candidate| *candidate == *role).count() == 1
+        })
+        .cloned()
+        .collect()
+    })
+  }
+
+  #[cfg(target_os = "windows")]
+  pub fn select_channel(mut self, channel: &str, output: bool) -> Result<Self, String> {
+    let index = if output {
+      self.roles.as_ref().and_then(|roles| {
+        let mut matches = roles
+          .iter()
+          .enumerate()
+          .filter(|(_, role)| role.as_str() == channel);
+        let found = matches.next().map(|(index, _)| index);
+        if matches.next().is_none() {
+          found
+        } else {
+          None
+        }
+      })
+    } else {
+      channel
+        .parse::<usize>()
+        .ok()
+        .and_then(|index| index.checked_sub(1))
+    };
+    let stream_index = index
+      .and_then(|index| self.indices.get(index))
+      .copied()
+      .ok_or("Selected Channel Unavailable")?;
+    self.indices = vec![stream_index];
+    self.roles = Some(vec!["M".into()]);
+    Ok(self)
+  }
+
   pub fn signature(&self) -> String {
     format!("{:?}:{:?}", self.indices, self.roles)
   }
@@ -381,6 +425,31 @@ pub(crate) fn pulse_roles(positions: &[u32]) -> Vec<String> {
 #[cfg(test)]
 mod tests {
   use super::*;
+  #[cfg(target_os = "windows")]
+  #[test]
+  fn selected_input_number_and_output_role_each_extract_one_physical_channel() {
+    let mut scratch = Vec::new();
+    let pcm = [3.0, 1.0, 2.0, 5.0, 6.0, 4.0];
+    let input = MonitoringPlan::new(6, None)
+      .select_channel("3", false)
+      .unwrap();
+    assert_eq!(input.pcm(&pcm, &mut scratch), &[2.0]);
+    assert!(MonitoringPlan::new(6, None)
+      .select_channel("7", false)
+      .is_err());
+
+    let layout = apple_layout(&[3, 1, 2, 5, 6, 4], true);
+    let output = MonitoringPlan::require_system_scope(6, Some(layout)).unwrap();
+    assert_eq!(
+      output.speaker_selectors(),
+      ["L", "R", "C", "LFE", "Ls", "Rs"]
+    );
+    assert!(output.clone().select_channel("1", true).is_err());
+    let center = output.select_channel("C", true).unwrap();
+    assert_eq!(center.pcm(&pcm, &mut scratch), &[3.0]);
+    assert_eq!(center.roles.as_deref().unwrap(), &["M"]);
+  }
+
   #[test]
   fn stereo_scope_extracts_the_configured_pair_and_excludes_other_audio_from_all_consumers() {
     let labels = [u32::MAX, 2, u32::MAX, 1];

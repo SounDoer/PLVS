@@ -52,3 +52,35 @@ it("edits and confirms deletion directly on the row without selecting the Mix", 
   expect(remove).toHaveBeenCalledWith(mix);
   expect(select).not.toHaveBeenCalled();
 });
+
+it("selects an individual channel or its whole device from the same source group", () => {
+  const input = {
+    id: `cap-${"3".repeat(32)}`,
+    label: "Interface",
+    channelSelectors: ["1", "2", "3"],
+  };
+  const output = {
+    id: `lb-${"4".repeat(32)}`,
+    label: "Speakers",
+    channelSelectors: ["L", "R", "C"],
+  };
+  const onSelect = vi.fn();
+  render(
+    <DeviceSelectionContent
+      audioInputs={[input]}
+      audioOutputs={[output]}
+      safeAudioDeviceId="default"
+      onSelect={onSelect}
+    />
+  );
+  fireEvent.click(screen.getByRole("button", { name: /^Input/ }));
+  fireEvent.click(screen.getByRole("button", { name: "channels for Interface" }));
+  fireEvent.click(screen.getByRole("button", { name: "Interface · Channel 3" }));
+  expect(onSelect).toHaveBeenLastCalledWith(`ch:${input.id}:3`);
+  fireEvent.click(screen.getByRole("button", { name: "Interface" }));
+  expect(onSelect).toHaveBeenLastCalledWith(input.id);
+  fireEvent.click(screen.getByRole("button", { name: /^Output/ }));
+  fireEvent.click(screen.getByRole("button", { name: "channels for Speakers" }));
+  fireEvent.click(screen.getByRole("button", { name: "Speakers · Center" }));
+  expect(onSelect).toHaveBeenLastCalledWith(`ch:${output.id}:C`);
+});

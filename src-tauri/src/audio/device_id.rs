@@ -128,6 +128,21 @@ pub fn is_stable_capture_id(id: &str) -> bool {
   id.starts_with("cap-") && id.len() == 36 && id[4..].chars().all(|c| c.is_ascii_hexdigit())
 }
 
+/// Channel Sources use a one-based input index or an exact output speaker role.
+pub(crate) fn split_channel_source(id: &str) -> Option<(&str, &str)> {
+  let (device, channel) = id.strip_prefix("ch:")?.split_once(':')?;
+  let valid = if is_stable_capture_id(device) {
+    channel
+      .parse::<u16>()
+      .is_ok_and(|index| (1..=256).contains(&index) && index.to_string() == channel)
+  } else if is_stable_loopback_id(device) {
+    channel != "generic" && crate::dsp::channel_layouts::role_weight(channel).is_some()
+  } else {
+    false
+  };
+  valid.then_some((device, channel))
+}
+
 /// Legacy `out:123` — decimal index in cpal `output_devices()` enumeration order (unsorted).
 pub fn parse_legacy_output_index(id: &str) -> Option<usize> {
   let rest = id.strip_prefix("out:")?;

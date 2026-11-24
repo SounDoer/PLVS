@@ -11,6 +11,7 @@ import {
   formatAudioDeviceLabel,
   isUnavailableApplicationSource,
 } from "../lib/audioDeviceLabels.js";
+import { splitChannelSource, findDeviceSource } from "../lib/channelSources.js";
 import { isSourceMixId } from "../lib/sourceMixes.js";
 import {
   clearCurrentTrayIcon,
@@ -61,6 +62,16 @@ function sourceLabelFor({
   if (application) return `Application · ${application.label}`;
   if (isUnavailableApplicationSource(safeAudioDeviceId, captureApplications)) {
     return "Application · Not connected";
+  }
+  const channel = splitChannelSource(safeAudioDeviceId);
+  if (channel) {
+    const isOutput = channel.deviceId.startsWith("lb-");
+    const source = findDeviceSource(isOutput ? audioOutputs : audioInputs, safeAudioDeviceId);
+    if (!source) return "Not connected";
+    const parent = (isOutput ? audioOutputs : audioInputs).find(
+      ({ id }) => id === channel.deviceId
+    );
+    return `${isOutput ? "Output" : "Input"} · ${menuDeviceText(parent.label)} · ${source.channelLabel}`;
   }
   const output = audioOutputs.find((device) => device.id === safeAudioDeviceId);
   if (output) return `Output · ${menuDeviceText(output.label)}`;

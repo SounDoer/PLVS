@@ -46,7 +46,7 @@ the UI disagree, the UI on `main` wins and this file is corrected.
 | Clear All Files            | Remove all File list entries and analysis results after confirmation                                | 清空文件列表       |                             |
 | Export Statistics          | Write selected successful File results and their Profile evaluations to one CSV                     | 导出统计数据       |                             |
 | Sources                    | The toolbar menu that chooses the Source, in the window and in the Dock                             | 信号源菜单         | Device                      |
-| Mix                        | A saved Source that combines selected applications into one stereo signal                           | 混合信号源         |                             |
+| Mix                        | A saved Source that combines selected applications or input channels into one stereo signal         | 混合信号源         |                             |
 | Automatic                  | The Source that follows the default system output                                                   | 自动               |                             |
 | Live                       | Metering the current signal as it arrives                                                           | 实时               |                             |
 | Snapshot                   | Every meter frozen at one moment chosen from history; capture continues behind it                   | 快照               | inspect mode, freeze        |
@@ -135,6 +135,7 @@ screen, and the abbreviations on compact surfaces only make sense against the En
 | Max Hold                   | Keeps the highest value reached on screen; Spectrum's Hold option does this           |
 | Playback Max               | Level Meter readout showing the latest playback max while the bar stays live          |
 | Correlation                | Phase correlation of a channel pair, from −1 to +1                                    |
+| Sum Channels               | A Mix input mode that adds selected channels from one device into a centered signal   |
 | Channel Pair               | The two channels a stereo panel reads                                                 |
 | Dialogue-Gated Loudness    | The family of readouts based on detected speech                                       |
 | Dialogue Detection         | The on-device voice detector those readouts depend on                                 |

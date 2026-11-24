@@ -6,6 +6,7 @@ import { formatAudioDeviceLabel } from "@/lib/audioDeviceLabels.js";
 import { isTauri } from "../ipc/env.js";
 import { isWindows } from "../lib/platform.js";
 import { isSourceMixId } from "../lib/sourceMixes.js";
+import { findDeviceSource } from "../lib/channelSources.js";
 import { usesTransactionalPersistence } from "../persistence/index.js";
 import { useSourceMixes } from "../hooks/useSourceMixes.js";
 import { useMeterDisplayState, useMeterRuntime } from "./MeterRuntimeContext.jsx";
@@ -19,7 +20,7 @@ import { useMeterDisplayState, useMeterRuntime } from "./MeterRuntimeContext.jsx
  *   captureDeviceUnavailable: boolean,
  *   sourceMixes: ReturnType<typeof useSourceMixes>,
  *   mixApplicationIds: string[] | undefined,
- *   mixInput: { id: string, channels: number[] } | undefined,
+ *   mixInput: { id: string, channels: number[], mode?: "sum" } | undefined,
  *   selectedSource: { type: string, label: string } | null,
  *   sourceDisplayName: string | null,
  *   footerSourceLabel: string,
@@ -80,13 +81,19 @@ export function SourceProvider({ children }) {
     ? sourceMixes.list.find(({ id }) => id === captureDeviceId)
     : null;
   const selectionIsMix = isSourceMixId(captureDeviceId);
-  const mixMembers = selectedMix?.members
-    .map(({ id }) => id)
-    .sort()
-    .join(",");
-  const mixApplicationIds = useMemo(() => mixMembers?.split(","), [mixMembers]);
+  const mixMembers = selectedMix
+    ? JSON.stringify(selectedMix.members.map(({ id }) => id).sort())
+    : "";
+  const mixApplicationIds = useMemo(
+    () => (mixMembers ? JSON.parse(mixMembers) : undefined),
+    [mixMembers]
+  );
   const inputSignature = selectedMix?.input
-    ? JSON.stringify({ id: selectedMix.input.id, channels: selectedMix.input.channels })
+    ? JSON.stringify({
+        id: selectedMix.input.id,
+        channels: selectedMix.input.channels,
+        mode: selectedMix.input.mode,
+      })
     : "";
   const mixInput = useMemo(
     () => (inputSignature ? JSON.parse(inputSignature) : undefined),
@@ -112,7 +119,7 @@ export function SourceProvider({ children }) {
     if (captureDeviceId === "default") {
       return defaultOutputFormatSig || "";
     }
-    const d = audioDevices.find((x) => x.id === captureDeviceId);
+    const d = findDeviceSource(audioDevices, captureDeviceId);
     return d
       ? `${d.channels}:${d.defaultSampleRate}${d.monitorSignature ? `|${d.monitorSignature}` : ""}`
       : "";
@@ -144,20 +151,26 @@ export function SourceProvider({ children }) {
     if (application) {
       return { type: "Application", label: application.label };
     }
-    const device = audioDevices.find((candidate) => candidate.id === captureDeviceId);
+    const device = findDeviceSource(audioDevices, captureDeviceId);
     if (!device) return null;
     return {
       type: device.isSystemOutputMonitor ? "Output" : "Input",
-      label: device.label,
+      label: device.parentId
+        ? `${formatAudioDeviceLabel(audioDevices.find(({ id }) => id === device.parentId)?.label ?? device.label).primary} · ${device.channelLabel}`
+        : device.label,
     };
   }, [captureDeviceId, audioDevices, captureApplications, defaultOutputLabel, selectedMix]);
   const sourceDisplayName = useMemo(() => {
     if (!selectedSource) return null;
-    if (selectedSource.type === "Application" || selectedSource.type === "Mix")
+    if (
+      selectedSource.type === "Application" ||
+      selectedSource.type === "Mix" ||
+      captureDeviceId.startsWith("ch:")
+    )
       return selectedSource.label;
     const display = formatAudioDeviceLabel(selectedSource.label);
     return display.secondary || display.primary;
-  }, [selectedSource]);
+  }, [selectedSource, captureDeviceId]);
   // The restart itself is driven by `captureFormatSignature`; this only tells the user why their
   // measurement just started over.
   const previousDefaultOutputLabelRef = useRef(defaultOutputLabel);
