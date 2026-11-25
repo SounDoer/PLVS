@@ -482,6 +482,33 @@ describe("LevelMeterPanel", () => {
     expect(/** @type {HTMLElement} */ (fills[1]).dataset.levelMeterFillValue).toBe("-36.0");
   });
 
+  it("keeps RMS playback max readouts through silence, like the loudness modes", async () => {
+    const nowSpy = vi.spyOn(Date, "now").mockReturnValue(0);
+    const controls = {
+      levelMeterMode: "rms",
+      levelMeterPlaybackMax: true,
+    };
+    const { container, rerender } = renderPanel({
+      displayAudio: { peakDb: [-12, -12], rmsDb: [-18, -20] },
+      panelControls: controls,
+    });
+
+    await waitFor(() => expect(screen.getByText("-18.0")).toBeTruthy());
+
+    const silence = { peakDb: [-Infinity, -Infinity], rmsDb: [-Infinity, -Infinity] };
+    nowSpy.mockReturnValue(100);
+    rerender(panel({ displayAudio: silence, panelControls: controls }));
+    nowSpy.mockReturnValue(5_000);
+    rerender(
+      panel({ displayAudio: { ...silence, rmsDb: [-Infinity, -90] }, panelControls: controls })
+    );
+
+    await waitFor(() => expect(screen.getByText("-18.0")).toBeTruthy());
+    expect(screen.getByText("-20.0")).toBeTruthy();
+    const fills = [...container.querySelectorAll("[data-level-meter-bar-fill]")];
+    expect(/** @type {HTMLElement} */ (fills[1]).dataset.levelMeterFillValue).toBe("-90.0");
+  });
+
   it("replaces playback max when a new lower playback starts", async () => {
     const nowSpy = vi.spyOn(Date, "now").mockReturnValue(0);
 

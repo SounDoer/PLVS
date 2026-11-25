@@ -88,17 +88,31 @@ describe("updateChannelPlaybackMax", () => {
     ]);
   });
 
-  it("clears once silence has lasted the hold time", () => {
+  it("holds through silence and restarts with the next playback, like the single-value tracker", () => {
     const tracker = createChannelPlaybackMaxTracker("rms");
     updateChannelPlaybackMax(tracker, frame({ values: [-30, -40], nowMs: 0 }));
     expect(updateChannelPlaybackMax(tracker, frame({ values: [-90, -90], nowMs: 100 }))).toEqual([
       -30, -40,
     ]);
+    // Long silence: the latest playback's maxima stay.
+    expect(updateChannelPlaybackMax(tracker, frame({ values: [-90, -90], nowMs: 10_000 }))).toEqual(
+      [-30, -40]
+    );
+    // Signal after the hold time starts a new playback.
+    expect(updateChannelPlaybackMax(tracker, frame({ values: [-36, -38], nowMs: 10_016 }))).toEqual(
+      [-36, -38]
+    );
+  });
+
+  it("keeps the same playback across a gap shorter than the hold time", () => {
+    const tracker = createChannelPlaybackMaxTracker("rms");
+    updateChannelPlaybackMax(tracker, frame({ values: [-30, -40], nowMs: 0 }));
+    updateChannelPlaybackMax(tracker, frame({ values: [-90, -90], nowMs: 100 }));
     expect(
       updateChannelPlaybackMax(
         tracker,
-        frame({ values: [-90, -90], nowMs: 100 + PLAYBACK_SILENCE_HOLD_MS })
+        frame({ values: [-36, -20], nowMs: 99 + PLAYBACK_SILENCE_HOLD_MS })
       )
-    ).toEqual([]);
+    ).toEqual([-30, -20]);
   });
 });

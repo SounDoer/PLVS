@@ -97,8 +97,8 @@ export function updatePlaybackMax(tracker, { enabled, mode, audible, value, nowM
 
 /**
  * Advances a per-channel tracker by one frame. Playback is detected from the values themselves.
- * Unlike the single-value tracker, the maxima clear once silence has lasted
- * PLAYBACK_SILENCE_HOLD_MS.
+ * Like the single-value tracker, the maxima are held through silence and restart with the next
+ * playback, so the readout keeps showing the latest playback's maximum after it ends.
  *
  * @param {PlaybackMaxTracker<number[]>} tracker
  * @param {{ enabled: boolean, mode?: string, values: number[] | null | undefined, nowMs: number }} frame
@@ -127,12 +127,6 @@ export function updateChannelPlaybackMax(tracker, { enabled, mode, values, nowMs
     });
     return tracker.playbackMax;
   }
-  if (tracker.active) {
-    if (tracker.silentSince == null) {
-      tracker.silentSince = nowMs;
-    } else if (elapsed) {
-      reset(tracker, []);
-    }
-  }
+  if (tracker.active && tracker.silentSince == null) tracker.silentSince = nowMs;
   return tracker.playbackMax;
 }

@@ -57,6 +57,11 @@ viewing a Snapshot or a File result and after stopping the measurement. If the r
 PLVS keeps the current reading and shows a notice. Scale labels close to a marker fade out so the
 reading stays legible.
 
+**Playback Max**, available in the RMS, Momentary, and Short-term modes, makes the readout show the
+highest reading of the latest playback while the bar stays live; RMS keeps one per channel. A new
+playback starts when signal returns after at least 0.35 s of silence. Between playbacks the
+readout keeps the last playback's maximum.
+
 **Orientation** chooses the direction from lower to higher level: Left to Right, Right to Left,
 Top to Bottom, or Bottom to Top (the default), in both the workspace and Dock.
 Reversing growth keeps channel order unchanged and places readouts at the high-level end.
