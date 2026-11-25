@@ -82,27 +82,3 @@ export function CopyTextButton({
     </HoverTip>
   );
 }
-
-/** @param {{ value: string, ariaLabel?: string, className?: string }} props */
-export function CopyableTextBlock({ value, ariaLabel = "copy text", className }) {
-  return (
-    <div
-      className={cn(
-        "relative rounded-md border border-border bg-muted px-3 py-2 pr-10",
-        "focus-within:border-border",
-        className
-      )}
-    >
-      <div
-        role="textbox"
-        aria-label={`${ariaLabel} text`}
-        aria-readonly="true"
-        tabIndex={0}
-        className="whitespace-pre-wrap break-words font-mono text-[length:var(--ui-fs-axis)] leading-relaxed text-foreground outline-none"
-      >
-        {value}
-      </div>
-      <CopyTextButton value={value} ariaLabel={ariaLabel} className="absolute top-2 right-2" />
-    </div>
-  );
-}

@@ -562,7 +562,7 @@ describe("SettingsPanel", () => {
     expect(screen.queryByText(/not listening/)).toBeNull();
   });
 
-  it("shows the copyable prompt starter only while Agent Control is enabled", () => {
+  it("offers a single-row prompt starter copy action while Agent Control is enabled", async () => {
     const { rerender } = render(
       <SettingsPanel
         {...BASE_PROPS}
@@ -592,11 +592,23 @@ describe("SettingsPanel", () => {
 
     expect(screen.getByText("Prompt Starter")).toBeTruthy();
     expect(
-      screen.getByRole("textbox", { name: "copy agent control prompt starter text" }).textContent
-    ).toBe(
-      "Use PLVS’s built-in Agent Control: the PLVS MCP tools if they are connected, otherwise the `plvs-cli` command. First inspect the available capabilities and current app state, then help me..."
-    );
-    expect(screen.getByRole("button", { name: "copy agent control prompt starter" })).toBeTruthy();
+      screen.queryByRole("textbox", { name: "copy agent control prompt starter text" })
+    ).toBeNull();
+    const copy = screen.getByRole("button", { name: "copy agent control prompt starter" });
+    expect(copy.textContent).toBe("");
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    const previousClipboard = Object.getOwnPropertyDescriptor(navigator, "clipboard");
+    Object.defineProperty(navigator, "clipboard", { configurable: true, value: { writeText } });
+    try {
+      fireEvent.click(copy);
+      await waitFor(() => expect(copy.getAttribute("data-copy-state")).toBe("copied"));
+      expect(writeText).toHaveBeenCalledExactlyOnceWith(
+        "Use PLVS’s built-in Agent Control: the PLVS MCP tools if they are connected, otherwise the `plvs-cli` command. First inspect the available capabilities and current app state, then help me..."
+      );
+    } finally {
+      if (previousClipboard) Object.defineProperty(navigator, "clipboard", previousClipboard);
+      else Reflect.deleteProperty(navigator, "clipboard");
+    }
   });
 
   it("shows MCP Setup above the Prompt Starter, with the last chat app that used it", () => {
@@ -635,6 +647,18 @@ describe("SettingsPanel", () => {
       .getAllByText(/^(MCP Setup|Prompt Starter)$/)
       .map((node) => node.textContent);
     expect(labels).toEqual(["MCP Setup", "Prompt Starter"]);
+
+    const mcpHelp = screen.getByRole("button", { name: /^MCP Setup help:/i });
+    fireEvent.mouseEnter(mcpHelp);
+    expect(screen.getByRole("tooltip").textContent).toMatch(/connect it to PLVS through MCP/);
+    fireEvent.mouseLeave(mcpHelp);
+    expect(screen.queryByRole("tooltip")).toBeNull();
+
+    const promptHelp = screen.getByRole("button", { name: /^Prompt Starter help:/i });
+    fireEvent.focus(promptHelp);
+    expect(screen.getByRole("tooltip").textContent).toMatch(/inspect PLVS first/);
+    fireEvent.blur(promptHelp);
+    expect(screen.queryByRole("tooltip")).toBeNull();
 
     act(() => recordMcpUsage("Claude"));
     expect(screen.getByText("Last used by Claude just now")).toBeTruthy();

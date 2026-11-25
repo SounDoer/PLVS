@@ -23,7 +23,7 @@ import { INTERFACE_SIZE_OPTIONS } from "@/settings/defaults.js";
 import { ThemePicker } from "./ThemePicker.jsx";
 import { SharesetsBrowseButton } from "./SharesetsBrowseButton.jsx";
 import { DOCS_URL, RELEASES_INDEX_URL, SHARESETS_URL } from "../ipc/openExternal.js";
-import { CopyableTextBlock, CopyTextButton } from "./CopyableTextBlock.jsx";
+import { CopyTextButton } from "./CopyTextButton.jsx";
 import { McpUsageStatus } from "./McpUsageStatus.jsx";
 import { UpdatePreferencesSettings } from "./UpdatePreferencesControls.jsx";
 import {
@@ -1003,7 +1003,14 @@ export function SettingsContent({
               ) : null}
               {agentControlEnabled && agentControlMcpSetup ? (
                 <div>
-                  <SettingsRow label="MCP Setup">
+                  <SettingsRow
+                    labelNode={
+                      <SettingsLabelWithTip
+                        label="MCP Setup"
+                        tip="Copy and paste into your AI client to connect it to PLVS through MCP."
+                      />
+                    }
+                  >
                     <CopyTextButton
                       value={mcpSetupPrompt(agentControlMcpSetup)}
                       ariaLabel="copy mcp setup"
@@ -1015,13 +1022,20 @@ export function SettingsContent({
                 </div>
               ) : null}
               {agentControlEnabled ? (
-                <div className="flex flex-col gap-1 px-2">
-                  <span className={ROW_LABEL_CLASS}>Prompt Starter</span>
-                  <CopyableTextBlock
+                <SettingsRow
+                  labelNode={
+                    <SettingsLabelWithTip
+                      label="Prompt Starter"
+                      tip="Paste this into your AI chat and add your request. It tells the agent to inspect PLVS first using MCP or the CLI."
+                    />
+                  }
+                >
+                  <CopyTextButton
                     value={AGENT_CONTROL_PROMPT_STARTER}
                     ariaLabel="copy agent control prompt starter"
+                    writeText={writeClipboardText}
                   />
-                </div>
+                </SettingsRow>
               ) : null}
             </SettingsSection>
           </>

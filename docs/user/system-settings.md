@@ -562,7 +562,8 @@ or a pending crash report. Temporary dialogs and editors use
 a separate UI generation so automation can detect visible changes without treating them as saved
 settings changes.
 
-While Agent Control is on, two copy actions appear under the switch:
+While Agent Control is on, two copy actions can appear under the switch. Hover over either question
+mark or focus it with the keyboard for help.
 
 - Under **MCP Setup**, **Copy** puts this installation's MCP connection details and a setup prompt
   on the clipboard. Paste the whole prompt into your AI client. It can register the server or help
@@ -570,8 +571,8 @@ While Agent Control is on, two copy actions appear under the switch:
   [Connect an AI Client with MCP](agent-control.md#connect-an-ai-client-with-mcp). After a call
   reaches PLVS, **MCP Setup** can show the last client's name and when it was used. PLVS keeps that
   information only in memory until it quits.
-- **Prompt Starter** is a first message that tells an agent to inspect PLVS before it acts. It works
-  for terminal agents using `plvs-cli` and for chat apps using the MCP tools.
+- Under **Prompt Starter**, select **Copy**, paste the prompt into your AI chat, and add your
+  request. It tells the agent to inspect PLVS before it acts, using `plvs-cli` or the MCP tools.
 
 ## Licenses
 
