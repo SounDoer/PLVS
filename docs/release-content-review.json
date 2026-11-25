@@ -1,42 +1,42 @@
 {
   "schemaVersion": 1,
-  "version": "0.27.0",
-  "baselineTag": "v0.26.4",
-  "baselineRevision": "7f3565a6dd2625cb15ffc4e72f23e751a4cb573e",
-  "candidateRevision": "565d6268bb6d09a23df6fae0d8f457a7ebff2022",
-  "contentSha256": "0f6234352a614b489d32af9b12fb31d36b95e2126eb45f42365b486cefa6bbc3",
+  "version": "0.27.1",
+  "baselineTag": "v0.27.0",
+  "baselineRevision": "a6b21774411eb4a10e475eb52d926ef163e6bf08",
+  "candidateRevision": "6dbebb64a5a970ec24170e3ac3479b81a572a315",
+  "contentSha256": "044ceda1a129b98f5bad4e598abcf647d9731bea2c2d69d7b29221a14d61649e",
   "websiteSourceSha": "ba26b80053552f98162330c136e969c1246adfd1",
   "reviews": {
     "userGuide": {
       "status": "updated",
-      "rationale": "The Guide covers creating and recalling Mixes, channel routing, capture recovery, and local MCP setup and results. Linux application capture and window backend requirements are described separately.",
+      "rationale": "The Guide describes Live channel editing in Sources, File layout and fallback behavior, the revised MCP workflow and Settings, and RMS Playback Max. Former website section anchors still lead to the corresponding instructions.",
       "evidence": [
-        "Compared docs/user/signal-source.md, getting-started.md, workspace.md and troubleshooting.md with the Sources picker, useAudioEngine.js and the native capture paths. Compared the subsequent Spectrum render wait and PulseAudio stream invalidation fixes with the Guide and CHANGELOG. Linux Agent Control Acceptance 45581359100 verified the historical Spectrum and exact-source disconnect and restart behavior at 565d6268.",
-        "Compared docs/user/chat-apps.md, cli.md and system-settings.md with cli_mcp.rs, the command manifest and Settings MCP Setup."
+        "Compared docs/user/signal-source.md, multichannel.md, file-mode.md and panels.md with SourceChannels.jsx, DockAccessoriesContext.jsx, FileAnalysisSummary.jsx, file_analysis/session.rs, levelMeterPlaybackMax.js and the hidden-window transport fix.",
+        "Compared docs/user/agent-control.md, cli.md and system-settings.md and docs/agent-control/settings.md with SettingsContent.jsx, the command manifest, settingsControl.js and cli_mcp.rs. Verified the legacy guide anchors in the generated /docs/ page. Agent Control Acceptance 45659469248 passed on all three platforms at ec15fedc."
       ]
     },
     "readme": {
-      "status": "updated",
-      "rationale": "The highlights now include Live Mixes and local MCP. The Linux installation notes distinguish the Dock windowing requirement from PulseAudio-compatible capture.",
+      "status": "unchanged",
+      "rationale": "The existing highlights cover Live Mixes, file analysis, channel metering and local Agent Control. The release refines controls and measurement behavior within those features.",
       "evidence": [
-        "Reconciled README.md with the 0.27.0 CHANGELOG, the Signal Source and Chat Apps chapters, the Linux package dependencies and the release asset names."
+        "Compared README.md highlights and installation links with the 0.27.1 CHANGELOG, the stable asset contract and the updated Sources, File Mode and Agent Control Guide chapters."
       ]
     },
     "website": {
       "status": "updated",
-      "rationale": "The homepage's existing metering, layout, Dock and profile features still apply. Release inputs update the downloads, Guide and privacy policy. The policy now explains data received over local MCP, possible onward transfer by a chat app, and the last-use information held in memory.",
+      "rationale": "The homepage claims still apply. The release inputs publish the updated Guide and download links. The revised MCP export behavior changes local file creation and tool results within the existing disclosures. The policy and its effective date remain accurate.",
       "evidence": [
-        "Compared the live publication.json and the pinned PLVS-Website homepage at ba26b80053552f98162330c136e969c1246adfd1 with the 0.27.0 release changes.",
-        "Built the website from product, Policy and Catalogue inputs at 565d6268bb6d09a23df6fae0d8f457a7ebff2022. All 51 tests passed, 38 HTML pages built, and the homepage lists all four 0.27.0 downloads.",
-        "Reviewed desktop data handling from v0.26.4 (7f3565a6dd2625cb15ffc4e72f23e751a4cb573e) through 565d6268bb6d09a23df6fae0d8f457a7ebff2022. cli_mcp.rs, cli_mcp/files.rs and mcpUsage.js establish the local result and usage flows. Commit 2ada6adc removes the Google Fonts stylesheet and preconnects from index.html. The app uses its bundled fonts. The update feed and existing feedback, crash-report and newsletter service paths are unchanged. The Linux follow-up changes local capture recovery and test diagnostics only. docs/privacy-review.json records the recipient, consent, retention and effective-date decisions."
+        "Compared the live publication marker and PLVS-Website homepage at ba26b80053552f98162330c136e969c1246adfd1. Built from the 6dbebb64 product, policy and Catalogue inputs. All 51 tests passed, 38 HTML pages built, and the candidate homepage points to the four v0.27.1 downloads.",
+        "Reviewed desktop data handling from v0.27.0 (a6b21774411eb4a10e475eb52d926ef163e6bf08) through 6dbebb64a5a970ec24170e3ac3479b81a572a315. cli_mcp.rs, cli_mcp/files.rs and cli_control.rs now require an explicit local export, limit destinations to home or Downloads, preserve existing files, and hide the internal recording staging path. The local stdio connection, opt-in, data categories and chat provider handling remain within the current policy. The destination file remains under the user’s control.",
+        "Compared SettingsContent.jsx and UpdatePreferencesControls.jsx with the existing updater and crash-report owners. The release changes local presentation, not the GitHub update feed, automatic preferences, report consent or payloads, recipients, retention or deletion. No feedback, crash-report or newsletter service implementation changed in the range. The existing policy fingerprint and effective date 2026-11-25 passed validation."
       ]
     },
     "screenshots": {
       "status": "unchanged",
-      "rationale": "The eight published homepage renders and the README collage's featured states still depict the shipping layouts, controls and measurements. Current renders show text and minor presentation differences. The Sources and MCP settings added in this release are outside the depicted states.",
+      "rationale": "The published images depict meter workspaces, closed toolbar states, Dock strips and profile or theme editors. They continue to represent the layouts and features shown. The updated Sources controls, File Info detail, Settings and silence transition are outside the pictured states.",
       "evidence": [
-        "Rendered all eight homepage recipes from clean 8b35b7f667b4941eca2e4c8478cfc7942cb1fee3. Compared the published originals and candidate images side by side and inspected the pixel differences. The render report is artifacts/marketing/homepage-render-2026-11-25T08-18-14-437Z/report.json.",
-        "Reviewed the README collage's Workspace, Dock and editors against the corresponding product changes. The collage depicts no open Sources or Agent Control Settings. The subsequent PulseAudio recovery change affects interruption states outside these renders."
+        "Rendered all eight homepage recipes from clean 6dbebb64 and compared originals side by side in artifacts/marketing/homepage-render-2026-11-25T17-10-47-427Z/comparison.html. Both Dock originals are byte-identical. The other renders retain the featured layouts and controls with minor text and render differences.",
+        "Inspected the published SounDoer/SounDoer assets/plvs-collage.png. It shows the Workspace, Dock, Themes, Loudness Profiles and Presets without the changed open surfaces."
       ]
     }
   }
