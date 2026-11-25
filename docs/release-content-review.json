@@ -1,45 +1,42 @@
 {
   "schemaVersion": 1,
-  "version": "0.26.4",
-  "baselineTag": "v0.26.3",
-  "baselineRevision": "9f13ae5bbcee1bfc51c886e56b4c3278187d01b3",
-  "candidateRevision": "5a53640a18e81da286bc7d247cbced33cc52e6b3",
-  "contentSha256": "3390b5e4f3958d49e2b0dc1e02f9602586f448c096e93fd9ab98273a4703cbf2",
+  "version": "0.27.0",
+  "baselineTag": "v0.26.4",
+  "baselineRevision": "7f3565a6dd2625cb15ffc4e72f23e751a4cb573e",
+  "candidateRevision": "8b35b7f667b4941eca2e4c8478cfc7942cb1fee3",
+  "contentSha256": "31773ecd97aac890e7768f6d0c6281d8c711e223ac9f21cc6cc0000815eb4e49",
   "websiteSourceSha": "ba26b80053552f98162330c136e969c1246adfd1",
   "reviews": {
     "userGuide": {
       "status": "updated",
-      "rationale": "The Guide explains Live measurement continuation, selected-track analysis, PCM support and codec errors, macOS CLI discovery, and the new Agent Control operations and recording behavior.",
+      "rationale": "The Guide covers creating and recalling Mixes, channel routing, capture recovery, and local MCP setup and results. Linux application capture and window backend requirements are described separately.",
       "evidence": [
-        "Compared docs/user/workspace.md with useAudioEngine.js, engine/meter_pipeline.rs and the Live state changes.",
-        "Compared docs/user/file-mode.md with the ffprobe, FFmpeg decoder and File session changes, and the enabled decoders in scripts/build-ffmpeg-sidecars.sh.",
-        "Compared docs/user/cli.md, command-line.md and system-settings.md with cli_path.rs, the Agent Control command manifest and the measurement, Welcome, UI navigation and visual handlers."
+        "Compared docs/user/signal-source.md, getting-started.md, workspace.md and troubleshooting.md with the Sources picker, useAudioEngine.js and the native capture paths.",
+        "Compared docs/user/chat-apps.md, cli.md and system-settings.md with cli_mcp.rs, the command manifest and Settings MCP Setup."
       ]
     },
     "readme": {
-      "status": "unchanged",
-      "rationale": "The existing highlights cover native capture, local File analysis, Live history, Dock, multi-workbench operation and control through the bundled CLI. The new options use those same workflows, and the supported platform and download summaries remain accurate.",
+      "status": "updated",
+      "rationale": "The highlights now include Live Mixes and local MCP. The Linux installation notes distinguish the Dock windowing requirement from PulseAudio-compatible capture.",
       "evidence": [
-        "Compared README.md from the candidate with CHANGELOG.md for 0.26.4, the updated user Guide and the release asset names.",
-        "Compared the home screen and Dock shown in the README collage with the candidate's hero and Dock renders."
+        "Reconciled README.md with the 0.27.0 CHANGELOG, the Signal Source and Chat Apps chapters, the Linux package dependencies and the release asset names."
       ]
     },
     "website": {
       "status": "updated",
-      "rationale": "The existing homepage describes the shipping product. The release inputs advance the rendered Guide and download links. The privacy policy and its November 22, 2026 effective date remain applicable. Welcome draft control exposes existing update and crash-prompt preferences over the enabled local Agent Control connection. Continue applies the existing preferences, and report submission still requires explicit Send. No new collection, payloads, recipients, retention or deletion behavior was found.",
+      "rationale": "The homepage's existing metering, layout, Dock and profile features still apply. Release inputs update the downloads, Guide and privacy policy. The policy now explains data received over local MCP, possible onward transfer by a chat app, and the last-use information held in memory.",
       "evidence": [
-        "Checked live publication.json and the homepage at PLVS-Website ba26b80053552f98162330c136e969c1246adfd1 against the release changes.",
-        "Exported the product, policy and Catalogue inputs at 5a53640a18e81da286bc7d247cbced33cc52e6b3 and ran the website check. All 51 tests passed, 38 HTML pages built, and the homepage lists the four 0.26.4 downloads.",
-        "Privacy review covered v0.26.3 (9f13ae5bbcee1bfc51c886e56b4c3278187d01b3) through 5a53640a18e81da286bc7d247cbced33cc52e6b3. Compared UpdateSurfaces.jsx, editorDraftControl.js and the existing settingsControl.js preference fields. The new Welcome command changes a local draft until Continue saves it through the existing callbacks. Update requests still use the same GitHub feed and preference gates. The FFmpeg workflow now keeps sidecar releases out of GitHub Latest.",
-        "Checked the same range for changes to feedback, crash-report and newsletter service code and configuration. Visual recording now emits local render-state events alongside existing recording metadata. The local measurement, File analysis and recording paths add no remote destination. The rendered privacy policy retains the reviewed date."
+        "Compared the live publication.json and the pinned PLVS-Website homepage at ba26b80053552f98162330c136e969c1246adfd1 with the 0.27.0 release changes.",
+        "Built the website from product, Policy and Catalogue inputs at 8b35b7f667b4941eca2e4c8478cfc7942cb1fee3. All 51 tests passed, 38 HTML pages built, and the homepage lists all four 0.27.0 downloads.",
+        "Reviewed desktop data handling from v0.26.4 (7f3565a6dd2625cb15ffc4e72f23e751a4cb573e) through 8b35b7f667b4941eca2e4c8478cfc7942cb1fee3. cli_mcp.rs, cli_mcp/files.rs and mcpUsage.js establish the local result and usage flows. Commit 2ada6adc removes the Google Fonts stylesheet and preconnects from index.html. The app uses its bundled fonts. The update feed and existing feedback, crash-report and newsletter service paths are unchanged. docs/privacy-review.json records the recipient, consent, retention and effective-date decisions."
       ]
     },
     "screenshots": {
       "status": "unchanged",
-      "rationale": "The published images still show the layouts, control labels and readings for the featured states. The two Dock images and rules editor are pixel-identical. Each of the five other renders differs by at most 161 pixels, with no visible change to the depicted features.",
+      "rationale": "The eight published homepage renders and the README collage's featured states still depict the shipping layouts, controls and measurements. Current renders show text and minor presentation differences. The Sources and MCP settings added in this release are outside the depicted states.",
       "evidence": [
-        "Rendered all eight homepage recipes from clean 7528e95f477eae089023844fa621fcdeec36229c and compared decoded pixels against the published originals at PLVS-Website ba26b80053552f98162330c136e969c1246adfd1. The report is artifacts/marketing/homepage-render-2026-11-22T15-12-42-500Z/report.json.",
-        "Visually inspected the published and candidate render pairs and difference images. Changes after the rendered revision are version metadata and documentation."
+        "Rendered all eight homepage recipes from clean 8b35b7f667b4941eca2e4c8478cfc7942cb1fee3. Compared the published originals and candidate images side by side and inspected the pixel differences. The render report is artifacts/marketing/homepage-render-2026-11-25T08-18-14-437Z/report.json.",
+        "Reviewed the README collage's Workspace, Dock and editors against the corresponding product changes; the collage depicts no open Sources or Agent Control Settings."
       ]
     }
   }
