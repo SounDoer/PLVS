@@ -55,6 +55,7 @@ const STREAM_ERROR_DEVICE_UNAVAILABLE: u8 = 1;
 const STREAM_ERROR_INVALIDATED: u8 = 2;
 const STREAM_ERROR_OUTPUT_IN_USE: u8 = 3;
 const STREAM_ERROR_INPUT_INVALIDATED: u8 = 4;
+const STREAM_ERROR_INPUT_STALLED: u8 = 5;
 const AUDCLNT_E_NOT_INITIALIZED: i32 = 0x8889_0001_u32 as i32;
 const AUDCLNT_E_WRONG_ENDPOINT_TYPE: i32 = 0x8889_0003_u32 as i32;
 const AUDCLNT_E_DEVICE_INVALIDATED: i32 = 0x8889_0004_u32 as i32;
@@ -167,6 +168,18 @@ fn record_stream_error(
       );
     }
     log::error!("cpal stream error: {error}");
+  }
+}
+
+fn record_input_stall(flag: &AtomicU8, activity: u64, last_error_activity: u64) {
+  // An unclassified backend error during the same gap also excludes a timeout-only retry.
+  if activity != last_error_activity {
+    let _ = flag.compare_exchange(
+      STREAM_ERROR_NONE,
+      STREAM_ERROR_INPUT_STALLED,
+      Ordering::Relaxed,
+      Ordering::Relaxed,
+    );
   }
 }
 
@@ -290,11 +303,11 @@ pub(crate) fn emit_capture_failure(app: &AppHandle, error: &str, reason: Option<
 #[cfg(test)]
 mod capture_watch_tests {
   use super::{
-    capture_stall_message, loopback_start_error, record_stream_error, store_stream_error,
-    stream_error_code, wait_for_first_activity_or_stop, wait_for_stop_or_stall, CaptureStreamKind,
-    StallWatch, OUTPUT_IN_USE_MESSAGE, STREAM_ERROR_DEVICE_UNAVAILABLE,
-    STREAM_ERROR_INPUT_INVALIDATED, STREAM_ERROR_INVALIDATED, STREAM_ERROR_NONE,
-    STREAM_ERROR_OUTPUT_IN_USE,
+    capture_stall_message, loopback_start_error, record_input_stall, record_stream_error,
+    store_stream_error, stream_error_code, wait_for_first_activity_or_stop, wait_for_stop_or_stall,
+    CaptureStreamKind, StallWatch, OUTPUT_IN_USE_MESSAGE, STREAM_ERROR_DEVICE_UNAVAILABLE,
+    STREAM_ERROR_INPUT_INVALIDATED, STREAM_ERROR_INPUT_STALLED, STREAM_ERROR_INVALIDATED,
+    STREAM_ERROR_NONE, STREAM_ERROR_OUTPUT_IN_USE,
   };
   use std::sync::atomic::{AtomicU64, AtomicU8, Ordering};
   use std::sync::Arc;
@@ -317,6 +330,20 @@ mod capture_watch_tests {
     let mut watch = StallWatch::new(TIMEOUT, 7, start);
     assert!(!watch.observe(7, start + Duration::from_millis(4_999)));
     assert!(watch.observe(7, start + TIMEOUT));
+  }
+
+  #[test]
+  fn input_stall_recovery_requires_a_timeout_without_a_backend_error_in_the_gap() {
+    let flag = AtomicU8::new(STREAM_ERROR_NONE);
+    record_input_stall(&flag, 8, 8);
+    assert_eq!(flag.load(Ordering::Relaxed), STREAM_ERROR_NONE);
+
+    record_input_stall(&flag, 9, 8);
+    assert_eq!(flag.load(Ordering::Relaxed), STREAM_ERROR_INPUT_STALLED);
+
+    flag.store(STREAM_ERROR_INPUT_INVALIDATED, Ordering::Relaxed);
+    record_input_stall(&flag, 9, 8);
+    assert_eq!(flag.load(Ordering::Relaxed), STREAM_ERROR_INPUT_INVALIDATED);
   }
 
   #[test]
@@ -650,6 +677,7 @@ impl CaptureSession {
               STREAM_ERROR_DEVICE_UNAVAILABLE => Some("deviceDisconnected"),
               STREAM_ERROR_INVALIDATED => Some("deviceInvalidated"),
               STREAM_ERROR_INPUT_INVALIDATED => Some("inputStreamInvalidated"),
+              STREAM_ERROR_INPUT_STALLED => Some("inputCallbackStalled"),
               STREAM_ERROR_OUTPUT_IN_USE => Some("outputInUse"),
               _ => None,
             }),
@@ -1340,7 +1368,19 @@ where
   } else {
     CaptureStreamKind::Other
   };
-  let on_error = record_stream_error(stream_error.clone(), stream_kind);
+  let last_input_error_activity = matches!(stream_kind, CaptureStreamKind::WasapiInput)
+    .then(|| Arc::new(AtomicU64::new(u64::MAX)));
+  let mut report_error = record_stream_error(stream_error.clone(), stream_kind);
+  let on_error = {
+    let activity = activity.clone();
+    let last_input_error_activity = last_input_error_activity.clone();
+    move |error| {
+      if let Some(last_error) = &last_input_error_activity {
+        last_error.store(activity.load(Ordering::Relaxed), Ordering::Relaxed);
+      }
+      report_error(error);
+    }
+  };
   let start_error = |error: &cpal::Error| {
     if matches!(stream_kind, CaptureStreamKind::WasapiInput) && wasapi_stream_invalidated(error) {
       stream_error.store(STREAM_ERROR_INPUT_INVALIDATED, Ordering::Relaxed);
@@ -1406,6 +1446,13 @@ where
     &stream_error,
   );
   drop(stream);
+  if let (Err(_), Some(last_error)) = (&outcome, last_input_error_activity) {
+    record_input_stall(
+      &stream_error,
+      activity.load(Ordering::Relaxed),
+      last_error.load(Ordering::Relaxed),
+    );
+  }
   delivery.stop_producer();
   let _ = consumer_thread.join();
   outcome

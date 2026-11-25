@@ -132,7 +132,7 @@
  * @typedef {object} EngineStateChangedPayload
  * @property {"running"|"stopped"|"error"} state
  * @property {string|undefined} error
- * @property {"deviceDisconnected"|"deviceInvalidated"|"inputStreamInvalidated"|"systemSpeakerLayout"|"outputInUse"|undefined} reason
+ * @property {"deviceDisconnected"|"deviceInvalidated"|"inputStreamInvalidated"|"inputCallbackStalled"|"systemSpeakerLayout"|"outputInUse"|undefined} reason
  */
 
 /**

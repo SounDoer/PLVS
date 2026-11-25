@@ -121,7 +121,7 @@ export function useAudioEngine({
   const recoveryAttemptsRef = useRef(0);
   const recoveryPendingRef = useRef(false);
   const recoveryRearmAtRef = useRef(0);
-  /** @type {{ current: { deviceId: string, retryAt: number, started: boolean } | null }} */
+  /** @type {{ current: { deviceId: string, retryAt: number, started: boolean, reason: string } | null }} */
   const inputRecoveryRef = useRef(null);
   /** @type {{ current: string | null }} */
   const activeInputRef = useRef(null);
@@ -187,15 +187,20 @@ export function useAudioEngine({
     }
     const continuation = continuationRef?.current ?? null;
     if (continuationRef) continuationRef.current = null;
+    const retryingStall =
+      recoveryPendingRef.current &&
+      inputRecoveryRef.current?.deviceId === captureDeviceId &&
+      inputRecoveryRef.current.reason === "inputCallbackStalled";
     const continueSession =
+      inputRecoveryRef.current?.deviceId !== captureDeviceId &&
       continuation?.continuable === true &&
       continuation.deviceId === captureDeviceId &&
       continuation.format === captureFormatSignature;
-    if (isTauri() && audioRef.current?.mode === "tauri" && !captureDeviceUnavailable) {
-      clearLocalMeterStateForRestart();
-    } else if (continuation && !continueSession && !captureDeviceUnavailable) {
-      // A different Source or format, or a failed session, starts a fresh measurement: the
-      // retained history must not suggest that it continues.
+    if (
+      !retryingStall &&
+      !captureDeviceUnavailable &&
+      ((isTauri() && audioRef.current?.mode === "tauri") || (continuation && !continueSession))
+    ) {
       clearLocalMeterStateForRestart();
     }
     let mounted = true;
@@ -241,6 +246,8 @@ export function useAudioEngine({
       });
     };
     const recoveringInput = () => inputRecoveryRef.current?.deviceId === captureDeviceId;
+    const recoveringStalledInput = () =>
+      recoveringInput() && inputRecoveryRef.current?.reason === "inputCallbackStalled";
     const scheduleRecovery = (reason) => {
       const inputInvalidated = reason === "inputStreamInvalidated";
       const retryLimit =
@@ -252,11 +259,12 @@ export function useAudioEngine({
       recoveryPendingRef.current = true;
       recoveryRearmAtRef.current = 0;
       recoveryScheduled = true;
-      if (inputInvalidated) {
+      if (inputInvalidated || reason === "inputCallbackStalled") {
         inputRecoveryRef.current = {
           deviceId: captureDeviceId,
           retryAt: Date.now() + delay,
           started: false,
+          reason,
         };
       }
       const restart = () => setRecoveryRevision((revision) => revision + 1);
@@ -288,6 +296,7 @@ export function useAudioEngine({
           if (!resolvedDevice) {
             if (isAutomatic) throw new Error("No input devices reported by the native engine");
             if (
+              !recoveringStalledInput() &&
               (recoveringInput() || activeInputRef.current === captureDeviceId) &&
               scheduleRecovery("inputStreamInvalidated")
             )
@@ -347,6 +356,12 @@ export function useAudioEngine({
           });
           const applyFrame = (f) => {
             if (!mounted || disconnected || recoveryScheduled) return;
+            const firstFrameAfterStall = retryingStall && recoveryPendingRef.current;
+            if (firstFrameAfterStall) {
+              // Keep the previous measurement if reopening never produces a frame.
+              clearLocalMeterStateForRestart();
+              measurementOwner?.beginSession();
+            }
             if (recoveryPendingRef.current) {
               recoveryPendingRef.current = false;
               recoveryRearmAtRef.current = Date.now() + CAPTURE_RECOVERY_STABILITY_MS;
@@ -365,6 +380,7 @@ export function useAudioEngine({
               inputRecoveryRef.current = null;
             }
             baseApply(f);
+            if (firstFrameAfterStall) measurementOwner?.commitSession();
           };
 
           await setChannelRoles(channelRolesRef?.current ?? null);
@@ -379,6 +395,18 @@ export function useAudioEngine({
               if (!mounted || disconnected || recoveryScheduled || payload?.state !== "error")
                 return;
               meter?.closeMeterResets();
+              const message = payload.error || "Audio capture stopped";
+              if (recoveringStalledInput()) {
+                if (payload.reason === "deviceDisconnected") stopForDisconnectedSource();
+                else stopForCaptureFailure(message, payload.reason);
+                return;
+              }
+              if (
+                payload.reason === "inputCallbackStalled" &&
+                windowsInput &&
+                scheduleRecovery(payload.reason)
+              )
+                return;
               if (
                 (payload.reason === "inputStreamInvalidated" ||
                   (recoveringInput() && payload.reason === "deviceDisconnected")) &&
@@ -389,7 +417,6 @@ export function useAudioEngine({
                 stopForDisconnectedSource();
                 return;
               }
-              const message = payload.error || "Audio capture stopped";
               if (
                 (payload.reason === "deviceInvalidated" ||
                   payload.reason === "deviceDisconnected") &&
@@ -427,7 +454,7 @@ export function useAudioEngine({
             releaseListeners();
             return;
           }
-          measurementOwner?.beginSession();
+          if (!retryingStall) measurementOwner?.beginSession();
           try {
             nativeStart = startAudioCapture({
               deviceId: engineDeviceId,
@@ -443,13 +470,14 @@ export function useAudioEngine({
             meter = await nativeStart;
           } catch (error) {
             releaseListeners();
-            measurementOwner?.abortSession();
+            if (!retryingStall) measurementOwner?.abortSession();
             // The endpoint may disappear between enumeration and the native open.
             if (
               mounted &&
               !disconnected &&
               !recoveryScheduled &&
               recoveringInput() &&
+              !recoveringStalledInput() &&
               scheduleRecovery("inputStreamInvalidated")
             )
               return;
@@ -458,10 +486,10 @@ export function useAudioEngine({
           if (!mounted || disconnected || recoveryScheduled) {
             meter?.closeMeterResets();
             releaseListeners();
-            measurementOwner?.abortSession();
+            if (!retryingStall) measurementOwner?.abortSession();
             return;
           }
-          measurementOwner?.commitSession();
+          if (!retryingStall) measurementOwner?.commitSession();
           activeInputRef.current = windowsInput ? captureDeviceId : null;
           audioRef.current = { mode: "tauri", unsubs, meter };
           // Automatic captures the OS default route, not the row resolveDevice picked as a
@@ -500,7 +528,7 @@ export function useAudioEngine({
       inputRecovery?.deviceId === captureDeviceId ? inputRecovery.retryAt - Date.now() : 0;
     if (recoveringInput() && recoveryPendingRef.current && inputRecovery?.started) {
       // If the old effect had already begun opening the source, this is a new attempt.
-      if (!scheduleRecovery("inputStreamInvalidated")) {
+      if (!scheduleRecovery(inputRecovery.reason)) {
         if (captureDeviceUnavailable) stopForDisconnectedSource();
         else
           stopForCaptureFailure(

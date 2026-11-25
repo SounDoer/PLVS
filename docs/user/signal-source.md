@@ -178,9 +178,11 @@ default output is shown as a notice. On Windows, when a system audio change such
 Sound invalidates the device, PLVS rebuilds the stream and starts a fresh measurement automatically.
 
 On Windows, PLVS also briefly retries the same recording input if Windows invalidates its stream
-or the input disappears during Live capture. This includes a sound interface's own loopback input.
-**Audio Capture Recovered** in Status means that audio is coming in again and a fresh measurement
-has started. Readings such as Integrated Loudness and Loudness Range start over.
+or the input disappears during Live capture. If a stream delivers no data for five seconds without
+another reported stream error, PLVS tries to reopen the input once if it can still find it. This
+includes a sound interface's own loopback input. **Audio Capture Recovered** in Status means that
+audio is coming in again and a fresh measurement has started. Readings such as Integrated Loudness
+and Loudness Range start over.
 
 If an input or output you selected by name stays unavailable, PLVS stops measuring, keeps your
 selection, and shows **Source Disconnected** in Status. Reconnect the device or choose another in
