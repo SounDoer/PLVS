@@ -184,7 +184,11 @@ async function exercise({ invoke, until, disconnect, reconnect, captureDevice, p
     ]);
   snapshot("select", ["--offset-sec", "0.5"]);
   try {
-    const spectrum = invoke(["measurement", "spectrum", "--panel-id", "spectrum"]);
+    // Transport settles before the Spectrum panel necessarily draws the selected snapshot.
+    const spectrum = await until(() => {
+      const readout = invoke(["measurement", "spectrum", "--panel-id", "spectrum"]);
+      return readout.displaySource.kind === "snapshot" && readout;
+    }, "the Spectrum panel to render the snapshot");
     assert.deepEqual(spectrum.displaySource, { kind: "snapshot", offsetSec: 0.5 });
     assert.equal(spectrum.sample.freshness, "historical");
     assert.ok(spectrum.bands.length > 0);
