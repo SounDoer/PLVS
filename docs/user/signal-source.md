@@ -177,6 +177,11 @@ PLVS tells you instead of showing stale readings. A stalled stream, dropped audi
 default output is shown as a notice. On Windows, when a system audio change such as toggling Spatial
 Sound invalidates the device, PLVS rebuilds the stream and starts a fresh measurement automatically.
 
-If an input or output you selected by name disconnects, PLVS stops measuring, keeps your selection,
-and shows **Source Disconnected** in Status. Reconnect the device or choose another in **Sources**,
-then select **Start** to begin a fresh measurement.
+On Windows, PLVS also briefly retries the same recording input if Windows invalidates its stream
+or the input disappears during Live capture. This includes a sound interface's own loopback input.
+**Audio Capture Recovered** in Status means that audio is coming in again and a fresh measurement
+has started. Readings such as Integrated Loudness and Loudness Range start over.
+
+If an input or output you selected by name stays unavailable, PLVS stops measuring, keeps your
+selection, and shows **Source Disconnected** in Status. Reconnect the device or choose another in
+**Sources**, then select **Start** to begin a fresh measurement.

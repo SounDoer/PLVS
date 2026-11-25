@@ -60,6 +60,7 @@ the UI disagree, the UI on `main` wins and this file is corrected.
 | Loudness Profile           | A set of reference lines and warning thresholds for a delivery target                               | 响度配置           | target, spec                |
 | Troubleshooting            | Status link that opens the relevant troubleshooting topic in the user guide                         | 故障排查           |                             |
 | Status Notices             | The toolbar entry that lists current measurement warnings, errors and update state                  | 状态提示           | notifications               |
+| Audio Capture Recovered    | A Windows input reopened automatically and started a fresh measurement                              | 音频采集已恢复     |                             |
 | Source Disconnected        | The warning shown when a selected audio device disconnects during Live capture                      | 信号源已断开       |                             |
 | Mix Source Unavailable     | The warning shown while an application in a Mix cannot be measured                                  | 混合信号源暂不可用 |                             |
 | Incomplete Mix Measurement | The warning that the current measurement includes intervals with unavailable Mix sources            | 混合测量不完整     |                             |

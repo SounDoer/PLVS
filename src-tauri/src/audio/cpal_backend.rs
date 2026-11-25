@@ -54,6 +54,7 @@ const STREAM_ERROR_NONE: u8 = 0;
 const STREAM_ERROR_DEVICE_UNAVAILABLE: u8 = 1;
 const STREAM_ERROR_INVALIDATED: u8 = 2;
 const STREAM_ERROR_OUTPUT_IN_USE: u8 = 3;
+const STREAM_ERROR_INPUT_INVALIDATED: u8 = 4;
 const AUDCLNT_E_NOT_INITIALIZED: i32 = 0x8889_0001_u32 as i32;
 const AUDCLNT_E_WRONG_ENDPOINT_TYPE: i32 = 0x8889_0003_u32 as i32;
 const AUDCLNT_E_DEVICE_INVALIDATED: i32 = 0x8889_0004_u32 as i32;
@@ -111,17 +112,30 @@ fn stream_error_code(kind: cpal::ErrorKind) -> u8 {
   }
 }
 
-fn store_stream_error(flag: &AtomicU8, error: &cpal::Error, wasapi_loopback: bool) {
-  // WASAPI invalidates both the capture client and its silence output during an endpoint
-  // reconfiguration. CPAL maps that HRESULT to DeviceNotAvailable even when the endpoint
-  // remains present. Let the recovery path check whether the selected endpoint can be reopened.
-  let code = if wasapi_loopback
-    && error.kind() == cpal::ErrorKind::DeviceNotAvailable
-    && error.message().and_then(wasapi_os_error) == Some(AUDCLNT_E_DEVICE_INVALIDATED)
-  {
-    STREAM_ERROR_INVALIDATED
-  } else {
-    stream_error_code(error.kind())
+#[derive(Clone, Copy)]
+enum CaptureStreamKind {
+  Other,
+  WasapiInput,
+  WasapiLoopback,
+}
+
+fn wasapi_stream_invalidated(error: &cpal::Error) -> bool {
+  // WASAPI can invalidate a client while the endpoint is still present. CPAL maps that HRESULT to
+  // DeviceNotAvailable, which also covers endpoints that really went away.
+  error.kind() == cpal::ErrorKind::StreamInvalidated
+    || (error.kind() == cpal::ErrorKind::DeviceNotAvailable
+      && error.message().and_then(wasapi_os_error) == Some(AUDCLNT_E_DEVICE_INVALIDATED))
+}
+
+fn store_stream_error(flag: &AtomicU8, error: &cpal::Error, stream_kind: CaptureStreamKind) {
+  let code = match stream_kind {
+    CaptureStreamKind::WasapiInput if wasapi_stream_invalidated(error) => {
+      STREAM_ERROR_INPUT_INVALIDATED
+    }
+    CaptureStreamKind::WasapiLoopback if wasapi_stream_invalidated(error) => {
+      STREAM_ERROR_INVALIDATED
+    }
+    _ => stream_error_code(error.kind()),
   };
   if code != STREAM_ERROR_NONE {
     flag.store(code, Ordering::Relaxed);
@@ -130,10 +144,11 @@ fn store_stream_error(flag: &AtomicU8, error: &cpal::Error, wasapi_loopback: boo
 
 fn record_stream_error(
   flag: Arc<AtomicU8>,
-  wasapi_loopback: bool,
+  stream_kind: CaptureStreamKind,
 ) -> impl FnMut(cpal::Error) + Send + 'static {
   move |error| {
-    store_stream_error(&flag, &error, wasapi_loopback);
+    store_stream_error(&flag, &error, stream_kind);
+    let wasapi_loopback = matches!(stream_kind, CaptureStreamKind::WasapiLoopback);
     if wasapi_loopback {
       store_output_in_use(&flag, &error);
     }
@@ -160,7 +175,9 @@ pub(crate) fn capture_stall_message(stream_error: u8) -> String {
     STREAM_ERROR_DEVICE_UNAVAILABLE => {
       "Capture stopped: the audio device is no longer available.".into()
     }
-    STREAM_ERROR_INVALIDATED => "Capture stopped: the system invalidated the audio stream.".into(),
+    STREAM_ERROR_INVALIDATED | STREAM_ERROR_INPUT_INVALIDATED => {
+      "Capture stopped: the system invalidated the audio stream.".into()
+    }
     STREAM_ERROR_OUTPUT_IN_USE => OUTPUT_IN_USE_MESSAGE.into(),
     _ => format!(
       "Capture stopped: no audio received for {} s.",
@@ -274,9 +291,10 @@ pub(crate) fn emit_capture_failure(app: &AppHandle, error: &str, reason: Option<
 mod capture_watch_tests {
   use super::{
     capture_stall_message, loopback_start_error, record_stream_error, store_stream_error,
-    stream_error_code, wait_for_first_activity_or_stop, wait_for_stop_or_stall, StallWatch,
-    OUTPUT_IN_USE_MESSAGE, STREAM_ERROR_DEVICE_UNAVAILABLE, STREAM_ERROR_INVALIDATED,
-    STREAM_ERROR_NONE, STREAM_ERROR_OUTPUT_IN_USE,
+    stream_error_code, wait_for_first_activity_or_stop, wait_for_stop_or_stall, CaptureStreamKind,
+    StallWatch, OUTPUT_IN_USE_MESSAGE, STREAM_ERROR_DEVICE_UNAVAILABLE,
+    STREAM_ERROR_INPUT_INVALIDATED, STREAM_ERROR_INVALIDATED, STREAM_ERROR_NONE,
+    STREAM_ERROR_OUTPUT_IN_USE,
   };
   use std::sync::atomic::{AtomicU64, AtomicU8, Ordering};
   use std::sync::Arc;
@@ -398,10 +416,10 @@ mod capture_watch_tests {
       )
     };
     let flag = Arc::new(AtomicU8::new(STREAM_ERROR_NONE));
-    record_stream_error(flag.clone(), false)(error());
+    record_stream_error(flag.clone(), CaptureStreamKind::WasapiInput)(error());
     assert_eq!(flag.load(Ordering::Relaxed), STREAM_ERROR_NONE);
 
-    let mut report = record_stream_error(flag.clone(), true);
+    let mut report = record_stream_error(flag.clone(), CaptureStreamKind::WasapiLoopback);
     report(cpal::ErrorKind::UnsupportedOperation.into());
     assert_eq!(flag.load(Ordering::Relaxed), STREAM_ERROR_NONE);
 
@@ -428,12 +446,22 @@ mod capture_watch_tests {
     );
     let flag = Arc::new(AtomicU8::new(STREAM_ERROR_NONE));
 
-    store_stream_error(&flag, &silence_error, true);
+    store_stream_error(&flag, &silence_error, CaptureStreamKind::WasapiLoopback);
     assert_eq!(flag.load(Ordering::Relaxed), STREAM_ERROR_INVALIDATED);
-    record_stream_error(flag.clone(), true)(capture_error.clone());
+    record_stream_error(flag.clone(), CaptureStreamKind::WasapiLoopback)(capture_error.clone());
     assert_eq!(flag.load(Ordering::Relaxed), STREAM_ERROR_INVALIDATED);
 
-    record_stream_error(flag.clone(), false)(capture_error);
+    record_stream_error(flag.clone(), CaptureStreamKind::Other)(capture_error.clone());
+    assert_eq!(
+      flag.load(Ordering::Relaxed),
+      STREAM_ERROR_DEVICE_UNAVAILABLE
+    );
+
+    let mut report_input = record_stream_error(flag.clone(), CaptureStreamKind::WasapiInput);
+    report_input(capture_error);
+    assert_eq!(flag.load(Ordering::Relaxed), STREAM_ERROR_INPUT_INVALIDATED);
+
+    report_input(cpal::ErrorKind::DeviceNotAvailable.into());
     assert_eq!(
       flag.load(Ordering::Relaxed),
       STREAM_ERROR_DEVICE_UNAVAILABLE
@@ -449,10 +477,10 @@ mod capture_watch_tests {
       )
     };
     let flag = Arc::new(AtomicU8::new(STREAM_ERROR_NONE));
-    record_stream_error(flag.clone(), false)(error());
+    record_stream_error(flag.clone(), CaptureStreamKind::WasapiInput)(error());
     assert_eq!(flag.load(Ordering::Relaxed), STREAM_ERROR_NONE);
 
-    record_stream_error(flag.clone(), true)(error());
+    record_stream_error(flag.clone(), CaptureStreamKind::WasapiLoopback)(error());
     assert_eq!(flag.load(Ordering::Relaxed), STREAM_ERROR_OUTPUT_IN_USE);
     assert_eq!(
       capture_stall_message(STREAM_ERROR_OUTPUT_IN_USE),
@@ -621,6 +649,7 @@ impl CaptureSession {
             error.reason().or(match error_code {
               STREAM_ERROR_DEVICE_UNAVAILABLE => Some("deviceDisconnected"),
               STREAM_ERROR_INVALIDATED => Some("deviceInvalidated"),
+              STREAM_ERROR_INPUT_INVALIDATED => Some("inputStreamInvalidated"),
               STREAM_ERROR_OUTPUT_IN_USE => Some("outputInUse"),
               _ => None,
             }),
@@ -1190,7 +1219,12 @@ pub(crate) fn create_silence_output_stream(
         }
       },
       move |error| {
-        store_stream_error(&stream_error, &error, cfg!(target_os = "windows"));
+        let stream_kind = if cfg!(target_os = "windows") {
+          CaptureStreamKind::WasapiLoopback
+        } else {
+          CaptureStreamKind::Other
+        };
+        store_stream_error(&stream_error, &error, stream_kind);
         store_output_in_use(&stream_error, &error);
         log::error!("silence stream error: {error}");
       },
@@ -1299,8 +1333,18 @@ where
   let forwarder =
     PcmCallbackForwarder::new(delivery.producer(), pcm_pool.clone(), dropped_for_callbacks);
   let activity = forwarder.activity();
-  let on_error = record_stream_error(stream_error.clone(), wasapi_loopback);
-  let start_error = |error: &dyn std::fmt::Display| {
+  let stream_kind = if wasapi_loopback {
+    CaptureStreamKind::WasapiLoopback
+  } else if cfg!(target_os = "windows") {
+    CaptureStreamKind::WasapiInput
+  } else {
+    CaptureStreamKind::Other
+  };
+  let on_error = record_stream_error(stream_error.clone(), stream_kind);
+  let start_error = |error: &cpal::Error| {
+    if matches!(stream_kind, CaptureStreamKind::WasapiInput) && wasapi_stream_invalidated(error) {
+      stream_error.store(STREAM_ERROR_INPUT_INVALIDATED, Ordering::Relaxed);
+    }
     loopback_start_error(error.to_string(), wasapi_loopback, &stream_error)
   };
   let stream = match supported.sample_format() {

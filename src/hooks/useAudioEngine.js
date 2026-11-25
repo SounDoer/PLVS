@@ -13,6 +13,7 @@ import { isTauri } from "../ipc/env.js";
 import { onEngineBackpressure, onEngineStateChanged, onMixCaptureStatus } from "../ipc/events.js";
 import { buildTauriFrameApply } from "../lib/tauriFrameApply.js";
 import { resolveDevice } from "../lib/audioEngineCommands.js";
+import { isWindows } from "../lib/platform.js";
 import { DEFAULT_DIALOGUE_VAD_ENGINE } from "../settings/defaults.js";
 
 const CLEARED_AUDIO_STATE = {
@@ -120,6 +121,10 @@ export function useAudioEngine({
   const recoveryAttemptsRef = useRef(0);
   const recoveryPendingRef = useRef(false);
   const recoveryRearmAtRef = useRef(0);
+  /** @type {{ current: { deviceId: string, retryAt: number, started: boolean } | null }} */
+  const inputRecoveryRef = useRef(null);
+  /** @type {{ current: string | null }} */
+  const activeInputRef = useRef(null);
 
   useEffect(() => {
     histMaxSamplesRef.current = histMaxSamples;
@@ -130,9 +135,12 @@ export function useAudioEngine({
   // recovery changes only `recoveryRevision`. The budget resets after the replacement has delivered
   // healthy frames for a short stability window.
   useEffect(() => {
+    if (activeInputRef.current !== captureDeviceId || !running) activeInputRef.current = null;
+    if (running && inputRecoveryRef.current?.deviceId === captureDeviceId) return;
     recoveryAttemptsRef.current = 0;
     recoveryPendingRef.current = false;
     recoveryRearmAtRef.current = 0;
+    inputRecoveryRef.current = null;
   }, [running, captureDeviceId, captureFormatSignature]);
 
   const clearLocalMeterStateForRestart = () => {
@@ -218,11 +226,53 @@ export function useAudioEngine({
         { requiresAttention: true, helpTopic: "audio-capture" }
       );
     };
-    if (captureDeviceUnavailable) {
-      stopForDisconnectedSource();
+    const stopForCaptureFailure = (message, reason) => {
+      halt(new Error(message));
+      stopTimer?.();
+      setSelectedOffset(-1);
+      raiseNotice("error", `Error: ${message}`, undefined, {
+        requiresAttention: true,
+        helpTopic:
+          reason === "systemSpeakerLayout"
+            ? "system-output-speaker-layout"
+            : reason === "outputInUse"
+              ? "output-in-use"
+              : "audio-capture",
+      });
+    };
+    const recoveringInput = () => inputRecoveryRef.current?.deviceId === captureDeviceId;
+    const scheduleRecovery = (reason) => {
+      const inputInvalidated = reason === "inputStreamInvalidated";
+      const retryLimit =
+        inputInvalidated || reason === "deviceInvalidated" ? CAPTURE_INVALIDATION_RETRY_LIMIT : 1;
+      if (recoveryAttemptsRef.current >= retryLimit) return false;
+
+      const delay = recoveryAttemptsRef.current * CAPTURE_INVALIDATION_RETRY_STEP_MS;
+      recoveryAttemptsRef.current += 1;
+      recoveryPendingRef.current = true;
+      recoveryRearmAtRef.current = 0;
+      recoveryScheduled = true;
+      if (inputInvalidated) {
+        inputRecoveryRef.current = {
+          deviceId: captureDeviceId,
+          retryAt: Date.now() + delay,
+          started: false,
+        };
+      }
+      const restart = () => setRecoveryRevision((revision) => revision + 1);
+      if (delay === 0) restart();
+      else recoveryTimer = window.setTimeout(restart, delay);
+      return true;
+    };
+    if (captureDeviceUnavailable && !recoveringInput()) {
+      // The inventory can report loss before the WASAPI error reaches the WebView.
+      if (activeInputRef.current !== captureDeviceId || !scheduleRecovery("inputStreamInvalidated"))
+        stopForDisconnectedSource();
       return;
     }
     const init = async () => {
+      const inputRecovery = inputRecoveryRef.current;
+      if (inputRecovery?.deviceId === captureDeviceId) inputRecovery.started = true;
       try {
         await stopInFlightRef.current;
         if (!mounted) return;
@@ -237,9 +287,20 @@ export function useAudioEngine({
           const { device: resolvedDevice, isAutomatic } = resolved;
           if (!resolvedDevice) {
             if (isAutomatic) throw new Error("No input devices reported by the native engine");
+            if (
+              (recoveringInput() || activeInputRef.current === captureDeviceId) &&
+              scheduleRecovery("inputStreamInvalidated")
+            )
+              return;
             stopForDisconnectedSource();
             return;
           }
+          const windowsInput =
+            isWindows() &&
+            !isAutomatic &&
+            !applicationId &&
+            !mixApplicationIds &&
+            !resolvedDevice.isSystemOutputMonitor;
 
           let engineDeviceId;
           if (mixApplicationIds) {
@@ -289,10 +350,19 @@ export function useAudioEngine({
             if (recoveryPendingRef.current) {
               recoveryPendingRef.current = false;
               recoveryRearmAtRef.current = Date.now() + CAPTURE_RECOVERY_STABILITY_MS;
-              raiseNotice("info", "Audio configuration changed — measurement restarted");
+              if (recoveringInput()) {
+                raiseNotice(
+                  "info",
+                  "Audio Capture Recovered",
+                  "Capture resumed on the same input. A fresh measurement started."
+                );
+              } else {
+                raiseNotice("info", "Audio configuration changed — measurement restarted");
+              }
             } else if (recoveryRearmAtRef.current > 0 && Date.now() >= recoveryRearmAtRef.current) {
               recoveryAttemptsRef.current = 0;
               recoveryRearmAtRef.current = 0;
+              inputRecoveryRef.current = null;
             }
             baseApply(f);
           };
@@ -309,40 +379,24 @@ export function useAudioEngine({
               if (!mounted || disconnected || recoveryScheduled || payload?.state !== "error")
                 return;
               meter?.closeMeterResets();
+              if (
+                (payload.reason === "inputStreamInvalidated" ||
+                  (recoveringInput() && payload.reason === "deviceDisconnected")) &&
+                scheduleRecovery("inputStreamInvalidated")
+              )
+                return;
               if (payload.reason === "deviceDisconnected" && !isAutomatic && !applicationId) {
                 stopForDisconnectedSource();
                 return;
               }
               const message = payload.error || "Audio capture stopped";
-              const invalidated = payload.reason === "deviceInvalidated";
-              const retryLimit = invalidated ? CAPTURE_INVALIDATION_RETRY_LIMIT : 1;
               if (
-                (invalidated || payload.reason === "deviceDisconnected") &&
-                recoveryAttemptsRef.current < retryLimit
-              ) {
-                // Give Windows progressively more time to settle if it invalidates the replacement.
-                const delay = recoveryAttemptsRef.current * CAPTURE_INVALIDATION_RETRY_STEP_MS;
-                recoveryAttemptsRef.current += 1;
-                recoveryPendingRef.current = true;
-                recoveryRearmAtRef.current = 0;
-                recoveryScheduled = true;
-                const restart = () => setRecoveryRevision((revision) => revision + 1);
-                if (delay === 0) restart();
-                else recoveryTimer = window.setTimeout(restart, delay);
+                (payload.reason === "deviceInvalidated" ||
+                  payload.reason === "deviceDisconnected") &&
+                scheduleRecovery(payload.reason)
+              )
                 return;
-              }
-              halt(new Error(message));
-              stopTimer?.();
-              setSelectedOffset(-1);
-              raiseNotice("error", `Error: ${message}`, undefined, {
-                requiresAttention: true,
-                helpTopic:
-                  payload.reason === "systemSpeakerLayout"
-                    ? "system-output-speaker-layout"
-                    : payload.reason === "outputInUse"
-                      ? "output-in-use"
-                      : "audio-capture",
-              });
+              stopForCaptureFailure(message, payload.reason);
             })
           );
           if (!mounted || disconnected) {
@@ -390,6 +444,15 @@ export function useAudioEngine({
           } catch (error) {
             releaseListeners();
             measurementOwner?.abortSession();
+            // The endpoint may disappear between enumeration and the native open.
+            if (
+              mounted &&
+              !disconnected &&
+              !recoveryScheduled &&
+              recoveringInput() &&
+              scheduleRecovery("inputStreamInvalidated")
+            )
+              return;
             throw error;
           }
           if (!mounted || disconnected || recoveryScheduled) {
@@ -399,6 +462,7 @@ export function useAudioEngine({
             return;
           }
           measurementOwner?.commitSession();
+          activeInputRef.current = windowsInput ? captureDeviceId : null;
           audioRef.current = { mode: "tauri", unsubs, meter };
           // Automatic captures the OS default route, not the row resolveDevice picked as a
           // fallback, so report the policy rather than a physical device the engine never opened.
@@ -417,15 +481,37 @@ export function useAudioEngine({
       } catch (err) {
         releaseListeners();
         if (!mounted || disconnected || recoveryScheduled) return;
+        const message = err?.message || "Audio unavailable";
+        if (recoveringInput()) {
+          stopForCaptureFailure(message, undefined);
+          return;
+        }
         halt(err);
         setSelectedOffset(-1);
-        raiseNotice("error", `Error: ${err?.message || "Audio unavailable"}`, undefined, {
+        raiseNotice("error", `Error: ${message}`, undefined, {
           requiresAttention: true,
           helpTopic: "audio-capture",
         });
       }
     };
-    init();
+    // An inventory-driven rerender can replace the retry effect before its timer fires.
+    const inputRecovery = inputRecoveryRef.current;
+    const retryDelay =
+      inputRecovery?.deviceId === captureDeviceId ? inputRecovery.retryAt - Date.now() : 0;
+    if (recoveringInput() && recoveryPendingRef.current && inputRecovery?.started) {
+      // If the old effect had already begun opening the source, this is a new attempt.
+      if (!scheduleRecovery("inputStreamInvalidated")) {
+        if (captureDeviceUnavailable) stopForDisconnectedSource();
+        else
+          stopForCaptureFailure(
+            "Capture stopped: the selected input did not stabilize.",
+            undefined
+          );
+      }
+      return () => window.clearTimeout(recoveryTimer);
+    }
+    if (retryDelay > 0) recoveryTimer = window.setTimeout(init, retryDelay);
+    else void init();
     return () => {
       mounted = false;
       window.clearTimeout(recoveryTimer);
