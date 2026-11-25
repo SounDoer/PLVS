@@ -148,7 +148,7 @@ function SourceLayoutMenu({ summary, alternatives, canReset, onLayout, onReset, 
       <PopoverContent
         align="end"
         aria-label="Channel Layout"
-        className="w-max min-w-[var(--radix-popover-trigger-width)] p-1"
+        className="w-max min-w-[var(--radix-popover-trigger-width)] p-1 [&>button]:min-h-[var(--ui-shell-h)]"
         data-dock-editor-menu=""
         onOpenAutoFocus={(event) => {
           if (!keyboardOpen.current) event.preventDefault();

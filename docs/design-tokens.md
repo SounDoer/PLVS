@@ -197,8 +197,8 @@ Interface Size sets `--ui-control-h`. The other control heights derive from it i
 | Token            | Small / Default | Large | Extra Large | Used by                                                                                                                                                                                 |
 | ---------------- | --------------- | ----- | ----------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `--ui-control-h` | 24px            | 28px  | 32px        | Form controls: text buttons, the add control, text and number inputs, the shortcut key cap, all select variants, a panel's choice rows, and the rows and labels that align to a control |
-| `--ui-shell-h`   | 28px            | 32px  | 36px        | Shell chrome and dropdown options: header icon buttons, Source Transport, the panel header bar, popover title bars, the options of an open select                                       |
-| `--ui-row-h`     | 32px            | 36px  | 40px        | List rows: every row of a menu, picker or managed list, whether the row itself is the click target (`MenuRow`) or holds a `RowAction` beside a handle and trailing actions              |
+| `--ui-shell-h`   | 28px            | 32px  | 36px        | Shell chrome and compact dropdown options: header icon buttons, Source Transport, panel headers, popover title bars, and options in Select or the Sources channel layout dropdown       |
+| `--ui-row-h`     | 32px            | 36px  | 40px        | List and navigation rows in menus, pickers and managed lists, whether the row itself is the click target (`MenuRow`) or holds a `RowAction` beside a handle and trailing actions        |
 | `--ui-switch-h`  | 16px            | 18px  | 22px        | Every switch; its width and thumb are derived from it. Two thirds of the control height, rounded to 2px                                                                                 |
 
 Use these heights for the listed controls. Multiline fields size to their content.
