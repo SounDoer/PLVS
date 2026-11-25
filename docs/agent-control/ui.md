@@ -47,7 +47,7 @@ The public `show` targets are:
 - `add-panel` opens the Panels menu's Add Panel list;
 - `source-group` expands the Sources menu's `channels`, `mixes`, `output`, `input` or
   `applications` group;
-- `dropdown` opens a named single-choice dropdown in Settings, Panel Settings or Views.
+- `dropdown` opens a named dropdown in Settings, Panel Settings, Sources or Views.
 
 A toolbar menu opens through the same path as a click on its button, so Sources refreshes its
 source list and Auto-hide Controls keeps the toolbar shown while the menu is open. Opening one menu

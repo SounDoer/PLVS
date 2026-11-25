@@ -2,7 +2,7 @@ import { createContext, useContext, useEffect, useMemo, useRef, useState } from 
 import { useCaptureTransport } from "../hooks/useCaptureTransport.js";
 import { useFileSessionLedger } from "../hooks/useFileSessionLedger.js";
 import { useIntakeRouting } from "../hooks/useIntakeRouting.js";
-import { useMeterDisplay } from "../hooks/useMeterDisplay.js";
+import { CLEARED_METER_AUDIO, useMeterDisplay } from "../hooks/useMeterDisplay.js";
 import { startFileProbe } from "../ipc/commands.js";
 import { errorMessage } from "../lib/errorDetails.js";
 import { sameFileSourceVersion, withSelectedAudioTrack } from "../lib/fileAnalysisSource.js";
@@ -194,7 +194,7 @@ export function MeterRuntimeProvider({ children }) {
   const deferLiveClear = () => {
     liveClearPendingRef.current = true;
   };
-  const clearLiveDisplay = () => {
+  const clearLiveDisplay = (preserveChannelTopology = false) => {
     liveClearPendingRef.current = false;
     liveContinuationRef.current = null;
     liveIntakeRef.current.reset();
@@ -202,7 +202,24 @@ export function MeterRuntimeProvider({ children }) {
     display.clearMixMeasurement();
     transport.clearAudioDrop();
     if (sourceSelectionRef.current.mode === "live") {
-      display.clearAudio();
+      if (preserveChannelTopology) {
+        // Applying rules clears readings for the same source. Keep the channel controls
+        // stable while waiting for the first frame under the new measurement rules.
+        const { peakDb, autoChannelRoles, loudnessLayoutKnown } =
+          /** @type {typeof CLEARED_METER_AUDIO & { autoChannelRoles?: string[] | null, loudnessLayoutKnown?: boolean }} */ (
+            display.latestAudioRef.current
+          );
+        const emptyChannels = (peakDb ?? []).map(() => -Infinity);
+        display.setAudio({
+          ...CLEARED_METER_AUDIO,
+          peakDb: emptyChannels,
+          rmsDb: emptyChannels,
+          autoChannelRoles,
+          loudnessLayoutKnown,
+        });
+      } else {
+        display.clearAudio();
+      }
       display.setSelectedOffset(-1);
       display.clock.resetTimer({ restart: transport.running });
       display.setShowClock(transport.running);
@@ -233,12 +250,12 @@ export function MeterRuntimeProvider({ children }) {
             if (sourceSelectionRef.current !== selection || audioRef.current?.meter !== meter) {
               throw new Error("The Live source changed before the reset.");
             }
-            clearLiveDisplay();
+            clearLiveDisplay(Boolean(rules));
           },
           rules
         );
       } else {
-        clearLiveDisplay();
+        clearLiveDisplay(Boolean(rules));
       }
       return true;
     } catch (error) {

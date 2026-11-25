@@ -28,7 +28,7 @@ it("keeps Channels above Automatic and preserves its disclosure when switching t
           layoutId: "stereo",
           roles: ["L", "R"],
           locked: source === mix.id,
-          hasOverride: false,
+          canReset: false,
           expanded,
           onExpandedChange,
           onLayout: vi.fn(),
@@ -46,7 +46,7 @@ it("keeps Channels above Automatic and preserves its disclosure when switching t
   ).toBeTruthy();
   expect(channels.getAttribute("aria-expanded")).toBe("false");
   fireEvent.click(channels);
-  expect(screen.queryByRole("combobox", { name: "channel layout" })).toBeNull();
+  expect(screen.queryByRole("button", { name: /^Channel layout:/ })).toBeNull();
   const first = screen.getByRole("combobox", { name: "channel 1 role" });
   const second = screen.getByRole("combobox", { name: "channel 2 role" });
   expect(first.parentElement).not.toBe(second.parentElement);
@@ -63,34 +63,83 @@ it("keeps Channels above Automatic and preserves its disclosure when switching t
   expect(/** @type {HTMLButtonElement} */ (first).disabled).toBe(false);
 });
 
-it("shows a layout selector for alternatives and confirms resetting overrides", () => {
+it("keeps Reset last in the compact layout menu and enables it only for an override", () => {
   const onLayout = vi.fn();
   const onReset = vi.fn();
-  render(
+  const sourceChannels = {
+    channelCount: 8,
+    layoutId: "7.1",
+    roles: ["L", "R", "C", "LFE", "Lb", "Rb", "Ls", "Rs"],
+    locked: false,
+    canReset: false,
+    expanded: true,
+    onExpandedChange: vi.fn(),
+    onLayout,
+    onRole: vi.fn(),
+    onReset,
+  };
+  const onSelect = vi.fn();
+  const { rerender } = render(
+    <DeviceSelectionContent onSelect={onSelect} sourceChannels={sourceChannels} />
+  );
+  fireEvent.click(screen.getByRole("button", { name: "Channel layout: 8ch · 7.1" }));
+  const menu = screen.getByRole("dialog", { name: "Channel Layout" });
+  expect(menu.querySelector("button:last-child")?.textContent).toBe("Reset");
+  expect(screen.getByRole("button", { name: "Reset" })).toHaveProperty("disabled", true);
+  expect(screen.queryByRole("button", { name: "7.1" })).toBeNull();
+  fireEvent.click(screen.getByRole("button", { name: "5.1.2" }));
+  expect(onLayout).toHaveBeenCalledExactlyOnceWith("5.1.2");
+
+  rerender(
     <DeviceSelectionContent
-      onSelect={vi.fn()}
-      sourceChannels={{
-        channelCount: 8,
-        layoutId: "custom",
-        roles: ["L", "R", "C", "LFE", "Lb", "Rb", "Ls", "Rs"],
-        locked: false,
-        hasOverride: true,
-        expanded: true,
-        onExpandedChange: vi.fn(),
-        onLayout,
-        onRole: vi.fn(),
-        onReset,
-      }}
+      onSelect={onSelect}
+      sourceChannels={{ ...sourceChannels, layoutId: "5.1.2", canReset: true }}
     />
   );
-  fireEvent.click(screen.getByRole("combobox", { name: "channel layout" }));
-  expect(screen.getByRole("option", { name: "7.1 Wide" })).toBeTruthy();
-  fireEvent.click(screen.getByRole("option", { name: "5.1.2" }));
-  expect(onLayout).toHaveBeenCalledExactlyOnceWith("5.1.2");
-  fireEvent.click(screen.getByRole("button", { name: "Reset channel labels" }));
-  expect(onReset).not.toHaveBeenCalled();
-  fireEvent.click(screen.getByLabelText("Confirm reset channel labels"));
+  fireEvent.click(screen.getByRole("button", { name: "Channel layout: 8ch · 5.1.2" }));
+  const reset = screen.getByRole("button", { name: "Reset" });
+  expect(reset).toHaveProperty("disabled", false);
+  fireEvent.click(reset);
   expect(onReset).toHaveBeenCalledOnce();
+});
+
+it("turns the channel summary into the layout selector without inserting a role row", () => {
+  const settings = {
+    channelCount: 2,
+    layoutId: "stereo",
+    roles: ["L", "R"],
+    locked: false,
+    canReset: false,
+    expanded: true,
+    onExpandedChange: vi.fn(),
+    onLayout: vi.fn(),
+    onRole: vi.fn(),
+    onReset: vi.fn(),
+  };
+  const onSelect = vi.fn();
+  const { rerender } = render(
+    <DeviceSelectionContent onSelect={onSelect} sourceChannels={settings} />
+  );
+  const header = screen.getByRole("button", { name: /^Channels/ });
+  const role = screen.getByRole("combobox", { name: "channel 1 role" });
+  const roleRows = document.getElementById(header.getAttribute("aria-controls"));
+  expect(screen.queryByRole("button", { name: /^Channel layout:/ })).toBeNull();
+  expect(header.textContent).toContain("2ch · Stereo");
+
+  rerender(
+    <DeviceSelectionContent
+      onSelect={onSelect}
+      sourceChannels={{ ...settings, layoutId: "custom", roles: ["C", "R"], canReset: true }}
+    />
+  );
+  const layout = screen.getByRole("button", { name: "Channel layout: 2ch · Custom" });
+  expect(layout.textContent).toBe("2ch · Custom");
+  expect(header.parentElement.contains(layout)).toBe(true);
+  expect(roleRows.firstElementChild.contains(role)).toBe(true);
+  expect(screen.getByRole("combobox", { name: "channel 1 role" })).toBe(role);
+  expect(screen.queryByText("Layout", { exact: true })).toBeNull();
+  fireEvent.click(layout);
+  expect(screen.getByRole("button", { name: "Reset" })).toHaveProperty("disabled", false);
 });
 
 it("shows the selected source in the group header only while collapsed", () => {

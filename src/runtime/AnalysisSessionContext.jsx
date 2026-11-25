@@ -45,7 +45,7 @@ import { UI_PREFERENCES } from "../uiPreferences.js";
  *   channelCount: number,
  *   channelLayoutLocked: boolean,
  *   channelLabelRuntime: ReturnType<typeof deriveChannelLabelRuntime>,
- *   sourceChannels: { channelCount: number, layoutId: string | null, roles: string[], locked: boolean, hasOverride: boolean, expanded: boolean },
+ *   sourceChannels: { channelCount: number, layoutId: string | null, roles: string[], locked: boolean, canReset: boolean, expanded: boolean },
  *   setSourceChannelsExpanded: (expanded: boolean) => void,
  *   peakLabelContext: any,
  *   setChannelLabelToken: (index: number, token: string) => void,
@@ -151,6 +151,10 @@ export function AnalysisSessionProvider({ children }) {
     [channelCount, channelLabelOverrides, autoChannelRoles, channelLayoutLocked, sourceMode]
   );
   const peakLabelContext = channelLabelRuntime.peakLabelContext;
+  const channelAutoTokens = useMemo(
+    () => seedTokensFromLabels(channelLabelRuntime.channelAutoLabels),
+    [channelLabelRuntime.channelAutoLabels]
+  );
   const sourceChannels = useMemo(() => {
     const mixRoles = channelLayoutLocked
       ? (mixRouting?.roles ??
@@ -165,11 +169,15 @@ export function AnalysisSessionProvider({ children }) {
         : (channelLabelRuntime.selectedLayoutId ?? (hasCustomLayout ? "custom" : null)),
       roles: mixRoles ?? channelLabelRuntime.channelLabelTokens,
       locked: channelLayoutLocked,
-      hasOverride: Boolean(channelLabelRuntime.channelLabelOverride),
+      canReset:
+        channelLabelRuntime.channelLabelOverride !== null &&
+        JSON.stringify(channelLabelRuntime.channelLabelOverride) !==
+          JSON.stringify(channelAutoTokens),
       expanded: sourceChannelsExpanded,
     };
   }, [
     audioOutputs,
+    channelAutoTokens,
     channelCount,
     channelLabelRuntime,
     channelLayoutLocked,
@@ -277,7 +285,6 @@ export function AnalysisSessionProvider({ children }) {
       resetLiveDisplayControls,
       raiseNotice,
     });
-  const channelAutoLabels = channelLabelRuntime.channelAutoLabels;
   const applyMeasurementEdit = useCallback(
     async (patch, commit) => {
       try {
@@ -302,17 +309,18 @@ export function AnalysisSessionProvider({ children }) {
 
   const commitChannelRoles = useCallback(
     (roles) => {
+      const next = JSON.stringify(roles) === JSON.stringify(channelAutoTokens) ? null : roles;
       if (
         sourceMode !== "live" ||
         channelCount <= 0 ||
         channelLayoutLocked ||
-        JSON.stringify(roles) === JSON.stringify(channelRoles)
+        JSON.stringify(next) === JSON.stringify(channelRoles)
       )
         return;
-      return applyMeasurementEdit({ channelRoles: roles }, () =>
+      return applyMeasurementEdit({ channelRoles: next }, () =>
         setChannelLabelOverrides((current) => {
           const updated = { ...current };
-          if (roles) updated[channelCount] = roles;
+          if (next) updated[channelCount] = next;
           else delete updated[channelCount];
           return updated;
         })
@@ -320,6 +328,7 @@ export function AnalysisSessionProvider({ children }) {
     },
     [
       applyMeasurementEdit,
+      channelAutoTokens,
       channelCount,
       channelLayoutLocked,
       channelRoles,
@@ -337,13 +346,11 @@ export function AnalysisSessionProvider({ children }) {
         !CHANNEL_ROLE_VOCABULARY.some(({ id }) => id === token)
       )
         return;
-      const next = (
-        channelLabelOverrides[channelCount] ?? seedTokensFromLabels(channelAutoLabels)
-      ).slice();
+      const next = (channelLabelOverrides[channelCount] ?? channelAutoTokens).slice();
       next[index] = token;
       return commitChannelRoles(next);
     },
-    [channelCount, channelLabelOverrides, channelAutoLabels, commitChannelRoles]
+    [channelCount, channelLabelOverrides, channelAutoTokens, commitChannelRoles]
   );
 
   const setChannelLayout = useCallback(

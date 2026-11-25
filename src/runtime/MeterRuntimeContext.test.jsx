@@ -99,6 +99,45 @@ describe("MeterRuntimeProvider", () => {
     }
   });
 
+  it("keeps Live channel topology visible while applying new rules and clears the readings", async () => {
+    const { result } = renderHook(
+      () => ({ runtime: useMeterRuntime(), assembly: useMeterRuntimeAssembly() }),
+      { wrapper }
+    );
+    native.enabled = true;
+    native.clear.mockImplementationOnce(async (_kind, apply) => apply());
+    act(() => result.current.runtime.startLive());
+    act(() => {
+      result.current.assembly.audioRef.current = {
+        mode: "tauri",
+        meter: { resetMeter: native.clear },
+      };
+      result.current.assembly.transport.markStarted();
+      result.current.assembly.display.setAudio((audio) => ({
+        ...audio,
+        peakDb: [-18, -21],
+        autoChannelRoles: ["L", "R"],
+        loudnessLayoutKnown: true,
+        tpMax: -3,
+      }));
+    });
+    try {
+      await act(async () => {
+        const target = result.current.runtime.liveClearTarget();
+        await result.current.runtime.clearLiveForControl(target, { channelRoles: ["C", "R"] });
+      });
+      expect(result.current.assembly.display.audio).toMatchObject({
+        peakDb: [-Infinity, -Infinity],
+        autoChannelRoles: ["L", "R"],
+        loudnessLayoutKnown: true,
+        tpMax: -Infinity,
+      });
+    } finally {
+      native.enabled = false;
+      native.clear.mockReset();
+    }
+  });
+
   it("preserves the TP Max on failure and resets only that value on confirmation", async () => {
     const { result } = renderHook(
       () => ({ runtime: useMeterRuntime(), assembly: useMeterRuntimeAssembly() }),

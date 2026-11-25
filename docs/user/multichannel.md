@@ -63,8 +63,11 @@ In Live, open **Channels** at the top of [Sources](signal-source.md). Standard l
 mono through 9.1.6 are available. Manual layouts describe roles within the monitored signal; they do not expand it to additional
 device channels. Assign a role to an individual channel when a source uses a
 different channel order; the layout then shows **Custom** until you choose a standard layout again.
-When only one standard layout applies, its name is shown as text. The layout chooser appears when
-there are multiple standards to choose from, or when a Custom or unknown layout can be replaced.
+The layout in the **Channels** header opens a menu when another layout can be chosen or a manual
+choice can be reset. **Reset** stays at the bottom of the menu and is enabled when the current
+roles differ from the source's automatic roles. Choosing a layout or editing a role to match the
+automatic roles and their order clears the manual choice. When there are no actions, the header
+shows the layout as text.
 
 When PLVS cannot identify a complete layout, it says so, and loudness uses channels 1 and 2 only until you set
 one. The toolbar status entry explains this condition in both normal and Dock modes, without

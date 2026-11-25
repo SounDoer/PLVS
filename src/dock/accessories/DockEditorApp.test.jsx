@@ -104,6 +104,35 @@ describe("DockEditorApp window behavior", () => {
     expect(action).toHaveBeenCalledWith("select-device", { deviceId: mix.id });
   });
 
+  it("keeps Dock Sources open while choosing a layout from its nested popup", () => {
+    client.payload = {
+      ...PRESETS_PAYLOAD,
+      view: "device",
+      device: {
+        safeAudioDeviceId: "default",
+        sourceChannels: {
+          channelCount: 8,
+          layoutId: "7.1",
+          roles: ["L", "R", "C", "LFE", "Lb", "Rb", "Ls", "Rs"],
+          locked: false,
+          canReset: false,
+          expanded: true,
+        },
+      },
+    };
+    render(<DockEditorApp />);
+    fireEvent.click(screen.getByRole("button", { name: "Channel layout: 8ch · 7.1" }));
+    const layout = screen.getByRole("button", { name: "7.1 Wide" });
+    fireEvent.pointerDown(layout);
+    fireEvent.click(layout);
+    expect(action).toHaveBeenCalledWith("source-channels", {
+      deviceId: "default",
+      channelCount: 8,
+      layoutId: "7.1-wide",
+    });
+    expect(action).not.toHaveBeenCalledWith("close-editor");
+  });
+
   it("closes when the accessory window loses focus", async () => {
     render(<DockEditorApp />);
 

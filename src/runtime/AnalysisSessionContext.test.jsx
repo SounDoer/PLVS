@@ -1,6 +1,6 @@
 /** @vitest-environment jsdom */
 import { beforeEach, describe, expect, it } from "vitest";
-import { act, render, renderHook, waitFor } from "@testing-library/react";
+import { act, render, renderHook } from "@testing-library/react";
 import { WorkspaceProvider } from "../workspace/WorkspaceContext.jsx";
 import { BlockingEditorsProvider } from "../hooks/BlockingEditorsContext.jsx";
 import { UiNavigationProvider } from "../uiNavigation/UiNavigationContext.jsx";
@@ -136,10 +136,8 @@ describe("AnalysisSessionProvider", () => {
 
     await act(async () => seen.session.setChannelLabelToken(0, "C"));
     expect(seen.settings.channelLabelOverrides[2][0]).toBe("C");
-    // A measurement-method change performs a coherent Clear; the next live frame restores the
-    // detected topology and applies the saved override.
-    await waitFor(() => expect(seen.session.channelCount).toBe(0));
-    act(() => seen.assembly.display.setAudio((current) => ({ ...current, peakDb: [-1, -2] })));
+    // Applying measurement rules clears readings for the same source, whose controls stay open.
+    expect(seen.session.channelCount).toBe(2);
     expect(seen.session.channelLabelRuntime.channelLabelOverride).toBeTruthy();
 
     await act(async () => seen.session.resetChannelLabels());
@@ -170,6 +168,26 @@ describe("AnalysisSessionProvider", () => {
     frame();
     expect(seen.session.channelLabelRuntime.channelLabelTokens).toEqual(["R", "L"]);
   });
+
+  it.each([
+    { automatic: ["L", "R"], expected: undefined },
+    { automatic: ["R", "L"], expected: ["L", "R"] },
+  ])(
+    "selecting Stereo compares the ordered roles against $automatic",
+    async ({ automatic, expected }) => {
+      settingsStore.patch({ channelLabelOverrides: { 2: ["C", "R"] } });
+      const seen = mount();
+      act(() =>
+        seen.assembly.display.setAudio((audio) => ({
+          ...audio,
+          peakDb: [-1, -2],
+          autoChannelRoles: automatic,
+        }))
+      );
+      await act(async () => seen.session.setChannelLayout("stereo"));
+      expect(seen.settings.channelLabelOverrides[2]).toEqual(expected);
+    }
+  );
 
   it("keeps its consumers still while frames with the same channel count arrive", () => {
     const seen = mount();

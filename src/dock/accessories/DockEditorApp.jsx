@@ -57,7 +57,9 @@ const SELECT_MENU_MAX_HEIGHT_REM = 24;
  * @param {string} [edge]
  */
 export function measureSelectMenuRoom(root, edge) {
-  const triggers = root.querySelectorAll('[data-slot="select-trigger"]');
+  const triggers = root.querySelectorAll(
+    '[data-slot="select-trigger"], [data-channel-layout-trigger]'
+  );
   if (triggers.length === 0) return 0;
   const remPx = Number.parseFloat(getComputedStyle(root.ownerDocument.documentElement).fontSize);
   const needed = SELECT_MENU_MAX_HEIGHT_REM * (remPx || 16) + SELECT_MENU_MARGIN_PX;
@@ -82,7 +84,7 @@ export function DockEditorApp() {
 
   useEffect(() => {
     const onKeyDown = (event) => {
-      if (event.key === "Escape") action("close-editor");
+      if (event.key === "Escape" && !event.defaultPrevented) action("close-editor");
     };
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
@@ -93,7 +95,7 @@ export function DockEditorApp() {
     const onPointerDown = (event) => {
       const inside =
         rootRef.current?.contains(event.target) === true ||
-        event.target.closest?.("[data-settings-select-menu]") != null;
+        event.target.closest?.("[data-settings-select-menu], [data-dock-editor-menu]") != null;
       pointerActiveRef.current = inside;
       if (!inside) action("close-editor");
     };
