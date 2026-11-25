@@ -4,7 +4,7 @@ import { spawn } from "node:child_process";
 import process from "node:process";
 import { createInterface } from "node:readline";
 
-/** The eight tools `plvs-cli mcp` offers, and which of them may change PLVS. */
+/** The tools `plvs-cli mcp` offers and their permission classes. */
 export const MCP_TOOLS = Object.freeze({
   plvs_capabilities: "read",
   plvs_inspect: "read",
@@ -12,6 +12,7 @@ export const MCP_TOOLS = Object.freeze({
   plvs_query: "read",
   plvs_wait: "read",
   plvs_screenshot: "read",
+  plvs_export: "export",
   plvs_change: "change",
   plvs_change_risky: "risky",
 });
@@ -20,7 +21,7 @@ const PNG_SIGNATURE = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0
 const RESPONSE_TIMEOUT_MS = 60_000;
 
 /**
- * Checks the advertised tool list: exactly the eight tools, read-only hints on reads, and the
+ * Checks the advertised tool list: read-only hints on reads, and the
  * destructive hint on the risky change tool alone.
  *
  * @param {Array<{ name: string, annotations?: { readOnlyHint?: boolean, destructiveHint?: boolean } }>} tools
@@ -122,8 +123,23 @@ export async function runMcpContract({ executable, instanceId, env }) {
     client.notify("notifications/initialized");
     checkToolList((await client.request("tools/list", {})).tools);
 
+    const catalogue = await client.call("plvs_describe");
+    assert.ok(
+      catalogue.envelope.result.families.some(({ family }) => family === "loudness-profile")
+    );
+    assert.ok(catalogue.content[0].text.length <= 8000);
+    const family = await client.call("plvs_describe", { family: "loudness-profile" });
+    assert.ok(
+      family.envelope.result.commands.some(({ command }) => command === "loudnessProfile.select")
+    );
     const described = await client.call("plvs_describe", { command: "loudnessProfile.select" });
     assert.equal(described.envelope.result.tool, "plvs_change");
+    const invalidSave = await client.call("plvs_query", {
+      command: "theme.export",
+      saveTo: "downloads",
+      ...instance,
+    });
+    assert.match(invalidSave.envelope.error?.message ?? "", /plvs_export/);
 
     const inspected = await client.call("plvs_inspect", instance);
     assert.equal(inspected.isError, false);
@@ -172,7 +188,7 @@ export async function runMcpContract({ executable, instanceId, env }) {
     assert.equal(screenshot.envelope.result.artifact.stagedPath, undefined);
 
     return [
-      "Initialized plvs-cli mcp and verified eight tools with read-only and destructive hints.",
+      "Verified MCP permission hints, compact command discovery and refusal of file saves through a read-only tool.",
       "Dry-ran a change, passed a revision conflict through, refused a risky command on the ordinary tool and a relative audio path.",
       `Segmented app.wait answered ${waited.envelope.result.outcome}; the screenshot came back as an inline PNG.`,
     ];

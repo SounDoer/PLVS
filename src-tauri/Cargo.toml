@@ -80,6 +80,7 @@ futures-util = "0.3"
 fs4 = { version = "1.1.0", features = ["sync"] }
 crossbeam-queue = "0.3.13"
 atomic-write-file = "0.3.1"
+tempfile = "3"
 getrandom = "0.4.3"
 rusqlite = { version = "0.41.1", features = ["bundled"] }
 subtle = "2.6.1"
@@ -163,7 +164,6 @@ panic = "abort"
 inherits = "release"
 
 [dev-dependencies]
-tempfile = "3"
 criterion = { version = "0.8.2", default-features = false, features = ["cargo_bench_support"] }
 
 [[bench]]

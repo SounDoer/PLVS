@@ -678,8 +678,15 @@ describe("SettingsPanel", () => {
       const [copied] = writeText.mock.calls[0];
       expect(copied).toMatch(/^Please connect to the PLVS app running on this computer/);
       expect(copied).toContain("command, arguments, and any supplied environment variables match");
-      expect(copied).toContain("use a read-only PLVS MCP tool");
-      expect(copied).not.toContain("\n\n");
+      expect(copied).toContain("your current AI client's own method");
+      expect(copied).toContain("the exact values to enter");
+      expect(copied).toContain("Call plvs_capabilities to verify live access");
+      expect(copied).toContain("PLVS is closed or Agent Control is disabled");
+      expect(copied).toContain(
+        `Server name: ${name}\nTransport: stdio\nCommand: ${command}\nArguments: ["mcp"]`
+      );
+      if (env) expect(copied).toContain(`Environment variables: ${JSON.stringify(env)}`);
+      else expect(copied).not.toContain("Environment variables:");
       expect(copied.endsWith(`\n\`\`\`json\n${mcpSetup}\n\`\`\``)).toBe(true);
     } finally {
       if (previousClipboard) Object.defineProperty(navigator, "clipboard", previousClipboard);

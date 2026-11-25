@@ -549,9 +549,10 @@ in the structured snapshot. Free-form log messages can still include device labe
 
 ## Agent Control
 
-**Agent Control** lets `plvs-cli` inspect and change the running app; see
-[Command Line](command-line.md). It is off until you enable it. Enabling it also makes `plvs-cli`
-available by name in a new terminal: on Windows through your user `PATH`, on macOS through a link
+**Agent Control** lets AI clients and command-line tools inspect and change the running app. See
+[Agent Control](agent-control.md) for both connection methods. It is off until you enable it.
+Enabling it also makes `plvs-cli` available by name in a new terminal. Windows uses your user
+`PATH` and macOS uses a link
 in `/usr/local/bin` that may require administrator authorization. When enabled, UI Navigation can
 open Settings or exact Panel Settings, begin Theme/Profile authoring, and open an unsent Feedback
 draft. Exact Close and Cancel operations use the same visible UI paths. They cannot save, send,
@@ -563,12 +564,12 @@ settings changes.
 
 While Agent Control is on, two copy actions appear under the switch:
 
-- Under **MCP Setup**, **Copy** puts the full English prompt and this installation's local MCP
-  configuration on the clipboard.
-  Send it to an agent that can register local MCP servers, or use the JSON from the prompt to set
-  up the connection manually. See [Chat Apps](chat-apps.md). After the first MCP call, a line under
-  **MCP Setup** shows which chat app last used PLVS and when. PLVS keeps that only in memory until
-  it quits.
+- Under **MCP Setup**, **Copy** puts this installation's MCP connection details and a setup prompt
+  on the clipboard. Paste the whole prompt into your AI client. It can register the server or help
+  you complete setup in the conversation. See
+  [Connect an AI Client with MCP](agent-control.md#connect-an-ai-client-with-mcp). After a call
+  reaches PLVS, **MCP Setup** can show the last client's name and when it was used. PLVS keeps that
+  information only in memory until it quits.
 - **Prompt Starter** is a first message that tells an agent to inspect PLVS before it acts. It works
   for terminal agents using `plvs-cli` and for chat apps using the MCP tools.
 

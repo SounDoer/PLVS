@@ -15,11 +15,10 @@ Read in this order; the website renders the guide in the same order.
 6. [Multichannel](multichannel.md)
 7. [Workspace](workspace.md)
 8. [File Mode](file-mode.md)
-9. [Command Line](command-line.md)
-10. [Chat Apps](chat-apps.md)
-11. [System Settings](system-settings.md)
-12. [FAQ & Known Limitations](faq.md)
-13. [Troubleshooting](troubleshooting.md)
+9. [Agent Control](agent-control.md)
+10. [System Settings](system-settings.md)
+11. [FAQ & Known Limitations](faq.md)
+12. [Troubleshooting](troubleshooting.md)
 
 ## Reference
 

@@ -1,15 +1,15 @@
 //! Files for the MCP adapter. The chat agent sees only the conversation while this server runs on
 //! the user's machine, so documents may be read from local files, audio paths must be absolute,
-//! text outputs come back inline unless the agent asks to save them, and CSV and recordings are
-//! always saved locally with only the path returned.
+//! explicit exports create a new local file and return its path.
 
 use std::fs;
+use std::io::{self, Write};
 use std::path::{Path, PathBuf};
 
 use rmcp::model::JsonObject;
 use serde_json::Value;
 
-use crate::cli_control::read_staged_artifact;
+use crate::cli_control::stream_staged_artifact;
 use crate::cli_manifest::CommandEntry;
 
 /// Mirrors what a user could reasonably hand the CLI as one JSON document.
@@ -146,118 +146,214 @@ pub(super) fn normalize_audio_paths(
   Ok(())
 }
 
+/// The app queries that can be saved by the MCP export tool.
+pub(super) const EXPORT_COMMANDS: [&str; 7] = [
+  "preset.export",
+  "theme.export",
+  "loudnessProfile.export",
+  "config.export",
+  "transport.file.report",
+  "transport.file.exportStatistics",
+  "visual.recording.inspect",
+];
+
+pub(super) const RECORDING_EXPORT: &str = "visual.recording.inspect";
+
 /// Where one command's output document lives in the result and how it is saved.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub(super) struct OutputSpec {
-  pub field: &'static str,
-  /// Written as text rather than pretty JSON.
-  pub raw: bool,
-  pub name: &'static str,
-  pub extension: &'static str,
-  /// Saved even when the agent did not ask: content that does not belong in a chat.
-  pub always: bool,
+struct OutputSpec {
+  field: &'static str,
+  raw: bool,
+  name: &'static str,
+  extension: &'static str,
 }
 
-pub(super) fn output_spec(id: &str, result: &Value) -> Option<OutputSpec> {
-  let spec = |field, raw, name, extension, always| OutputSpec {
+fn output_spec(id: &str, result: &serde_json::Map<String, Value>) -> Option<OutputSpec> {
+  let spec = |field, raw, name, extension| OutputSpec {
     field,
     raw,
     name,
     extension,
-    always,
   };
   match id {
-    "preset.export" => Some(spec("pack", false, "PLVS Presets", "plvspreset", false)),
-    "theme.export" => Some(spec("pack", false, "PLVS Themes", "plvstheme", false)),
+    "preset.export" => Some(spec("pack", false, "PLVS Presets", "plvspreset")),
+    "theme.export" => Some(spec("pack", false, "PLVS Themes", "plvstheme")),
     "loudnessProfile.export" => Some(spec(
       "pack",
       false,
       "PLVS Loudness Profiles",
       "plvsloudness",
-      false,
     )),
     "config.export" => Some(spec(
       "configuration",
       false,
       "PLVS Configuration",
       "plvsconfig",
-      false,
     )),
-    "transport.file.report" if result.get("markdown").is_some() => {
-      Some(spec("markdown", true, "PLVS File Report", "md", false))
+    "transport.file.report" if result.contains_key("markdown") => {
+      Some(spec("markdown", true, "PLVS File Report", "md"))
     }
-    "transport.file.report" => Some(spec("report", false, "PLVS File Report", "json", false)),
-    "transport.file.exportStatistics" => {
-      Some(spec("csv", true, "PLVS File Statistics", "csv", true))
-    }
+    "transport.file.report" => Some(spec("report", false, "PLVS File Report", "json")),
+    "transport.file.exportStatistics" => Some(spec("csv", true, "PLVS File Statistics", "csv")),
     _ => None,
   }
 }
 
-/// A name in `directory` that does not exist yet: `<name>.<ext>`, then `<name> (2).<ext>`, ...,
-/// the way browsers name downloads.
-pub(super) fn unique_file(directory: &Path, name: &str, extension: &str) -> PathBuf {
-  let first = directory.join(format!("{name}.{extension}"));
-  if !first.exists() {
-    return first;
-  }
-  (2..)
-    .map(|index| directory.join(format!("{name} ({index}).{extension}")))
-    .find(|candidate| !candidate.exists())
-    .expect("an unbounded range always yields a free name")
+struct Destination {
+  directory: PathBuf,
+  filename: Option<std::ffi::OsString>,
 }
 
-/// Resolves the tool's `saveTo` argument. `None` means "keep it in the chat".
-pub(super) fn destination(
-  save_to: Option<&str>,
-  always: bool,
+fn destination(raw: Option<&str>, home: &Path, downloads: &Path) -> Result<Destination, String> {
+  let target = match raw {
+    None | Some(DOWNLOADS) => downloads.to_path_buf(),
+    Some(raw) => absolute_path(raw, home)?,
+  };
+
+  let (directory, filename) = if raw.is_none() || raw == Some(DOWNLOADS) || target.is_dir() {
+    (target.as_path(), None)
+  } else {
+    let filename = target
+      .file_name()
+      .ok_or("The export path must name a file or folder.")?;
+    #[cfg(windows)]
+    if filename.to_string_lossy().contains(':') {
+      return Err(
+        "The export path must name a file, not a Windows alternate data stream.".to_string(),
+      );
+    }
+    (
+      target
+        .parent()
+        .ok_or("The export path has no parent folder.")?,
+      Some(filename.to_os_string()),
+    )
+  };
+
+  let directory = directory.canonicalize().map_err(|error| {
+    format!(
+      "Unable to resolve export folder {}: {error}",
+      directory.display()
+    )
+  })?;
+  let allowed = [home, downloads].iter().any(|root| {
+    root
+      .canonicalize()
+      .is_ok_and(|root| directory.starts_with(root))
+  });
+  if !allowed {
+    return Err("Choose an export location in your home or Downloads folder.".to_string());
+  }
+  Ok(Destination {
+    directory,
+    filename,
+  })
+}
+
+/// Writes to a temporary file in the destination folder and publishes it without replacing any
+/// existing entry. Folder destinations get the first available numbered filename.
+fn save_new(
+  raw: Option<&str>,
+  home: &Path,
+  downloads: &Path,
   name: &str,
   extension: &str,
-  home: &Path,
-) -> Result<Option<PathBuf>, String> {
-  let directory_target = |directory: PathBuf| unique_file(&directory, name, extension);
-  match save_to {
-    None if !always => Ok(None),
-    None | Some(DOWNLOADS) => {
-      let downloads = dirs::download_dir().unwrap_or_else(|| home.join("Downloads"));
-      Ok(Some(directory_target(downloads)))
-    }
-    Some(raw) => {
-      let path = absolute_path(raw, home)?;
-      Ok(Some(if path.is_dir() {
-        directory_target(path)
-      } else {
-        path
-      }))
+  write: impl FnOnce(&mut fs::File) -> Result<(), String>,
+) -> Result<PathBuf, String> {
+  let target = destination(raw, home, downloads)?;
+  let mut staged = tempfile::NamedTempFile::new_in(&target.directory).map_err(|error| {
+    format!(
+      "Unable to create an export in {}: {error}",
+      target.directory.display()
+    )
+  })?;
+  write(staged.as_file_mut())?;
+  staged
+    .as_file()
+    .sync_all()
+    .map_err(|error| format!("Unable to flush export: {error}"))?;
+
+  for index in 1.. {
+    let path = match &target.filename {
+      Some(filename) => target.directory.join(filename),
+      None if index == 1 => target.directory.join(format!("{name}.{extension}")),
+      None => target
+        .directory
+        .join(format!("{name} ({index}).{extension}")),
+    };
+    match staged.persist_noclobber(&path) {
+      Ok(_) => return Ok(path),
+      Err(error)
+        if error.error.kind() == io::ErrorKind::AlreadyExists && target.filename.is_none() =>
+      {
+        staged = error.file;
+      }
+      Err(error) => {
+        return Err(format!(
+          "Unable to create {}: {}",
+          path.display(),
+          error.error
+        ))
+      }
     }
   }
+  unreachable!("the filename sequence is unbounded")
 }
 
-/// Moves `result.<field>` into a file and leaves `result.out`, as the CLI's `--out` does.
-pub(super) fn save_document(
+/// Saves a result obtained from the app. User input supplies the destination only.
+pub(super) fn save_output(
+  id: &str,
   report: &mut Value,
-  spec: OutputSpec,
-  path: &Path,
+  raw: Option<&str>,
+  home: &Path,
+  downloads: &Path,
 ) -> Result<(), String> {
-  let Some(result) = report.get_mut("result").and_then(Value::as_object_mut) else {
+  let result = report
+    .get_mut("result")
+    .and_then(Value::as_object_mut)
+    .ok_or("PLVS returned no export result.")?;
+  if id == RECORDING_EXPORT {
+    let artifact = result.get_mut("recording").and_then(|recording| recording.get_mut("artifact"))
+      .and_then(Value::as_object_mut)
+      .ok_or("This recording has no completed video to export. Wait for it to complete and check its state.")?;
+    let path = save_new(raw, home, downloads, "PLVS Recording", "mp4", |file| {
+      stream_staged_artifact(
+        artifact,
+        "recording",
+        "video/mp4",
+        || Ok(file),
+        |error| format!("Unable to write the recording: {error}"),
+      )
+      .map(|_| ())
+    })?;
+    artifact.remove("stagedPath");
+    artifact.insert(
+      "out".to_string(),
+      Value::String(path.to_string_lossy().into_owned()),
+    );
     return Ok(());
-  };
-  let Some(document) = result.get(spec.field) else {
-    return Ok(());
-  };
-  let contents = if spec.raw {
+  }
+
+  let spec = output_spec(id, result).ok_or("This command has no document to export.")?;
+  let document = result
+    .get(spec.field)
+    .ok_or("PLVS returned no document to export.")?;
+  let output = if spec.raw {
     document
       .as_str()
       .ok_or_else(|| format!("Expected `{}` to be text.", spec.field))?
-      .to_string()
+      .to_owned()
   } else {
     format!(
       "{}\n",
       serde_json::to_string_pretty(document).map_err(|error| error.to_string())?
     )
   };
-  crate::profile::write_export(path, contents.as_bytes())
-    .map_err(|error| format!("Unable to write {}: {error}", path.display()))?;
+  let path = save_new(raw, home, downloads, spec.name, spec.extension, |file| {
+    file
+      .write_all(output.as_bytes())
+      .map_err(|error| format!("Unable to write the export: {error}"))
+  })?;
   result.remove(spec.field);
   result.insert(
     "out".to_string(),
@@ -266,28 +362,14 @@ pub(super) fn save_document(
   Ok(())
 }
 
-/// Copies a completed recording out of PLVS's staging area after the hash check.
-pub(super) fn save_recording(report: &mut Value, path: &Path) -> Result<(), String> {
-  let Some(artifact) = report.pointer("/result/recording/artifact").cloned() else {
-    return Ok(());
-  };
-  if artifact.get("stagedPath").is_none() {
-    return Ok(());
-  }
-  let bytes = read_staged_artifact(&artifact, "video/mp4")?;
-  crate::profile::write_export(path, &bytes)
-    .map_err(|error| format!("Unable to write {}: {error}", path.display()))?;
+/// Internal staging is an app implementation detail. An export looks it up by recording ID.
+pub(super) fn hide_recording_path(report: &mut Value) {
   if let Some(artifact) = report
     .pointer_mut("/result/recording/artifact")
     .and_then(Value::as_object_mut)
   {
     artifact.remove("stagedPath");
-    artifact.insert(
-      "out".to_string(),
-      Value::String(path.to_string_lossy().into_owned()),
-    );
   }
-  Ok(())
 }
 
 #[cfg(test)]
@@ -385,47 +467,94 @@ mod tests {
   }
 
   #[test]
-  fn outputs_stay_inline_unless_asked_except_csv_and_recordings() {
-    let home = Path::new(TEST_HOME);
-    let export = output_spec("theme.export", &json!({ "pack": {} })).unwrap();
-    assert!(!export.always);
+  fn exporting_creates_new_files_and_refuses_overwrites_and_outside_paths() {
+    let home = tempfile::tempdir().unwrap();
+    let outside = tempfile::tempdir().unwrap();
+    let downloads = home.path().join("Downloads");
+    fs::create_dir(&downloads).unwrap();
+    let report = json!({ "ok": true, "result": { "pack": { "themes": [] }, "revision": 3 } });
+    let first = downloads.join("PLVS Themes.plvstheme");
+    fs::write(&first, b"existing").unwrap();
+    let target = first.to_str().unwrap();
+    let mut failed = report.clone();
+    assert!(save_output(
+      "theme.export",
+      &mut failed,
+      Some(target),
+      home.path(),
+      &downloads
+    )
+    .is_err());
+    assert_eq!(failed, report);
+    assert_eq!(fs::read(&first).unwrap(), b"existing");
+
+    let escaped = outside.path().join("theme.plvstheme");
+    assert!(save_output(
+      "theme.export",
+      &mut failed,
+      escaped.to_str(),
+      home.path(),
+      &downloads
+    )
+    .is_err());
+    assert!(!escaped.exists());
+    let mut exported = report;
+    save_output("theme.export", &mut exported, None, home.path(), &downloads).unwrap();
+    assert!(exported["result"].get("pack").is_none());
+    assert_eq!(exported["result"]["revision"], 3);
+    let second = downloads
+      .join("PLVS Themes (2).plvstheme")
+      .canonicalize()
+      .unwrap();
     assert_eq!(
-      destination(None, export.always, export.name, export.extension, home).unwrap(),
-      None
+      std::path::Path::new(exported["result"]["out"].as_str().unwrap())
+        .canonicalize()
+        .unwrap(),
+      second
     );
-    let csv = output_spec("transport.file.exportStatistics", &json!({ "csv": "" })).unwrap();
-    assert!(csv.always);
-    assert!(destination(None, csv.always, csv.name, csv.extension, home)
-      .unwrap()
-      .is_some());
     assert_eq!(
-      output_spec("transport.file.report", &json!({ "markdown": "# r" }))
-        .unwrap()
-        .extension,
-      "md"
+      fs::read_to_string(second).unwrap(),
+      "{\n  \"themes\": []\n}\n"
     );
-    assert!(output_spec("theme.list", &json!({})).is_none());
   }
 
   #[test]
-  fn saving_moves_the_document_out_and_never_clobbers() {
-    let directory = scratch("save");
-    let first = unique_file(&directory, "PLVS Themes", "plvstheme");
-    assert!(first.ends_with("PLVS Themes.plvstheme"));
-    fs::write(&first, b"existing").unwrap();
-    let second = unique_file(&directory, "PLVS Themes", "plvstheme");
-    assert_ne!(first, second);
-    assert!(second.to_string_lossy().ends_with("(2).plvstheme"));
+  fn recording_results_hide_staging_and_export_only_verified_bytes() {
+    let home = tempfile::tempdir().unwrap();
+    let downloads = home.path().join("Downloads");
+    fs::create_dir(&downloads).unwrap();
+    let video = home.path().join("staged.mp4");
+    fs::write(&video, b"abc").unwrap();
+    let mut report = json!({ "ok": true, "result": { "recording": {
+      "recordingId": "rec-1", "state": "completed", "artifact": {
+        "kind": "recording", "mediaType": "video/mp4", "bytes": 3, "stagedPath": video,
+        "sha256": "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
+      }
+    } } });
+    let mut observed = report.clone();
+    hide_recording_path(&mut observed);
+    assert_eq!(observed["result"]["recording"]["state"], "completed");
+    assert!(observed
+      .pointer("/result/recording/artifact/stagedPath")
+      .is_none());
+    assert_eq!(fs::read_dir(&downloads).unwrap().count(), 0);
 
-    let spec = output_spec("theme.export", &json!({})).unwrap();
-    let mut report = json!({ "ok": true, "result": { "pack": { "themes": [] }, "revision": 3 } });
-    save_document(&mut report, spec, &second).unwrap();
-    assert!(report["result"].get("pack").is_none());
-    assert_eq!(report["result"]["out"], json!(second.to_string_lossy()));
-    assert_eq!(
-      fs::read_to_string(&second).unwrap(),
-      "{\n  \"themes\": []\n}\n"
-    );
-    assert_eq!(fs::read(&first).unwrap(), b"existing");
+    let mut corrupted = report.clone();
+    corrupted["result"]["recording"]["artifact"]["sha256"] = json!("0".repeat(64));
+    assert!(save_output(
+      RECORDING_EXPORT,
+      &mut corrupted,
+      None,
+      home.path(),
+      &downloads
+    )
+    .is_err());
+    assert_eq!(fs::read_dir(&downloads).unwrap().count(), 0);
+
+    save_output(RECORDING_EXPORT, &mut report, None, home.path(), &downloads).unwrap();
+    let artifact = &report["result"]["recording"]["artifact"];
+    assert!(artifact.get("stagedPath").is_none());
+    assert_eq!(fs::read(artifact["out"].as_str().unwrap()).unwrap(), b"abc");
+    assert_eq!(fs::read(video).unwrap(), b"abc");
   }
 }

@@ -39,9 +39,36 @@ import { IconAction } from "@/components/ui/icon-action";
 import { MCP_SETUP_COPY_TARGET } from "../agentControl/settingsSurfaceCatalog.js";
 import { writeClipboardText } from "../ipc/clipboard.js";
 
-const MCP_SETUP_PROMPT = `Please connect to the PLVS app running on this computer using the local MCP configuration below.
-Check whether a server with the same name is already registered. Reuse it if its command, arguments, and any supplied environment variables match. If the configuration differs, ask me before changing it. If no matching server is registered and your environment supports local MCP registration, add it using the supplied configuration.
-Once the connection is available, use a read-only PLVS MCP tool to inspect the running app and report the revision it returns. If your environment cannot register local MCP servers, or if a restart or new conversation is required, tell me which steps are complete and what I need to do next.`;
+const MCP_SETUP_PROMPT = `Please connect to the PLVS app running on this computer.
+Use your current AI client's own method for registering a local stdio MCP server. The connection details below apply to any client that supports local stdio. Use the JSON as-is only if your client accepts that format.
+Reuse a matching server if its command, arguments, and any supplied environment variables match. Ask me before changing a same-name registration that differs. Preserve all other servers.
+If I need to finish setup myself, give me the client's settings location or registration command, the exact values to enter, and any restart or new-chat step. If local stdio is unsupported, say so. If you cannot verify the exact location, say which part is uncertain.
+Call plvs_capabilities to verify live access and report the result. If the server is registered but PLVS is closed or Agent Control is disabled, tell me which action is needed. Report success only after the tool reaches the running app.`;
+
+/** @param {string} configuration */
+function mcpSetupPrompt(configuration) {
+  const json = `\`\`\`json\n${configuration}\n\`\`\``;
+  const { mcpServers } = JSON.parse(configuration);
+  const registration = Object.entries(mcpServers ?? {})[0];
+  if (!registration) return `${MCP_SETUP_PROMPT}\n\n${json}`;
+
+  const [name, server] = registration;
+  const { command, args, env } = /** @type {{
+    command: string,
+    args: string[],
+    env?: Record<string, string>,
+  }} */ (server);
+  const environment = env ? `\nEnvironment variables: ${JSON.stringify(env)}` : "";
+  return `${MCP_SETUP_PROMPT}
+
+Server name: ${name}
+Transport: stdio
+Command: ${command}
+Arguments: ${JSON.stringify(args)}${environment}
+
+For clients that accept the mcpServers JSON format:
+${json}`;
+}
 
 // Serves terminal agents (plvs-cli) and chat apps (the PLVS MCP tools) alike.
 const AGENT_CONTROL_PROMPT_STARTER =
@@ -978,7 +1005,7 @@ export function SettingsContent({
                 <div>
                   <SettingsRow label="MCP Setup">
                     <CopyTextButton
-                      value={`${MCP_SETUP_PROMPT}\n\`\`\`json\n${agentControlMcpSetup}\n\`\`\``}
+                      value={mcpSetupPrompt(agentControlMcpSetup)}
                       ariaLabel="copy mcp setup"
                       uiTarget={MCP_SETUP_COPY_TARGET}
                       writeText={writeClipboardText}

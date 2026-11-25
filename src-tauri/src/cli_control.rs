@@ -1,7 +1,7 @@
 mod dock;
 
 use serde::Serialize;
-use serde_json::Value;
+use serde_json::{Map, Value};
 use sha2::{Digest, Sha256};
 use std::collections::BTreeSet;
 use std::fs;
@@ -5763,13 +5763,41 @@ fn copy_visual_artifact(
     .and_then(|result| result.pointer(artifact_pointer))
     .and_then(Value::as_object)
     .ok_or_else(|| "PLVS returned no visual artifact to copy.".to_string())?;
-  let expected_kind = if recording { "recording" } else { "screenshot" };
-  let expected_media_type = if recording { "video/mp4" } else { "image/png" };
   let subject = if recording { "recording" } else { "screenshot" };
-  if artifact.get("kind").and_then(Value::as_str) != Some(expected_kind) {
+  let media_type = if recording { "video/mp4" } else { "image/png" };
+  let write_error = |error| format!("Unable to write the {subject} to {out}: {error}");
+  let destination = stream_staged_artifact(
+    artifact,
+    subject,
+    media_type,
+    || crate::profile::open_export(Path::new(out)).map_err(write_error),
+    write_error,
+  )?;
+  destination.commit().map_err(write_error)?;
+  let artifact = report
+    .result
+    .as_mut()
+    .and_then(|result| result.pointer_mut(artifact_pointer))
+    .and_then(Value::as_object_mut)
+    .expect("validated visual artifact changed before metadata update");
+  artifact.remove("stagedPath");
+  artifact.insert("out".to_string(), Value::String(out.to_string()));
+  Ok(())
+}
+
+/// Streams a broker-produced visual artifact into an unpublished output and verifies its digest.
+/// The caller publishes the file only after this succeeds.
+pub(crate) fn stream_staged_artifact<W: Write>(
+  artifact: &Map<String, Value>,
+  subject: &str,
+  media_type: &str,
+  open_destination: impl FnOnce() -> Result<W, String>,
+  write_error: impl Fn(std::io::Error) -> String,
+) -> Result<W, String> {
+  if artifact.get("kind").and_then(Value::as_str) != Some(subject) {
     return Err("PLVS returned an artifact with an unexpected kind.".to_string());
   }
-  if artifact.get("mediaType").and_then(Value::as_str) != Some(expected_media_type) {
+  if artifact.get("mediaType").and_then(Value::as_str) != Some(media_type) {
     return Err(format!(
       "PLVS returned a {subject} with an unexpected media type."
     ));
@@ -5792,9 +5820,8 @@ fn copy_visual_artifact(
     .to_string();
 
   let read_error = |error| format!("Unable to read the staged {subject} at {staged_path}: {error}");
-  let write_error = |error| format!("Unable to write the {subject} to {out}: {error}");
   let mut source = fs::File::open(&staged_path).map_err(read_error)?;
-  let mut destination = crate::profile::open_export(Path::new(out)).map_err(write_error)?;
+  let mut destination = open_destination()?;
   let mut hasher = Sha256::new();
   let mut bytes = 0;
   let mut buffer = [0; 64 * 1024];
@@ -5810,7 +5837,7 @@ fn copy_visual_artifact(
     hasher.update(&buffer[..chunk]);
     destination
       .write_all(&buffer[..chunk])
-      .map_err(write_error)?;
+      .map_err(&write_error)?;
   }
   if bytes != expected_bytes {
     return Err(format!(
@@ -5828,18 +5855,7 @@ fn copy_visual_artifact(
     ));
   }
 
-  // Keep the previous destination and recoverable staged path until verification and commit.
-  drop(source);
-  destination.commit().map_err(write_error)?;
-  let artifact = report
-    .result
-    .as_mut()
-    .and_then(|result| result.pointer_mut(artifact_pointer))
-    .and_then(Value::as_object_mut)
-    .expect("validated visual artifact changed before metadata update");
-  artifact.remove("stagedPath");
-  artifact.insert("out".to_string(), Value::String(out.to_string()));
-  Ok(())
+  Ok(destination)
 }
 
 /// Materializes successful screenshot artifacts without ever sending the caller's path to PLVS.

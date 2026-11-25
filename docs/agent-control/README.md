@@ -100,12 +100,12 @@ tool input is a command's manifest `wireParams`, sent through the CLI's own clie
 (`call_wire_method`), so the Agent Control switch, identity matching, instance selection,
 revisions, dry runs and every app-side refusal are the CLI's.
 
-It offers eight fixed tools, and which one serves a command is derived from the manifest:
+It offers nine fixed tools, and which one serves a command is derived from the manifest:
 `app.capabilities`, `app.inspect`/`ui.inspect` and `visual.screenshot` have their own tools; other
-queries go to `plvs_query`, waits to `plvs_wait`, and mutations and actions to `plvs_change` or
+queries go to `plvs_query` except Statistics CSV, which goes to `plvs_export`. Waits to `plvs_wait`, and mutations and actions to `plvs_change` or
 `plvs_change_risky` by their `risk` tier. A host remembers "always allow" per tool, so the separate
 risky tool keeps a confirmation in front of changes that cannot be undone inside PLVS or that end
-the connection. Offline commands are either answered by a tool (`instances.list`, `doctor`,
+the connection. `plvs_export` is the only tool that publishes files to a user destination. Offline commands are either answered by a tool (`instances.list`, `doctor`,
 `schema.*`) or excluded with a reason (`completion`, `mcp`).
 
 What this means when the surface changes:
@@ -115,12 +115,12 @@ What this means when the surface changes:
 - A new offline command needs a route in `route()`; the adapter's tests refuse an unrouted one.
 - A new `file|-` document argument becomes readable through the tool's `files` argument
   automatically; a new exported document, report or file artifact needs an entry in
-  `cli_mcp/files.rs` (`output_spec`) so it can be saved with `saveTo`.
+  `cli_mcp/files.rs` so it can be saved through `plvs_export`.
 - A new wait method must resume safely when called again after a 45-second segment, and the
   broker's wait budget list must include it.
 
 Measured host limits (Claude's chat bridge stops a tool call at 80 seconds and sends no progress
-token) set the 45-second wait segment; see [Chat Apps](../user/chat-apps.md) for the user-facing
+token) set the 45-second wait segment; see [Agent Control](../user/agent-control.md#connect-an-ai-client-with-mcp) for the user-facing
 behaviour and the MCP usage report below for the Settings status line.
 
 ## Application-wide methods

@@ -173,20 +173,29 @@ importing the configuration, clearing measurements, installing an update, quitti
 
 ### MCP server
 
-`plvs-cli mcp` serves the same running-app commands to a desktop chat app or agent as a local MCP
-server over standard input and output. The chat app starts it; register this program's absolute
-path with the argument `mcp` as a local (stdio) server. It offers eight tools — capabilities,
-inspect, describe, query, wait, screenshot, and separate tools for ordinary and risky changes, so a
-chat app can ask before every risky one. Tool parameters are each command's wire parameters from
-`schema get`; revisions, dry runs, refusals and errors behave exactly as on the CLI. A wait returns
-`stillWaiting` after at most 45 seconds and is called again, so a `measurement wait-until` hold can
-be at most 45 seconds through MCP and restarts in each call. Screenshots come back as images.
+`plvs-cli mcp` serves the same running-app commands to an AI client as a local MCP server over
+standard input and output. The client starts it. See
+[Connect an AI Client with MCP](agent-control.md#connect-an-ai-client-with-mcp) for setup.
+The date-based MCP protocol version is negotiated with the client during initialization.
+The `protocolVersion` field in `plvs_capabilities` reports the PLVS Agent Control protocol
+used between the adapter and the running app.
 
-A chat has no working directory, so every path given to the MCP server must be absolute; a leading
-`~` is expanded. A JSON document parameter (a patch, pack or configuration) can be read from a local
-file through the tool's `files` argument instead of being written inline. Exports and File reports
-are returned in the chat unless `saveTo` names a file, a folder or `downloads`; Statistics CSV and
-recordings are always saved, to the Downloads folder by default, and only their path is returned.
+The tools cover capabilities, inspection, command discovery, queries, waits, screenshots, exports,
+ordinary changes, and risky changes. Call `plvs_describe` with no arguments for command families,
+with `family` for that family's commands, or with `command` for one command's wire parameters.
+Revisions, dry runs, refusals, and app errors follow the CLI contract. Successful changes can return
+a new revision and updated state for the next edit. A wait returns `stillWaiting` after at most
+45 seconds and is called again, so a `measurement wait-until` hold can be at most 45 seconds
+through MCP and restarts in each call. Screenshots come back as images.
+
+Paths given to the MCP server must be absolute. A leading `~` is expanded. A JSON document parameter
+can be read from a local file through the tool's `files` argument. Query results are returned inline.
+Use `plvs_export` to create a file from a supported document, File report, Statistics CSV, or
+completed recording. Pass the same query parameters described by `plvs_describe`. For a recording,
+use command `visual.recording.inspect` with its `recordingId`. The tool saves a new file to Downloads
+by default. Use `saveTo` to select a file or existing folder under your home or Downloads folder.
+Files already at the destination are preserved. The result includes the path as `out`, or
+`recording.artifact.out` for a recording.
 
 ## Shell Completion
 

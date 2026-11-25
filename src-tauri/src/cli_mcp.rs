@@ -11,6 +11,7 @@
 //! before one that cannot be undone.
 
 use std::borrow::Cow;
+use std::collections::BTreeMap;
 use std::process::ExitCode;
 use std::sync::Arc;
 use std::time::Duration;
@@ -40,16 +41,16 @@ const PROGRESS_INTERVAL: Duration = Duration::from_secs(10);
 
 const INSTRUCTIONS: &str = "PLVS is a real-time audio metering app running on this computer. \
 These tools inspect and control the running PLVS window through Agent Control.\n\
-Workflow: call plvs_inspect first and keep its `revision`. Before using an unfamiliar command, \
-call plvs_describe with its command ID to read its parameters. Every change needs \
-`expectedRevision` set to the latest revision you have; UI navigation also needs \
-`expectedUiGeneration` from plvs_inspect with scope \"ui\". Many changes accept `dryRun: true` \
-to preview. After a `revisionConflict`, inspect again and reconcile with what the user changed; \
-never retry blindly. Use plvs_change for ordinary changes and plvs_change_risky for operations \
+Workflow: for overall state use plvs_inspect. If only one object matters, use its query and keep \
+the `revision` it returns. Describe an unfamiliar command by ID, or browse one family to find it. \
+Set `expectedRevision` to the latest revision from that read or a successful change. Reuse the \
+updated state returned by a change when sufficient. UI navigation also needs `expectedUiGeneration` \
+from plvs_inspect with scope \"ui\". Many changes accept `dryRun: true` to preview. After a \
+`revisionConflict`, inspect again and reconcile with what the user changed; never retry blindly. Use plvs_change for ordinary changes and plvs_change_risky for operations \
 that cannot be undone inside PLVS or end the connection; tell the user what a risky operation \
 will do before calling it. A wait that returns `stillWaiting` has not failed: call it again with \
-the same arguments. If Agent Control is off, ask the user to enable it in PLVS Settings; if PLVS \
-is not running, ask the user to open it.";
+the same arguments. Call plvs_export when asked to save a PLVS result to disk. If Agent Control \
+is off, ask the user to enable it in PLVS Settings; if PLVS is not running, ask the user to open it.";
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum ToolKind {
@@ -59,17 +60,19 @@ enum ToolKind {
   Query,
   Wait,
   Screenshot,
+  Export,
   Change,
   ChangeRisky,
 }
 
-const TOOL_KINDS: [ToolKind; 8] = [
+const TOOL_KINDS: [ToolKind; 9] = [
   ToolKind::Capabilities,
   ToolKind::Inspect,
   ToolKind::Describe,
   ToolKind::Query,
   ToolKind::Wait,
   ToolKind::Screenshot,
+  ToolKind::Export,
   ToolKind::Change,
   ToolKind::ChangeRisky,
 ];
@@ -83,6 +86,7 @@ impl ToolKind {
       Self::Query => "plvs_query",
       Self::Wait => "plvs_wait",
       Self::Screenshot => "plvs_screenshot",
+      Self::Export => "plvs_export",
       Self::Change => "plvs_change",
       Self::ChangeRisky => "plvs_change_risky",
     }
@@ -118,6 +122,7 @@ fn route(entry: &CommandEntry) -> Route {
     "app.capabilities" => return Route::Tool(ToolKind::Capabilities),
     "app.inspect" | "ui.inspect" => return Route::Tool(ToolKind::Inspect),
     "visual.screenshot" => return Route::Tool(ToolKind::Screenshot),
+    "transport.file.exportStatistics" => return Route::Tool(ToolKind::Export),
     _ => {}
   }
   match (entry.operation.as_str(), entry.risk.as_deref()) {
@@ -185,6 +190,15 @@ fn instance_property() -> Value {
   })
 }
 
+fn files_property() -> Value {
+  json!({
+    "type": "object",
+    "additionalProperties": { "type": "string" },
+    "description": "Read a JSON document parameter from a local file instead of params. Map a \
+  command's fileFields parameter to an absolute path, e.g. {\"pack\": \"~/Downloads/Studio.plvstheme\"}."
+  })
+}
+
 fn command_input_schema(command_help: &str) -> Arc<JsonObject> {
   schema(json!({
     "type": "object",
@@ -195,26 +209,17 @@ fn command_input_schema(command_help: &str) -> Arc<JsonObject> {
         "type": "object",
         "description": "The command's wire parameters exactly as plvs_describe reports them."
       },
-      "files": {
-        "type": "object",
-        "additionalProperties": { "type": "string" },
-        "description": "Read a JSON document parameter from a local file instead of `params`: map \
-  one of the command's `fileFields` (plvs_describe) to an absolute path, e.g. \
-  {\"pack\": \"~/Downloads/Studio.plvstheme\"}."
-      },
-      "saveTo": {
-        "type": "string",
-        "description": "Save an exported document, report, Statistics CSV or recording to this \
-  absolute path or folder, or \"downloads\". Exports and reports are otherwise returned inline; \
-  CSV and recordings are always saved, to Downloads by default. The result gives the path as `out`."
-      },
+      "files": files_property(),
       "instance": instance_property()
     }
   }))
 }
 
 fn tool(kind: ToolKind, description: &str, input: Arc<JsonObject>) -> Tool {
-  let read_only = !matches!(kind, ToolKind::Change | ToolKind::ChangeRisky);
+  let read_only = !matches!(
+    kind,
+    ToolKind::Change | ToolKind::ChangeRisky | ToolKind::Export
+  );
   let annotations = ToolAnnotations::new()
     .read_only(read_only)
     .destructive(kind == ToolKind::ChangeRisky);
@@ -225,8 +230,8 @@ fn tool_list() -> Vec<Tool> {
   vec![
     tool(
       ToolKind::Capabilities,
-      "Whether PLVS can be controlled and what it supports: app and protocol version, methods \
-and features, and the running workbench instances. Set `doctor` for installation health checks.",
+      "Whether PLVS can be controlled, supported methods and features, and running workbenches. \
+`protocolVersion` is the PLVS Agent Control protocol version. Set `doctor` for installation health checks.",
       schema(json!({
         "type": "object",
         "properties": {
@@ -250,25 +255,25 @@ Loudness Profile. scope \"ui\": open windows, dialogs and editors with `uiGenera
     ),
     tool(
       ToolKind::Describe,
-      "Command catalogue. Without `command`: every command ID with its summary and the tool that \
-runs it. With `command`: that command's parameters (`wireParams`), revision and dry-run rules.",
+      "Command catalogue. Without arguments, list command families. Set `family` for its \
+commands, or `command` for one command's parameters, revision and dry-run rules.",
       schema(json!({
         "type": "object",
         "properties": {
-          "command": { "type": "string", "description": "Command ID, e.g. loudnessProfile.select" }
+          "command": { "type": "string", "description": "Command ID, e.g. loudnessProfile.select" },
+          "family": { "type": "string", "description": "Family ID from the no-argument catalogue." }
         }
       })),
     ),
     tool(
       ToolKind::Query,
-      "Run a read-only PLVS query by command ID, e.g. measurement.inspect, panel.describe, \
-loudnessProfile.list. Changes nothing.",
+      "Run a PLVS query by command ID and return its result inline. To save a file, use plvs_export.",
       command_input_schema("Query command ID from plvs_describe."),
     ),
     tool(
       ToolKind::Wait,
       "Wait for a change: app.wait, measurement.wait, measurement.waitUntil, transport.file.wait \
-or visual.recording.wait. Each call waits at most 45 seconds; `stillWaiting` means call again \
+or visual.recording.wait. Use plvs_export to save a completed recording. Each call waits at most 45 seconds; `stillWaiting` means call again \
 with the same arguments. A measurement.waitUntil `holdMs` can be at most 45000 and restarts in \
 each call.",
       command_input_schema("Wait command ID."),
@@ -281,6 +286,26 @@ plvs_describe visual.screenshot for panels and Dock surfaces.",
         "type": "object",
         "properties": {
           "params": { "type": "object", "description": "visual.screenshot wire parameters." },
+          "instance": instance_property()
+        }
+      })),
+    ),
+    tool(
+      ToolKind::Export,
+      "Create a new file from a PLVS export, report, Statistics CSV or completed recording. \
+Defaults to Downloads and never overwrites an existing file. For a recording, use \
+`visual.recording.inspect` with its `recordingId` in params.",
+      schema(json!({
+        "type": "object",
+        "required": ["command"],
+        "properties": {
+          "command": { "type": "string", "enum": files::EXPORT_COMMANDS },
+          "params": { "type": "object", "description": "The command's wire parameters from plvs_describe." },
+          "files": files_property(),
+          "saveTo": {
+            "type": "string",
+            "description": "An absolute file or existing folder under your home or Downloads folder, or \"downloads\"."
+          },
           "instance": instance_property()
         }
       })),
@@ -358,17 +383,39 @@ fn describe(arguments: &JsonObject) -> CallToolResult {
     Ok(manifest) => manifest,
     Err(error) => return usage_error(error),
   };
-  let Some(id) = string_arg(arguments, "command") else {
-    let commands: Vec<Value> = manifest
-      .commands
-      .iter()
-      .filter_map(|entry| {
-        tool_for_command(entry)
-          .map(|kind| json!({ "command": entry.id, "summary": entry.summary, "tool": kind.name() }))
-      })
+  let command = string_arg(arguments, "command");
+  let family = string_arg(arguments, "family");
+  if command.is_some() && family.is_some() {
+    return usage_error("Choose either `family` or `command`.");
+  }
+  let entries = manifest
+    .commands
+    .iter()
+    .filter_map(|entry| tool_for_command(entry).map(|kind| (entry, kind)));
+  let Some(id) = command else {
+    if let Some(family) = family {
+      let commands: Vec<Value> = entries
+        .filter(|(entry, _)| entry.family == family)
+        .map(|(entry, kind)| json!({ "command": entry.id, "summary": entry.summary, "tool": kind.name() }))
+        .collect();
+      if commands.is_empty() {
+        return usage_error(format!("Unknown command family `{family}`. Call plvs_describe without arguments to list families."));
+      }
+      return text_result(
+        &json!({ "ok": true, "result": { "family": family, "commands": commands } }),
+        true,
+      );
+    }
+    let mut counts = BTreeMap::new();
+    for (entry, _) in entries {
+      *counts.entry(&entry.family).or_insert(0) += 1;
+    }
+    let families: Vec<Value> = counts
+      .into_iter()
+      .map(|(family, count)| json!({ "family": family, "commandCount": count }))
       .collect();
     return text_result(
-      &json!({ "ok": true, "result": { "commands": commands } }),
+      &json!({ "ok": true, "result": { "families": families } }),
       true,
     );
   };
@@ -388,6 +435,7 @@ fn describe(arguments: &JsonObject) -> CallToolResult {
         "dryRun": entry.dry_run,
         "params": entry.wire_params,
         "fileFields": files::document_fields(entry),
+        "canExport": files::EXPORT_COMMANDS.contains(&entry.id.as_str()),
         "note": "A `schemaRef` names a shape the app describes at runtime; use the family's \
 describe query (for example panel.describe or settings.describe) to read it."
       } }),
@@ -528,6 +576,11 @@ async fn run_command(
     Ok(entry) => entry,
     Err(error) => return usage_error(error),
   };
+  if arguments.contains_key("saveTo") {
+    return usage_error(
+      "Use plvs_export to save results to a file. Run this command without saveTo.",
+    );
+  }
   match route(entry) {
     Route::Tool(owner) if owner == kind => {}
     Route::Tool(owner) | Route::Served(owner) => {
@@ -548,62 +601,77 @@ async fn run_command(
   {
     return usage_error(error);
   }
-  let save_to = string_arg(arguments, "saveTo");
   let instance = string_arg(arguments, "instance");
   let method = entry.wire_method.clone().unwrap_or_default();
 
   if let Err(error) = check_hold(&params, WAIT_SEGMENT_MS) {
     return usage_error(error);
   }
-  let report = if kind == ToolKind::Wait {
+  let mut report = if kind == ToolKind::Wait {
     let waited = cap_wait(&mut params, WAIT_SEGMENT_MS);
     let report = with_progress(context, call_blocking(method, params, instance)).await;
     segment_outcome(report, waited)
   } else {
     call_blocking(method, params, instance).await
   };
-  let id = entry.id.clone();
-  let finished = tokio::task::spawn_blocking(move || {
-    let mut report = report;
-    save_outputs(&id, &mut report, save_to.as_deref(), &home).map(|()| report)
-  })
-  .await;
-  match finished {
-    Ok(Ok(report)) => report_result(&report),
-    Ok(Err(error)) => report_result(&internal_error(error)),
-    Err(error) => report_result(&internal_error(error.to_string())),
-  }
+  files::hide_recording_path(&mut report);
+  report_result(&report)
 }
 
-/// Text outputs stay in the chat unless `saveTo` asks for a file; Statistics CSV and recordings
-/// are always written locally because they do not belong in a conversation.
-fn save_outputs(
-  id: &str,
-  report: &mut Value,
-  save_to: Option<&str>,
-  home: &std::path::Path,
-) -> Result<(), String> {
-  if !report_ok(report) {
-    return Ok(());
-  }
-  if matches!(id, "visual.recording.wait" | "visual.recording.stop") {
-    if report.pointer("/result/recording/artifact").is_none() {
-      return Ok(());
-    }
-    if let Some(path) = files::destination(save_to, true, "PLVS Recording", "mp4", home)? {
-      files::save_recording(report, &path)?;
-    }
-    return Ok(());
-  }
-  let Some(spec) = report
-    .get("result")
-    .and_then(|result| files::output_spec(id, result))
-  else {
-    return Ok(());
+async fn export(arguments: &JsonObject) -> CallToolResult {
+  let Some(id) = string_arg(arguments, "command") else {
+    return usage_error("`command` is required.");
   };
-  match files::destination(save_to, spec.always, spec.name, spec.extension, home)? {
-    Some(path) => files::save_document(report, spec, &path),
-    None => Ok(()),
+  if !files::EXPORT_COMMANDS.contains(&id.as_str()) {
+    return usage_error(format!("`{id}` cannot be saved through plvs_export."));
+  }
+  let entry = match find_command(&id) {
+    Ok(entry) => entry,
+    Err(error) => return usage_error(error),
+  };
+  let Some(method) = entry
+    .wire_method
+    .as_ref()
+    .filter(|_| entry.operation == "query")
+  else {
+    return usage_error(format!("`{id}` has no export query."));
+  };
+  let mut params = match params_arg(arguments) {
+    Ok(params) => params,
+    Err(error) => return usage_error(error),
+  };
+  let save_to = match arguments.get("saveTo") {
+    None => None,
+    Some(Value::String(path)) => Some(path.clone()),
+    Some(_) => return usage_error("`saveTo` must be an absolute path or \"downloads\"."),
+  };
+  let home = match files::home_dir() {
+    Ok(home) => home,
+    Err(error) => return usage_error(error),
+  };
+  if let Err(error) = files::apply_files(entry, arguments, &mut params, &home) {
+    return usage_error(error);
+  }
+  let mut report = call_blocking(method.clone(), params, string_arg(arguments, "instance")).await;
+  if !report_ok(&report) {
+    return report_result(&report);
+  }
+
+  let saved = tokio::task::spawn_blocking(move || {
+    let downloads = dirs::download_dir().unwrap_or_else(|| home.join("Downloads"));
+    files::save_output(&id, &mut report, save_to.as_deref(), &home, &downloads)?;
+    Ok::<_, String>(report)
+  })
+  .await;
+  match saved {
+    Ok(Ok(report)) => report_result(&report),
+    Ok(Err(message)) => text_result(
+      &json!({ "ok": false, "error": {
+      "code": "exportFailed", "message": message
+    } }),
+      false,
+    ),
+    Err(error) => report_result(&internal_error(error.to_string())),
   }
 }
 
@@ -744,6 +812,7 @@ impl ServerHandler for PlvsMcp {
         report_result(&call_blocking(method.to_string(), json!({}), instance).await)
       }
       Some(ToolKind::Screenshot) => screenshot(&arguments).await,
+      Some(ToolKind::Export) => export(&arguments).await,
       Some(kind) => run_command(kind, &arguments, &context).await,
     };
     Ok(result.into())
@@ -829,19 +898,73 @@ mod tests {
   }
 
   #[test]
-  fn read_tools_are_read_only_and_only_the_risky_tool_is_destructive() {
+  fn only_change_and_export_tools_can_write_and_only_the_risky_tool_is_destructive() {
     let tools = tool_list();
-    assert_eq!(tools.len(), 8);
+    assert_eq!(tools.len(), 9);
     for tool in &tools {
       let annotations = tool.annotations.as_ref().expect("annotations");
-      let change = matches!(tool.name.as_ref(), "plvs_change" | "plvs_change_risky");
-      assert_eq!(annotations.read_only_hint, Some(!change), "{}", tool.name);
+      let can_write = matches!(
+        tool.name.as_ref(),
+        "plvs_change" | "plvs_change_risky" | "plvs_export"
+      );
+      assert_eq!(
+        annotations.read_only_hint,
+        Some(!can_write),
+        "{}",
+        tool.name
+      );
+      assert_eq!(
+        tool
+          .input_schema
+          .get("properties")
+          .unwrap()
+          .get("saveTo")
+          .is_some(),
+        tool.name == "plvs_export",
+        "{}",
+        tool.name
+      );
       assert_eq!(
         annotations.destructive_hint,
         Some(tool.name == "plvs_change_risky"),
         "{}",
         tool.name
       );
+    }
+  }
+
+  #[test]
+  fn catalogue_discovers_every_routed_command_by_family() {
+    let overview = describe(&JsonObject::new()).structured_content.unwrap();
+    assert!(overview.to_string().len() <= 8_000);
+    let families = overview
+      .pointer("/result/families")
+      .unwrap()
+      .as_array()
+      .unwrap();
+    let mut listed = std::collections::BTreeSet::new();
+    for family in families {
+      let id = family["family"].as_str().unwrap();
+      let arguments = JsonObject::from_iter([("family".to_string(), json!(id))]);
+      let response = describe(&arguments).structured_content.unwrap();
+      let commands = response["result"]["commands"].as_array().unwrap();
+      assert_eq!(Some(commands.len() as u64), family["commandCount"].as_u64());
+      for command in commands {
+        assert!(listed.insert(command["command"].as_str().unwrap().to_string()));
+      }
+    }
+    let manifest = command_manifest().unwrap();
+    let routed = manifest
+      .commands
+      .iter()
+      .filter(|entry| tool_for_command(entry).is_some())
+      .map(|entry| entry.id.clone())
+      .collect();
+    assert_eq!(listed, routed);
+    for id in files::EXPORT_COMMANDS {
+      let command = entry(id);
+      assert_eq!(command.operation, "query");
+      assert!(command.wire_method.is_some());
     }
   }
 

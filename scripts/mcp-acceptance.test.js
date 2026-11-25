@@ -13,7 +13,7 @@ function tools(overrides = {}) {
 }
 
 describe("MCP acceptance", () => {
-  it("accepts exactly the eight tools with their hints", () => {
+  it("accepts the full tool list and distinguishes exports from reads", () => {
     expect(() => checkToolList(tools())).not.toThrow();
     expect(() => checkToolList(tools().slice(1))).toThrow();
     expect(() =>
@@ -21,6 +21,11 @@ describe("MCP acceptance", () => {
         tools({ plvs_change: { annotations: { readOnlyHint: false, destructiveHint: true } } })
       )
     ).toThrow(/plvs_change destructive/);
+    expect(() =>
+      checkToolList(
+        tools({ plvs_export: { annotations: { readOnlyHint: true, destructiveHint: false } } })
+      )
+    ).toThrow(/plvs_export readOnlyHint/);
   });
 
   it("recognizes a PNG by its signature", () => {

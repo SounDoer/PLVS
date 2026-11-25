@@ -844,7 +844,16 @@ fn root_help_text() -> String {
         .commands
         .iter()
         .filter(|entry| entry.execution == "offline")
-        .map(|entry| format!("  {}", entry.usage))
+        .map(|entry| {
+          if entry.id == "mcp" {
+            format!(
+              "  {}  Start a local stdio MCP server for AI clients.",
+              entry.usage
+            )
+          } else {
+            format!("  {}", entry.usage)
+          }
+        })
         .collect::<Vec<_>>()
         .join("\n")
     })
