@@ -350,14 +350,15 @@ export function SettingsContent({
   const dialogueDropdown = useDropdownNavigation("setting:analysis.dialogueVadEngine");
   const effectiveReleaseUrl = releaseUrl || RELEASES_INDEX_URL;
   const updateCheckDisabled = ["checking", "disabled", "managed"].includes(updateStatus);
-  let updateStatusText = "Checking...";
+  const updateCheckFailed = updateStatus === "unavailable";
+  let updateStatusText = "Checking…";
   if (updateStatus === "idle") updateStatusText = "Not Checked";
   if (updateStatus === "disabled") updateStatusText = "Updates Unavailable";
   if (updateStatus === "managed") updateStatusText = "Managed by Main Workbench";
-  if (updateStatus === "unavailable") {
-    updateStatusText = "Update unavailable";
+  if (updateCheckFailed) {
+    updateStatusText = "Check failed";
   } else if (updateStatus === "ok") {
-    updateStatusText = hasUpdate && latestVersion ? `v${latestVersion} available` : "Up to date";
+    updateStatusText = hasUpdate && latestVersion ? `v${latestVersion} Available` : "Up to date";
   }
   if (updateActivity?.downloading) {
     const progress = updateActivity.progress;
@@ -1038,18 +1039,18 @@ export function SettingsContent({
               </Button>
             </div>
           </SettingsRow>
-          <SettingsRow>
+          <div className={ROW_CLASS}>
             <Button
               variant="ghost"
               onClick={() => setResetConfirmOpen(true)}
               disabled={configurationBusy}
               aria-label="Reset PLVS to default"
               data-ui-target="setting:transfer.configurationReset"
-              className="text-muted-foreground hover:text-destructive focus-visible:text-destructive active:text-destructive"
+              className="-ml-2 text-muted-foreground hover:text-destructive focus-visible:text-destructive active:text-destructive"
             >
               Reset PLVS to Default
             </Button>
-          </SettingsRow>
+          </div>
           {configurationStatus ? (
             <div
               role="status"
@@ -1065,49 +1066,6 @@ export function SettingsContent({
           <>
             <SettingsDivider />
             <SettingsSection sectionId="about" sectionRef={bindSection("about")}>
-              {appVersion ? (
-                <div className="flex items-center gap-1 whitespace-nowrap px-2 text-[length:var(--ui-fs-metric-meta)]">
-                  <span className="shrink-0 font-mono tabular-nums text-muted-foreground">
-                    v{appVersion}
-                  </span>
-                  <span className="h-3 shrink-0 border-l border-border" aria-hidden="true" />
-                  <HoverTip
-                    tip={updateActivity?.downloadError ?? undefined}
-                    side="top"
-                    className="min-w-0"
-                  >
-                    <span
-                      className={cn(
-                        "block truncate",
-                        hasUpdate ? "text-primary" : "text-muted-foreground"
-                      )}
-                    >
-                      {updateStatusText}
-                    </span>
-                  </HoverTip>
-                  <span className="h-3 shrink-0 border-l border-border" aria-hidden="true" />
-                  <LinkButton
-                    className={FOOTER_LINK_CLASS}
-                    disabled={updateCheckDisabled}
-                    data-ui-target="setting:about.checkForUpdates"
-                    onClick={onCheckForUpdate}
-                  >
-                    Check
-                  </LinkButton>
-                  {hasUpdate ? (
-                    <>
-                      <span className="h-3 shrink-0 border-l border-border" aria-hidden="true" />
-                      <LinkButton
-                        className={cn(FOOTER_LINK_CLASS, "text-primary hover:text-primary")}
-                        data-ui-target="setting:about.installUpdate"
-                        onClick={onInstallUpdate}
-                      >
-                        Update
-                      </LinkButton>
-                    </>
-                  ) : null}
-                </div>
-              ) : null}
               {updatePreferences ? (
                 <UpdatePreferencesSettings
                   preferences={updatePreferences}
@@ -1118,19 +1076,48 @@ export function SettingsContent({
                 />
               ) : null}
               {appVersion ? (
-                <div className="px-2">
-                  <LinkButton
-                    className={cn(
-                      FOOTER_LINK_CLASS,
-                      hasUpdate && "text-primary hover:text-primary"
-                    )}
-                    data-ui-target="setting:about.releases"
-                    onClick={() => openExternalUrl(effectiveReleaseUrl)}
-                  >
-                    Releases
-                    <ExternalLink className="size-[1em]" />
-                  </LinkButton>
-                </div>
+                <SettingsRow
+                  labelNode={
+                    <HoverTip
+                      tip={updateActivity?.downloadError ?? undefined}
+                      side="top"
+                      className="min-w-0"
+                      tipClassName="max-w-[min(18rem,calc(100vw-1rem))] whitespace-normal"
+                    >
+                      <div className="flex items-baseline gap-1">
+                        <span className="shrink-0 font-mono tabular-nums">v{appVersion}</span>
+                        <span aria-hidden="true" className="text-muted-foreground">
+                          ·
+                        </span>
+                        <span role="status" className="min-w-0 text-muted-foreground">
+                          {updateStatusText}
+                        </span>
+                      </div>
+                    </HoverTip>
+                  }
+                >
+                  {hasUpdate ? (
+                    <Button
+                      variant="ghost"
+                      className="px-1"
+                      data-ui-target="setting:about.installUpdate"
+                      onClick={onInstallUpdate}
+                    >
+                      View Update
+                    </Button>
+                  ) : (
+                    <Button
+                      variant="ghost"
+                      className="px-1"
+                      aria-label={updateCheckFailed ? undefined : "check for updates"}
+                      disabled={updateCheckDisabled}
+                      data-ui-target="setting:about.checkForUpdates"
+                      onClick={onCheckForUpdate}
+                    >
+                      {updateCheckFailed ? "Try Again" : "Check"}
+                    </Button>
+                  )}
+                </SettingsRow>
               ) : null}
             </SettingsSection>
           </>
@@ -1140,38 +1127,47 @@ export function SettingsContent({
         {appVersion ? (
           <>
             <SettingsDivider />
-            <div
-              data-settings-footer-links
-              className="flex flex-wrap items-center gap-x-3 gap-y-1 px-2"
-            >
-              <LinkButton
-                className={FOOTER_LINK_CLASS}
-                data-ui-target="setting:about.sharesets"
-                onClick={() => openExternalUrl(SHARESETS_URL)}
-              >
-                Sharesets
-                <ExternalLink className="size-[1em]" />
-              </LinkButton>
-              <LinkButton
-                className={FOOTER_LINK_CLASS}
-                data-ui-target="setting:about.documentation"
-                onClick={() => openExternalUrl(DOCS_URL)}
-              >
-                Docs
-                <ExternalLink className="size-[1em]" />
-              </LinkButton>
-              {onOpenQuickTour ? (
-                <LinkButton className={FOOTER_LINK_CLASS} onClick={onOpenQuickTour}>
-                  Quick Tour
+            <div data-settings-footer-links className="flex flex-col gap-1 px-2">
+              <div className="settings-footer-link-row">
+                {onOpenQuickTour ? (
+                  <LinkButton className={FOOTER_LINK_CLASS} onClick={onOpenQuickTour}>
+                    Quick Tour
+                  </LinkButton>
+                ) : null}
+                <LinkButton
+                  className={FOOTER_LINK_CLASS}
+                  data-ui-target="setting:about.feedback"
+                  onClick={onOpenFeedback}
+                >
+                  Feedback
                 </LinkButton>
-              ) : null}
-              <LinkButton
-                className={FOOTER_LINK_CLASS}
-                data-ui-target="setting:about.feedback"
-                onClick={onOpenFeedback}
-              >
-                Feedback
-              </LinkButton>
+              </div>
+              <div className="settings-footer-link-row">
+                <LinkButton
+                  className={FOOTER_LINK_CLASS}
+                  data-ui-target="setting:about.documentation"
+                  onClick={() => openExternalUrl(DOCS_URL)}
+                >
+                  Docs
+                  <ExternalLink className="size-[1em]" />
+                </LinkButton>
+                <LinkButton
+                  className={FOOTER_LINK_CLASS}
+                  data-ui-target="setting:about.sharesets"
+                  onClick={() => openExternalUrl(SHARESETS_URL)}
+                >
+                  Sharesets
+                  <ExternalLink className="size-[1em]" />
+                </LinkButton>
+                <LinkButton
+                  className={FOOTER_LINK_CLASS}
+                  data-ui-target="setting:about.releases"
+                  onClick={() => openExternalUrl(effectiveReleaseUrl)}
+                >
+                  Releases
+                  <ExternalLink className="size-[1em]" />
+                </LinkButton>
+              </div>
             </div>
           </>
         ) : null}

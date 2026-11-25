@@ -148,6 +148,35 @@ body {
   }
 }
 
+.settings-footer-link-row {
+  --settings-footer-link-gap: 0.75rem;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.25rem var(--settings-footer-link-gap);
+  /* Leave room for the focus ring while clipping dots before wrapped line starts. */
+  padding: 0.25rem;
+  margin: -0.25rem;
+  overflow: clip;
+}
+
+.settings-footer-link-row > button + button {
+  position: relative;
+}
+
+.settings-footer-link-row > button + button::before {
+  content: "·";
+  content: "·" / "";
+  position: absolute;
+  inset-block: 0;
+  inset-inline-end: 100%;
+  display: grid;
+  place-items: center;
+  width: var(--settings-footer-link-gap);
+  color: var(--muted-foreground);
+  pointer-events: none;
+}
+
 html[data-surface="dock-authoring"],
 html[data-surface="dock-authoring"] body,
 html[data-surface="dock-authoring"] #root,

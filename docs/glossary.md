@@ -89,6 +89,7 @@ the UI disagree, the UI on `main` wins and this file is corrected.
 | Auto Download Updates      | The Settings option that downloads and verifies an update in the background                         | 自动下载更新       |                             |
 | Ask to Send Crash Reports  | The option to ask for permission to send a saved report after a crash                               | 发送崩溃报告前询问 |                             |
 | MCP Setup                  | The Agent Control entry a chat app needs to use PLVS through MCP, shown for copying                 | MCP 设置           | connector, plugin           |
+| View Update                | The Settings action that opens the available or downloaded update's details                         | 查看更新           |                             |
 | View Update Details        | Opens the release notes, download progress and installation for an update                           | 查看更新详情       |                             |
 | Update and Restart         | Installs a ready update after confirmation and reopens PLVS                                         | 更新并重启         |                             |
 | Restart Required           | Status notice for a saved configuration waiting for PLVS to restart                                 | 需要重启           |                             |

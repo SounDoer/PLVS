@@ -131,8 +131,9 @@ are disabled along with window hiding, preset switching and quitting.
 
 ## Updates
 
-Near the bottom of Settings, the version, update status, **Check**, update preferences, and
-**Releases** appear together above the footer links.
+Near the bottom of Settings, the version, update status, and action appear below the two update
+preferences. **Quick Tour** and **Feedback** share the first footer row. **Docs**, **Sharesets**,
+and **Releases** are on the second row and open in your browser.
 The question-mark icon beside **Auto Download Updates** explains download availability, the **Auto Check for Updates**
 dependency, and installation confirmation on hover or keyboard focus. The version status row shows
 background download progress, a ready package, or a failed download. A failed replacement download
@@ -140,17 +141,17 @@ does not erase an older verified ready package. Update details show the selected
 actions while the release notes load. If formatting is unavailable, the notes are shown as plain
 text.
 **Auto Check for Updates** controls startup and twelve-hour checks. **Auto Download Updates** requires checking to be enabled. Turning checking off also turns downloading
-off; turning checking back on leaves downloading off. **Check** remains an explicit action when
-automatic checking is off. With **Auto Download Updates** on, **Check** also downloads a newer
-version in the background. A failed download can be retried on the next check while the
-same version's details are open. Preferences are shared across workbenches and are not imported from a
-configuration profile.
+off; turning checking back on leaves downloading off. When there is no known update, **Check**
+starts a manual check even if automatic checking is off. If the check fails, **Try Again** repeats
+it. With **Auto Download Updates** on, a check also downloads a newer version in the background.
+When there is a known update, **View Update** opens its details. Preferences are shared across
+workbenches and are not imported from a configuration profile.
 
 Turning automatic downloading off cancels background work and removes the staged update. If update
 details are open, **Update and Restart** downloads the package again on request. If cancellation
 reports an error, PLVS checks whether the package is still ready to install. When installation finds
 a missing or damaged package, **Update and Restart** can download it again. With **Auto Download
-Updates** on, **Check** can also download the same version again. A manual update you have
+Updates** on, a later check can also download the same version again. A manual update you have
 explicitly confirmed is separate from this preference. Installed Windows, macOS
 and stable Ubuntu `.deb` copies support verified local staging; Portable copies use the
 release-page download instead.

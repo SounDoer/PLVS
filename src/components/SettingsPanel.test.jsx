@@ -20,11 +20,11 @@ const CUSTOM_THEME = {
 };
 const CUSTOM_THEME_OPTION = { id: CUSTOM_THEME.id, label: CUSTOM_THEME.name, theme: CUSTOM_THEME };
 
-it("offers Quick Tour between Docs and Feedback using an internal action", () => {
+it("puts Quick Tour beside Feedback in the internal footer row", () => {
   const onOpenQuickTour = vi.fn();
   render(<SettingsPanel {...BASE_PROPS} appVersion="0.23.4" onOpenQuickTour={onOpenQuickTour} />);
   const button = screen.getByRole("button", { name: "Quick Tour" });
-  expect(button.previousElementSibling.textContent).toBe("Docs");
+  expect(button.previousElementSibling).toBeNull();
   expect(button.nextElementSibling.textContent).toBe("Feedback");
   fireEvent.click(button);
   expect(onOpenQuickTour).toHaveBeenCalledOnce();
@@ -154,18 +154,15 @@ describe("SettingsPanel", () => {
   });
 
   it("names every Settings control in the catalogue as a pointer target", () => {
-    render(
-      <SettingsPanel
-        {...BASE_PROPS}
-        appearance="fixed"
-        fixedThemeSelectValue="plvs-dark"
-        appVersion="0.23.4"
-        hasUpdate
-        latestVersion="0.23.5"
-        updatePreferences={{ autoCheck: true, autoDownload: false }}
-        agentControlStatus={{ supported: true, cliInstalled: true, enabled: true, mcpSetup: "{}" }}
-      />
-    );
+    const props = {
+      ...BASE_PROPS,
+      appearance: "fixed",
+      fixedThemeSelectValue: "plvs-dark",
+      appVersion: "0.23.4",
+      updatePreferences: { autoCheck: true, autoDownload: false },
+      agentControlStatus: { supported: true, cliInstalled: true, enabled: true, mcpSetup: "{}" },
+    };
+    const { rerender } = render(<SettingsPanel {...props} hasUpdate latestVersion="0.23.5" />);
     // Shortcut rows are targeted per action. Sources and File controls are covered at their
     // own entry points.
     const elsewhere = new Set([
@@ -175,10 +172,14 @@ describe("SettingsPanel", () => {
       "file.dialogueDetection",
       "file.summaryMetrics",
     ]);
-    const missing = SETTINGS_SURFACE_CONTROLS.map(({ id }) => id)
-      .filter((id) => !id.startsWith("shortcuts.") && !elsewhere.has(id))
-      .filter((id) => !document.querySelector(`[data-ui-target="setting:${id}"]`));
-    expect(missing).toEqual([]);
+    const targets = SETTINGS_SURFACE_CONTROLS.map(({ id }) => id).filter(
+      (id) => !id.startsWith("shortcuts.") && !elsewhere.has(id)
+    );
+    const visible = (id) => document.querySelector(`[data-ui-target="setting:${id}"]`);
+    const missing = targets.filter((id) => !visible(id));
+    expect(missing).toEqual(["about.checkForUpdates"]);
+    rerender(<SettingsPanel {...props} updateStatus="idle" />);
+    expect(visible("about.checkForUpdates")).toBeTruthy();
   });
 
   it("opens, scrolls, and focuses a requested semantic section", async () => {
@@ -1018,32 +1019,37 @@ describe("SettingsPanel", () => {
     expect(screen.queryByText("Spectrum channel")).toBeNull();
   });
 
-  it("groups version, update actions, and update preferences before the footer links", () => {
+  it("shows the update status below the preferences and separates the footer by destination", () => {
     render(
       <SettingsPanel
         {...BASE_PROPS}
         appVersion="0.0.17"
+        onOpenQuickTour={() => {}}
         updatePreferences={{ choiceMade: true, autoCheck: false, autoDownload: false }}
       />
     );
     const updateSection = document.querySelector('[data-settings-section-id="about"]');
-    for (const text of [
-      "v0.0.17",
-      "Check",
-      "Auto Check for Updates",
-      "Auto Download Updates",
-      "Releases",
-    ]) {
+    for (const text of ["v0.0.17", "Check", "Auto Check for Updates", "Auto Download Updates"]) {
       expect(updateSection.contains(screen.getByText(text))).toBe(true);
     }
-    expect(screen.getByText("Checking...")).toBeTruthy();
+    expect(screen.getByRole("status").textContent).toBe("Checking…");
+    expect(
+      screen.getByText("v0.0.17").compareDocumentPosition(screen.getByText("Auto Download Updates"))
+    ).toBe(Node.DOCUMENT_POSITION_PRECEDING);
+    expect(/** @type {HTMLButtonElement} */ (screen.getByText("Check")).disabled).toBe(true);
     expect(screen.queryByRole("button", { name: "Licenses" })).toBeNull();
     expect(screen.queryByRole("button", { name: "Privacy" })).toBeNull();
 
     const footerLinks = document.querySelector("[data-settings-footer-links]");
 
-    expect(footerLinks.textContent).toBe("SharesetsDocsFeedback");
-    expect(footerLinks.querySelectorAll(".border-l")).toHaveLength(0);
+    expect(
+      Array.from(footerLinks.children, (row) =>
+        Array.from(row.querySelectorAll("button"), (button) => button.textContent)
+      )
+    ).toEqual([
+      ["Quick Tour", "Feedback"],
+      ["Docs", "Sharesets", "Releases"],
+    ]);
   });
 
   it("shows up to date when the update check succeeds without a newer version", () => {
@@ -1058,21 +1064,25 @@ describe("SettingsPanel", () => {
     );
 
     expect(screen.getByText("Up to date")).toBeTruthy();
-    expect(screen.queryByText("Checking...")).toBeNull();
+    expect(screen.queryByText("Checking…")).toBeNull();
   });
 
-  it("keeps release link visible when update check fails", () => {
+  it("offers a retry and keeps release link visible when an update check fails", () => {
     const openExternalUrl = vi.fn();
+    const onCheckForUpdate = vi.fn();
     render(
       <SettingsPanel
         {...BASE_PROPS}
         appVersion="0.0.17"
         updateStatus="unavailable"
         openExternalUrl={openExternalUrl}
+        onCheckForUpdate={onCheckForUpdate}
       />
     );
 
-    expect(screen.getByText("Update unavailable")).toBeTruthy();
+    expect(screen.getByText("Check failed")).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Try Again" }));
+    expect(onCheckForUpdate).toHaveBeenCalledOnce();
     fireEvent.click(screen.getByText("Releases"));
     expect(openExternalUrl).toHaveBeenCalledWith("https://github.com/SounDoer/PLVS/releases");
   });
@@ -1131,13 +1141,13 @@ describe("SettingsPanel", () => {
       />
     );
 
-    expect(screen.getByText("v0.1.10 available")).toBeTruthy();
+    expect(screen.getByText("v0.1.10 Available")).toBeTruthy();
     fireEvent.click(screen.getByText("Releases"));
 
     expect(openExternalUrl).toHaveBeenCalledWith(releaseUrl);
   });
 
-  it("shows an Update button when an update is available and requests its dialog", () => {
+  it("shows View Update instead of Check when an update is available and opens details", () => {
     const onInstallUpdate = vi.fn();
     render(
       <SettingsPanel
@@ -1149,7 +1159,8 @@ describe("SettingsPanel", () => {
       />
     );
 
-    fireEvent.click(screen.getByRole("button", { name: "Update" }));
+    expect(screen.queryByText("Check")).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "View Update" }));
     expect(onInstallUpdate).toHaveBeenCalledTimes(1);
   });
 
@@ -1158,7 +1169,7 @@ describe("SettingsPanel", () => {
       <SettingsPanel {...BASE_PROPS} appVersion="0.1.10" latestVersion="0.1.10" hasUpdate={false} />
     );
 
-    expect(screen.queryByText("Update")).toBeNull();
+    expect(screen.queryByText("View Update")).toBeNull();
   });
 
   const SYSTEM_PROPS = {
