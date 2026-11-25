@@ -33,3 +33,33 @@ it("keeps elapsed Live time when the system clock is set backwards", () => {
     vi.useRealTimers();
   }
 });
+
+it("derives elapsed time from the start time while animation frames are paused", () => {
+  // Hidden windows pause requestAnimationFrame. getElapsedMs() must not depend on it; the
+  // rAF-published elapsedMsRef is allowed to lag until frames resume.
+  let nowMs = 1_000;
+  const nowSpy = vi.spyOn(performance, "now").mockImplementation(() => nowMs);
+  const rafSpy = vi.spyOn(window, "requestAnimationFrame").mockImplementation(() => 0);
+  const { result, unmount } = renderHook(() => useSessionTimer());
+  try {
+    act(() => result.current.startTimer());
+    nowMs += 90_000;
+    expect(result.current.getElapsedMs()).toBe(90_000);
+    expect(result.current.elapsedMsRef.current).toBe(0);
+
+    act(() => result.current.stopTimer());
+    nowMs += 30_000;
+    expect(result.current.getElapsedMs()).toBe(90_000);
+
+    act(() => result.current.startTimer());
+    nowMs += 10_000;
+    expect(result.current.getElapsedMs()).toBe(100_000);
+
+    act(() => result.current.resetTimer());
+    expect(result.current.getElapsedMs()).toBe(0);
+  } finally {
+    unmount();
+    nowSpy.mockRestore();
+    rafSpy.mockRestore();
+  }
+});

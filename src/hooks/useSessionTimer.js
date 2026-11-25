@@ -12,8 +12,10 @@ export function formatClock(ms) {
 }
 
 /**
- * Session timer driven by rAF. The transport subscribes to whole-second changes, while
- * history snapshots read `elapsedMsRef.current` for subsecond precision.
+ * Session timer. Elapsed time is derived from the run's start time, so `getElapsedMs()` is exact
+ * whenever it is called, including while a hidden window has paused animation frames. rAF only
+ * paces the whole-second notifications the transport subscribes to; `elapsedMsRef` holds the
+ * value last published to them and stops moving while rAF is paused.
  */
 export function useSessionTimer() {
   const runStartedAtRef = useRef(null);
@@ -26,6 +28,14 @@ export function useSessionTimer() {
   const loopRef = useRef(null);
 
   const getElapsedSecond = useCallback(() => Math.floor(elapsedMsRef.current / 1000), []);
+
+  const getElapsedMs = useCallback(
+    () =>
+      runStartedAtRef.current === null
+        ? accumulatedMsRef.current
+        : accumulatedMsRef.current + (performance.now() - runStartedAtRef.current),
+    []
+  );
 
   const subscribe = useCallback((/** @type {() => void} */ listener) => {
     const listeners = listenersRef.current;
@@ -88,5 +98,13 @@ export function useSessionTimer() {
     return () => cancelAnimationFrame(rafIdRef.current);
   }, []);
 
-  return { elapsedMsRef, getElapsedSecond, subscribe, startTimer, stopTimer, resetTimer };
+  return {
+    elapsedMsRef,
+    getElapsedMs,
+    getElapsedSecond,
+    subscribe,
+    startTimer,
+    stopTimer,
+    resetTimer,
+  };
 }

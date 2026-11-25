@@ -39,7 +39,7 @@ export function DisplaySnapshotProvider({ children }) {
   const { selectedOffset, selectedSnapshotTimeMs } = useMeterDisplayState();
   const { fileSession, fileImport, fileQueue } = useSourceActions();
   const { audio } = display;
-  const { elapsedMsRef, getElapsedSecond, subscribe } = display.clock;
+  const { getElapsedMs, getElapsedSecond, subscribe } = display.clock;
   const liveClockVisible = sourceMode === "live" && running && selectedOffset < 0;
   // An unavailable Mix can remain running without publishing any meter frames.
   const elapsedSecond = useSyncExternalStore(subscribe, () =>
@@ -79,7 +79,7 @@ export function DisplaySnapshotProvider({ children }) {
     liveLifecycle,
     selectedOffset,
     latestTimestampMs,
-    elapsedMs: elapsedSecond === null ? elapsedMsRef.current : elapsedSecond * 1_000,
+    elapsedMs: elapsedSecond === null ? getElapsedMs() : elapsedSecond * 1_000,
     selectedSnapshotTimeMs,
     selectedMediaTimeMs,
     fileSession,

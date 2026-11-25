@@ -78,6 +78,7 @@ export function useMeterDisplay() {
   const frameRef = useRef(0);
   const guardTimerRef = useRef(null);
   const clock = useSessionTimer();
+  const { getElapsedMs } = clock;
 
   const setAudio = useCallback((nextAudio) => {
     const next = typeof nextAudio === "function" ? nextAudio(latestAudioRef.current) : nextAudio;
@@ -92,7 +93,9 @@ export function useMeterDisplay() {
       selectedOffsetRef.current = value;
       if (value >= 0) {
         if (!Number.isFinite(snapshotBaseElapsedMsRef.current)) {
-          snapshotBaseElapsedMsRef.current = clock.elapsedMsRef.current;
+          // Derived from the start time, not the rAF-published value, which stops while the
+          // window is hidden (for example during an Agent Control Snapshot selection).
+          snapshotBaseElapsedMsRef.current = getElapsedMs();
         }
         setSelectedSnapshotTimeMs(Math.max(0, snapshotBaseElapsedMsRef.current - value * 1000));
       } else {
@@ -104,7 +107,7 @@ export function useMeterDisplay() {
         setAudio(latestAudioRef.current);
       }
     },
-    [clock.elapsedMsRef, setAudio]
+    [getElapsedMs, setAudio]
   );
 
   const selectSnapshot = useCallback(

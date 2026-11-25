@@ -127,21 +127,32 @@ describe("useMeterDisplay", () => {
     expect(result.current.selectedOffset).toBe(15);
   });
 
-  it("freezes the live snapshot session time while selectedOffset changes", () => {
-    const { result } = renderHook(() => useMeterDisplay());
-    result.current.clock.elapsedMsRef.current = 25 * 60_000;
+  it("freezes the live snapshot session time while selectedOffset changes, even with animation frames paused", () => {
+    // A hidden window pauses requestAnimationFrame; Snapshot selection must still see the real
+    // session time, for example when Agent Control selects one while PLVS is in the background.
+    let nowMs = 0;
+    const nowSpy = vi.spyOn(performance, "now").mockImplementation(() => nowMs);
+    const rafSpy = vi.spyOn(window, "requestAnimationFrame").mockImplementation(() => 0);
+    try {
+      const { result } = renderHook(() => useMeterDisplay());
+      act(() => result.current.clock.startTimer());
+      nowMs = 25 * 60_000;
 
-    act(() => result.current.setSelectedOffset(0));
-    expect(result.current.selectedSnapshotTimeMs).toBe(25 * 60_000);
+      act(() => result.current.setSelectedOffset(0));
+      expect(result.current.selectedSnapshotTimeMs).toBe(25 * 60_000);
 
-    result.current.clock.elapsedMsRef.current = 26 * 60_000;
-    act(() => result.current.setSelectedOffset(60));
-    expect(result.current.selectedSnapshotTimeMs).toBe(24 * 60_000);
+      nowMs = 26 * 60_000;
+      act(() => result.current.setSelectedOffset(60));
+      expect(result.current.selectedSnapshotTimeMs).toBe(24 * 60_000);
 
-    act(() => result.current.setSelectedOffset(-1));
-    result.current.clock.elapsedMsRef.current = 30 * 60_000;
-    act(() => result.current.setSelectedOffset(0));
-    expect(result.current.selectedSnapshotTimeMs).toBe(30 * 60_000);
+      act(() => result.current.setSelectedOffset(-1));
+      nowMs = 30 * 60_000;
+      act(() => result.current.setSelectedOffset(0));
+      expect(result.current.selectedSnapshotTimeMs).toBe(30 * 60_000);
+    } finally {
+      nowSpy.mockRestore();
+      rafSpy.mockRestore();
+    }
   });
 
   it("clearAudio replaces the snapshot with the clear-time literal", () => {
