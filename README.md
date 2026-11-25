@@ -20,7 +20,8 @@ audio**.
 
 - **Level Meter, Loudness, Stats, Spectrum, Spectrogram, Vectorscope, Stereo Map, and Waveform** in
   one arrangeable workspace
-- **System output, a single application, or a physical input**, captured natively
+- **System output, individual applications, physical inputs, and saved Live Mixes** with
+  configurable channel mapping for metering
 - **Loudness** following ITU-R BS.1770 / EBU R128, with your own **Loudness Profiles** and optional
   **dialogue-gated** readouts
 - **Multichannel** from mono through 9.1.6
@@ -28,7 +29,7 @@ audio**.
 - **Dock mode**, compact views, and custom themes
 - **Multiple workbenches** for metering several Sources side by side, sharing one Library
 - **[Sharesets Catalogue](https://plvs.soundoer.com/sharesets/)** with curated Themes, Presets, and Loudness Profiles
-- **`plvs-cli`** for diagnosing the installation and controlling the running app
+- **Agent Control** through `plvs-cli` or a desktop chat app that supports local MCP servers
 - **Private**: audio stays on your device, with no telemetry by default
 
 Read the **[User Guide](docs/user/README.md)**, also published at
@@ -48,8 +49,8 @@ Get the latest version from [**GitHub Releases**](https://github.com/SounDoer/PL
 
 Windows builds are not code-signed yet; choose **More info** → **Run anyway** if SmartScreen warns.
 macOS builds are Developer ID signed and Apple-notarized for normal Gatekeeper verification. On
-Linux, Dock requires an EWMH-capable X11 or XWayland window backend; native Wayland Dock and
-single-application capture are not available. See
+Linux, Dock requires an EWMH-capable X11 or XWayland window backend. Audio capture uses
+PulseAudio or PipeWire's PulseAudio compatibility service. See
 [Getting Started](docs/user/getting-started.md) for details.
 
 ## Documentation

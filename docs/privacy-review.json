@@ -1,34 +1,29 @@
 {
   "schemaVersion": 1,
-  "reviewedOn": "2026-11-21",
-  "effectiveDate": "2026-11-22",
-  "contentSha256": "a2378e4ee00c29937e8fbf33b388f2c4daca84f92479348d654fac2d49069842",
-  "previousEffectiveDate": "2026-10-16",
+  "reviewedOn": "2026-11-25",
+  "effectiveDate": "2026-11-25",
+  "contentSha256": "858fe98db4df3b355cc31c8ef2d41f6ffe09c0a302e65a40f8857cd1b70effa6",
+  "previousEffectiveDate": "2026-11-22",
   "dateDecision": "updated",
-  "changeSummary": "Disclose the Agent Control Send action for Feedback and pending Crash Reports, the local Feedback payload preview, and deletion of the current pending report after choosing Don’t Ask Again.",
-  "dateRationale": "November 22, 2026 is the planned 0.26.3 release date. This revision describes new local command access to existing submission paths.",
-  "scope": "Review of Feedback, Crash Reports and update behavior from v0.26.2 (abc83e75) through d15719a6 plus the 0.26.3 release documentation.",
+  "changeSummary": "Disclose which data the local MCP adapter returns to a connected chat app, what that app may send to its provider, and how PLVS handles the last connected app name and time.",
+  "dateRationale": "November 25, 2026 is the planned first stable availability of local MCP. A chat app can receive measurement and application data through this new opt-in interface.",
+  "scope": "Review of desktop data handling from v0.26.4 (7f3565a6) through 85d60a75 plus the 0.27.0 release documentation and policy.",
   "evidence": [
     {
-      "source": "PLVS: src/uiNavigation/UiNavigationContext.jsx, src/agentControl/handlers/ui.js, src/hooks/useFeedbackDraft.js, src/lib/feedback.js and docs/agent-control/ui.md",
-      "revision": "v0.26.2..d15719a6",
-      "notes": "Agent Control is opt-in. An explicit Send against the current mounted dialog invokes its existing submit action. Dry-run returns a local preview without issuing a POST. Diagnostics remain opt-in and the endpoint and payload fields are unchanged."
+      "source": "PLVS: src-tauri/src/cli_mcp.rs, src-tauri/src/cli_mcp/files.rs and docs/user/chat-apps.md",
+      "revision": "v0.26.4..85d60a75",
+      "notes": "The adapter exchanges tool requests and results over local standard input and output, using the existing Agent Control connection and commands. Responses can include measurement data, exported documents and screenshots. Audio inputs and generated recordings remain local. A chat app controls what it sends to its own provider."
     },
     {
-      "source": "PLVS: src/components/CrashReportDialog.jsx, src/lib/crashReporting.js and src-tauri/src/feedback_diagnostics.rs",
-      "revision": "v0.26.2..d15719a6",
-      "notes": "Crash reports use the existing explicit Send callback, request and endpoint. The current local report is removed after success or when dismissed with Don’t Send or Don’t Ask Again. The display-change event stays in the local application."
+      "source": "PLVS: src/agentControl/handlers/mcp.js, src/agentControl/mcpUsage.js and src/components/McpUsageStatus.jsx",
+      "revision": "v0.26.4..85d60a75",
+      "notes": "The chat app name and last-use time are available in Settings from in-memory state. PLVS does not persist this usage status or send it to a remote service."
     },
     {
-      "source": "PLVS: src-tauri/src/update_cache.rs, src-tauri/src/update_runtime.rs, src/hooks/useUpdatePreferences.js and src/agentControl/handlers/update.js",
-      "revision": "v0.26.2..d15719a6",
-      "notes": "Agent Control invokes the existing manual update and settings paths. Cache changes replace older downloads and remove rejected packages locally. The preference gates, network destinations and request data are unchanged."
-    },
-    {
-      "source": "PLVS-Website: live publication.json and the pinned renderer",
-      "revision": "ba26b80053552f98162330c136e969c1246adfd1",
-      "notes": "The release uses the current live site renderer. The privacy content comes from the PLVS policy source."
+      "source": "PLVS: src-tauri/src/update_runtime.rs, src-tauri/vendor/tauri-plugin-updater and release-range review of feedback, crash reports and newsletter paths",
+      "revision": "v0.26.4..85d60a75",
+      "notes": "The updater reads the signed Debian entry for Linux dev checks and removes legacy Windows ZIP update support. The existing GitHub feed, consent settings, feedback and crash submission paths, and newsletter service are unchanged."
     }
   ],
-  "limitations": "Review covers the changed desktop and website sources. The release does not change the report service, mail provider or server retention, and this review did not re-audit their deployed configuration."
+  "limitations": "Review covers PLVS source and the local MCP interface. Third-party chat apps determine their provider behavior and retention. The unchanged feedback, crash report and newsletter services were not re-audited."
 }

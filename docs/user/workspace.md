@@ -201,7 +201,7 @@ Native Wayland windows are not supported; the Dock selector is hidden on unsuppo
 backends. **Reserve Space** uses the system work area, including for native Wayland applications on
 GNOME. Reservation requires an outer top or bottom display edge; use overlay mode on interior edges
 in vertically stacked monitor layouts. **Above Full Screen** is unavailable on Linux, and full-screen
-applications may cover the strip. Per-application capture remains unavailable on Linux.
+applications may cover the strip.
 An explicit `GDK_BACKEND` setting takes precedence over this default. If Dock is missing because
 your environment forces native Wayland, quit PLVS and launch `GDK_BACKEND=x11 plvs` from a terminal.
 This changes PLVS's window backend without changing the desktop session and requires XWayland to

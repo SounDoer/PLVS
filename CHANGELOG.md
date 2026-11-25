@@ -7,6 +7,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.27.0] - 2026-11-25
+
+### Added
+
+- Save and select Live Mixes on Windows, macOS, and Linux. Combine applications and input
+  channels, or measure a playback output with input channels. Preview routing edits live,
+  choose a Mix Format from Mono through 9.1.6, and recall saved Mixes from Sources, Dock,
+  or the system tray. Agent Control can edit Mix drafts and manage saved Mixes.
+- On Linux, measure a single playback application through PulseAudio or PipeWire's PulseAudio
+  compatibility service.
+- Connect a desktop chat app with local MCP support to PLVS through Agent Control. Settings
+  provides a copyable setup prompt. Connected apps can read measurements, take screenshots,
+  and make changes through the same commands and safeguards as the CLI.
+
+### Fixed
+
+- Live retries interrupted recording inputs on the original device. Windows can also recover
+  playback after a Spatial Sound change, and Linux can retry after an audio service interruption.
+  When another app holds a Windows output exclusively, PLVS explains why shared capture is unavailable.
+- Level Meter preserves per-channel sample peaks from audio buffers between display updates in
+  Live and File Mode. The Live clock keeps running through gaps in audio while capture is active.
+
 ## [0.26.4] - 2026-11-23
 
 ### Added

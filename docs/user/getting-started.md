@@ -55,8 +55,8 @@ Remove PLVS with `sudo apt remove plvs`; removing the package preserves user set
 
 Dock is available with an EWMH-capable X11 or XWayland window backend, including XWayland inside a
 GNOME Wayland session. PLVS prefers X11/XWayland by default, with Wayland as a fallback; an explicit
-`GDK_BACKEND` setting takes precedence. Native Wayland Dock and per-application capture are unavailable. See
-[Dock](workspace.md#dock) and [Signal Source](signal-source.md) for platform scope.
+`GDK_BACKEND` setting takes precedence. See [Dock](workspace.md#dock) for window backend requirements
+and [Signal Source](signal-source.md#application) for per-application capture.
 
 ## Preview builds
 

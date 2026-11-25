@@ -31,8 +31,8 @@ devices it combines.
 On Linux, PLVS uses the output's monitor source through PulseAudio or PipeWire's PulseAudio
 compatibility service (`pipewire-pulse`). **Automatic** follows the default output's monitor; if
 that monitor is unavailable, capture reports an error instead of switching to a microphone.
-Physical inputs use the same audio service. Direct ALSA capture and per-application capture are not
-yet supported on Linux. See [Getting Started](getting-started.md#linux) for the Linux package.
+Physical inputs use the same audio service. Direct ALSA capture is unavailable. See
+[Getting Started](getting-started.md#linux) for the Linux package.
 
 ASIO drivers bypass the Windows audio mixer, so loopback cannot hear them. See
 [DAW playback on Windows](#daw-playback-on-windows) for ways to measure a DAW.

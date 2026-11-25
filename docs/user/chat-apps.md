@@ -75,8 +75,9 @@ paths, such as `~/Music/mix.wav`.
 
 ## What leaves your computer
 
-PLVS itself sends nothing. Your chat app sends what the tools return to its own service, as part
-of the conversation: PLVS state and settings, measurement readings, File reports and analysis
-results, exported Presets, Themes, Loudness Profiles and configuration, file paths, and
-screenshots. Audio samples are never returned. Check your chat app's privacy terms before using it
-with confidential material.
+The MCP connection runs locally. Your chat app may send what the tools return to its own service
+as part of the conversation. Results can include PLVS state and settings, measurement readings,
+File reports and analysis results, exported Presets, Themes, Loudness Profiles and configuration,
+file paths, and screenshots. Audio samples are never returned. PLVS keeps the most recent chat
+app name and time in memory for the Settings status. See the
+[Privacy Policy](https://plvs.soundoer.com/privacy/) and your chat app's privacy terms.
