@@ -33,6 +33,8 @@ import review use their existing accessories, temporarily hiding Settings until 
 
 ## Control feedback
 
+Settings rows move their controls below the label when the text and controls need more room.
+
 Ordinary dropdowns and setting fields are transparent with hidden borders at rest. Hovering shows
 a contrasting neutral background without revealing the border. Opening, editing, or using
 keyboard focus adds the border. A focus ring appears around the focused control only while you move

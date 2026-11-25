@@ -79,12 +79,11 @@ const BODY_CLASS = "flex flex-col gap-[var(--ui-drawer-gap)] text-[length:var(--
 const SECTION_CLASS = "flex flex-col gap-[var(--ui-drawer-row-gap)]";
 
 const ROW_CLASS =
-  "grid min-h-[var(--ui-shell-h)] grid-cols-[minmax(0,1fr)_max-content] items-center gap-2 rounded-xs px-2";
+  "flex min-h-[var(--ui-shell-h)] flex-wrap items-center gap-x-2 gap-y-1 rounded-xs px-2";
 
-const ROW_LABEL_CLASS =
-  "whitespace-nowrap text-[length:var(--ui-fs-control)] text-muted-foreground";
+const ROW_LABEL_CLASS = "min-w-0 text-[length:var(--ui-fs-control)] text-muted-foreground";
 
-const ROW_VALUE_CLASS = "flex min-w-0 items-center justify-end";
+const ROW_VALUE_CLASS = "ml-auto flex min-w-0 max-w-full items-center justify-end";
 
 const FOOTER_LINK_CLASS =
   "inline-flex items-center gap-1 whitespace-nowrap text-[length:var(--ui-fs-metric-meta)] cursor-pointer outline-none disabled:cursor-default disabled:opacity-50";
@@ -118,14 +117,13 @@ function SettingsSection({ children, className, sectionId, sectionRef }) {
  *   children: import("react").ReactNode,
  *   label?: string,
  *   labelNode?: import("react").ReactNode,
- *   className?: string,
  *   [key: string]: any,
  * }} props
  */
-function SettingsRow({ children, label, labelNode, className, uiTarget, ...props }) {
+function SettingsRow({ children, label, labelNode, uiTarget, ...props }) {
   return (
-    <div data-settings-row className={cn(ROW_CLASS, className)} {...props}>
-      {labelNode ?? <span className={ROW_LABEL_CLASS}>{label}</span>}
+    <div data-settings-row className={ROW_CLASS} {...props}>
+      {labelNode ?? (label ? <span className={ROW_LABEL_CLASS}>{label}</span> : null)}
       <div data-settings-row-value data-ui-target={uiTarget} className={ROW_VALUE_CLASS}>
         {children}
       </div>
@@ -667,8 +665,8 @@ export function SettingsContent({
                 label={action.label}
                 uiTarget={`setting:shortcuts.${action.id}`}
               >
-                <div className="flex flex-col items-end gap-0">
-                  <div className="flex items-center gap-2">
+                <div className="flex min-w-0 flex-col items-end gap-0">
+                  <div className="flex flex-wrap items-center justify-end gap-x-2 gap-y-1">
                     <ShortcutCapture
                       label={`${action.label} shortcut`}
                       value={binding.accelerator}
@@ -794,7 +792,7 @@ export function SettingsContent({
                   uiTarget="setting:appearance.theme"
                 />
               </div>
-              <SettingsRow label="">
+              <SettingsRow>
                 <SharesetsBrowseButton
                   category="themes"
                   onOpen={openExternalUrl}
@@ -895,9 +893,8 @@ export function SettingsContent({
                 tip="Loudness Profiles, Presets and Themes. Export lets you choose saved items; Import adds them without replacing your current setup."
               />
             }
-            className="settings-row-stackable"
           >
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center justify-end gap-x-2 gap-y-1">
               <Button
                 variant="ghost"
                 onClick={onLibraryExport}
@@ -930,9 +927,8 @@ export function SettingsContent({
                 tip="One file containing all settings and saved items. Import replaces your current setup and restarts PLVS."
               />
             }
-            className="settings-row-stackable"
           >
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center justify-end gap-x-2 gap-y-1">
               <Button
                 variant="ghost"
                 onClick={onExportConfiguration}
@@ -953,9 +949,7 @@ export function SettingsContent({
               </Button>
             </div>
           </SettingsRow>
-          {/* No label: the button says what it does, and leaving the label column empty
-                      keeps it on the same right-hand column as the Import buttons above. */}
-          <SettingsRow label="" className="settings-row-stackable">
+          <SettingsRow>
             <Button
               variant="ghost"
               onClick={() => setResetConfirmOpen(true)}

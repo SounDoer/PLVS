@@ -148,19 +148,6 @@ body {
   }
 }
 
-@container (max-width: 287px) {
-  .settings-row-stackable {
-    grid-template-columns: minmax(0, 1fr);
-    align-items: start;
-  }
-
-  .settings-row-stackable > [data-settings-row-value] {
-    width: 100%;
-    flex-wrap: wrap;
-    justify-content: flex-start;
-  }
-}
-
 html[data-surface="dock-authoring"],
 html[data-surface="dock-authoring"] body,
 html[data-surface="dock-authoring"] #root,
