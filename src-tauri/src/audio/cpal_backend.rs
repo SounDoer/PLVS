@@ -55,7 +55,7 @@ const CAPTURE_WATCH_POLL: Duration = Duration::from_millis(250);
 /// stall report can name a cause.
 pub(super) const STREAM_ERROR_NONE: u8 = 0;
 pub(super) const STREAM_ERROR_DEVICE_UNAVAILABLE: u8 = 1;
-const STREAM_ERROR_INVALIDATED: u8 = 2;
+pub(super) const STREAM_ERROR_INVALIDATED: u8 = 2;
 const STREAM_ERROR_OUTPUT_IN_USE: u8 = 3;
 const STREAM_ERROR_INPUT_INVALIDATED: u8 = 4;
 const STREAM_ERROR_INPUT_STALLED: u8 = 5;

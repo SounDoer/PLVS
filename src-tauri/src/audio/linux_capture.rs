@@ -19,7 +19,7 @@ use pulse::stream::{self, PeekResult, Stream};
 use super::cpal_backend::{
   pooled_pcm_buffer_capacity, CaptureStreamArgs, PcmBufferPool, PcmCallbackForwarder,
   PcmDeliveryQueue, PCM_QUEUE_CAP, STREAM_ERROR_AUDIO_SERVICE, STREAM_ERROR_DEVICE_UNAVAILABLE,
-  STREAM_ERROR_FORMAT, STREAM_ERROR_NONE, STREAM_ERROR_PERMISSION,
+  STREAM_ERROR_FORMAT, STREAM_ERROR_INVALIDATED, STREAM_ERROR_NONE, STREAM_ERROR_PERMISSION,
 };
 use super::linux_pulse_mix::Server;
 
@@ -32,6 +32,8 @@ fn capture_error_code(error: PAErr) -> u8 {
   match Code::try_from(error) {
     Ok(Code::ConnectionRefused | Code::ConnectionTerminated) => STREAM_ERROR_AUDIO_SERVICE,
     Ok(Code::NoEntity) => STREAM_ERROR_DEVICE_UNAVAILABLE,
+    // The server ended the stream. Recovery must recheck the same source before reopening it.
+    Ok(Code::Killed) => STREAM_ERROR_INVALIDATED,
     Ok(Code::Access | Code::AuthKey) => STREAM_ERROR_PERMISSION,
     Ok(Code::NotSupported) => STREAM_ERROR_FORMAT,
     _ => STREAM_ERROR_NONE,
@@ -313,6 +315,10 @@ mod tests {
     assert_eq!(
       capture_error_code(Code::NoEntity.into()),
       STREAM_ERROR_DEVICE_UNAVAILABLE
+    );
+    assert_eq!(
+      capture_error_code(PAErr(Code::Killed as i32)),
+      STREAM_ERROR_INVALIDATED
     );
     assert_eq!(
       capture_error_code(Code::Access.into()),

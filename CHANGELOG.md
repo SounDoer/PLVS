@@ -24,7 +24,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 
 - Live retries interrupted recording inputs on the original device. Windows can also recover
-  playback after a Spatial Sound change, and Linux can retry after an audio service interruption.
+  playback after a Spatial Sound change, and Linux can retry after the audio service interrupts
+  capture.
   When another app holds a Windows output exclusively, PLVS explains why shared capture is unavailable.
 - Level Meter preserves per-channel sample peaks from audio buffers between display updates in
   Live and File Mode. The Live clock keeps running through gaps in audio while capture is active.

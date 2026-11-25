@@ -392,6 +392,15 @@ export async function runLiveSourceReconnect({ outDir, platform, executable }) {
       code: knownCodes.includes(rootError.code) ? rootError.code : "scenarioFailed",
       ...(rootError.hresult ? { hresult: rootError.hresult } : {}),
     };
+    if (linux && pending?.id === "disconnected-and-stopped") {
+      const log = await readFile(join(outDir, `${LIVE_SOURCE_RECONNECT}-app.log`), "utf8").catch(
+        () => ""
+      );
+      const pulseError = [
+        ...log.matchAll(/capture failed[^\r\n]*\(PulseAudio error (-?\d+)\)/g),
+      ].at(-1)?.[1];
+      if (pulseError !== undefined) result.diagnostic.pulseError = Number(pulseError);
+    }
     await writeJsonAtomic(join(outDir, "failure.json"), {
       message: failure.message,
       ...(failure instanceof AggregateError ? { cleanup: failure.errors[1].message } : {}),
