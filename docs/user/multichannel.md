@@ -57,6 +57,8 @@ safely, capture reports an error instead of silently selecting a stereo pair or 
 tracks. A configured channel with an unsupported role remains visible with an unknown-layout warning.
 Windows application capture uses its explicitly requested capture format.
 
+<span id="system-settings-channels"></span>
+
 ## Manual layouts
 
 In Live, open **Channels** at the top of [Sources](signal-source.md). Standard layouts from

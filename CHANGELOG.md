@@ -7,6 +7,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.27.1] - 2026-11-26
+
+### Changed
+
+- View and edit Live channel layouts and roles under **Sources → Channels** in the main window
+  or Dock. Reset restores the automatic layout. File Info shows the source layout and the
+  layout used for loudness, including when PLVS infers it.
+- Simplified MCP Setup and reorganized Settings, including update status and actions. Settings
+  controls wrap below their labels when space is limited.
+- MCP command discovery now lists families first. Use `plvs_export` to save documents, File
+  reports, Statistics CSV, or completed recordings. Existing MCP calls that save files must
+  switch to `plvs_export`. CLI scripts that opened the old Channels section in Settings should
+  open Sources and use `ui show source-group --group channels`.
+
+### Fixed
+
+- Selecting a Snapshot while the window is hidden uses the current measurement time.
+- Level Meter keeps RMS Playback Max through silence until the next playback begins.
+
 ## [0.27.0] - 2026-11-25
 
 ### Added

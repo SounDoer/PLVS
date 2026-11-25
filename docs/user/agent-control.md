@@ -5,6 +5,7 @@ Open **Settings** and turn on **Agent Control** before connecting. Turning it of
 all clients until you turn it on again.
 
 <span id="chat-apps"></span>
+<span id="chat-apps-setting-it-up"></span>
 
 ## Connect an AI Client with MCP
 
@@ -30,6 +31,8 @@ to run `plvs_capabilities` again.
 You register the entry once per client. After a tool call reaches PLVS, **MCP Setup** can show the
 last client's name and when it was used. Preview uses the server name `plvs-preview`, so stable and
 Preview can be registered side by side.
+
+<span id="chat-apps-what-the-chat-app-can-do"></span>
 
 ### Use PLVS Tools
 
@@ -59,6 +62,8 @@ client to save it. For example, ask it to save the MP4 to Downloads after the re
 Exports create new files under your home or Downloads folder. Give a full path, such as
 `~/Documents/mix-report.md`, to choose where an export goes.
 
+<span id="chat-apps-what-leaves-your-computer"></span>
+
 ### What Leaves Your Computer
 
 The MCP connection runs locally. Your chat app may send what the tools return to its own service
@@ -76,6 +81,8 @@ Installed Windows, macOS, and Linux builds include `plvs-cli` for diagnosing the
 for inspecting or changing a running PLVS app. Agents with a local shell can use it directly.
 See the [CLI Reference](cli.md) for the full command set.
 
+<span id="command-line-where-it-is"></span>
+
 ### Where It Is
 
 - **Windows**: `plvs-cli.exe` sits beside `plvs.exe`. Enabling **Agent Control** in Settings adds
@@ -91,10 +98,14 @@ See the [CLI Reference](cli.md) for the full command set.
   Preview package, so the two can be installed side by side. Development builds
   stage `plvs-cli` beside the desktop executable. PLVS does not edit shell startup files.
 
+<span id="command-line-checking-the-installation"></span>
+
 ### Check the Installation
 
 `plvs-cli doctor --json` verifies the installed runtime and bundled sidecars, even while PLVS is
 closed. Add `--out <file>` to write the result to a file.
+
+<span id="command-line-controlling-the-running-app"></span>
 
 ### Control the Running App
 

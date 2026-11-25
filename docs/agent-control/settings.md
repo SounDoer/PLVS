@@ -160,14 +160,16 @@ metrics in default order. The returned visibility list follows the effective ord
 
 ## Channel labels
 
-The Live **Sources → Channels** controls are stored per channel count rather than per device. Inspection reports the current
-`channelCount`, `mode` (`auto` or `custom`), and the complete effective `roles` array. With no active
+The Live **Sources → Channels** controls are stored per channel count rather than per device.
+Inspection reports the current `channelCount`, `mode` (`auto` or `custom`), `layout`, and the
+complete effective `roles` array. With no active
 channels, the count is zero, roles are empty, and mutation is unavailable with `noChannels`.
 In File mode, mutation is unavailable with `liveOnly`. For a Mix, mutation is unavailable with
 `mixFormatControlsLayout`. Use the Mix editor to change that source's format.
 
-A custom update must include the current channel count and one complete role array of that exact
-length. Returning to automatic labels uses the same count with `mode: auto` and no roles. A count
+A custom update must include the current channel count and either a compatible `layout` ID from
+`settings describe` or one complete `roles` array of that exact length. Returning to automatic
+labels uses the same count with `mode: auto` and omits both fields. A count
 that no longer matches fails atomically with `channelConfigurationChanged`; there is no positional
 partial patch. Roles accept the GUI vocabulary `generic`, `M`, `L`, `R`, `C`, `LFE`, `Ls`, `Rs`,
 `Lb`, `Rb`, `Cs`, `Ltf`, `Rtf`, `Ltr`, and `Rtr`; duplicates remain valid, matching the GUI.
