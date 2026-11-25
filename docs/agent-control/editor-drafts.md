@@ -82,7 +82,7 @@ Use [Mix Control](mixes.md) to inspect or manage saved Mixes.
 
 Find the open `update` surface with phase `preferences` in `ui inspect`. Use its exact
 surface ID with `editor-draft inspect welcome` and `editor-draft patch welcome`.
-The draft owns Auto Check, Auto Download, and Crash Report Prompt. Turning off Auto Check
+The draft owns Auto Check, Auto Download, and Ask to Send Crash Reports. Turning off Auto Check
 also turns off Auto Download. Enabling Auto Download requires Auto Check and platform
 installation support, reported by `autoDownloadAvailable`.
 

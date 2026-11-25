@@ -176,12 +176,14 @@ export function visibleSettingsSection(scroller, nodes) {
   const atEnd =
     scroller.scrollTop > 0 &&
     scroller.scrollHeight - scroller.scrollTop - scroller.clientHeight <= 1;
-  let current = null;
-  for (const section of UI_SETTINGS_SECTIONS) {
-    const node = nodes.get(section);
-    if (!node) continue;
+  let current = nodes.has(SETTINGS_FIRST_SECTION) ? SETTINGS_FIRST_SECTION : null;
+  let currentTop = -Infinity;
+  for (const [section, node] of nodes) {
     const top = node.getBoundingClientRect().top;
-    if (current === null || top <= view.top + 8 || (atEnd && top < view.bottom)) current = section;
+    if (top >= currentTop && (top <= view.top + 8 || (atEnd && top < view.bottom))) {
+      current = section;
+      currentTop = top;
+    }
   }
   return current;
 }
@@ -645,69 +647,29 @@ export function SettingsContent({
               </SelectContent>
             </Select>
           </SettingsRow>
-        </SettingsSection>
-
-        <SettingsDivider />
-
-        {/* Keyboard shortcuts */}
-        <SettingsSection sectionId="shortcuts" sectionRef={bindSection("shortcuts")}>
-          {KEYBOARD_SHORTCUT_ACTIONS.map((action) => {
-            const defaultBinding = DEFAULT_KEYBOARD_SHORTCUTS[action.id];
-            const binding = keyboardShortcuts[action.id] ?? defaultBinding;
-            const registrationError = shortcutRegistrationErrors[action.id];
-            const saveError = shortcutSaveErrors[action.id];
-            const isDefault =
-              binding.accelerator === defaultBinding.accelerator &&
-              binding.global === defaultBinding.global;
-            return (
-              <SettingsRow
-                key={action.id}
-                label={action.label}
-                uiTarget={`setting:shortcuts.${action.id}`}
-              >
-                <div className="flex min-w-0 flex-col items-end gap-0">
-                  <div className="flex flex-wrap items-center justify-end gap-x-2 gap-y-1">
-                    <ShortcutCapture
-                      label={`${action.label} shortcut`}
-                      value={binding.accelerator}
-                      onChange={(accelerator) => setShortcutAccelerator(action.id, accelerator)}
-                      conflictForAccelerator={(accelerator) =>
-                        configuredShortcutConflict(keyboardShortcuts, action.id, accelerator)
-                      }
-                      onRecordingChange={setShortcutCapturing}
-                      isMac={isMac}
-                      disabled={!shortcutsReady}
-                    />
-                    <HoverTip tip="Works Outside PLVS" side="top" className="inline-flex shrink-0">
-                      <Switch
-                        aria-label={`${action.label} works outside PLVS`}
-                        checked={binding.global}
-                        onCheckedChange={(global) => setShortcutGlobal(action.id, global)}
-                        disabled={!shortcutsReady || binding.accelerator === null}
-                        className={cn(registrationError && "border-destructive")}
-                      />
-                    </HoverTip>
-                    <ResetAction
-                      compact
-                      label={`Reset ${action.label} shortcut settings`}
-                      isDefault={!shortcutsReady || isDefault}
-                      onReset={() => resetShortcut(action.id)}
-                      confirmLabel={`Confirm reset ${action.label} shortcut settings`}
-                      cancelLabel={`Cancel reset ${action.label} shortcut settings`}
-                    />
-                  </div>
-                  {saveError || registrationError ? (
-                    <span
-                      role="status"
-                      className="text-[length:var(--ui-fs-axis)] text-destructive"
-                    >
-                      {saveError || "Combo unavailable, try another"}
-                    </span>
-                  ) : null}
-                </div>
-              </SettingsRow>
-            );
-          })}
+          <SettingsRow
+            labelNode={
+              <SettingsLabelWithTip
+                label="Ask to Send Crash Reports"
+                tip="Saves crash reports locally either way. When enabled, PLVS asks before sending one after a crash."
+              />
+            }
+          >
+            <Switch
+              aria-label="ask to send crash reports"
+              data-ui-target="setting:updates.askToSendCrashReports"
+              checked={askToSendCrashReports}
+              disabled={crashReportSettingBusy}
+              onCheckedChange={(next) => {
+                void Promise.resolve(onAskToSendCrashReports(next)).catch(() => {});
+              }}
+            />
+          </SettingsRow>
+          {crashReportSettingError ? (
+            <span className="px-2 text-right text-[length:var(--ui-fs-axis)] text-destructive">
+              Could not update crash-report settings.
+            </span>
+          ) : null}
         </SettingsSection>
 
         <SettingsDivider />
@@ -807,6 +769,69 @@ export function SettingsContent({
 
         <SettingsDivider />
 
+        {/* Keyboard shortcuts */}
+        <SettingsSection sectionId="shortcuts" sectionRef={bindSection("shortcuts")}>
+          {KEYBOARD_SHORTCUT_ACTIONS.map((action) => {
+            const defaultBinding = DEFAULT_KEYBOARD_SHORTCUTS[action.id];
+            const binding = keyboardShortcuts[action.id] ?? defaultBinding;
+            const registrationError = shortcutRegistrationErrors[action.id];
+            const saveError = shortcutSaveErrors[action.id];
+            const isDefault =
+              binding.accelerator === defaultBinding.accelerator &&
+              binding.global === defaultBinding.global;
+            return (
+              <SettingsRow
+                key={action.id}
+                label={action.label}
+                uiTarget={`setting:shortcuts.${action.id}`}
+              >
+                <div className="flex min-w-0 flex-col items-end gap-0">
+                  <div className="flex flex-wrap items-center justify-end gap-x-2 gap-y-1">
+                    <ShortcutCapture
+                      label={`${action.label} shortcut`}
+                      value={binding.accelerator}
+                      onChange={(accelerator) => setShortcutAccelerator(action.id, accelerator)}
+                      conflictForAccelerator={(accelerator) =>
+                        configuredShortcutConflict(keyboardShortcuts, action.id, accelerator)
+                      }
+                      onRecordingChange={setShortcutCapturing}
+                      isMac={isMac}
+                      disabled={!shortcutsReady}
+                    />
+                    <HoverTip tip="Works Outside PLVS" side="top" className="inline-flex shrink-0">
+                      <Switch
+                        aria-label={`${action.label} works outside PLVS`}
+                        checked={binding.global}
+                        onCheckedChange={(global) => setShortcutGlobal(action.id, global)}
+                        disabled={!shortcutsReady || binding.accelerator === null}
+                        className={cn(registrationError && "border-destructive")}
+                      />
+                    </HoverTip>
+                    <ResetAction
+                      compact
+                      label={`Reset ${action.label} shortcut settings`}
+                      isDefault={!shortcutsReady || isDefault}
+                      onReset={() => resetShortcut(action.id)}
+                      confirmLabel={`Confirm reset ${action.label} shortcut settings`}
+                      cancelLabel={`Cancel reset ${action.label} shortcut settings`}
+                    />
+                  </div>
+                  {saveError || registrationError ? (
+                    <span
+                      role="status"
+                      className="text-[length:var(--ui-fs-axis)] text-destructive"
+                    >
+                      {saveError || "Combo unavailable, try another"}
+                    </span>
+                  ) : null}
+                </div>
+              </SettingsRow>
+            );
+          })}
+        </SettingsSection>
+
+        <SettingsDivider />
+
         {/* History retention */}
         <SettingsSection sectionId="analysis" sectionRef={bindSection("analysis")}>
           <SettingsRow
@@ -881,6 +906,70 @@ export function SettingsContent({
             </Select>
           </SettingsRow>
         </SettingsSection>
+
+        {showAgentControl ? (
+          <>
+            <SettingsDivider />
+
+            {/* Agent control */}
+            <SettingsSection sectionId="agent-control" sectionRef={bindSection("agent-control")}>
+              <SettingsRow
+                labelNode={<SettingsLabelWithTip label="Agent Control" tip={agentControlMessage} />}
+              >
+                <Switch
+                  aria-label="Agent Control"
+                  data-ui-target="setting:agentControl.enabled"
+                  checked={agentControlEnabled}
+                  disabled={agentControlDisabled}
+                  onCheckedChange={(next) => onSetAgentControlEnabled(next)}
+                />
+              </SettingsRow>
+              {agentControlSilent ? (
+                <div className="px-2 text-right text-[length:var(--ui-fs-axis)] text-destructive">
+                  {agentControlStartError
+                    ? `Enabled, but not listening: ${agentControlStartError}`
+                    : "Enabled, but not listening."}
+                </div>
+              ) : null}
+              {agentControlEnabled && agentControlMcpSetup ? (
+                <div>
+                  <SettingsRow
+                    labelNode={
+                      <SettingsLabelWithTip
+                        label="MCP Setup"
+                        tip="Copy and paste into your AI client to connect it to PLVS through MCP."
+                      />
+                    }
+                  >
+                    <CopyTextButton
+                      value={mcpSetupPrompt(agentControlMcpSetup)}
+                      ariaLabel="copy mcp setup"
+                      uiTarget={MCP_SETUP_COPY_TARGET}
+                      writeText={writeClipboardText}
+                    />
+                  </SettingsRow>
+                  <McpUsageStatus />
+                </div>
+              ) : null}
+              {agentControlEnabled ? (
+                <SettingsRow
+                  labelNode={
+                    <SettingsLabelWithTip
+                      label="Prompt Starter"
+                      tip="Paste this into your AI chat and add your request. It tells the agent to inspect PLVS first using MCP or the CLI."
+                    />
+                  }
+                >
+                  <CopyTextButton
+                    value={AGENT_CONTROL_PROMPT_STARTER}
+                    ariaLabel="copy agent control prompt starter"
+                    writeText={writeClipboardText}
+                  />
+                </SettingsRow>
+              ) : null}
+            </SettingsSection>
+          </>
+        ) : null}
 
         <SettingsDivider />
 
@@ -971,202 +1060,118 @@ export function SettingsContent({
           ) : null}
         </SettingsSection>
 
-        {showAgentControl ? (
+        {/* Updates */}
+        {appVersion || updatePreferences ? (
           <>
             <SettingsDivider />
-
-            {/* Agent control */}
-            <SettingsSection sectionId="agent-control" sectionRef={bindSection("agent-control")}>
-              <SettingsRow
-                labelNode={<SettingsLabelWithTip label="Agent Control" tip={agentControlMessage} />}
-              >
-                <Switch
-                  aria-label="Agent Control"
-                  data-ui-target="setting:agentControl.enabled"
-                  checked={agentControlEnabled}
-                  disabled={agentControlDisabled}
-                  onCheckedChange={(next) => onSetAgentControlEnabled(next)}
-                />
-              </SettingsRow>
-              {agentControlSilent ? (
-                <div className="px-2 text-right text-[length:var(--ui-fs-axis)] text-destructive">
-                  {agentControlStartError
-                    ? `Enabled, but not listening: ${agentControlStartError}`
-                    : "Enabled, but not listening."}
-                </div>
-              ) : null}
-              {agentControlEnabled && agentControlMcpSetup ? (
-                <div>
-                  <SettingsRow
-                    labelNode={
-                      <SettingsLabelWithTip
-                        label="MCP Setup"
-                        tip="Copy and paste into your AI client to connect it to PLVS through MCP."
-                      />
-                    }
+            <SettingsSection sectionId="about" sectionRef={bindSection("about")}>
+              {appVersion ? (
+                <div className="flex items-center gap-1 whitespace-nowrap px-2 text-[length:var(--ui-fs-metric-meta)]">
+                  <span className="shrink-0 font-mono tabular-nums text-muted-foreground">
+                    v{appVersion}
+                  </span>
+                  <span className="h-3 shrink-0 border-l border-border" aria-hidden="true" />
+                  <HoverTip
+                    tip={updateActivity?.downloadError ?? undefined}
+                    side="top"
+                    className="min-w-0"
                   >
-                    <CopyTextButton
-                      value={mcpSetupPrompt(agentControlMcpSetup)}
-                      ariaLabel="copy mcp setup"
-                      uiTarget={MCP_SETUP_COPY_TARGET}
-                      writeText={writeClipboardText}
-                    />
-                  </SettingsRow>
-                  <McpUsageStatus />
+                    <span
+                      className={cn(
+                        "block truncate",
+                        hasUpdate ? "text-primary" : "text-muted-foreground"
+                      )}
+                    >
+                      {updateStatusText}
+                    </span>
+                  </HoverTip>
+                  <span className="h-3 shrink-0 border-l border-border" aria-hidden="true" />
+                  <LinkButton
+                    className={FOOTER_LINK_CLASS}
+                    disabled={updateCheckDisabled}
+                    data-ui-target="setting:about.checkForUpdates"
+                    onClick={onCheckForUpdate}
+                  >
+                    Check
+                  </LinkButton>
+                  {hasUpdate ? (
+                    <>
+                      <span className="h-3 shrink-0 border-l border-border" aria-hidden="true" />
+                      <LinkButton
+                        className={cn(FOOTER_LINK_CLASS, "text-primary hover:text-primary")}
+                        data-ui-target="setting:about.installUpdate"
+                        onClick={onInstallUpdate}
+                      >
+                        Update
+                      </LinkButton>
+                    </>
+                  ) : null}
                 </div>
               ) : null}
-              {agentControlEnabled ? (
-                <SettingsRow
-                  labelNode={
-                    <SettingsLabelWithTip
-                      label="Prompt Starter"
-                      tip="Paste this into your AI chat and add your request. It tells the agent to inspect PLVS first using MCP or the CLI."
-                    />
-                  }
-                >
-                  <CopyTextButton
-                    value={AGENT_CONTROL_PROMPT_STARTER}
-                    ariaLabel="copy agent control prompt starter"
-                    writeText={writeClipboardText}
-                  />
-                </SettingsRow>
+              {updatePreferences ? (
+                <UpdatePreferencesSettings
+                  preferences={updatePreferences}
+                  onChange={setUpdatePreferences}
+                  installationSupported={updateInstallationSupported}
+                  installationUnavailableReason={updateInstallationUnavailableReason}
+                  uiTargets
+                />
+              ) : null}
+              {appVersion ? (
+                <div className="px-2">
+                  <LinkButton
+                    className={cn(
+                      FOOTER_LINK_CLASS,
+                      hasUpdate && "text-primary hover:text-primary"
+                    )}
+                    data-ui-target="setting:about.releases"
+                    onClick={() => openExternalUrl(effectiveReleaseUrl)}
+                  >
+                    Releases
+                    <ExternalLink className="size-[1em]" />
+                  </LinkButton>
+                </div>
               ) : null}
             </SettingsSection>
           </>
         ) : null}
-
-        <SettingsDivider />
-        <section aria-label="updates and crash reports" className={SECTION_CLASS}>
-          {updatePreferences ? (
-            <UpdatePreferencesSettings
-              preferences={updatePreferences}
-              onChange={setUpdatePreferences}
-              installationSupported={updateInstallationSupported}
-              installationUnavailableReason={updateInstallationUnavailableReason}
-              uiTargets
-            />
-          ) : null}
-          <SettingsRow
-            labelNode={
-              <SettingsLabelWithTip
-                label="Crash Report Prompt"
-                tip="Saves crash reports locally either way. When enabled, PLVS asks before sending one after a crash."
-              />
-            }
-          >
-            <Switch
-              aria-label="ask to send crash reports"
-              data-ui-target="setting:updates.askToSendCrashReports"
-              checked={askToSendCrashReports}
-              disabled={crashReportSettingBusy}
-              onCheckedChange={(next) => {
-                void Promise.resolve(onAskToSendCrashReports(next)).catch(() => {});
-              }}
-            />
-          </SettingsRow>
-          {crashReportSettingError ? (
-            <span className="px-2 text-right text-[length:var(--ui-fs-axis)] text-destructive">
-              Could not update crash-report settings.
-            </span>
-          ) : null}
-        </section>
 
         {/* Footer */}
         {appVersion ? (
           <>
             <SettingsDivider />
             <div
-              ref={bindSection("about")}
-              tabIndex={-1}
-              data-settings-footer
-              data-settings-section-id="about"
-              className="flex flex-col gap-1 px-2 text-[length:var(--ui-fs-metric-meta)]"
+              data-settings-footer-links
+              className="flex flex-wrap items-center gap-x-3 gap-y-1 px-2"
             >
-              <div
-                data-settings-footer-status
-                className="flex items-center justify-start gap-1 whitespace-nowrap"
+              <LinkButton
+                className={FOOTER_LINK_CLASS}
+                data-ui-target="setting:about.sharesets"
+                onClick={() => openExternalUrl(SHARESETS_URL)}
               >
-                <span className="shrink-0 font-mono tabular-nums text-muted-foreground">
-                  v{appVersion}
-                </span>
-                <span className="h-3 shrink-0 border-l border-border" aria-hidden="true" />
-                <HoverTip
-                  tip={updateActivity?.downloadError ?? undefined}
-                  side="top"
-                  className="min-w-0"
-                >
-                  <span
-                    className={cn(
-                      "block truncate",
-                      hasUpdate ? "text-primary" : "text-muted-foreground"
-                    )}
-                  >
-                    {updateStatusText}
-                  </span>
-                </HoverTip>
-                <span className="h-3 shrink-0 border-l border-border" aria-hidden="true" />
-                <LinkButton
-                  className={FOOTER_LINK_CLASS}
-                  disabled={updateCheckDisabled}
-                  data-ui-target="setting:about.checkForUpdates"
-                  onClick={onCheckForUpdate}
-                >
-                  Check
-                </LinkButton>
-                {hasUpdate ? (
-                  <>
-                    <span className="h-3 shrink-0 border-l border-border" aria-hidden="true" />
-                    <LinkButton
-                      className={cn(FOOTER_LINK_CLASS, "text-primary hover:text-primary")}
-                      data-ui-target="setting:about.installUpdate"
-                      onClick={onInstallUpdate}
-                    >
-                      Update
-                    </LinkButton>
-                  </>
-                ) : null}
-              </div>
-              <div
-                data-settings-footer-links
-                className="flex flex-wrap items-center justify-start gap-x-3 gap-y-1"
+                Sharesets
+                <ExternalLink className="size-[1em]" />
+              </LinkButton>
+              <LinkButton
+                className={FOOTER_LINK_CLASS}
+                data-ui-target="setting:about.documentation"
+                onClick={() => openExternalUrl(DOCS_URL)}
               >
-                <LinkButton
-                  className={FOOTER_LINK_CLASS}
-                  data-ui-target="setting:about.sharesets"
-                  onClick={() => openExternalUrl(SHARESETS_URL)}
-                >
-                  Sharesets
-                  <ExternalLink className="size-[1em]" />
+                Docs
+                <ExternalLink className="size-[1em]" />
+              </LinkButton>
+              {onOpenQuickTour ? (
+                <LinkButton className={FOOTER_LINK_CLASS} onClick={onOpenQuickTour}>
+                  Quick Tour
                 </LinkButton>
-                <LinkButton
-                  className={cn(FOOTER_LINK_CLASS, hasUpdate && "text-primary hover:text-primary")}
-                  data-ui-target="setting:about.releases"
-                  onClick={() => openExternalUrl(effectiveReleaseUrl)}
-                >
-                  Releases
-                  <ExternalLink className="size-[1em]" />
-                </LinkButton>
-                <LinkButton
-                  className={FOOTER_LINK_CLASS}
-                  data-ui-target="setting:about.documentation"
-                  onClick={() => openExternalUrl(DOCS_URL)}
-                >
-                  Docs
-                  <ExternalLink className="size-[1em]" />
-                </LinkButton>
-                {onOpenQuickTour ? (
-                  <LinkButton className={FOOTER_LINK_CLASS} onClick={onOpenQuickTour}>
-                    Quick Tour
-                  </LinkButton>
-                ) : null}
-                <LinkButton
-                  className={FOOTER_LINK_CLASS}
-                  data-ui-target="setting:about.feedback"
-                  onClick={onOpenFeedback}
-                >
-                  Feedback
-                </LinkButton>
-              </div>
+              ) : null}
+              <LinkButton
+                className={FOOTER_LINK_CLASS}
+                data-ui-target="setting:about.feedback"
+                onClick={onOpenFeedback}
+              >
+                Feedback
+              </LinkButton>
             </div>
           </>
         ) : null}

@@ -166,14 +166,14 @@ export function UpdateSetupContent({
         />
         <div className="flex min-h-[var(--ui-shell-h)] items-center justify-between gap-4 text-muted-foreground">
           <div className="flex items-center gap-1">
-            <span>Crash Report Prompt</span>
+            <span>Ask to Send Crash Reports</span>
             <HoverTip
               tip="Saves crash reports locally either way. When enabled, PLVS asks before sending one after a crash."
               side="top"
               className="inline-flex shrink-0"
               tipClassName="w-max max-w-[18rem] whitespace-normal"
             >
-              <IconAction aria-label="crash report prompt help" className="p-1">
+              <IconAction aria-label="ask to send crash reports help" className="p-1">
                 <CircleHelp className="size-[1em]" aria-hidden />
               </IconAction>
             </HoverTip>

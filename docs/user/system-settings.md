@@ -131,7 +131,8 @@ are disabled along with window hiding, preset switching and quitting.
 
 ## Updates
 
-Update preferences are grouped at the bottom of Settings, above version information.
+Near the bottom of Settings, the version, update status, **Check**, update preferences, and
+**Releases** appear together above the footer links.
 The question-mark icon beside **Auto Download Updates** explains download availability, the **Auto Check for Updates**
 dependency, and installation confirmation on hover or keyboard focus. The version status row shows
 background download progress, a ready package, or a failed download. A failed replacement download
@@ -520,8 +521,8 @@ while its detail page remains available.
 If the terminal that launched PLVS disconnects its output, PLVS continues running and keeps
 writing its local log files.
 
-**Crash Report Prompt** is at the bottom of Settings, below **Auto Download Updates** when update
-preferences are available. PLVS saves crash reports locally. With this option enabled, it asks before sending
+**Ask to Send Crash Reports** follows **Close Behavior** near the top of Settings.
+PLVS saves crash reports locally. With this option enabled, it asks before sending
 one after a crash; with it off, PLVS never asks and sends nothing. Turning it on does not ask about reports
 saved while it was off until the next launch. With several workbenches open, only the current coordinator asks; choosing
 **Later** keeps the report saved, and PLVS asks again at the next launch or when another workbench

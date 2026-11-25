@@ -33,7 +33,7 @@ private fixture reset token restores the real status presentation.
 The public `show` targets are:
 
 - `settings` opens Settings and selects one of `behavior`, `shortcuts`, `appearance`, `analysis`,
-  `transfer`, `agent-control`, or `about`;
+  `transfer`, `agent-control`, or `about`. The `about` target focuses the version and update area;
 - `panel-settings` opens the settings surface for the exact `panelId` in the selected workbench;
 - `theme-editor` starts or focuses `create`, `edit`, `customize`, or `duplicate` authoring and may
   select the `core`, `palettes`, or `advanced` page;

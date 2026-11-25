@@ -144,11 +144,11 @@ describe("SettingsPanel", () => {
       )
     ).toEqual([
       "behavior",
-      "shortcuts",
       "appearance",
+      "shortcuts",
       "analysis",
-      "transfer",
       "agent-control",
+      "transfer",
       "about",
     ]);
   });
@@ -263,8 +263,8 @@ describe("SettingsPanel", () => {
         .section;
     expect(settingsSection()).toBe("appearance");
 
-    // Analysis is the last section whose top has reached the top of the scroll area.
-    const tops = { behavior: -400, shortcuts: -300, appearance: -200, analysis: -10 };
+    // Shortcuts follows appearance in the drawer, independent of the public section ID order.
+    const tops = { behavior: -400, appearance: -300, shortcuts: -10, analysis: 100 };
     for (const node of document.querySelectorAll("[data-settings-section-id]")) {
       const id = node.getAttribute("data-settings-section-id");
       node.getBoundingClientRect = () => /** @type {DOMRect} */ ({ top: tops[id] ?? 300 });
@@ -284,7 +284,7 @@ describe("SettingsPanel", () => {
       fireEvent.scroll(scroller);
       await new Promise((resolve) => requestAnimationFrame(resolve));
     });
-    expect(settingsSection()).toBe("analysis");
+    expect(settingsSection()).toBe("shortcuts");
 
     act(() => openSettings(false));
     act(() => openSettings(true));
@@ -327,7 +327,7 @@ describe("SettingsPanel", () => {
     expect(navigation.inspectUi()).toMatchObject({ uiGeneration: 0, surfaces: [] });
   });
 
-  it("shows the opt-in crash-report prompt setting", () => {
+  it("offers to ask before sending crash reports alongside startup and close preferences", () => {
     const onAskToSendCrashReports = vi.fn().mockResolvedValue(undefined);
     render(
       <SettingsPanel
@@ -338,6 +338,14 @@ describe("SettingsPanel", () => {
     );
 
     const toggle = screen.getByLabelText("ask to send crash reports");
+    const behavior = toggle.closest("[data-settings-section-id]");
+    expect(behavior.getAttribute("data-settings-section-id")).toBe("behavior");
+    expect(
+      Array.from(behavior.querySelectorAll('[role="switch"], [role="combobox"]')).map((control) =>
+        control.getAttribute("aria-label")
+      )
+    ).toEqual(["Open at Login", "Close Behavior", "ask to send crash reports"]);
+    expect(screen.getByText("Ask to Send Crash Reports")).toBeTruthy();
     expect(/** @type {HTMLInputElement} */ (toggle).checked).toBe(true);
     fireEvent.click(toggle);
     expect(onAskToSendCrashReports).toHaveBeenCalledWith(false);
@@ -1010,16 +1018,31 @@ describe("SettingsPanel", () => {
     expect(screen.queryByText("Spectrum channel")).toBeNull();
   });
 
-  it("shows the current app version in settings", () => {
-    render(<SettingsPanel {...BASE_PROPS} appVersion="0.0.17" />);
-    expect(screen.getByText("v0.0.17")).toBeTruthy();
+  it("groups version, update actions, and update preferences before the footer links", () => {
+    render(
+      <SettingsPanel
+        {...BASE_PROPS}
+        appVersion="0.0.17"
+        updatePreferences={{ choiceMade: true, autoCheck: false, autoDownload: false }}
+      />
+    );
+    const updateSection = document.querySelector('[data-settings-section-id="about"]');
+    for (const text of [
+      "v0.0.17",
+      "Check",
+      "Auto Check for Updates",
+      "Auto Download Updates",
+      "Releases",
+    ]) {
+      expect(updateSection.contains(screen.getByText(text))).toBe(true);
+    }
     expect(screen.getByText("Checking...")).toBeTruthy();
-    expect(screen.getByText("Releases")).toBeTruthy();
     expect(screen.queryByRole("button", { name: "Licenses" })).toBeNull();
     expect(screen.queryByRole("button", { name: "Privacy" })).toBeNull();
 
     const footerLinks = document.querySelector("[data-settings-footer-links]");
 
+    expect(footerLinks.textContent).toBe("SharesetsDocsFeedback");
     expect(footerLinks.querySelectorAll(".border-l")).toHaveLength(0);
   });
 

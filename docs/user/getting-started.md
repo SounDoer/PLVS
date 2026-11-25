@@ -123,10 +123,10 @@ saved items that you can edit, rename, or delete. Once deleted, either one stays
 signal source (see [Signal Source](signal-source.md)) and press Start when you're ready to monitor.
 
 On a fresh first launch, **Welcome to PLVS** offers five preferences: **Appearance**,
-**Interface Size**, **Auto Check for Updates**, **Auto Download Updates**, and **Crash Report Prompt**.
+**Interface Size**, **Auto Check for Updates**, **Auto Download Updates**, and **Ask to Send Crash Reports**.
 Appearance starts at **Follow System**, Interface Size at **Default**, automatic checking on,
 automatic downloading off, and crash-report prompting on. Appearance and Interface Size apply
-immediately so you can see their effect. Crash Report Prompt controls whether PLVS asks before
+immediately so you can see their effect. **Ask to Send Crash Reports** controls whether PLVS asks before
 sending a report after a crash; it does not send reports automatically. The prompt links to the
 privacy policy and has a single **Continue** button to save your choices and proceed to the Quick
 Tour invitation. Escape and clicking outside do not dismiss it. No automatic update request is

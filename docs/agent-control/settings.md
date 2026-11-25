@@ -28,7 +28,7 @@ runtime state, reported by `settings inspect` rather than documented here.
 The public fields correspond to Open at Login, Close Behavior, the configurable keyboard shortcuts,
 Interface Size, History Length, the Dialogue Detection engine, the File toolbar's Dialogue Detection
 switch, File Summary Metrics, channel-role labels, Auto Check and Auto Download Updates, and the
-Crash Report Prompt.
+Ask to Send Crash Reports.
 
 The following are intentionally outside Settings Control:
 
@@ -75,7 +75,7 @@ with `reason: updateInstallationUnsupported`. A change is saved before the comma
 the update choice as made, and takes effect as a switch change does: turning `autoDownload` on
 checks now, and turning either off cancels and removes a staged automatic download.
 
-`askToSendCrashReports` is the Crash Report Prompt. It decides only whether PLVS asks before sending
+`askToSendCrashReports` corresponds to **Ask to Send Crash Reports**. It decides whether PLVS asks before sending
 a saved report after a crash; it never sends one. A pending prompt is answered through UI
 Navigation, not here.
 
