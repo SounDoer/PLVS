@@ -10,6 +10,11 @@ const CAP_SALT_V2: &[u8] = b"AudioMeter/v2/cap\0";
 const LB_SALT_V1: &[u8] = b"AudioMeter/v1/lb\0";
 const CAP_SALT_V1: &[u8] = b"AudioMeter/v1/cap\0";
 
+/// A runtime endpoint fingerprint independent of enumeration order and the saved selector.
+pub(crate) fn endpoint_key(native_id: &str) -> String {
+  digest_v2_row(b"PLVS/endpoint\0", native_id, 0)
+}
+
 fn digest_v2_row(salt: &[u8], name: &str, nonce: u32) -> String {
   let mut h = Sha256::new();
   h.update(salt);

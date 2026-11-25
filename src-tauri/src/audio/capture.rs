@@ -343,6 +343,7 @@ pub trait AudioCapture: Send + Sync {
   fn start_session(
     &self,
     device_id: &str,
+    endpoint_key: Option<&str>,
     frame_subscribers: FrameSubscribers,
     app: AppHandle,
     channel_selection: std::sync::Arc<

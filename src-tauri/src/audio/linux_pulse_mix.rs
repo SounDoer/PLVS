@@ -12,6 +12,7 @@ use pulse::callbacks::ListResult;
 use pulse::channelmap;
 use pulse::context::{self, Context};
 use pulse::def::BufferAttr;
+use pulse::error::{Code, PAErr};
 use pulse::mainloop::standard::{IterateResult, Mainloop};
 use pulse::operation;
 use pulse::sample::{self, Spec};
@@ -33,20 +34,21 @@ const START_TIMEOUT: Duration = Duration::from_secs(2);
 const POLL: Duration = Duration::from_millis(2);
 const TICKS_PER_SECOND: u64 = 10_000_000;
 
-struct Server {
-  context: Context,
+pub(super) struct Server {
+  pub(super) context: Context,
   mainloop: Mainloop,
 }
 
 impl Server {
+  pub(super) fn connect(name: &str) -> Result<Self, PAErr> {
+    let mainloop = Mainloop::new().ok_or(PAErr::from(Code::Internal))?;
+    let mut context = Context::new(&mainloop, name).ok_or(PAErr::from(Code::Internal))?;
+    context.connect(None, context::FlagSet::NOAUTOSPAWN, None)?;
+    Ok(Self { context, mainloop })
+  }
+
   fn open(stopped: &impl Fn() -> bool) -> Result<Self, String> {
-    let mainloop = Mainloop::new().ok_or("Could not allocate a PulseAudio main loop.")?;
-    let mut context =
-      Context::new(&mainloop, "PLVS Mix").ok_or("Could not create a PulseAudio context.")?;
-    context
-      .connect(None, context::FlagSet::NOAUTOSPAWN, None)
-      .map_err(|error| format!("{error}"))?;
-    let mut server = Self { context, mainloop };
+    let mut server = Self::connect("PLVS Mix").map_err(|error| format!("{error}"))?;
     let start = Instant::now();
     loop {
       match server.context.get_state() {
@@ -65,7 +67,7 @@ impl Server {
     }
   }
 
-  fn pump(&mut self) -> Result<(), String> {
+  pub(super) fn pump(&mut self) -> Result<(), String> {
     match self.mainloop.iterate(false) {
       IterateResult::Success(_) => Ok(()),
       _ => Err("PulseAudio Mix main loop stopped.".into()),
@@ -153,7 +155,7 @@ impl Server {
     result.ok_or_else(|| "The application's playback sink has no monitor source.".into())
   }
 
-  fn channel_map(
+  pub(super) fn channel_map(
     &mut self,
     source: &str,
     stopped: &impl Fn() -> bool,

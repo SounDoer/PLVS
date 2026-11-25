@@ -18,8 +18,8 @@ function run(command, args, timeout = 30_000) {
   return result.stdout.trim();
 }
 
-function report(harness, args) {
-  const output = run(harness, ["--harness", ...args, "--json"]);
+function report(harness, args, timeout) {
+  const output = run(harness, ["--harness", ...args, "--json"], timeout);
   const value = JSON.parse(output.split(/\r?\n/).at(-1));
   if (value.status !== "ok") throw new RigError(value.error?.message || "Harness did not succeed");
   return value;
@@ -47,6 +47,12 @@ try {
     `sink_properties=device.description=${sink}`,
   ]);
   if (!/^\d+$/.test(moduleId)) throw new RigError("Audio server returned an invalid module ID");
+  const idle = report(harness, ["capture", "--device", sink, "--seconds", "1"], 8_000);
+  if (Number.isFinite(idle.summary.integratedLufs) || idle.health.droppedChunks !== 0) {
+    throw new Error("The idle Linux monitor captured an unexpected signal or dropped audio.");
+  }
+  console.log("OK idle Linux monitor stopped without waiting for playback.");
+
   player = spawn("paplay", [`--device=${sink}`, wav], { stdio: "ignore" });
   let playbackError;
   player.on("error", (error) => {

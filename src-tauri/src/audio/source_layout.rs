@@ -1,9 +1,13 @@
 //! Native speaker metadata, kept separate from user selections and physical channel counts.
 //! Queries and channel projection run on ordinary workers, never on an audio callback.
 
+use crate::ipc::types::CaptureFailureReason;
+
 #[derive(Debug)]
 pub(crate) enum CaptureWorkerError {
   SystemSpeakerLayout(String),
+  #[cfg(any(target_os = "macos", target_os = "windows"))]
+  Backend(CaptureFailureReason, String),
   Other(String),
 }
 
@@ -17,14 +21,24 @@ impl CaptureWorkerError {
   pub(crate) fn message(&self) -> &str {
     match self {
       Self::SystemSpeakerLayout(message) | Self::Other(message) => message,
+      #[cfg(any(target_os = "macos", target_os = "windows"))]
+      Self::Backend(_, message) => message,
     }
   }
 
-  pub(crate) fn reason(&self) -> Option<&'static str> {
+  pub(crate) fn reason(&self) -> Option<CaptureFailureReason> {
     match self {
-      Self::SystemSpeakerLayout(_) => Some("systemSpeakerLayout"),
+      Self::SystemSpeakerLayout(_) => Some(CaptureFailureReason::SystemSpeakerLayout),
+      #[cfg(any(target_os = "macos", target_os = "windows"))]
+      Self::Backend(reason, _) => Some(reason.clone()),
       Self::Other(_) => None,
     }
+  }
+}
+
+impl std::fmt::Display for CaptureWorkerError {
+  fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    f.write_str(self.message())
   }
 }
 

@@ -14,14 +14,28 @@ use crate::audio::device_id;
 
 type DeviceRow = (usize, cpal::Device, cpal::SupportedStreamConfig);
 static QUERY_RUNNING: AtomicBool = AtomicBool::new(false);
+static RECONNECT_DISCOVERY: AtomicBool = AtomicBool::new(false);
 static DISCOVERY_CLIENT: OnceLock<Mutex<Option<pulseaudio::Client>>> = OnceLock::new();
 static PULSE_HOST: OnceLock<Mutex<Option<cpal::Host>>> = OnceLock::new();
+
+pub(crate) fn refresh_discovery_connection() {
+  RECONNECT_DISCOVERY.store(true, Ordering::Release);
+}
 
 fn discovery_client() -> Result<pulseaudio::Client, String> {
   let client = DISCOVERY_CLIENT.get_or_init(|| Mutex::new(None));
   let mut client = client
     .lock()
     .map_err(|_| "Linux audio discovery client became unavailable.".to_string())?;
+  if RECONNECT_DISCOVERY.swap(false, Ordering::AcqRel) {
+    // Keep healthy reactors cached. Only replace them after a confirmed audio service loss.
+    *client = None;
+    if let Some(host) = PULSE_HOST.get() {
+      *host
+        .lock()
+        .map_err(|_| "Linux CPAL host became unavailable.".to_string())? = None;
+    }
+  }
   if let Some(existing) = client.as_ref() {
     return Ok(existing.clone());
   }
@@ -74,7 +88,18 @@ pub(crate) fn query<T: Send + 'static>(
         }
       }
       let guard = QueryGuard;
-      let result = discovery_client().and_then(operation);
+      let result = discovery_client().and_then(|client| {
+        let result = operation(client.clone());
+        if result.is_err()
+          && matches!(
+            block_on(client.server_info()).err(),
+            Some(pulseaudio::ClientError::Disconnected | pulseaudio::ClientError::Io(_))
+          )
+        {
+          refresh_discovery_connection();
+        }
+        result
+      });
       drop(guard);
       let _ = tx.send(result);
     });

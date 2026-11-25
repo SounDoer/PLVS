@@ -9,19 +9,22 @@ use cpal::traits::DeviceTrait;
 use serde::Serialize;
 use tauri::{AppHandle, Emitter, Manager};
 use windows::core::{implement, IUnknown, Interface, Ref, HRESULT, PCWSTR};
-use windows::Win32::Foundation::{CloseHandle, ERROR_NO_MORE_FILES, WAIT_OBJECT_0, WAIT_TIMEOUT};
+use windows::Win32::Foundation::{
+  CloseHandle, ERROR_NO_MORE_FILES, E_ACCESSDENIED, WAIT_OBJECT_0, WAIT_TIMEOUT,
+};
 use windows::Win32::Media::Audio::{
   ActivateAudioInterfaceAsync, IActivateAudioInterfaceAsyncOperation,
   IActivateAudioInterfaceCompletionHandler, IActivateAudioInterfaceCompletionHandler_Impl,
   IAudioCaptureClient, IAudioClient, IMMDeviceEnumerator, MMDeviceEnumerator,
   AUDCLNT_BUFFERFLAGS_DATA_DISCONTINUITY, AUDCLNT_BUFFERFLAGS_SILENT,
-  AUDCLNT_BUFFERFLAGS_TIMESTAMP_ERROR, AUDCLNT_SHAREMODE_SHARED,
-  AUDCLNT_STREAMFLAGS_AUTOCONVERTPCM, AUDCLNT_STREAMFLAGS_EVENTCALLBACK,
-  AUDCLNT_STREAMFLAGS_LOOPBACK, AUDCLNT_STREAMFLAGS_SRC_DEFAULT_QUALITY,
-  AUDIOCLIENT_ACTIVATION_PARAMS, AUDIOCLIENT_ACTIVATION_PARAMS_0,
-  AUDIOCLIENT_ACTIVATION_TYPE_PROCESS_LOOPBACK, AUDIOCLIENT_PROCESS_LOOPBACK_PARAMS,
-  PROCESS_LOOPBACK_MODE_INCLUDE_TARGET_PROCESS_TREE, VIRTUAL_AUDIO_DEVICE_PROCESS_LOOPBACK,
-  WAVEFORMATEX, WAVEFORMATEXTENSIBLE, WAVEFORMATEXTENSIBLE_0,
+  AUDCLNT_BUFFERFLAGS_TIMESTAMP_ERROR, AUDCLNT_E_DEVICE_INVALIDATED, AUDCLNT_E_SERVICE_NOT_RUNNING,
+  AUDCLNT_E_UNSUPPORTED_FORMAT, AUDCLNT_SHAREMODE_SHARED, AUDCLNT_STREAMFLAGS_AUTOCONVERTPCM,
+  AUDCLNT_STREAMFLAGS_EVENTCALLBACK, AUDCLNT_STREAMFLAGS_LOOPBACK,
+  AUDCLNT_STREAMFLAGS_SRC_DEFAULT_QUALITY, AUDIOCLIENT_ACTIVATION_PARAMS,
+  AUDIOCLIENT_ACTIVATION_PARAMS_0, AUDIOCLIENT_ACTIVATION_TYPE_PROCESS_LOOPBACK,
+  AUDIOCLIENT_PROCESS_LOOPBACK_PARAMS, PROCESS_LOOPBACK_MODE_INCLUDE_TARGET_PROCESS_TREE,
+  VIRTUAL_AUDIO_DEVICE_PROCESS_LOOPBACK, WAVEFORMATEX, WAVEFORMATEXTENSIBLE,
+  WAVEFORMATEXTENSIBLE_0,
 };
 use windows::Win32::System::Com::StructuredStorage::{
   PROPVARIANT, PROPVARIANT_0, PROPVARIANT_0_0, PROPVARIANT_0_0_0,
@@ -44,8 +47,9 @@ use super::capture::{
 };
 use super::cpal_backend::{
   emit_capture_failure, pooled_pcm_buffer_capacity, run_meter_pipeline_bridge_thread,
-  PcmBufferPool, PcmCallbackForwarder, PcmDeliveryQueue, PCM_QUEUE_CAP,
+  CaptureProgress, PcmBufferPool, PcmCallbackForwarder, PcmDeliveryQueue, PCM_QUEUE_CAP,
 };
+use super::source_layout::CaptureWorkerError;
 #[cfg(test)]
 use super::stereo_mix_timeline::StereoMixTimeline;
 use super::stereo_mix_timeline::{run_mix_timeline, MixCoverage, MixInsert, MixPacket};
@@ -53,7 +57,7 @@ use super::windows_capture_apps::{application_id_for_process, resolve_capture_ap
 use crate::dsp::channel_layouts::ChannelSelection;
 use crate::dsp::speech::VadEngineKind;
 use crate::dsp::summary_meter::{SummaryMeter, SummaryMetrics};
-use crate::ipc::types::FrameSubscribers;
+use crate::ipc::types::{CaptureFailureReason, FrameSubscribers};
 use crate::state::{AppState, MixDropStage, UiFrameDiagnosticsCounters};
 
 const DEFAULT_SAMPLE_RATE: u32 = 48_000;
@@ -334,16 +338,28 @@ fn db_from_linear(value: f64) -> f64 {
   }
 }
 
+fn wasapi_failure(operation: &str, error: &windows::core::Error) -> CaptureWorkerError {
+  let message = format!("{operation} failed: {error}");
+  let reason = match error.code() {
+    AUDCLNT_E_DEVICE_INVALIDATED => CaptureFailureReason::DeviceInvalidated,
+    AUDCLNT_E_SERVICE_NOT_RUNNING => CaptureFailureReason::AudioServiceInterrupted,
+    AUDCLNT_E_UNSUPPORTED_FORMAT => CaptureFailureReason::UnsupportedFormat,
+    E_ACCESSDENIED => CaptureFailureReason::PermissionDenied,
+    _ => return message.into(),
+  };
+  CaptureWorkerError::Backend(reason, message)
+}
+
 fn drain_capture_packets(
   capture_client: &IAudioCaptureClient,
   channels: u16,
   timestamped: bool,
   on_pcm: &mut impl FnMut(PacketTiming, &[f32]),
   silent_samples: &mut Vec<f32>,
-) -> Result<(), String> {
+) -> Result<(), CaptureWorkerError> {
   loop {
     let packet_frames = unsafe { capture_client.GetNextPacketSize() }
-      .map_err(|error| format!("GetNextPacketSize failed: {error}"))?;
+      .map_err(|error| wasapi_failure("GetNextPacketSize", &error))?;
     if packet_frames == 0 {
       return Ok(());
     }
@@ -360,7 +376,7 @@ fn drain_capture_packets(
         timestamped.then_some(&mut timing.qpc),
       )
     }
-    .map_err(|error| format!("GetBuffer failed: {error}"))?;
+    .map_err(|error| wasapi_failure("GetBuffer", &error))?;
     if frames == 0 {
       return Ok(());
     }
@@ -374,7 +390,7 @@ fn drain_capture_packets(
       on_pcm(timing, samples);
     }
     unsafe { capture_client.ReleaseBuffer(frames) }
-      .map_err(|error| format!("ReleaseBuffer failed: {error}"))?;
+      .map_err(|error| wasapi_failure("ReleaseBuffer", &error))?;
   }
 }
 
@@ -403,7 +419,7 @@ fn run_process_stream(
   stopped: impl FnMut() -> bool,
   on_start: impl FnOnce(),
   on_pcm: impl FnMut(PacketTiming, &[f32]),
-) -> Result<(), String> {
+) -> Result<(), CaptureWorkerError> {
   let _com = ComApartment::initialize()?;
   let audio_client = activate_process_audio_client(process_id)?;
   let format = capture_format(sample_rate, channels)?;
@@ -429,7 +445,7 @@ fn run_wasapi_stream(
   mut stopped: impl FnMut() -> bool,
   on_start: impl FnOnce(),
   mut on_pcm: impl FnMut(PacketTiming, &[f32]),
-) -> Result<(), String> {
+) -> Result<(), CaptureWorkerError> {
   unsafe {
     audio_client.Initialize(
       AUDCLNT_SHAREMODE_SHARED,
@@ -443,15 +459,14 @@ fn run_wasapi_stream(
       None,
     )
   }
-  .map_err(|error| format!("IAudioClient::Initialize failed: {error}"))?;
+  .map_err(|error| wasapi_failure("IAudioClient::Initialize", &error))?;
 
   let event = CaptureHandle::create_event()?;
   unsafe { audio_client.SetEventHandle(event.0) }
-    .map_err(|error| format!("IAudioClient::SetEventHandle failed: {error}"))?;
+    .map_err(|error| wasapi_failure("IAudioClient::SetEventHandle", &error))?;
   let capture_client: IAudioCaptureClient = unsafe { audio_client.GetService() }
-    .map_err(|error| format!("IAudioClient::GetService failed: {error}"))?;
-  unsafe { audio_client.Start() }
-    .map_err(|error| format!("IAudioClient::Start failed: {error}"))?;
+    .map_err(|error| wasapi_failure("IAudioClient::GetService", &error))?;
+  unsafe { audio_client.Start() }.map_err(|error| wasapi_failure("IAudioClient::Start", &error))?;
   on_start();
 
   let mut silent_samples = Vec::new();
@@ -461,14 +476,17 @@ fn run_wasapi_stream(
       break Ok(());
     }
     if flags == 0 && last_input_packet.elapsed() >= Duration::from_secs(2) {
-      break Err("input stopped delivering audio packets".into());
+      break Err(CaptureWorkerError::Backend(
+        CaptureFailureReason::CallbackStalled,
+        "input stopped delivering audio packets".into(),
+      ));
     }
     let wait = unsafe { WaitForSingleObject(event.0, 100) };
     if wait == WAIT_TIMEOUT {
       continue;
     }
     if wait != WAIT_OBJECT_0 {
-      break Err(format!("WaitForSingleObject failed with status {}", wait.0));
+      break Err(format!("WaitForSingleObject failed with status {}", wait.0).into());
     }
     if let Err(error) = drain_capture_packets(
       &capture_client,
@@ -486,7 +504,7 @@ fn run_wasapi_stream(
     }
   };
   let stop_result =
-    unsafe { audio_client.Stop() }.map_err(|error| format!("IAudioClient::Stop failed: {error}"));
+    unsafe { audio_client.Stop() }.map_err(|error| wasapi_failure("IAudioClient::Stop", &error));
   capture_result?;
   stop_result
 }
@@ -494,7 +512,7 @@ fn run_wasapi_stream(
 /// A production-shaped process-loopback session feeding the same meter bridge as device capture.
 pub struct ProcessLoopbackSession {
   stop_tx: mpsc::Sender<()>,
-  join: Option<std::thread::JoinHandle<Result<(), String>>>,
+  join: Option<std::thread::JoinHandle<Result<(), CaptureWorkerError>>>,
   meter_resets: tauri::async_runtime::Sender<MeterResetRequest>,
 }
 
@@ -562,6 +580,7 @@ pub fn start_process_session(
   let (stop_tx, stop_rx) = mpsc::channel();
   let (meter_resets, reset_requests) = tauri::async_runtime::channel(1);
   let failure_app = app.clone();
+  let progress = CaptureProgress::new(&frame_subscribers);
 
   let join = std::thread::Builder::new()
     .name("process-capture".into())
@@ -577,6 +596,7 @@ pub fn start_process_session(
       let bridge_delivery = delivery.clone();
       let cleanup_delivery = delivery.clone();
       let bridge_dropped = dropped_chunks.clone();
+      let bridge_progress = progress.clone();
       let bridge = std::thread::spawn(move || {
         run_meter_pipeline_bridge_thread(
           bridge_delivery,
@@ -593,6 +613,7 @@ pub fn start_process_session(
           bridge_dropped,
           bridge_pool,
           mix_layout,
+          bridge_progress,
         );
         cleanup_delivery.consumer_finished(&cleanup_pool);
       });
@@ -625,7 +646,7 @@ pub fn start_process_session(
               diagnostics.record_mix_drop(MixDropStage::AnalysisQueue, 1);
             }
           };
-          if channels <= 2 {
+          let result = if channels <= 2 {
             run_live_mix::<2>(
               applications,
               inputs,
@@ -651,13 +672,14 @@ pub fn start_process_session(
               &failure_app,
               forward,
             )
-          }
+          };
+          result.map_err(CaptureWorkerError::from)
         }
       };
       delivery.stop_producer();
       let _ = bridge.join();
       if let Err(error) = &result {
-        emit_capture_failure(&failure_app, error, None);
+        emit_capture_failure(&failure_app, &progress, error.message(), error.reason());
       }
       result
     })
@@ -1019,6 +1041,7 @@ fn run_mix_device_stream<const N: usize>(
       }
     },
   )
+  .map_err(|error| error.to_string())
 }
 
 fn mix_input_stereo_frame(frame: &[f32], channels: &[u16]) -> [f32; 2] {
@@ -1497,7 +1520,8 @@ fn capture_process_probe(
       on_pcm(packet, samples);
       captured_frames += frames;
     },
-  )?;
+  )
+  .map_err(|error| error.to_string())?;
 
   Ok(ProcessLoopbackProbeResult {
     process_id,

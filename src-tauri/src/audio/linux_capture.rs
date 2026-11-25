@@ -1,118 +1,158 @@
-//! Linux live PCM capture through the system PulseAudio client library.
+//! Linux single-source capture through the system PulseAudio client library.
 //!
-//! Device discovery stays on CPAL so stable ids and the shared UI contract remain unchanged. The
-//! pure-Rust Pulse protocol client used by CPAL 0.18 can create a PipeWire-Pulse record node that
-//! never delivers buffers on Ubuntu 24.04 / PipeWire 1.0.5. `libpulse-simple` uses the system's
-//! supported client protocol and supplies the same bounded worker queue without entering a Rust
-//! callback on the audio server thread.
+//! CPAL still discovers devices. The nonblocking libpulse loop lets Stop and a server disconnect
+//! interrupt a quiet recording, including on PipeWire's PulseAudio server.
 
-use std::ffi::{c_char, c_int, c_void, CStr, CString};
-use std::sync::atomic::Ordering;
+use std::cell::Cell;
+use std::sync::atomic::{AtomicU8, Ordering};
+use std::sync::mpsc::{Receiver, TryRecvError};
+use std::time::{Duration, Instant};
 
 use cpal::traits::DeviceTrait;
-use libloading::Library;
+use libpulse_binding as pulse;
+use pulse::context;
+use pulse::def::BufferAttr;
+use pulse::error::{Code, PAErr};
+use pulse::sample::{Format, Spec};
+use pulse::stream::{self, PeekResult, Stream};
 
 use super::cpal_backend::{
   pooled_pcm_buffer_capacity, CaptureStreamArgs, PcmBufferPool, PcmCallbackForwarder,
-  PcmDeliveryQueue, PCM_QUEUE_CAP,
+  PcmDeliveryQueue, PCM_QUEUE_CAP, STREAM_ERROR_AUDIO_SERVICE, STREAM_ERROR_DEVICE_UNAVAILABLE,
+  STREAM_ERROR_FORMAT, STREAM_ERROR_NONE, STREAM_ERROR_PERMISSION,
 };
+use super::linux_pulse_mix::Server;
 
-const PA_STREAM_RECORD: c_int = 2;
-const PA_SAMPLE_FLOAT32LE: c_int = 5;
+const OPEN_TIMEOUT: Duration = Duration::from_secs(2);
+const POLL: Duration = Duration::from_millis(2);
 
-#[repr(C)]
-struct SampleSpec {
-  format: c_int,
-  rate: u32,
-  channels: u8,
+fn capture_error_code(error: PAErr) -> u8 {
+  // libpulse context errno is positive, unlike negative return codes from stream operations.
+  let error = if error.0 > 0 { PAErr(-error.0) } else { error };
+  match Code::try_from(error) {
+    Ok(Code::ConnectionRefused | Code::ConnectionTerminated) => STREAM_ERROR_AUDIO_SERVICE,
+    Ok(Code::NoEntity) => STREAM_ERROR_DEVICE_UNAVAILABLE,
+    Ok(Code::Access | Code::AuthKey) => STREAM_ERROR_PERMISSION,
+    Ok(Code::NotSupported) => STREAM_ERROR_FORMAT,
+    _ => STREAM_ERROR_NONE,
+  }
 }
 
-#[repr(C)]
-struct BufferAttr {
-  maxlength: u32,
-  tlength: u32,
-  prebuf: u32,
-  minreq: u32,
-  fragsize: u32,
+fn capture_error(flag: Option<&AtomicU8>, operation: &str, error: PAErr) -> String {
+  let code = capture_error_code(error);
+  if code == STREAM_ERROR_AUDIO_SERVICE {
+    super::linux_devices::refresh_discovery_connection();
+  }
+  if let Some(flag) = flag {
+    flag.store(code, Ordering::Relaxed);
+  }
+  format!("{operation}: {error} (PulseAudio error {})", error.0)
 }
 
-#[repr(C)]
-struct ChannelMap {
-  channels: u8,
-  positions: [i32; 32],
+struct Stop<'a> {
+  rx: &'a Receiver<()>,
+  requested: Cell<bool>,
 }
 
-type SimpleNew = unsafe extern "C" fn(
-  *const c_char,
-  *const c_char,
-  c_int,
-  *const c_char,
-  *const c_char,
-  *const SampleSpec,
-  *const c_void,
-  *const BufferAttr,
-  *mut c_int,
-) -> *mut c_void;
-type SimpleRead = unsafe extern "C" fn(*mut c_void, *mut c_void, usize, *mut c_int) -> c_int;
-type SimpleFree = unsafe extern "C" fn(*mut c_void);
-type StrError = unsafe extern "C" fn(c_int) -> *const c_char;
-
-struct PulseApi {
-  _simple: Library,
-  _pulse: Library,
-  new: SimpleNew,
-  read: SimpleRead,
-  free: SimpleFree,
-  strerror: StrError,
-}
-
-impl PulseApi {
-  fn load() -> Result<Self, String> {
-    // SAFETY: the sonames and symbol signatures are the stable libpulse-simple C ABI.
-    unsafe {
-      let simple = Library::new("libpulse-simple.so.0")
-        .map_err(|error| format!("Cannot load libpulse-simple.so.0: {error}"))?;
-      let pulse = Library::new("libpulse.so.0")
-        .map_err(|error| format!("Cannot load libpulse.so.0: {error}"))?;
-      let new = *simple
-        .get::<SimpleNew>(b"pa_simple_new\0")
-        .map_err(|error| format!("Cannot load pa_simple_new: {error}"))?;
-      let read = *simple
-        .get::<SimpleRead>(b"pa_simple_read\0")
-        .map_err(|error| format!("Cannot load pa_simple_read: {error}"))?;
-      let free = *simple
-        .get::<SimpleFree>(b"pa_simple_free\0")
-        .map_err(|error| format!("Cannot load pa_simple_free: {error}"))?;
-      let strerror = *pulse
-        .get::<StrError>(b"pa_strerror\0")
-        .map_err(|error| format!("Cannot load pa_strerror: {error}"))?;
-      Ok(Self {
-        _simple: simple,
-        _pulse: pulse,
-        new,
-        read,
-        free,
-        strerror,
-      })
+impl Stop<'_> {
+  fn requested(&self) -> bool {
+    self.requested.get() || {
+      let requested = !matches!(self.rx.try_recv(), Err(TryRecvError::Empty));
+      self.requested.set(requested);
+      requested
     }
   }
+}
 
-  fn error(&self, operation: &str, code: c_int) -> String {
-    // SAFETY: libpulse returns a static NUL-terminated error string for every integer code.
-    let message = unsafe { CStr::from_ptr((self.strerror)(code)) }.to_string_lossy();
-    format!("{operation}: {message} (PulseAudio error {code})")
+fn open_recording(
+  source: &str,
+  sample_rate: u32,
+  channels: u16,
+  frames_per_read: usize,
+  stop: &Stop<'_>,
+  flag: Option<&AtomicU8>,
+) -> Result<Option<(Stream, Server)>, String> {
+  let starting = Instant::now();
+  let mut server = Server::connect("PLVS")
+    .map_err(|error| capture_error(flag, "Cannot connect to the Linux audio service", error))?;
+  loop {
+    if stop.requested() {
+      return Ok(None);
+    }
+    match server.context.get_state() {
+      context::State::Ready => break,
+      context::State::Failed | context::State::Terminated => {
+        return Err(capture_error(
+          flag,
+          "Cannot connect to the Linux audio service",
+          server.context.errno(),
+        ));
+      }
+      _ if starting.elapsed() >= OPEN_TIMEOUT => {
+        return Err("The Linux audio service did not respond while opening capture.".into());
+      }
+      _ => {
+        server.pump()?;
+        std::thread::sleep(POLL);
+      }
+    }
   }
-}
-
-struct SimpleHandle {
-  raw: *mut c_void,
-  free: SimpleFree,
-}
-
-impl Drop for SimpleHandle {
-  fn drop(&mut self) {
-    // SAFETY: `raw` came from pa_simple_new and is freed exactly once after reads have stopped.
-    unsafe { (self.free)(self.raw) };
+  let map = match server.channel_map(source, &|| stop.requested()) {
+    Ok(map) => map,
+    Err(_) if stop.requested() => return Ok(None),
+    Err(message) => return Err(message),
+  };
+  if u16::from(map.len()) != channels {
+    if let Some(flag) = flag {
+      flag.store(STREAM_ERROR_FORMAT, Ordering::Relaxed);
+    }
+    return Err("PulseAudio channel map does not match the capture format.".into());
+  }
+  let spec = Spec {
+    format: Format::F32le,
+    rate: sample_rate,
+    channels: map.len(),
+  };
+  let mut stream = Stream::new(&mut server.context, "Live Metering", &spec, Some(&map))
+    .ok_or("Cannot allocate the Linux audio capture stream.")?;
+  let attr = BufferAttr {
+    maxlength: u32::MAX,
+    tlength: u32::MAX,
+    prebuf: u32::MAX,
+    minreq: u32::MAX,
+    fragsize: (frames_per_read * usize::from(channels) * size_of::<f32>())
+      .try_into()
+      .map_err(|_| "Linux capture fragment is too large.")?,
+  };
+  stream
+    .connect_record(
+      Some(source),
+      Some(&attr),
+      stream::FlagSet::DONT_MOVE | stream::FlagSet::ADJUST_LATENCY,
+    )
+    .map_err(|error| capture_error(flag, "Cannot open Linux PulseAudio capture", error))?;
+  let opening = Instant::now();
+  loop {
+    if stop.requested() {
+      return Ok(None);
+    }
+    match stream.get_state() {
+      stream::State::Ready => return Ok(Some((stream, server))),
+      stream::State::Failed | stream::State::Terminated => {
+        return Err(capture_error(
+          flag,
+          "Cannot open Linux PulseAudio capture",
+          server.context.errno(),
+        ));
+      }
+      _ if opening.elapsed() >= OPEN_TIMEOUT => {
+        return Err("Linux PulseAudio capture did not start.".into());
+      }
+      _ => {
+        server.pump()?;
+        std::thread::sleep(POLL);
+      }
+    }
   }
 }
 
@@ -128,67 +168,26 @@ where
     dropped_chunks,
     measured_pcm,
     monitoring_plan,
+    stream_error,
     ..
   } = args;
+  let flag = stream_error.as_deref();
   let source_id = device.id().map_err(|error| error.to_string())?;
-  let source = CString::new(source_id.id())
-    .map_err(|_| "Linux capture source id contains a NUL byte.".to_string())?;
-  let positions = super::linux_layout::positions(source_id.id(), channels)?;
-  let mut channel_map = ChannelMap {
-    channels: channels as u8,
-    positions: [0; 32],
+  let stop = Stop {
+    rx: &stop_rx,
+    requested: Cell::new(false),
   };
-  for (index, position) in positions.iter().enumerate() {
-    channel_map.positions[index] = *position as i32;
-  }
-  let mut measured_scratch = Vec::new();
-  let application = CString::new("PLVS").expect("literal has no NUL");
-  let stream_name = CString::new("Live Metering").expect("literal has no NUL");
-  let api = PulseApi::load()?;
-  let spec = SampleSpec {
-    format: PA_SAMPLE_FLOAT32LE,
-    rate: sample_rate,
-    channels: channels
-      .try_into()
-      .map_err(|_| format!("Linux capture channel count is too large: {channels}"))?,
-  };
-  // Keep measured-source timestamps and final A/V duration precise at 20 ms while batching five
-  // reads for the heavier meter pipeline. The callback-era shared pool is sized for 100 ms.
   let frames_per_read = (sample_rate / 50).max(1) as usize;
-  let samples_per_read = frames_per_read.saturating_mul(channels as usize);
-  let meter_samples_per_chunk = (sample_rate / 10).max(1) as usize * channels as usize;
-  let bytes_per_read = samples_per_read.saturating_mul(std::mem::size_of::<f32>());
-  let attr = BufferAttr {
-    maxlength: u32::MAX,
-    tlength: u32::MAX,
-    prebuf: u32::MAX,
-    minreq: u32::MAX,
-    fragsize: bytes_per_read
-      .try_into()
-      .map_err(|_| "Linux capture fragment is too large.".to_string())?,
-  };
-  let mut error = 0;
-  // SAFETY: every pointer references live C-compatible data for the duration of the call. The
-  // returned opaque handle is owned by `SimpleHandle` and used serially on this worker thread.
-  let raw = unsafe {
-    (api.new)(
-      std::ptr::null(),
-      application.as_ptr(),
-      PA_STREAM_RECORD,
-      source.as_ptr(),
-      stream_name.as_ptr(),
-      &spec,
-      (&channel_map as *const ChannelMap).cast(),
-      &attr,
-      &mut error,
-    )
-  };
-  if raw.is_null() {
-    return Err(api.error("Cannot open Linux PulseAudio capture", error));
-  }
-  let handle = SimpleHandle {
-    raw,
-    free: api.free,
+  let Some((mut stream, mut server)) = open_recording(
+    source_id.id(),
+    sample_rate,
+    channels,
+    frames_per_read,
+    &stop,
+    flag,
+  )?
+  else {
+    return Ok(());
   };
 
   let pcm_pool = PcmBufferPool::new(
@@ -205,25 +204,17 @@ where
     consumer(consumer_delivery, consumer_pool, sample_rate, channels);
     consumer_state.consumer_finished(&consumer_cleanup_pool);
   });
-  let mut pcm = vec![0.0_f32; samples_per_read];
-  let mut meter_pcm = Vec::with_capacity(meter_samples_per_chunk);
-  let outcome = loop {
-    match stop_rx.try_recv() {
-      Ok(()) | Err(std::sync::mpsc::TryRecvError::Disconnected) => break Ok(()),
-      Err(std::sync::mpsc::TryRecvError::Empty) => {}
-    }
-    error = 0;
-    // SAFETY: `pcm` owns `bytes_per_read` writable bytes and this handle is used on one thread.
-    let status = unsafe {
-      (api.read)(
-        handle.raw,
-        pcm.as_mut_ptr().cast(),
-        bytes_per_read,
-        &mut error,
-      )
-    };
-    if status < 0 {
-      break Err(api.error("Linux PulseAudio capture failed", error));
+
+  // Preserve the existing native cadence for measured PCM and the bounded meter queue.
+  let samples_per_read = frames_per_read * usize::from(channels);
+  let meter_samples_per_chunk = (sample_rate / 10).max(1) as usize * usize::from(channels);
+  let mut pcm = Vec::with_capacity(samples_per_read);
+  let mut meter_pcm = Vec::with_capacity(meter_samples_per_chunk + samples_per_read);
+  let mut measured_scratch = Vec::new();
+  let mut ingest_sample = |sample: f32| {
+    pcm.push(sample);
+    if pcm.len() < samples_per_read {
+      return;
     }
     if let Some(measured_pcm) = measured_pcm.as_ref() {
       let (samples, monitored_channels) = match monitoring_plan.as_ref() {
@@ -233,19 +224,104 @@ where
       measured_pcm.publish(samples, sample_rate, monitored_channels);
     }
     meter_pcm.extend_from_slice(&pcm);
+    pcm.clear();
     if meter_pcm.len() >= meter_samples_per_chunk {
       forwarder.forward_f32(&meter_pcm);
       meter_pcm.clear();
     }
   };
+
+  let outcome = (|| {
+    while !stop.requested() {
+      server.pump()?;
+      if !matches!(server.context.get_state(), context::State::Ready) {
+        let error = server.context.errno();
+        return Err(capture_error(
+          flag,
+          "Linux audio service disconnected",
+          if error.0 == 0 {
+            PAErr::from(Code::ConnectionTerminated)
+          } else {
+            error
+          },
+        ));
+      }
+      if stream.get_state() != stream::State::Ready {
+        return Err(capture_error(
+          flag,
+          "Linux PulseAudio capture failed",
+          server.context.errno(),
+        ));
+      }
+      match stream
+        .peek()
+        .map_err(|error| capture_error(flag, "Linux PulseAudio read failed", error))?
+      {
+        PeekResult::Empty => {
+          std::thread::sleep(POLL);
+          continue;
+        }
+        PeekResult::Hole(bytes) => {
+          for _ in 0..bytes / size_of::<f32>() {
+            ingest_sample(0.0);
+          }
+        }
+        PeekResult::Data(bytes) => {
+          for &sample in bytes.as_chunks::<4>().0 {
+            ingest_sample(f32::from_le_bytes(sample));
+          }
+        }
+      }
+      stream
+        .discard()
+        .map_err(|error| capture_error(flag, "Linux PulseAudio read failed", error))?;
+    }
+    Ok(())
+  })();
+
   if !meter_pcm.is_empty() {
     forwarder.forward_f32(&meter_pcm);
   }
-  drop(handle);
+  let _ = stream.disconnect();
+  drop(stream);
   delivery.stop_producer();
   let _ = consumer_thread.join();
   if outcome.is_err() {
     dropped_chunks.fetch_add(1, Ordering::Relaxed);
   }
   outcome
+}
+
+#[cfg(test)]
+mod tests {
+  use super::*;
+
+  #[test]
+  fn only_known_pulse_errors_receive_recovery_reasons() {
+    assert_eq!(
+      capture_error_code(Code::ConnectionTerminated.into()),
+      STREAM_ERROR_AUDIO_SERVICE
+    );
+    assert_eq!(
+      capture_error_code(PAErr(Code::ConnectionTerminated as i32)),
+      STREAM_ERROR_AUDIO_SERVICE
+    );
+    assert_eq!(
+      capture_error_code(Code::ConnectionRefused.into()),
+      STREAM_ERROR_AUDIO_SERVICE
+    );
+    assert_eq!(
+      capture_error_code(Code::NoEntity.into()),
+      STREAM_ERROR_DEVICE_UNAVAILABLE
+    );
+    assert_eq!(
+      capture_error_code(Code::Access.into()),
+      STREAM_ERROR_PERMISSION
+    );
+    assert_eq!(
+      capture_error_code(Code::NotSupported.into()),
+      STREAM_ERROR_FORMAT
+    );
+    assert_eq!(capture_error_code(Code::Busy.into()), STREAM_ERROR_NONE);
+  }
 }

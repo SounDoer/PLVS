@@ -75,6 +75,10 @@ names a policy, not a device row; `device inspect` reports the route it currentl
 Agent Control completion follows the native engine acknowledgement rather than the GUI's current
 optimistic `running` boolean.
 
+An active Application source can remain `running` with `resolvedDeviceId: null` while the app
+waits for the selected application to return. Status reports **Selected Application Unavailable**.
+The next measurement begins when the replacement stream delivers audio.
+
 `live start` selects LIVE and continues the stopped measurement: Integrated, LRA, maxima and
 dialogue statistics keep accumulating, while Momentary and Short-term restart with the new audio.
 It begins a fresh measurement instead after `live clear`, after a failed capture, or when the

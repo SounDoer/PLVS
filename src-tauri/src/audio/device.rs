@@ -8,6 +8,9 @@ pub struct DeviceInfo {
   /// Stable `lb-*` / `cap-*` id (v2: short endpoint name hash; unaffected by speaker layout changes). Legacy `out:N` / `in:N`
   /// and v1 ids still accepted by the backend.
   pub id: String,
+  /// Runtime-only fingerprint of the actual OS endpoint.
+  #[serde(skip_serializing_if = "Option::is_none")]
+  pub endpoint_key: Option<String>,
   /// UI label (may include extra detail from cpal `DeviceDescription`, e.g. Windows hardware name + endpoint).
   pub label: String,
   /// WASAPI loopback on a **render** endpoint (`out:*`). True when this row is real system-playback monitoring.

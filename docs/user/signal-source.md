@@ -84,9 +84,9 @@ Meter one running audio application instead of the complete system mix.
 - **Linux** lists applications with playback streams on PulseAudio or PipeWire's PulseAudio
   server. A program that closes all of its playback streams disappears until it reconnects.
 
-PLVS recognises the application again when it restarts and reconnects to it.
-While the selected application is unavailable, Sources and the Tray keep the application
-selection and show **Selected Application Unavailable**.
+If a selected application disappears while Live is active, PLVS waits for the same application
+to return. Sources, the Tray and Status show **Selected Application Unavailable**. Capture starts a
+fresh measurement once the application returns and audio comes in. Select **Stop** to cancel waiting.
 
 ## DAW playback on Windows
 
@@ -177,12 +177,16 @@ PLVS tells you instead of showing stale readings. A stalled stream, dropped audi
 default output is shown as a notice. On Windows, when a system audio change such as toggling Spatial
 Sound invalidates the device, PLVS rebuilds the stream and starts a fresh measurement automatically.
 
-On Windows, PLVS also briefly retries the same recording input if Windows invalidates its stream
-or the input disappears during Live capture. If a stream delivers no data for five seconds without
-another reported stream error, PLVS tries to reopen the input once if it can still find it. This
-includes a sound interface's own loopback input. **Audio Capture Recovered** in Status means that
-audio is coming in again and a fresh measurement has started. Readings such as Integrated Loudness
-and Loudness Range start over.
+PLVS briefly retries a recording input if the audio system invalidates its stream or the input
+briefly disappears during Live capture. On Linux, it also retries after a reported interruption
+of the audio service. A retry of a selected device must match the original endpoint. On Windows,
+if a recording stream delivers no data for five seconds without another reported stream error,
+PLVS tries the same input once if it can still find it. This includes a sound interface's own
+loopback input.
+
+PLVS keeps the previous measurement while it tries to recover. **Audio Capture Recovered** in
+Status means that audio is coming in again and a fresh measurement has started. Readings such as
+Integrated Loudness and Loudness Range start over.
 
 If an input or output you selected by name stays unavailable, PLVS stops measuring, keeps your
 selection, and shows **Source Disconnected** in Status. Reconnect the device or choose another in

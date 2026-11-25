@@ -19,7 +19,7 @@ use super::capture::{
 };
 use super::cpal_backend::{
   emit_capture_failure, pooled_pcm_buffer_capacity, run_meter_pipeline_bridge_thread,
-  PcmBufferPool, PcmCallbackForwarder, PcmDeliveryQueue, PCM_QUEUE_CAP,
+  CaptureProgress, PcmBufferPool, PcmCallbackForwarder, PcmDeliveryQueue, PCM_QUEUE_CAP,
 };
 use super::source_layout::NativeLayout;
 use super::stereo_mix_timeline::{run_mix_timeline, MixInsert, MixPacket, MIX_SAMPLE_RATE};
@@ -277,6 +277,7 @@ pub(super) fn start(
   let stop = Arc::new(AtomicBool::new(false));
   let worker_stop = stop.clone();
   let (meter_resets, reset_requests) = tauri::async_runtime::channel(1);
+  let progress = CaptureProgress::new(&frame_subscribers);
   let worker = std::thread::Builder::new()
     .name("live-mix".into())
     .spawn(move || {
@@ -297,6 +298,7 @@ pub(super) fn start(
       let meter_app = app.clone();
       let meter_dropped = dropped.clone();
       let meter_queue = delivery.clone();
+      let meter_progress = progress.clone();
       let meter = std::thread::spawn(move || {
         run_meter_pipeline_bridge_thread(
           meter_queue.clone(),
@@ -313,6 +315,7 @@ pub(super) fn start(
           meter_dropped,
           pool.clone(),
           Some(layout),
+          meter_progress,
         );
         meter_queue.consumer_finished(&pool);
       });
@@ -332,7 +335,7 @@ pub(super) fn start(
       delivery.stop_producer();
       let _ = meter.join();
       if let Err(error) = result {
-        emit_capture_failure(&app, &error, None);
+        emit_capture_failure(&app, &progress, &error, None);
       }
     })
     .map_err(|error| format!("could not start mix worker: {error}"))?;

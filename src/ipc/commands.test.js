@@ -148,6 +148,25 @@ describe("audio engine command seam", () => {
     });
   });
 
+  it("announces the stream ID before asking native capture to open a pinned endpoint", async () => {
+    const onStreamId = vi.fn();
+    const channel = await startAudioCapture({
+      deviceId: "cap-selected",
+      endpointKey: "endpoint",
+      recoveryAttempt: 2,
+      onStreamId,
+      onFrame: vi.fn(),
+    });
+    expect(onStreamId).toHaveBeenCalledWith(channel.id);
+    expect(onStreamId.mock.invocationCallOrder[0]).toBeLessThan(
+      vi.mocked(invoke).mock.invocationCallOrder[0]
+    );
+    expect(invoke).toHaveBeenCalledWith(
+      "audio_start",
+      expect.objectContaining({ endpointKey: "endpoint", recoveryAttempt: 2 })
+    );
+  });
+
   it("passes saved mix application IDs as one Live source", async () => {
     const mixApplicationIds = ["app-" + "1".repeat(32), "app-" + "2".repeat(32)];
     const channel = await startAudioCapture({

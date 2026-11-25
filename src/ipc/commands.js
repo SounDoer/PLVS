@@ -42,10 +42,13 @@ export function migrateCaptureDeviceId(deviceId) {
 /**
  * `continueSession` resumes the statistics of the last stopped Live session (Stop then Start of
  * the same Source); otherwise the engine starts a fresh measurement.
- * @param {{ deviceId: string; processId?: number | null; applicationId?: string | null; mixApplicationIds?: string[]; mixOutputId?: string; mixInputs?: { id: string, channels: number[] }[]; mixRouting?: { roles: string[], routes: Record<string, any>, outputRoles?: string[] }; mixInput?: { id: string, channels: number[] }; continueSession?: boolean; onFrame: (payload: object) => void }} opts
+ * @param {{ deviceId: string; endpointKey?: string; recoveryAttempt?: number; onStreamId?: (id: number) => void; processId?: number | null; applicationId?: string | null; mixApplicationIds?: string[]; mixOutputId?: string; mixInputs?: { id: string, channels: number[] }[]; mixRouting?: { roles: string[], routes: Record<string, any>, outputRoles?: string[] }; mixInput?: { id: string, channels: number[] }; continueSession?: boolean; onFrame: (payload: object) => void }} opts
  */
 export async function startAudioCapture({
   deviceId,
+  endpointKey,
+  recoveryAttempt,
+  onStreamId,
   processId = null,
   applicationId = null,
   mixApplicationIds,
@@ -57,6 +60,7 @@ export async function startAudioCapture({
   onFrame,
 }) {
   const onAudio = new Channel();
+  onStreamId?.(onAudio.id);
   let nextResetId = 0;
   let pendingReset = null;
   let closed = false;
@@ -76,6 +80,8 @@ export async function startAudioCapture({
   };
   await invoke("audio_start", {
     deviceId,
+    ...(endpointKey && { endpointKey }),
+    ...(recoveryAttempt && { recoveryAttempt }),
     processId,
     applicationId,
     ...(mixApplicationIds && { mixApplicationIds }),

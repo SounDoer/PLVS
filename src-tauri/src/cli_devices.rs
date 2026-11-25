@@ -153,6 +153,7 @@ mod tests {
     let report = success_report(vec![
       DeviceInfo {
         id: "lb-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa".to_string(),
+        endpoint_key: None,
         label: "Speakers".to_string(),
         is_system_output_monitor: true,
         is_loopback: false,
@@ -166,6 +167,7 @@ mod tests {
       },
       DeviceInfo {
         id: "cap-bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb".to_string(),
+        endpoint_key: None,
         label: "Microphone".to_string(),
         is_system_output_monitor: false,
         is_loopback: false,

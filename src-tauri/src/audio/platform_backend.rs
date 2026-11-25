@@ -29,6 +29,7 @@ impl AudioCapture for AppAudioBackend {
   fn start_session(
     &self,
     device_id: &str,
+    endpoint_key: Option<&str>,
     frame_subscribers: FrameSubscribers,
     app: AppHandle,
     channel_selection: std::sync::Arc<
@@ -42,6 +43,7 @@ impl AudioCapture for AppAudioBackend {
     {
       macos::start_session(
         device_id,
+        endpoint_key,
         frame_subscribers,
         app,
         channel_selection,
@@ -54,6 +56,7 @@ impl AudioCapture for AppAudioBackend {
     {
       CpalBackend.start_session(
         device_id,
+        endpoint_key,
         frame_subscribers,
         app,
         channel_selection,

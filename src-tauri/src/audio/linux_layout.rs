@@ -3,25 +3,6 @@ use super::source_layout::{pulse_roles, NativeLayout};
 use cpal::traits::DeviceTrait;
 use futures::executor::block_on;
 
-pub(crate) fn positions(source_name: &str, channels: u16) -> Result<Vec<u32>, String> {
-  let source_name = source_name.to_string();
-  super::linux_devices::query(move |client| {
-    let source = block_on(client.list_sources())
-      .map_err(|e| e.to_string())?
-      .into_iter()
-      .find(|source| source.name.to_string_lossy() == source_name)
-      .ok_or_else(|| "PulseAudio capture source disappeared.".to_string())?;
-    let positions: Vec<u32> = (&source.channel_map)
-      .into_iter()
-      .map(|p| p as u32)
-      .collect();
-    if positions.len() != usize::from(channels) || positions.len() > 32 {
-      return Err("PulseAudio channel map does not match the capture format.".into());
-    }
-    Ok(positions)
-  })
-}
-
 pub(crate) fn device_layout(
   device: &cpal::Device,
   channels: u16,

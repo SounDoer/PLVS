@@ -232,6 +232,7 @@ pub(crate) fn build_device_list() -> Result<Vec<DeviceInfo>, String> {
     );
     out.push(DeviceInfo {
       id,
+      endpoint_key: native_endpoint_key(&device),
       label,
       is_system_output_monitor: true,
       is_loopback: true,
@@ -259,6 +260,7 @@ pub(crate) fn append_input_devices(out: &mut Vec<DeviceInfo>) -> Result<(), Stri
     let id = device_id::alloc_capture_id(&key, &mut used_cap);
     out.push(DeviceInfo {
       id,
+      endpoint_key: native_endpoint_key(&device),
       label,
       is_system_output_monitor: false,
       is_loopback,
@@ -272,6 +274,10 @@ pub(crate) fn append_input_devices(out: &mut Vec<DeviceInfo>) -> Result<(), Stri
     });
   }
   Ok(())
+}
+
+pub(crate) fn native_endpoint_key(device: &cpal::Device) -> Option<String> {
+  device.id().ok().map(|id| device_id::endpoint_key(id.id()))
 }
 
 #[cfg(not(target_os = "linux"))]
@@ -543,6 +549,7 @@ mod substring_tests {
   fn device(id: &str, label: &str) -> DeviceInfo {
     DeviceInfo {
       id: id.to_string(),
+      endpoint_key: None,
       label: label.to_string(),
       is_system_output_monitor: false,
       is_loopback: false,

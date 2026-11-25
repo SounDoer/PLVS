@@ -6,11 +6,11 @@ mod pcm_shim;
 
 use std::collections::HashSet;
 use std::ffi::{c_char, c_int, c_void, CString};
-use std::sync::atomic::{AtomicU64, AtomicU8};
+use std::sync::atomic::{AtomicU64, AtomicU8, Ordering};
 use std::sync::Arc;
 use std::thread::JoinHandle;
 
-use cpal::StreamConfig;
+use cpal::{traits::DeviceTrait, StreamConfig};
 use tauri::AppHandle;
 
 use super::capture::{
@@ -20,8 +20,8 @@ use super::cpal_backend::{
   append_input_devices, collect_outputs, create_silence_output_stream, device_id_key,
   device_list_label, emit_capture_failure, pick_output_by_index, pooled_pcm_buffer_capacity,
   resolve_default_output, run_meter_pipeline_bridge_thread, wait_for_first_activity_or_stop,
-  wait_for_stop_or_stall, CpalBackend, PcmBufferPool, PcmCallbackForwarder, PcmDeliveryQueue,
-  CAPTURE_START_TIMEOUT, PCM_QUEUE_CAP,
+  wait_for_stop_or_stall, CaptureProgress, CpalBackend, PcmBufferPool, PcmCallbackForwarder,
+  PcmDeliveryQueue, CAPTURE_START_TIMEOUT, PCM_QUEUE_CAP,
 };
 use super::device::DeviceInfo;
 use super::device_id;
@@ -34,11 +34,6 @@ use pcm_shim::PcmBridgeCtx;
 #[link(name = "tap_bridge", kind = "static")]
 unsafe extern "C" {
   fn macos_output_channel_labels(uid: *const c_char, channels: u32, labels: *mut u32) -> c_int;
-  fn macos_uid_for_output_name(
-    name_utf8: *const c_char,
-    out_uid: *mut c_char,
-    out_cap: usize,
-  ) -> c_int;
   fn macos_default_output_uid(out_uid: *mut c_char, out_cap: usize) -> c_int;
   fn macos_output_stream_count(uid_utf8: *const c_char) -> c_int;
   fn macos_multi_output_first_member_uid(
@@ -61,15 +56,8 @@ unsafe extern "C" {
   fn macos_tap_destroy(opaque: *mut c_void, out_pcm_userdata: *mut *mut c_void);
 }
 
-fn uid_for_output_name(label: &str) -> Option<String> {
-  let cname = CString::new(label).ok()?;
-  let mut buf = vec![0u8; 512];
-  let st = unsafe { macos_uid_for_output_name(cname.as_ptr(), buf.as_mut_ptr().cast(), buf.len()) };
-  if st != 0 {
-    return None;
-  }
-  let n = buf.iter().position(|&b| b == 0).unwrap_or(buf.len());
-  Some(String::from_utf8_lossy(&buf[..n]).into_owned())
+fn device_uid(device: &cpal::Device) -> Option<String> {
+  device.id().ok().map(|id| id.id().to_string())
 }
 
 fn uid_for_default_output() -> Result<String, String> {
@@ -112,10 +100,7 @@ pub(crate) fn capture_target(
   device: cpal::Device,
   config: cpal::SupportedStreamConfig,
 ) -> Result<(cpal::Device, cpal::SupportedStreamConfig), String> {
-  let Some(uid) = device_id_key(&device)
-    .ok()
-    .and_then(|key| uid_for_output_name(&key))
-  else {
+  let Some(uid) = device_uid(&device) else {
     return Ok((device, config));
   };
   let Some(member) = multi_output_first_member(&uid) else {
@@ -123,9 +108,7 @@ pub(crate) fn capture_target(
     return Ok((device, config));
   };
   for (_idx, candidate, candidate_config) in collect_outputs()? {
-    let candidate_uid = device_id_key(&candidate)
-      .ok()
-      .and_then(|key| uid_for_output_name(&key));
+    let candidate_uid = device_uid(&candidate);
     if candidate_uid.as_deref() == Some(member.as_str()) {
       log::info!("macOS multi-output output={uid} captures its first member={member}");
       return Ok((candidate, candidate_config));
@@ -144,7 +127,7 @@ pub(crate) fn device_layout(
   if !output {
     return None;
   }
-  let uid = uid_for_output_name(&device_id_key(device).ok()?)?;
+  let uid = device_uid(device)?;
   layout_for_uid(&uid, channels)
 }
 
@@ -163,24 +146,28 @@ fn list_loopback_rows_macos() -> Result<Vec<DeviceInfo>, String> {
   for (_idx, device, cfg) in collect_outputs()? {
     let key = device_id_key(&device)?;
     let label = device_list_label(&device)?;
-    let core_uid = uid_for_output_name(&key);
+    let core_uid = device_uid(&device);
     let id = device_id::alloc_loopback_id(&key, &mut used_lb);
     // A multi-output row keeps its own identity and label but reports what capture measures.
     let Ok((target, cfg)) = capture_target(device, cfg) else {
       continue;
     };
-    let target_key = device_id_key(&target)?;
-    let target_uid = uid_for_output_name(&target_key);
+    let target_uid = device_uid(&target);
+    let endpoint_key = target_uid.as_deref().map(device_id::endpoint_key);
     let native = target_uid
       .as_deref()
       .and_then(|uid| layout_for_uid(uid, cfg.channels()));
     let plan = super::source_layout::plan_device_layout(cfg.channels(), true, native.clone());
     // Name the captured member in the signature, so a change of first member restarts capture
     // even when both members map the same speakers.
-    let signature = if target_key == key {
+    let signature = if target_uid == core_uid {
       plan.signature()
     } else {
-      format!("{target_key}|{}", plan.signature())
+      format!(
+        "{}|{}",
+        endpoint_key.as_deref().unwrap_or_default(),
+        plan.signature()
+      )
     };
     let mix_roles = target_uid
       .as_deref()
@@ -192,6 +179,7 @@ fn list_loopback_rows_macos() -> Result<Vec<DeviceInfo>, String> {
       .filter(|roles| super::capture::valid_mix_roles(roles));
     out.push(DeviceInfo {
       id,
+      endpoint_key,
       label,
       is_system_output_monitor: true,
       is_loopback: true,
@@ -224,10 +212,7 @@ fn resolved_tap_output(
   config: cpal::SupportedStreamConfig,
 ) -> Result<ResolvedTapOutput, String> {
   let (device, config) = capture_target(device, config)?;
-  let key = device_id_key(&device)?;
-  let uid = uid_for_output_name(&key).ok_or_else(|| {
-    format!("no Core Audio UID for output device \"{key}\" (macOS 14.2+ tap requires a UID)")
-  })?;
+  let uid = device_uid(&device).ok_or("The selected output has no Core Audio device UID.")?;
   Ok(ResolvedTapOutput {
     uid,
     device,
@@ -280,7 +265,9 @@ fn resolve_tap_output(device_id: &str) -> Result<ResolvedTapOutput, String> {
 }
 
 struct MacosTapWorkerArgs {
+  progress: Arc<CaptureProgress>,
   device_id: String,
+  endpoint_key: Option<String>,
   process_object_ids: Vec<u32>,
   frame_subscribers: FrameSubscribers,
   app: AppHandle,
@@ -295,7 +282,9 @@ struct MacosTapWorkerArgs {
 
 fn run_macos_tap_worker(args: MacosTapWorkerArgs) -> Result<(), CaptureWorkerError> {
   let MacosTapWorkerArgs {
+    progress,
     device_id,
+    endpoint_key,
     process_object_ids,
     frame_subscribers,
     app,
@@ -313,6 +302,16 @@ fn run_macos_tap_worker(args: MacosTapWorkerArgs) -> Result<(), CaptureWorkerErr
     device,
     config,
   } = resolve_tap_output(&device_id)?;
+  if endpoint_key
+    .as_deref()
+    .is_some_and(|key| key != device_id::endpoint_key(&uid))
+  {
+    return Err(
+      "The selected audio endpoint changed. Select the intended Source before starting."
+        .to_string()
+        .into(),
+    );
+  }
   let sample_rate = config.sample_rate();
   let channels = config.channels();
   let pcm_pool = PcmBufferPool::new(
@@ -348,6 +347,7 @@ fn run_macos_tap_worker(args: MacosTapWorkerArgs) -> Result<(), CaptureWorkerErr
       dropped_for_thread,
       bridge_pool,
       native_layout,
+      progress,
     );
   });
 
@@ -394,6 +394,7 @@ fn run_macos_tap_worker(args: MacosTapWorkerArgs) -> Result<(), CaptureWorkerErr
   // output stream on the same device, then release it as soon as the first tap callback proves that
   // the aggregate is clocked. The ordinary 5 s stall watch remains active after startup.
   let global_tap = process_object_ids.is_empty();
+  let stall = AtomicU8::new(0);
   let outcome = if global_tap {
     let stream_config = StreamConfig {
       channels,
@@ -406,7 +407,7 @@ fn run_macos_tap_worker(args: MacosTapWorkerArgs) -> Result<(), CaptureWorkerErr
           wait_for_first_activity_or_stop(&stop_rx, activity.as_ref(), CAPTURE_START_TIMEOUT);
         drop(primer);
         match startup {
-          Ok(true) => wait_for_stop_or_stall(&stop_rx, Some(activity.as_ref()), &AtomicU8::new(0)),
+          Ok(true) => wait_for_stop_or_stall(&stop_rx, Some(activity.as_ref()), &stall),
           Ok(false) => Ok(()),
           Err(error) => Err(error),
         }
@@ -427,7 +428,16 @@ fn run_macos_tap_worker(args: MacosTapWorkerArgs) -> Result<(), CaptureWorkerErr
   }
   delivery.stop_producer();
   let _ = bridge.join();
-  outcome.map_err(CaptureWorkerError::from)
+  outcome.map_err(|error| {
+    if stall.load(Ordering::Relaxed) == super::cpal_backend::STREAM_ERROR_CALLBACK_STALLED {
+      CaptureWorkerError::Backend(
+        crate::ipc::types::CaptureFailureReason::CallbackStalled,
+        error,
+      )
+    } else {
+      CaptureWorkerError::from(error)
+    }
+  })
 }
 
 pub(crate) struct MacosTapCaptureSession {
@@ -455,6 +465,7 @@ impl MacosTapCaptureSession {
   #[allow(clippy::too_many_arguments)]
   fn start(
     device_id: &str,
+    endpoint_key: Option<&str>,
     process_object_ids: Vec<u32>,
     frame_subscribers: FrameSubscribers,
     app: AppHandle,
@@ -467,12 +478,16 @@ impl MacosTapCaptureSession {
     let (meter_resets, reset_requests) = tauri::async_runtime::channel(1);
     let dropped_chunks = Arc::new(AtomicU64::new(0));
     let device_id = device_id.to_string();
+    let endpoint_key = endpoint_key.map(str::to_string);
     let failure_app = app.clone();
+    let progress = CaptureProgress::new(&frame_subscribers);
     let join = std::thread::Builder::new()
       .name("capture".into())
       .spawn(move || {
         let result = run_macos_tap_worker(MacosTapWorkerArgs {
+          progress: progress.clone(),
           device_id,
+          endpoint_key,
           process_object_ids,
           frame_subscribers,
           app,
@@ -485,7 +500,7 @@ impl MacosTapCaptureSession {
           dropped_chunks,
         });
         if let Err(error) = &result {
-          emit_capture_failure(&failure_app, error.message(), error.reason());
+          emit_capture_failure(&failure_app, &progress, error.message(), error.reason());
         }
         result
       })
@@ -508,6 +523,7 @@ fn is_macos_loopback_selection(device_id: &str) -> bool {
 #[allow(clippy::too_many_arguments)]
 pub fn start_session(
   device_id: &str,
+  endpoint_key: Option<&str>,
   frame_subscribers: FrameSubscribers,
   app: AppHandle,
   channel_selection: Arc<std::sync::Mutex<Option<crate::dsp::channel_layouts::ChannelSelection>>>,
@@ -518,6 +534,7 @@ pub fn start_session(
   if is_macos_loopback_selection(device_id) {
     Ok(Box::new(MacosTapCaptureSession::start(
       device_id,
+      endpoint_key,
       Vec::new(),
       frame_subscribers,
       app,
@@ -529,6 +546,7 @@ pub fn start_session(
   } else {
     CpalBackend.start_session(
       device_id,
+      endpoint_key,
       frame_subscribers,
       app,
       channel_selection,
@@ -556,6 +574,7 @@ pub fn start_application_session(
   }
   Ok(Box::new(MacosTapCaptureSession::start(
     device_id,
+    None,
     resolved.audio_process_object_ids,
     frame_subscribers,
     app,

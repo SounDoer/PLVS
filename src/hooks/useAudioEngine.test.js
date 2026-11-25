@@ -8,7 +8,6 @@ import { useAudioEngine } from "./useAudioEngine.js";
 vi.mock("../ipc/env.js", () => ({
   isTauri: () => true,
 }));
-vi.mock("../lib/platform.js", () => ({ isWindows: () => true }));
 
 const engineEvents = vi.hoisted(() => ({ state: null, backpressure: null }));
 
@@ -119,6 +118,7 @@ describe("useAudioEngine", () => {
     vi.mocked(listAudioDevices).mockResolvedValue([
       {
         id: "lb-main",
+        endpointKey: "speakers-endpoint",
         label: "Speakers",
         isSystemOutputMonitor: true,
         defaultSampleRate: 48000,
@@ -130,7 +130,7 @@ describe("useAudioEngine", () => {
       sampleRateHz: 48000,
       channels: 2,
     });
-    vi.mocked(startAudioCapture).mockResolvedValue(undefined);
+    vi.mocked(startAudioCapture).mockReset().mockResolvedValue(undefined);
     vi.mocked(stopAudioCapture).mockResolvedValue(undefined);
   });
 
@@ -358,16 +358,27 @@ describe("useAudioEngine", () => {
     );
     expect(stopAudioCapture).toHaveBeenCalledOnce();
     expect(props.halt).not.toHaveBeenCalled();
-    expect(props.intake.reset).toHaveBeenCalledOnce();
-    expect(result.current.frameRef.current).toBe(0);
-    expect(props.resetTimer).toHaveBeenCalledWith({ restart: true });
+    expect(props.intake.reset).not.toHaveBeenCalled();
+    expect(result.current.frameRef.current).toBe(41);
 
     const recoveredFrame = vi.mocked(startAudioCapture).mock.calls[0][0].onFrame;
     act(() => recoveredFrame({ seq: 0, peakDb: [-12], rmsDb: [-24] }));
-    expect(props.raiseNotice).toHaveBeenCalledWith(
-      "info",
-      "Audio configuration changed — measurement restarted"
-    );
+    expect(props.intake.reset).toHaveBeenCalledOnce();
+    expect(result.current.frameRef.current).toBe(1);
+    expect(props.resetTimer).toHaveBeenCalledWith({ restart: true });
+    if (deviceId === "default") {
+      expect(props.raiseNotice).toHaveBeenCalledWith(
+        "info",
+        "Audio Capture Recovered",
+        "Capture resumed on the current default output. A fresh measurement started."
+      );
+    } else {
+      expect(props.raiseNotice).toHaveBeenCalledWith(
+        "info",
+        "Audio Capture Recovered",
+        "Capture resumed on the same output. A fresh measurement started."
+      );
+    }
   });
 
   it.each(["native event", "inventory change", "native enumeration", "recovery enumeration"])(
@@ -404,8 +415,9 @@ describe("useAudioEngine", () => {
         act(() => engineEvents.state({ state: "error", reason: "deviceDisconnected" }));
       }
 
-      await waitFor(() =>
-        expect(props.halt).toHaveBeenCalledExactlyOnceWith(new Error("Source Disconnected"))
+      await waitFor(
+        () => expect(props.halt).toHaveBeenCalledExactlyOnceWith(new Error("Source Disconnected")),
+        { timeout: 1800 }
       );
       expect(props.stopTimer).toHaveBeenCalledOnce();
       expect(props.raiseNotice).toHaveBeenCalledExactlyOnceWith(
@@ -421,16 +433,30 @@ describe("useAudioEngine", () => {
 
   it.each([
     "native event",
+    "generic invalidation",
+    "audio service interruption",
     "inventory change",
+    "changed endpoint",
     "missing input",
     "open failure",
     "repeated open failure",
+    "manual stop",
     "source change",
   ])(
-    "recovers only the selected Windows input after %s, within the retry budget",
+    "handles interruption of the selected input after %s, within the retry budget",
     async (scenario) => {
-      const input = { id: "cap-loopback", label: "Loopback 1/2", defaultSampleRate: 48000 };
-      const otherInput = { id: "cap-other", label: "Loopback 3/4", defaultSampleRate: 48000 };
+      const input = {
+        id: "cap-loopback",
+        endpointKey: "loopback-1",
+        label: "Loopback 1/2",
+        defaultSampleRate: 48000,
+      };
+      const otherInput = {
+        id: "cap-other",
+        endpointKey: "loopback-2",
+        label: "Loopback 3/4",
+        defaultSampleRate: 48000,
+      };
       vi.mocked(listAudioDevices).mockResolvedValue([input, otherInput]);
       const props = {
         captureDeviceId: input.id,
@@ -458,6 +484,12 @@ describe("useAudioEngine", () => {
         vi.mocked(startAudioCapture).mockRejectedValueOnce(
           new Error("Input disappeared during open")
         );
+      } else if (scenario === "audio service interruption") {
+        vi.mocked(listAudioDevices).mockRejectedValueOnce(new Error("Audio server restarting"));
+      } else if (scenario === "changed endpoint") {
+        vi.mocked(listAudioDevices).mockResolvedValue([
+          { ...input, endpointKey: otherInput.endpointKey },
+        ]);
       } else {
         vi.mocked(listAudioDevices).mockResolvedValue([otherInput]);
       }
@@ -467,12 +499,30 @@ describe("useAudioEngine", () => {
         act(() =>
           engineEvents.state({
             state: "error",
-            reason: "inputStreamInvalidated",
+            reason:
+              scenario === "generic invalidation"
+                ? "deviceInvalidated"
+                : scenario === "audio service interruption"
+                  ? "audioServiceInterrupted"
+                  : "inputStreamInvalidated",
             error: "The stream was invalidated",
           })
         );
       }
       await waitFor(() => expect(listAudioDevices).toHaveBeenCalledOnce());
+
+      if (scenario === "changed endpoint") {
+        await waitFor(() =>
+          expect(props.halt).toHaveBeenCalledWith(
+            new Error(
+              "The selected audio endpoint changed. Select the intended Source before starting."
+            )
+          )
+        );
+        expect(startAudioCapture).not.toHaveBeenCalled();
+        expect(props.intake.reset).not.toHaveBeenCalled();
+        return;
+      }
 
       if (scenario === "missing input") {
         await waitFor(() => expect(props.halt).toHaveBeenCalledOnce(), { timeout: 1800 });
@@ -512,12 +562,28 @@ describe("useAudioEngine", () => {
         return;
       }
 
+      if (scenario === "manual stop") {
+        rerender({
+          ...props,
+          transport: standIn({ running: false, halt: props.halt }),
+        });
+        await act(() => new Promise((resolve) => setTimeout(resolve, 350)));
+        expect(startAudioCapture).not.toHaveBeenCalled();
+        expect(props.halt).not.toHaveBeenCalled();
+        expect(listAudioDevices).toHaveBeenCalledOnce();
+        return;
+      }
+
       vi.mocked(listAudioDevices).mockResolvedValue([input, otherInput]);
       if (scenario === "inventory change") rerender(props);
       const expectedStarts = scenario === "open failure" ? 2 : 1;
       await waitFor(() => expect(startAudioCapture).toHaveBeenCalledTimes(expectedStarts));
       expect(startAudioCapture).toHaveBeenLastCalledWith(
-        expect.objectContaining({ deviceId: input.id, continueSession: false })
+        expect.objectContaining({
+          deviceId: input.id,
+          endpointKey: input.endpointKey,
+          continueSession: false,
+        })
       );
       const recoveredFrame = vi.mocked(startAudioCapture).mock.lastCall[0].onFrame;
       act(() => recoveredFrame({ seq: 0, peakDb: [-12], rmsDb: [-24] }));
@@ -538,7 +604,12 @@ describe("useAudioEngine", () => {
     "stalled again",
     "output",
   ])("handles a timeout-only stall when the source %s", async (scenario) => {
-    const input = { id: "cap-loopback", defaultSampleRate: 48000, channels: 2 };
+    const input = {
+      id: "cap-loopback",
+      endpointKey: "loopback-1",
+      defaultSampleRate: 48000,
+      channels: 2,
+    };
     if (scenario !== "output") vi.mocked(listAudioDevices).mockResolvedValue([input]);
     const measurementOwner = {
       beginSession: vi.fn(),
@@ -627,6 +698,83 @@ describe("useAudioEngine", () => {
       undefined,
       expect.objectContaining({ helpTopic: "audio-capture" })
     );
+  });
+
+  it("waits for an active application to return without opening another source", async () => {
+    const applicationId = "app-" + "a".repeat(32);
+    const transport = standIn({
+      running: true,
+      halt: vi.fn(),
+      markSourceWaiting: vi.fn(),
+    });
+    const props = {
+      captureDeviceId: applicationId,
+      captureApplicationUnavailable: false,
+      captureFormatSignature: "pid:1",
+      intake: { reset: vi.fn(), pushFrame: vi.fn() },
+      setAudio: vi.fn(),
+      raiseNotice: vi.fn(),
+      halt: transport.halt,
+      transport,
+      setSelectedOffset: vi.fn(),
+      resetTimer: vi.fn(),
+      setShowClock: vi.fn(),
+    };
+    const { rerender } = renderHook((current) => useHarness(current), { initialProps: props });
+    await waitFor(() => expect(startAudioCapture).toHaveBeenCalledOnce());
+    rerender({
+      ...props,
+      captureApplicationUnavailable: true,
+      captureFormatSignature: "pid:missing",
+    });
+    expect(transport.markSourceWaiting).toHaveBeenCalledOnce();
+    await waitFor(() => expect(stopAudioCapture).toHaveBeenCalledOnce());
+    expect(startAudioCapture).toHaveBeenCalledOnce();
+    expect(transport.halt).not.toHaveBeenCalled();
+    expect(props.intake.reset).not.toHaveBeenCalled();
+
+    rerender({ ...props, captureFormatSignature: "pid:2" });
+    await waitFor(() => expect(startAudioCapture).toHaveBeenCalledTimes(2));
+    expect(startAudioCapture).toHaveBeenLastCalledWith(
+      expect.objectContaining({ applicationId, continueSession: false })
+    );
+    expect(props.intake.reset).not.toHaveBeenCalled();
+    const { onFrame } = vi.mocked(startAudioCapture).mock.lastCall[0];
+    act(() => onFrame({ seq: 0, peakDb: [-12], rmsDb: [-24] }));
+    expect(props.intake.reset).toHaveBeenCalledOnce();
+    expect(props.raiseNotice).toHaveBeenLastCalledWith(
+      "info",
+      "Audio Capture Recovered",
+      "Capture resumed on the same application. A fresh measurement started."
+    );
+  });
+
+  it("ignores errors from an earlier native capture after replacing its stream", async () => {
+    const props = {
+      captureDeviceId: "lb-main",
+      intake: { reset: vi.fn(), pushFrame: vi.fn() },
+      setAudio: vi.fn(),
+      raiseNotice: vi.fn(),
+      halt: vi.fn(),
+      setSelectedOffset: vi.fn(),
+      resetTimer: vi.fn(),
+      stopTimer: vi.fn(),
+      setShowClock: vi.fn(),
+    };
+    let nextId = 71;
+    vi.mocked(startAudioCapture).mockImplementation(async ({ onStreamId }) => {
+      onStreamId(nextId++);
+      return undefined;
+    });
+    renderHook(() => useHarness(props));
+    await waitFor(() => expect(startAudioCapture).toHaveBeenCalledOnce());
+    act(() => engineEvents.state({ state: "error", reason: "deviceInvalidated", streamId: 71 }));
+    await waitFor(() => expect(startAudioCapture).toHaveBeenCalledTimes(2));
+
+    act(() => engineEvents.state({ state: "error", error: "Old stream failed", streamId: 71 }));
+    expect(props.halt).not.toHaveBeenCalled();
+    act(() => engineEvents.state({ state: "error", error: "Replacement failed", streamId: 72 }));
+    expect(props.halt).toHaveBeenCalledWith(new Error("Replacement failed"));
   });
 
   it.each(["exhausted", "cancelled"])(

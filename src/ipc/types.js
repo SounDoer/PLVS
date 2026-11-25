@@ -132,7 +132,9 @@
  * @typedef {object} EngineStateChangedPayload
  * @property {"running"|"stopped"|"error"} state
  * @property {string|undefined} error
- * @property {"deviceDisconnected"|"deviceInvalidated"|"inputStreamInvalidated"|"inputCallbackStalled"|"systemSpeakerLayout"|"outputInUse"|undefined} reason
+ * @property {number|undefined} streamId
+ * @property {"starting"|"measuring"|undefined} phase
+ * @property {"deviceDisconnected"|"deviceInvalidated"|"inputStreamInvalidated"|"inputCallbackStalled"|"callbackStalled"|"systemSpeakerLayout"|"outputInUse"|"audioServiceInterrupted"|"permissionDenied"|"unsupportedFormat"|undefined} reason
  */
 
 /**

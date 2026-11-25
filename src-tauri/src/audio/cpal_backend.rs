@@ -21,7 +21,10 @@ use super::source_layout::CaptureWorkerError;
 
 use crate::dsp::speech::VadEngineKind;
 use crate::engine::MeterPipeline;
-use crate::ipc::types::{AnalysisRequests, EngineBackpressurePayload, EngineStateChanged};
+use crate::ipc::types::{
+  AnalysisRequests, CaptureFailurePhase, CaptureFailureReason, EngineBackpressurePayload,
+  EngineStateChanged, FrameSubscribers,
+};
 use tauri::{AppHandle, Emitter, Manager};
 
 pub(crate) const PCM_QUEUE_CAP: usize = 64;
@@ -50,12 +53,16 @@ const CAPTURE_WATCH_POLL: Duration = Duration::from_millis(250);
 
 /// Last fatal stream error the backend reported, recorded lock-free from the error callback so the
 /// stall report can name a cause.
-const STREAM_ERROR_NONE: u8 = 0;
-const STREAM_ERROR_DEVICE_UNAVAILABLE: u8 = 1;
+pub(super) const STREAM_ERROR_NONE: u8 = 0;
+pub(super) const STREAM_ERROR_DEVICE_UNAVAILABLE: u8 = 1;
 const STREAM_ERROR_INVALIDATED: u8 = 2;
 const STREAM_ERROR_OUTPUT_IN_USE: u8 = 3;
 const STREAM_ERROR_INPUT_INVALIDATED: u8 = 4;
 const STREAM_ERROR_INPUT_STALLED: u8 = 5;
+pub(super) const STREAM_ERROR_AUDIO_SERVICE: u8 = 6;
+pub(super) const STREAM_ERROR_PERMISSION: u8 = 7;
+pub(super) const STREAM_ERROR_FORMAT: u8 = 8;
+pub(super) const STREAM_ERROR_CALLBACK_STALLED: u8 = 9;
 const AUDCLNT_E_NOT_INITIALIZED: i32 = 0x8889_0001_u32 as i32;
 const AUDCLNT_E_WRONG_ENDPOINT_TYPE: i32 = 0x8889_0003_u32 as i32;
 const AUDCLNT_E_DEVICE_INVALIDATED: i32 = 0x8889_0004_u32 as i32;
@@ -109,6 +116,8 @@ fn stream_error_code(kind: cpal::ErrorKind) -> u8 {
   match kind {
     cpal::ErrorKind::DeviceNotAvailable => STREAM_ERROR_DEVICE_UNAVAILABLE,
     cpal::ErrorKind::StreamInvalidated => STREAM_ERROR_INVALIDATED,
+    cpal::ErrorKind::PermissionDenied => STREAM_ERROR_PERMISSION,
+    cpal::ErrorKind::UnsupportedConfig => STREAM_ERROR_FORMAT,
     _ => STREAM_ERROR_NONE,
   }
 }
@@ -175,7 +184,7 @@ fn record_input_stall(flag: &AtomicU8, activity: u64, last_error_activity: u64) 
   // An unclassified backend error during the same gap also excludes a timeout-only retry.
   if activity != last_error_activity {
     let _ = flag.compare_exchange(
-      STREAM_ERROR_NONE,
+      STREAM_ERROR_CALLBACK_STALLED,
       STREAM_ERROR_INPUT_STALLED,
       Ordering::Relaxed,
       Ordering::Relaxed,
@@ -192,6 +201,8 @@ pub(crate) fn capture_stall_message(stream_error: u8) -> String {
       "Capture stopped: the system invalidated the audio stream.".into()
     }
     STREAM_ERROR_OUTPUT_IN_USE => OUTPUT_IN_USE_MESSAGE.into(),
+    STREAM_ERROR_PERMISSION => "Capture stopped: access to the audio source was denied.".into(),
+    STREAM_ERROR_FORMAT => "Capture stopped: the audio source format is unsupported.".into(),
     _ => format!(
       "Capture stopped: no audio received for {} s.",
       CAPTURE_STALL_TIMEOUT.as_secs()
@@ -249,7 +260,16 @@ pub(crate) fn wait_for_stop_or_stall(
         }
         if let (Some(activity), Some(watch)) = (activity, watch.as_mut()) {
           if watch.observe(activity.load(Ordering::Relaxed), Instant::now()) {
-            return Err(capture_stall_message(STREAM_ERROR_NONE));
+            let code = stream_error
+              .compare_exchange(
+                STREAM_ERROR_NONE,
+                STREAM_ERROR_CALLBACK_STALLED,
+                Ordering::Relaxed,
+                Ordering::Relaxed,
+              )
+              .err()
+              .unwrap_or(STREAM_ERROR_CALLBACK_STALLED);
+            return Err(capture_stall_message(code));
           }
         }
       }
@@ -288,14 +308,44 @@ pub(crate) fn wait_for_first_activity_or_stop(
 
 /// Reports a capture thread that ended on its own (startup failure or stall). Without it the UI
 /// keeps showing LIVE over a frozen, silent meter.
-pub(crate) fn emit_capture_failure(app: &AppHandle, error: &str, reason: Option<&str>) {
-  log::error!("capture failed: {error}");
+pub(crate) struct CaptureProgress {
+  stream_id: Option<u32>,
+  received_pcm: AtomicBool,
+}
+
+impl CaptureProgress {
+  pub(crate) fn new(subscribers: &FrameSubscribers) -> Arc<Self> {
+    Arc::new(Self {
+      stream_id: subscribers
+        .lock()
+        .ok()
+        .and_then(|pool| pool.get("main").map(|channel| channel.id())),
+      received_pcm: AtomicBool::new(false),
+    })
+  }
+}
+
+pub(crate) fn emit_capture_failure(
+  app: &AppHandle,
+  progress: &CaptureProgress,
+  error: &str,
+  reason: Option<CaptureFailureReason>,
+) {
+  let stream_id = progress.stream_id;
+  let phase = if progress.received_pcm.load(Ordering::Relaxed) {
+    CaptureFailurePhase::Measuring
+  } else {
+    CaptureFailurePhase::Starting
+  };
+  log::error!("capture failed (stream={stream_id:?}, phase={phase:?}, reason={reason:?}): {error}");
   let _ = app.emit(
     "engine-state-changed",
     EngineStateChanged {
       state: "error".into(),
+      stream_id,
+      phase: Some(phase),
       error: Some(error.to_string()),
-      reason: reason.map(str::to_string),
+      reason,
     },
   );
 }
@@ -305,9 +355,9 @@ mod capture_watch_tests {
   use super::{
     capture_stall_message, loopback_start_error, record_input_stall, record_stream_error,
     store_stream_error, stream_error_code, wait_for_first_activity_or_stop, wait_for_stop_or_stall,
-    CaptureStreamKind, StallWatch, OUTPUT_IN_USE_MESSAGE, STREAM_ERROR_DEVICE_UNAVAILABLE,
-    STREAM_ERROR_INPUT_INVALIDATED, STREAM_ERROR_INPUT_STALLED, STREAM_ERROR_INVALIDATED,
-    STREAM_ERROR_NONE, STREAM_ERROR_OUTPUT_IN_USE,
+    CaptureStreamKind, StallWatch, OUTPUT_IN_USE_MESSAGE, STREAM_ERROR_CALLBACK_STALLED,
+    STREAM_ERROR_DEVICE_UNAVAILABLE, STREAM_ERROR_INPUT_INVALIDATED, STREAM_ERROR_INPUT_STALLED,
+    STREAM_ERROR_INVALIDATED, STREAM_ERROR_NONE, STREAM_ERROR_OUTPUT_IN_USE,
   };
   use std::sync::atomic::{AtomicU64, AtomicU8, Ordering};
   use std::sync::Arc;
@@ -335,8 +385,12 @@ mod capture_watch_tests {
   #[test]
   fn input_stall_recovery_requires_a_timeout_without_a_backend_error_in_the_gap() {
     let flag = AtomicU8::new(STREAM_ERROR_NONE);
-    record_input_stall(&flag, 8, 8);
+    record_input_stall(&flag, 9, 8);
     assert_eq!(flag.load(Ordering::Relaxed), STREAM_ERROR_NONE);
+
+    flag.store(STREAM_ERROR_CALLBACK_STALLED, Ordering::Relaxed);
+    record_input_stall(&flag, 8, 8);
+    assert_eq!(flag.load(Ordering::Relaxed), STREAM_ERROR_CALLBACK_STALLED);
 
     record_input_stall(&flag, 9, 8);
     assert_eq!(flag.load(Ordering::Relaxed), STREAM_ERROR_INPUT_STALLED);
@@ -586,6 +640,7 @@ impl AudioCapture for CpalBackend {
   fn start_session(
     &self,
     device_id: &str,
+    endpoint_key: Option<&str>,
     frame_subscribers: crate::ipc::types::FrameSubscribers,
     app: AppHandle,
     channel_selection: Arc<std::sync::Mutex<Option<crate::dsp::channel_layouts::ChannelSelection>>>,
@@ -595,6 +650,7 @@ impl AudioCapture for CpalBackend {
   ) -> Result<Box<dyn AudioCaptureSession>, String> {
     Ok(Box::new(CaptureSession::start(
       device_id,
+      endpoint_key,
       frame_subscribers,
       app,
       channel_selection,
@@ -630,6 +686,7 @@ impl CaptureSession {
   #[allow(clippy::too_many_arguments)]
   pub(crate) fn start(
     device_id: &str,
+    endpoint_key: Option<&str>,
     frame_subscribers: crate::ipc::types::FrameSubscribers,
     app: AppHandle,
     channel_selection: Arc<std::sync::Mutex<Option<crate::dsp::channel_layouts::ChannelSelection>>>,
@@ -638,12 +695,20 @@ impl CaptureSession {
     measured_pcm: Arc<MeasuredPcmSubscriptions>,
   ) -> Result<Self, String> {
     let (device, supported) = resolve_device(device_id)?;
+    if endpoint_key.is_some()
+      && super::device_enum::native_endpoint_key(&device).as_deref() != endpoint_key
+    {
+      return Err(
+        "The selected audio endpoint changed. Select the intended Source before starting.".into(),
+      );
+    }
     let sample_rate = supported.sample_rate();
     let channels = supported.channels();
     let (stop_tx, stop_rx) = std::sync::mpsc::channel::<()>();
     let (meter_resets, reset_requests) = tauri::async_runtime::channel(1);
     let dropped_chunks = Arc::new(AtomicU64::new(0));
     let device_id = device_id.to_string();
+    let progress = CaptureProgress::new(&frame_subscribers);
     let failure_app = app.clone();
     let stream_error = Arc::new(AtomicU8::new(STREAM_ERROR_NONE));
     let worker_stream_error = stream_error.clone();
@@ -667,18 +732,24 @@ impl CaptureSession {
           measured_pcm,
           dropped_chunks,
           stream_error: worker_stream_error,
+          progress: progress.clone(),
         });
         if let Err(error) = &result {
           let error_code = stream_error.load(Ordering::Relaxed);
           emit_capture_failure(
             &failure_app,
+            &progress,
             error.message(),
             error.reason().or(match error_code {
-              STREAM_ERROR_DEVICE_UNAVAILABLE => Some("deviceDisconnected"),
-              STREAM_ERROR_INVALIDATED => Some("deviceInvalidated"),
-              STREAM_ERROR_INPUT_INVALIDATED => Some("inputStreamInvalidated"),
-              STREAM_ERROR_INPUT_STALLED => Some("inputCallbackStalled"),
-              STREAM_ERROR_OUTPUT_IN_USE => Some("outputInUse"),
+              STREAM_ERROR_DEVICE_UNAVAILABLE => Some(CaptureFailureReason::DeviceDisconnected),
+              STREAM_ERROR_INVALIDATED => Some(CaptureFailureReason::DeviceInvalidated),
+              STREAM_ERROR_INPUT_INVALIDATED => Some(CaptureFailureReason::InputStreamInvalidated),
+              STREAM_ERROR_INPUT_STALLED => Some(CaptureFailureReason::InputCallbackStalled),
+              STREAM_ERROR_CALLBACK_STALLED => Some(CaptureFailureReason::CallbackStalled),
+              STREAM_ERROR_OUTPUT_IN_USE => Some(CaptureFailureReason::OutputInUse),
+              STREAM_ERROR_AUDIO_SERVICE => Some(CaptureFailureReason::AudioServiceInterrupted),
+              STREAM_ERROR_PERMISSION => Some(CaptureFailureReason::PermissionDenied),
+              STREAM_ERROR_FORMAT => Some(CaptureFailureReason::UnsupportedFormat),
               _ => None,
             }),
           );
@@ -696,6 +767,7 @@ impl CaptureSession {
 }
 
 struct RunCaptureArgs {
+  progress: Arc<CaptureProgress>,
   device_id: String,
   device: cpal::Device,
   supported: cpal::SupportedStreamConfig,
@@ -1007,6 +1079,7 @@ pub(crate) fn run_meter_pipeline_bridge_thread(
   dropped_chunks: Arc<AtomicU64>,
   pcm_pool: PcmBufferPool,
   native_layout: Option<super::source_layout::NativeLayout>,
+  progress: Arc<CaptureProgress>,
 ) {
   let dropped_worker = dropped_chunks.clone();
   // Shared UI ack counter (see AppState::frame_ack_seq). Cloned once so the loop only does an
@@ -1068,6 +1141,12 @@ pub(crate) fn run_meter_pipeline_bridge_thread(
       continue;
     };
     let samples = plan.pcm(&floats, &mut projected);
+    if recv_tick == 0 && !progress.received_pcm.swap(true, Ordering::Relaxed) {
+      log::info!(
+        "Live capture received PCM (stream={:?})",
+        progress.stream_id
+      );
+    }
     recv_tick = recv_tick.wrapping_add(1);
     if recv_tick.is_multiple_of(480) {
       let dropped = dropped_worker.swap(0, Ordering::Relaxed);
@@ -1384,6 +1463,11 @@ where
   let start_error = |error: &cpal::Error| {
     if matches!(stream_kind, CaptureStreamKind::WasapiInput) && wasapi_stream_invalidated(error) {
       stream_error.store(STREAM_ERROR_INPUT_INVALIDATED, Ordering::Relaxed);
+    } else {
+      let code = stream_error_code(error.kind());
+      if code != STREAM_ERROR_NONE {
+        stream_error.store(code, Ordering::Relaxed);
+      }
     }
     loopback_start_error(error.to_string(), wasapi_loopback, &stream_error)
   };
@@ -1419,6 +1503,7 @@ where
       )
       .map_err(|e| start_error(&e))?,
     f => {
+      stream_error.store(STREAM_ERROR_FORMAT, Ordering::Relaxed);
       return Err(format!("Unsupported sample format: {f:?}"));
     }
   };
@@ -1460,6 +1545,7 @@ where
 
 fn run_capture_worker(args: RunCaptureArgs) -> Result<(), CaptureWorkerError> {
   let RunCaptureArgs {
+    progress,
     device_id,
     device,
     supported,
@@ -1524,6 +1610,7 @@ fn run_capture_worker(args: RunCaptureArgs) -> Result<(), CaptureWorkerError> {
         bridge_dropped,
         pool,
         bridge_layout,
+        progress,
       );
     },
   )

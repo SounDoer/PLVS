@@ -93,12 +93,38 @@ pub struct StereoMapFrameResult {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
+pub enum CaptureFailureReason {
+  DeviceDisconnected,
+  DeviceInvalidated,
+  InputStreamInvalidated,
+  InputCallbackStalled,
+  CallbackStalled,
+  SystemSpeakerLayout,
+  OutputInUse,
+  AudioServiceInterrupted,
+  PermissionDenied,
+  UnsupportedFormat,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub enum CaptureFailurePhase {
+  Starting,
+  Measuring,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct EngineStateChanged {
   pub state: String,
   #[serde(skip_serializing_if = "Option::is_none")]
+  pub stream_id: Option<u32>,
+  #[serde(skip_serializing_if = "Option::is_none")]
+  pub phase: Option<CaptureFailurePhase>,
+  #[serde(skip_serializing_if = "Option::is_none")]
   pub error: Option<String>,
   #[serde(skip_serializing_if = "Option::is_none")]
-  pub reason: Option<String>,
+  pub reason: Option<CaptureFailureReason>,
 }
 
 /// Backpressure / drop signal for user-visible meter health (low-frequency).

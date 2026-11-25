@@ -33,10 +33,15 @@ default, which can change when you connect headphones or unplug an interface.
 
 For a hardware loopback input, play audio and check the loopback meter in the interface's control
 app, if it has one. Select the matching endpoint under **Input** in **Sources**. On Windows, **Audio
-Capture Recovered** means PLVS reopened the same input and started a fresh measurement. After a
+Capture Recovered** means PLVS reopened the selected source and started a fresh measurement. After a
 five-second timeout without another stream error, PLVS tries the same Windows input once if it is
 still available. If capture stops, check whether the selected input still shows signal in Windows,
 then select **Start**. Send diagnostics if the problem repeats.
+
+If Status reports access denied, allow PLVS to use the relevant audio source in the system's
+privacy settings before selecting **Start**. If it reports an unsupported format, check the source
+sample rate and channel configuration or choose a different source. If Linux system audio is
+unavailable, check that playback works again before selecting **Start**.
 
 If Status shows **Source Disconnected**, reconnect the selected device or choose
 another in **Sources**, then select **Start**. For application capture, confirm

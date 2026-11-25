@@ -26,6 +26,7 @@ import { useMeterDisplayState, useMeterRuntime } from "./MeterRuntimeContext.jsx
  *   onSelectCaptureDevice: (deviceId: string) => Promise<boolean>,
  *   captureFormatSignature: string,
  *   captureDeviceUnavailable: boolean,
+ *   captureApplicationUnavailable: boolean,
  *   captureRuntimeDeviceId: string,
  *   mixPreviewActive: boolean,
  *   sourceMixes: ReturnType<typeof useSourceMixes>,
@@ -208,6 +209,9 @@ export function SourceProvider({ children }) {
       captureDeviceId !== "default" &&
       !/^app-[0-9a-f]{32}$/.test(captureDeviceId) &&
       !captureFormatSignature;
+  const captureApplicationUnavailable =
+    /^app-[0-9a-f]{32}$/.test(captureDeviceId) &&
+    !captureApplications.some((application) => application.id === captureDeviceId);
 
   const selectedSource = useMemo(() => {
     if (!isTauri()) return null;
@@ -275,6 +279,7 @@ export function SourceProvider({ children }) {
         onSelectCaptureDevice,
         captureFormatSignature,
         captureDeviceUnavailable,
+        captureApplicationUnavailable,
         captureRuntimeDeviceId,
         mixPreviewActive,
         sourceMixes,

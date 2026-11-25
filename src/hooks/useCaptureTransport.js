@@ -124,6 +124,10 @@ export function useCaptureTransport({ display, getLiveIntake }) {
     pendingRestart?.resolve();
   };
 
+  const markSourceWaiting = () => {
+    setResolvedDeviceId(null);
+  };
+
   const markStartFailed = (error) => {
     setRunning(false);
     setResolvedDeviceId(null);
@@ -209,6 +213,7 @@ export function useCaptureTransport({ display, getLiveIntake }) {
     stopLiveForCoordination,
     beginDeviceRestartForControl,
     markStarted,
+    markSourceWaiting,
     markStartFailed,
     markStopped,
     markStopFailed,

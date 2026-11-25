@@ -273,6 +273,8 @@ fn normalize_process_capture_format(sample_rate: u32, channels: u16) -> (u32, u1
 pub fn audio_start(
   app: AppHandle,
   device_id: String,
+  endpoint_key: Option<String>,
+  recovery_attempt: Option<u32>,
   process_id: Option<u32>,
   application_id: Option<String>,
   mix_application_ids: Option<Vec<String>>,
@@ -362,6 +364,10 @@ pub fn audio_start(
     .store(0, std::sync::atomic::Ordering::Relaxed);
   state.inner().ui_frame_diagnostics.reset();
   let pool: FrameSubscribers = Arc::new(std::sync::Mutex::new(HashMap::new()));
+  let stream_id = on_frame.id();
+  if let Some(attempt) = recovery_attempt {
+    log::info!("Opening replacement capture (stream={stream_id}, attempt={attempt})");
+  }
   {
     let mut p = pool
       .lock()
@@ -540,6 +546,7 @@ pub fn audio_start(
       AudioCapture::start_session(
         &AppAudioBackend,
         &device_id,
+        endpoint_key.as_deref(),
         pool,
         app.clone(),
         channel_selection,
@@ -552,6 +559,7 @@ pub fn audio_start(
     AudioCapture::start_session(
       &AppAudioBackend,
       &device_id,
+      endpoint_key.as_deref(),
       pool,
       app.clone(),
       channel_selection,
@@ -588,6 +596,8 @@ pub fn audio_start(
     "engine-state-changed",
     EngineStateChanged {
       state: "running".into(),
+      stream_id: Some(stream_id),
+      phase: None,
       error: None,
       reason: None,
     },
@@ -890,6 +900,8 @@ pub fn audio_stop(app: AppHandle, state: State<'_, AppState>) -> Result<(), Stri
     "engine-state-changed",
     EngineStateChanged {
       state: "stopped".into(),
+      stream_id: None,
+      phase: None,
       error: None,
       reason: None,
     },
