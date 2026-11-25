@@ -3,15 +3,15 @@
   "version": "0.27.0",
   "baselineTag": "v0.26.4",
   "baselineRevision": "7f3565a6dd2625cb15ffc4e72f23e751a4cb573e",
-  "candidateRevision": "8b35b7f667b4941eca2e4c8478cfc7942cb1fee3",
-  "contentSha256": "31773ecd97aac890e7768f6d0c6281d8c711e223ac9f21cc6cc0000815eb4e49",
+  "candidateRevision": "565d6268bb6d09a23df6fae0d8f457a7ebff2022",
+  "contentSha256": "0f6234352a614b489d32af9b12fb31d36b95e2126eb45f42365b486cefa6bbc3",
   "websiteSourceSha": "ba26b80053552f98162330c136e969c1246adfd1",
   "reviews": {
     "userGuide": {
       "status": "updated",
       "rationale": "The Guide covers creating and recalling Mixes, channel routing, capture recovery, and local MCP setup and results. Linux application capture and window backend requirements are described separately.",
       "evidence": [
-        "Compared docs/user/signal-source.md, getting-started.md, workspace.md and troubleshooting.md with the Sources picker, useAudioEngine.js and the native capture paths.",
+        "Compared docs/user/signal-source.md, getting-started.md, workspace.md and troubleshooting.md with the Sources picker, useAudioEngine.js and the native capture paths. Compared the subsequent Spectrum render wait and PulseAudio stream invalidation fixes with the Guide and CHANGELOG. Linux Agent Control Acceptance 45581359100 verified the historical Spectrum and exact-source disconnect and restart behavior at 565d6268.",
         "Compared docs/user/chat-apps.md, cli.md and system-settings.md with cli_mcp.rs, the command manifest and Settings MCP Setup."
       ]
     },
@@ -27,8 +27,8 @@
       "rationale": "The homepage's existing metering, layout, Dock and profile features still apply. Release inputs update the downloads, Guide and privacy policy. The policy now explains data received over local MCP, possible onward transfer by a chat app, and the last-use information held in memory.",
       "evidence": [
         "Compared the live publication.json and the pinned PLVS-Website homepage at ba26b80053552f98162330c136e969c1246adfd1 with the 0.27.0 release changes.",
-        "Built the website from product, Policy and Catalogue inputs at 8b35b7f667b4941eca2e4c8478cfc7942cb1fee3. All 51 tests passed, 38 HTML pages built, and the homepage lists all four 0.27.0 downloads.",
-        "Reviewed desktop data handling from v0.26.4 (7f3565a6dd2625cb15ffc4e72f23e751a4cb573e) through 8b35b7f667b4941eca2e4c8478cfc7942cb1fee3. cli_mcp.rs, cli_mcp/files.rs and mcpUsage.js establish the local result and usage flows. Commit 2ada6adc removes the Google Fonts stylesheet and preconnects from index.html. The app uses its bundled fonts. The update feed and existing feedback, crash-report and newsletter service paths are unchanged. docs/privacy-review.json records the recipient, consent, retention and effective-date decisions."
+        "Built the website from product, Policy and Catalogue inputs at 565d6268bb6d09a23df6fae0d8f457a7ebff2022. All 51 tests passed, 38 HTML pages built, and the homepage lists all four 0.27.0 downloads.",
+        "Reviewed desktop data handling from v0.26.4 (7f3565a6dd2625cb15ffc4e72f23e751a4cb573e) through 565d6268bb6d09a23df6fae0d8f457a7ebff2022. cli_mcp.rs, cli_mcp/files.rs and mcpUsage.js establish the local result and usage flows. Commit 2ada6adc removes the Google Fonts stylesheet and preconnects from index.html. The app uses its bundled fonts. The update feed and existing feedback, crash-report and newsletter service paths are unchanged. The Linux follow-up changes local capture recovery and test diagnostics only. docs/privacy-review.json records the recipient, consent, retention and effective-date decisions."
       ]
     },
     "screenshots": {
@@ -36,7 +36,7 @@
       "rationale": "The eight published homepage renders and the README collage's featured states still depict the shipping layouts, controls and measurements. Current renders show text and minor presentation differences. The Sources and MCP settings added in this release are outside the depicted states.",
       "evidence": [
         "Rendered all eight homepage recipes from clean 8b35b7f667b4941eca2e4c8478cfc7942cb1fee3. Compared the published originals and candidate images side by side and inspected the pixel differences. The render report is artifacts/marketing/homepage-render-2026-11-25T08-18-14-437Z/report.json.",
-        "Reviewed the README collage's Workspace, Dock and editors against the corresponding product changes; the collage depicts no open Sources or Agent Control Settings."
+        "Reviewed the README collage's Workspace, Dock and editors against the corresponding product changes. The collage depicts no open Sources or Agent Control Settings. The subsequent PulseAudio recovery change affects interruption states outside these renders."
       ]
     }
   }
