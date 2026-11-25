@@ -213,10 +213,16 @@ export function buildSettingsSchema(settings, context) {
   };
 }
 
+function channelLabelsUnavailable(settings, context) {
+  if (context.sourceMode === "file") return "liveOnly";
+  if (context.channelLayoutLocked) return "mixFormatControlsLayout";
+  return settings.channelLabels.channelCount > 0 ? null : "noChannels";
+}
+
 export function buildSettingsInspection(settings, context) {
   const autostartWritable = context.autostartReady === true;
   const shortcutWritable = context.shortcutCapturing !== true;
-  const channelWritable = settings.channelLabels.channelCount > 0;
+  const channelReason = channelLabelsUnavailable(settings, context);
   const updatesWritable = context.updatesAvailable === true;
   return {
     settings,
@@ -250,8 +256,8 @@ export function buildSettingsInspection(settings, context) {
         reason: shortcutWritable ? null : "shortcutCaptureActive",
       },
       channelLabels: {
-        writable: channelWritable,
-        reason: channelWritable ? null : "noChannels",
+        writable: channelReason === null,
+        reason: channelReason,
       },
       updates: {
         writable: updatesWritable,
@@ -587,14 +593,15 @@ export function planSettingsUpdate(current, patch, context, options = {}) {
     };
   }
   if ("channelLabels" in patch) {
-    if (current.channelLabels.channelCount === 0) {
+    const reason = channelLabelsUnavailable(current, context);
+    if (reason) {
       return {
         settings: current,
         changed: [],
         effects: [],
         warnings: [],
         issues: [],
-        refusal: { code: "controlUnavailable", reason: "noChannels" },
+        refusal: { code: "controlUnavailable", reason },
       };
     }
     if (nextChannelLabels.channelCount !== current.channelLabels.channelCount) {
@@ -721,10 +728,9 @@ export function planSettingsUpdate(current, patch, context, options = {}) {
     });
   }
   if (
-    (changed.includes("settings.channelLabels") && context.sourceMode === "file") ||
-    (context.hasCompletedFileAnalysis === true &&
-      (changed.includes("settings.dialogueVadEngine") ||
-        changed.includes("settings.fileDialogueDetection")))
+    context.hasCompletedFileAnalysis === true &&
+    (changed.includes("settings.dialogueVadEngine") ||
+      changed.includes("settings.fileDialogueDetection"))
   ) {
     warnings.push({ code: "fileReanalysisRequired" });
   }

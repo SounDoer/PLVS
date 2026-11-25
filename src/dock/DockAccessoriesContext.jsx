@@ -97,6 +97,7 @@ const STATUS_FIXTURE_NAMES = {
  *   statusItems: import("../lib/appStatus.js").AppStatusItem[],
  *   statusOpen: boolean,
  *   runStatusAction: (action: string, topic?: string) => Promise<{url?: string} | undefined>,
+ *   normalSourcesOpenerRef: import("react").MutableRefObject<(() => void) | null>,
  *   openDockMenu: (view: string) => Promise<void>,
  *   getAccessoryTargets: () => { id: string, rect: any, surface: string }[],
  * }} DockAccessories
@@ -143,8 +144,17 @@ export function DockAccessoriesProvider({ children }) {
   const { notice, mixCaptureStatus, raiseNotice, clearNotice } = useMeterDisplayState();
   const { sourceTransportState, histSourceList, displayAudio } = useDisplaySnapshot();
   const historyTotalSamples = histSourceList?.length ?? 0;
-  const { channelCount, channelLabelRuntime, vectorscopePairOptions, spectrumChannelOptions } =
-    useAnalysisSession();
+  const {
+    channelCount,
+    channelLabelRuntime,
+    sourceChannels,
+    setSourceChannelsExpanded,
+    setChannelLayout,
+    setChannelLabelToken,
+    resetChannelLabels,
+    vectorscopePairOptions,
+    spectrumChannelOptions,
+  } = useAnalysisSession();
   const { canClear, clearAll, onSourceTransportAction, dispatchShortcut } = useSourceActions();
   const presets = usePresetLibrary();
   const exportProfileRef = useRef(null);
@@ -306,6 +316,19 @@ export function DockAccessoriesProvider({ children }) {
     docked && dockAccessoryVisibility.editorVisible
       ? DOCK_MENUS[dockAccessoryVisibility.editorView]?.menu
       : undefined;
+  useUiNavigationTarget(dockMenu === "sources" ? "sourceGroup:channels" : "", {
+    show: () => setSourceChannelsExpanded(true),
+  });
+  useUiSurface({
+    active: dockMenu === "sources" && sourceChannels.expanded,
+    kind: "sourceGroup",
+    origin: "navigable",
+    blocking: false,
+    dismissible: true,
+    supportedActions: ["close"],
+    target: { group: "channels" },
+    onClose: () => setSourceChannelsExpanded(false),
+  });
   useUiSurface({
     active: Boolean(dockMenu),
     kind: "toolbarMenu",
@@ -398,13 +421,19 @@ export function DockAccessoriesProvider({ children }) {
                 incomplete: mixCaptureStatus.incomplete,
               }
             : null,
-          layoutUnknown: channelCount > 0 && displayAudio?.loudnessLayoutKnown === false,
-          layoutInferred: inferredChannelLayout({
-            channelCount,
-            loudnessLayoutKnown: displayAudio?.loudnessLayoutKnown,
-            autoChannelRoles: displayAudio?.autoChannelRoles,
-            manualRoles: channelLabelRuntime?.channelLabelOverride,
-          }),
+          layoutUnknown:
+            sourceMode === "live" &&
+            channelCount > 0 &&
+            displayAudio?.loudnessLayoutKnown === false,
+          layoutInferred:
+            sourceMode === "live"
+              ? inferredChannelLayout({
+                  channelCount,
+                  loudnessLayoutKnown: displayAudio?.loudnessLayoutKnown,
+                  autoChannelRoles: displayAudio?.autoChannelRoles,
+                  manualRoles: channelLabelRuntime?.channelLabelOverride,
+                })
+              : null,
           autoChannelRoles: displayAudio?.autoChannelRoles,
           audioDrop: sourceMode === "live" ? liveAudioDrop : null,
           update: dockUpdate,
@@ -412,13 +441,21 @@ export function DockAccessoriesProvider({ children }) {
         })
   );
   const statusItems = useMemo(() => JSON.parse(statusKey), [statusKey]);
+  const normalSourcesOpenerRef = useRef(null);
   useUiStatusReport(statusItems);
   const runStatusAction = useCallback(
     async (action, topic) => {
       if (action === "update") openUpdateDetails();
       else if (action === "check-update") await updateControls.refreshUpdateCheck();
       else if (action === "settings") setSettingsOpen(true);
-      else if (action === "restart-configuration" && configurationRestartStatus() === "required") {
+      else if (action === "channels" && sourceMode === "live") {
+        setSourceChannelsExpanded(true);
+        if (docked) await openDockMenu("device");
+        else normalSourcesOpenerRef.current?.();
+      } else if (
+        action === "restart-configuration" &&
+        configurationRestartStatus() === "required"
+      ) {
         try {
           await reloadAfterProfileChange();
         } catch (error) {
@@ -432,7 +469,15 @@ export function DockAccessoriesProvider({ children }) {
         }
       }
     },
-    [openUpdateDetails, setSettingsOpen, updateControls]
+    [
+      docked,
+      openDockMenu,
+      openUpdateDetails,
+      setSettingsOpen,
+      setSourceChannelsExpanded,
+      sourceMode,
+      updateControls,
+    ]
   );
   useUiNavigationTarget("statusAction", {
     run: async (target, closeStatus) => {
@@ -593,6 +638,7 @@ export function DockAccessoriesProvider({ children }) {
         audioInputs,
         captureApplications,
         safeAudioDeviceId,
+        sourceChannels,
         sourceMixes: sourceMixes?.supported ? { supported: true, list: sourceMixes.list } : null,
       },
       panels: dockLayout.panels,
@@ -638,6 +684,7 @@ export function DockAccessoriesProvider({ children }) {
       audioInputs,
       captureApplications,
       safeAudioDeviceId,
+      sourceChannels,
       sourceMixes?.supported,
       sourceMixes?.list,
       dockAccessoryVisibility.editorView,
@@ -716,6 +763,19 @@ export function DockAccessoriesProvider({ children }) {
       } else if (type === "select-device" && typeof payload.deviceId === "string") {
         void onSelectCaptureDevice(payload.deviceId);
         dockAccessoryVisibility.closeEditor("device");
+      } else if (type === "source-channels" && sourceMode === "live") {
+        if (typeof payload.expanded === "boolean") {
+          setSourceChannelsExpanded(payload.expanded);
+        } else if (
+          payload.deviceId === safeAudioDeviceId &&
+          payload.channelCount === sourceChannels.channelCount &&
+          !sourceChannels.locked
+        ) {
+          if (typeof payload.layoutId === "string") setChannelLayout(payload.layoutId);
+          else if (typeof payload.role === "string")
+            setChannelLabelToken(payload.index, payload.role);
+          else if (payload.reset === true) resetChannelLabels();
+        }
       } else if (type === "set-edge") void onDockChange(payload.edge);
       else if (type === "toggle-reserve-space") {
         clearNotice();
@@ -856,6 +916,13 @@ export function DockAccessoriesProvider({ children }) {
       setDockSurfaceOpacity,
       refreshInventory,
       onSelectCaptureDevice,
+      sourceMode,
+      safeAudioDeviceId,
+      sourceChannels,
+      setSourceChannelsExpanded,
+      setChannelLayout,
+      setChannelLabelToken,
+      resetChannelLabels,
       clearAll,
       clearNotice,
       dockAccessoryVisibility,
@@ -897,6 +964,7 @@ export function DockAccessoriesProvider({ children }) {
         setImportActive,
         statusItems,
         runStatusAction,
+        normalSourcesOpenerRef,
         statusOpen: ["details", "speaker-layout"].includes(statusFixture?.phase),
         openDockMenu,
         getAccessoryTargets,

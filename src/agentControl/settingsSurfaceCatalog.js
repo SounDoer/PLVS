@@ -1,7 +1,7 @@
 export const MCP_SETUP_COPY_TARGET = "setting:agentControl.copyMcpSetup";
 
 /**
- * Every user-operable Settings control and public File preference have explicit owners.
+ * Every user-operable Settings control and public File and Sources preference have explicit owners.
  * Settings Control exposes entries owned by `settings`. Other owners point to their existing
  * command family or record why an agent must not operate the control.
  */

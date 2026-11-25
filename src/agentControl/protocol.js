@@ -17,7 +17,7 @@ import { WINDOW_OFFSET_MAX, WINDOW_SIZE_MAX, WINDOW_SIZE_MIN } from "./windowCon
 import { isUiTargetId } from "../uiNavigation/uiTargets.js";
 import { isSourceMixId } from "../lib/sourceMixes.js";
 
-const SOURCE_GROUPS = Object.freeze(["mixes", "output", "input", "applications"]);
+const SOURCE_GROUPS = Object.freeze(["channels", "mixes", "output", "input", "applications"]);
 import { POINTER_DURATION_MAX_MS } from "./handlers/pointer.js";
 import { HOLD_SLOW_MAX_MS } from "./handlers/gestures.js";
 import {

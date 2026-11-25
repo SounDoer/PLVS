@@ -6,8 +6,6 @@ use serde::{Deserialize, Serialize};
 pub struct FileAnalysisRunSettings {
   #[serde(default)]
   pub requests: crate::ipc::types::AnalysisRequests,
-  #[serde(default)]
-  pub channel_roles_by_count: std::collections::HashMap<String, Vec<String>>,
   pub dialogue: FileAnalysisDialogueSettings,
 }
 

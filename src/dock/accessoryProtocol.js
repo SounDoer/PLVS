@@ -54,6 +54,7 @@ const ACTION_TYPES = new Set([
   "set-hide-axes-labels",
   "set-dock-surface-opacity",
   "select-device",
+  "source-channels",
   "toggle-reserve-space",
   "toggle-above-full-screen",
   "restore-window",

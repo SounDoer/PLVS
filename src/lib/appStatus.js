@@ -112,8 +112,8 @@ export function buildAppStatusItems({
         (Array.isArray(autoChannelRoles) && autoChannelRoles.some((role) => role !== "generic")
           ? `The system identifies some roles in the ${autoChannelRoles.length}-channel stream: ${autoChannelRoles.flatMap((role, index) => (role !== "generic" ? [`${index + 1}=${role}`] : [])).join(", ")}. Other channel roles remain unknown. `
           : "Channel layout is not recognized. ") +
-        "Loudness uses channels 1–2 only. True Peak Max covers every channel. Set the channel layout in Settings.",
-      action: "settings",
+        "Loudness uses channels 1–2 only. True Peak Max covers every channel. Set the channel layout in Sources.",
+      action: "channels",
     });
   if (layoutInferred && !layoutUnknown)
     items.push({
@@ -123,8 +123,8 @@ export function buildAppStatusItems({
       helpTopic: "channel-layout-inferred",
       details:
         `The source does not report its speaker layout, so PLVS reads its ${layoutInferred.channelCount} channels as ${layoutInferred.name} by count. ` +
-        "If they are separate microphones or use another layout, set the channel layout in Settings.",
-      action: "settings",
+        "If they are separate microphones or use another layout, set the channel layout in Sources.",
+      action: "channels",
     });
   if (update)
     items.push({

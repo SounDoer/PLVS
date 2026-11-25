@@ -70,12 +70,92 @@ describe("File summary", () => {
     expect(info.querySelector("svg")).toBeNull();
     fireEvent.mouseEnter(metadata);
     expect(screen.getByText("C:/mix/final.wav")).toBeTruthy();
+    expect(screen.getByText("Unspecified")).toBeTruthy();
+    expect(screen.getByText("Stereo (Inferred)")).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "file analysis warning" })).toBeNull();
     expect(info.getAttribute("aria-pressed")).toBe("false");
     fireEvent.click(info);
     fireEvent.mouseLeave(info);
     expect(info.getAttribute("aria-pressed")).toBe("true");
     fireEvent.keyDown(screen.getByRole("dialog", { name: "file details" }), { key: "Escape" });
     await waitFor(() => expect(screen.queryByText("C:/mix/final.wav")).toBeNull());
+  });
+
+  it.each([
+    {
+      reported: "5.1",
+      known: true,
+      roles: ["L", "R", "C", "LFE", "Ls", "Rs"],
+      layout: "5.1",
+      compact: "5.1",
+      source: "5.1",
+      calculation: "5.1",
+      warning: null,
+    },
+    {
+      reported: undefined,
+      known: true,
+      roles: undefined,
+      layout: "5.1",
+      compact: "5.1 (Inferred)",
+      source: "Unspecified",
+      calculation: "5.1 (Inferred)",
+      warning: /used 5\.1 to calculate loudness based on the track’s 6 channels/,
+    },
+    {
+      reported: "unknown",
+      known: false,
+      roles: undefined,
+      layout: "unknown",
+      compact: "10 ch (Layout Unknown)",
+      source: "Unspecified",
+      calculation: /Unknown · Loudness uses channels 1–2/,
+      warning: /Loudness uses channels 1–2 only.*True Peak Max covers every channel/,
+    },
+    {
+      reported: "6 channels (FL+FR+FC+LFE+SL+BFC)",
+      known: true,
+      roles: undefined,
+      layout: "5.1",
+      compact: "5.1 (Inferred)",
+      source: "6 channels (FL+FR+FC+LFE+SL+BFC)",
+      calculation: "5.1 (Inferred)",
+      warning: /Channel Layout Inferred/,
+    },
+  ])("distinguishes reported $reported from calculation $calculation", (example) => {
+    const channels = example.known ? 6 : 10;
+    const session = {
+      ...fileSession,
+      metadata: {
+        selectedTrack: {
+          ...fileSession.metadata.selectedTrack,
+          channels,
+          channelLayout: example.reported,
+          channelRoles: example.roles,
+        },
+      },
+      summary: {
+        ...fileSession.summary,
+        channels,
+        loudnessLayout: example.layout,
+        loudnessLayoutKnown: example.known,
+        channelRoles: example.roles,
+      },
+    };
+    render(<FileAnalysisSummary {...props} fileSession={session} fileSessions={[session]} />);
+    const details = screen.getByRole("button", { name: "file details" });
+    expect(details.textContent).toContain(example.compact);
+    fireEvent.mouseEnter(details);
+    expect(screen.getByText("Source Layout").nextElementSibling.textContent).toBe(example.source);
+    const calculation = screen.getByText("Calculation Layout").nextElementSibling.textContent;
+    if (example.calculation instanceof RegExp) expect(calculation).toMatch(example.calculation);
+    else expect(calculation).toBe(example.calculation);
+    const icon = screen.queryByRole("button", { name: "file analysis warning" });
+    if (example.warning) {
+      expect(icon).toBeTruthy();
+      fireEvent.mouseEnter(icon);
+      expect(screen.getByText(example.warning)).toBeTruthy();
+    } else expect(icon).toBeNull();
   });
 
   it("shows original channel peak labels and occurrence time in details", () => {

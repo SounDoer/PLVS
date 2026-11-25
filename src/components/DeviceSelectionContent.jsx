@@ -10,6 +10,7 @@ import {
 import { cn } from "../lib/utils.js";
 import { MenuRow, RowAction } from "./ui/row";
 import { AddButton } from "./AddButton.jsx";
+import { SourceChannels } from "./SourceChannels.jsx";
 import { useHoverTip } from "./HoverTip.jsx";
 import { InlineConfirm } from "./InlineConfirm.jsx";
 import {
@@ -166,6 +167,7 @@ export function DeviceSelectionContent({
   safeAudioDeviceId = "default",
   defaultOutputReference = undefined,
   sourceMixes = null,
+  sourceChannels = null,
   onSelect,
 }) {
   const [sourceSectionsOpen, setSourceSectionsOpen] = useState({
@@ -188,6 +190,7 @@ export function DeviceSelectionContent({
 
   return (
     <>
+      {sourceChannels ? <SourceChannels {...sourceChannels} /> : null}
       <SourceRow
         uiTarget="source:default"
         ariaLabel="Automatic"

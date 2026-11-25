@@ -1032,7 +1032,7 @@ fn parse_ui_safe_integer(raw: Option<&String>, option: &str) -> Result<u64, Stri
 }
 
 fn parse_ui_args(args: &[String]) -> Result<ControlCommand, String> {
-  const USAGE: &str = "Usage:\n  plvs-cli ui inspect <--json|--format text>\n  plvs-cli ui show settings --section <section> --expected-revision <n> --expected-ui-generation <n> --json\n  plvs-cli ui show panel-settings --panel-id <id> --expected-revision <n> --expected-ui-generation <n> --json\n  plvs-cli ui show theme-editor --mode <create|edit|customize|duplicate> [--theme-id <id>] [--page <core|palettes|advanced>] --expected-revision <n> --expected-ui-generation <n> --json\n  plvs-cli ui show loudness-profile-editor --mode <create|edit> [--profile-id <id>] --expected-revision <n> --expected-ui-generation <n> --json\n  plvs-cli ui show feedback --expected-revision <n> --expected-ui-generation <n> --json\n  plvs-cli ui show toolbar-menu --menu <sources|loudness-profile|panels|views|presets|status> --expected-revision <n> --expected-ui-generation <n> --json\n  plvs-cli ui show dock-toolbar --expected-revision <n> --expected-ui-generation <n> --json\n  plvs-cli ui show panel-help --panel-id <id> --expected-revision <n> --expected-ui-generation <n> --json\n  plvs-cli ui show panel-fullscreen --panel-id <id> --expected-revision <n> --expected-ui-generation <n> --json\n  plvs-cli ui show add-panel --expected-revision <n> --expected-ui-generation <n> --json\n  plvs-cli ui show source-group --group <mixes|output|input|applications> --expected-revision <n> --expected-ui-generation <n> --json\n  plvs-cli ui show dropdown --control <target-id> --expected-revision <n> --expected-ui-generation <n> --json\n  plvs-cli ui quick-tour <start|next|back> --expected-revision <n> --expected-ui-generation <n> --json\n  plvs-cli ui action --target <target-id> --expected-revision <n> --expected-ui-generation <n> --json\n  plvs-cli ui targets --json\n  plvs-cli ui locate --target <target-id> --json\n  plvs-cli ui decide --surface-id <surface-id> --choice <id> --expected-revision <n> --expected-ui-generation <n> --json [--dry-run]\n  plvs-cli ui close <surface-id> --expected-revision <n> --expected-ui-generation <n> --json\n  plvs-cli ui cancel <surface-id> --expected-revision <n> --expected-ui-generation <n> --json";
+  const USAGE: &str = "Usage:\n  plvs-cli ui inspect <--json|--format text>\n  plvs-cli ui show settings --section <section> --expected-revision <n> --expected-ui-generation <n> --json\n  plvs-cli ui show panel-settings --panel-id <id> --expected-revision <n> --expected-ui-generation <n> --json\n  plvs-cli ui show theme-editor --mode <create|edit|customize|duplicate> [--theme-id <id>] [--page <core|palettes|advanced>] --expected-revision <n> --expected-ui-generation <n> --json\n  plvs-cli ui show loudness-profile-editor --mode <create|edit> [--profile-id <id>] --expected-revision <n> --expected-ui-generation <n> --json\n  plvs-cli ui show feedback --expected-revision <n> --expected-ui-generation <n> --json\n  plvs-cli ui show toolbar-menu --menu <sources|loudness-profile|panels|views|presets|status> --expected-revision <n> --expected-ui-generation <n> --json\n  plvs-cli ui show dock-toolbar --expected-revision <n> --expected-ui-generation <n> --json\n  plvs-cli ui show panel-help --panel-id <id> --expected-revision <n> --expected-ui-generation <n> --json\n  plvs-cli ui show panel-fullscreen --panel-id <id> --expected-revision <n> --expected-ui-generation <n> --json\n  plvs-cli ui show add-panel --expected-revision <n> --expected-ui-generation <n> --json\n  plvs-cli ui show source-group --group <channels|mixes|output|input|applications> --expected-revision <n> --expected-ui-generation <n> --json\n  plvs-cli ui show dropdown --control <target-id> --expected-revision <n> --expected-ui-generation <n> --json\n  plvs-cli ui quick-tour <start|next|back> --expected-revision <n> --expected-ui-generation <n> --json\n  plvs-cli ui action --target <target-id> --expected-revision <n> --expected-ui-generation <n> --json\n  plvs-cli ui targets --json\n  plvs-cli ui locate --target <target-id> --json\n  plvs-cli ui decide --surface-id <surface-id> --choice <id> --expected-revision <n> --expected-ui-generation <n> --json [--dry-run]\n  plvs-cli ui close <surface-id> --expected-revision <n> --expected-ui-generation <n> --json\n  plvs-cli ui cancel <surface-id> --expected-revision <n> --expected-ui-generation <n> --json";
   if args.iter().any(|arg| is_help(arg)) {
     return Ok(ControlCommand::FamilyHelp("ui".to_string()));
   }
@@ -1255,7 +1255,6 @@ fn parse_ui_args(args: &[String]) -> Result<ControlCommand, String> {
         "shortcuts",
         "appearance",
         "analysis",
-        "channels",
         "transfer",
         "agent-control",
         "about",
@@ -1392,7 +1391,7 @@ fn parse_ui_args(args: &[String]) -> Result<ControlCommand, String> {
     }),
     "source-group" => {
       let group = group.ok_or_else(|| "The source group target requires --group.".to_string())?;
-      if !["mixes", "output", "input", "applications"].contains(&group.as_str()) {
+      if !["channels", "mixes", "output", "input", "applications"].contains(&group.as_str()) {
         return Err("Unknown Sources group.".to_string());
       }
       Ok(ControlCommand::UiShowNamed {
@@ -7285,7 +7284,7 @@ mod tests {
       "2..60" => "4".to_string(),
       "0..10000" => "0".to_string(),
       "start|next|back" => "next".to_string(),
-      "mixes|output|input|applications" => "output".to_string(),
+      "channels|mixes|output|input|applications" => "output".to_string(),
       other => panic!("missing canonical argument for <{other}>"),
     }
   }

@@ -338,10 +338,6 @@ the engine starts a fresh measurement with the new engine. If PLVS cannot apply 
 it reports the failure in Status Notices and keeps the previous setting. File analyses keep
 the detection settings they started with.
 
-## Channels
-
-Rename channel labels and choose the channel layout; see [Multichannel](multichannel.md).
-
 ## Import, export, and reset
 
 **Saved Items** exports selected Loudness Profiles, Presets, or Themes and imports any of their

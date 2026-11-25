@@ -505,6 +505,8 @@ export function AgentControlBridge() {
   const {
     channelCount,
     channelLabelRuntime,
+    channelLayoutLocked,
+    sourceChannels,
     applyMeasurementRules,
     derivedAnalysisRequests,
     analysisRequests,
@@ -515,6 +517,10 @@ export function AgentControlBridge() {
   const { activeBlockingEditors, getSceneOperationBlockers } = useSceneGuard();
   const { historyRetentionSec, channelLabelOverrides } = settings;
   const { sourceMode, running, fileSessions, liveClearTarget } = meterRuntime;
+  const settingsChannelCount = channelLayoutLocked ? sourceChannels.channelCount : channelCount;
+  const settingsChannelRoles = channelLayoutLocked
+    ? sourceChannels.roles
+    : channelLabelRuntime.channelLabelTokens;
   const agentControlSettingsContext = useMemo(
     () => ({
       autostartReady: settings.autostartReady,
@@ -530,16 +536,16 @@ export function AgentControlBridge() {
         Boolean(getSuccessfulFileSession(session))
       ),
       sourceMode,
-      channelCount,
+      channelCount: settingsChannelCount,
+      channelLayoutLocked,
       channelLabelMode: channelLabelOverride ? "custom" : "auto",
-      channelLabelRoles: channelLabelRuntime.channelLabelTokens,
+      channelLabelRoles: settingsChannelRoles,
       channelAutoRoles: seedTokensFromLabels(channelLabelRuntime.channelAutoLabels),
     }),
     [
-      channelCount,
+      channelLayoutLocked,
       channelLabelOverride,
       channelLabelRuntime.channelAutoLabels,
-      channelLabelRuntime.channelLabelTokens,
       dialogueGating,
       fileSessions,
       running,
@@ -551,6 +557,8 @@ export function AgentControlBridge() {
       settings.shortcutRegistrationErrors,
       settings.shortcutsReady,
       sourceMode,
+      settingsChannelCount,
+      settingsChannelRoles,
     ]
   );
   const agentControlSettings = useMemo(

@@ -96,7 +96,8 @@ tip from the previous presentation.
 On macOS, button hover tips are available as soon as the Dock toolbar opens, without an initial
 click inside it.
 
-An unknown channel layout means loudness uses channels 1–2 only until you set a layout in Settings.
+An unknown Live channel layout means loudness uses channels 1–2 only until you set a layout in
+**Sources → Channels**.
 This condition and **Audio Dropped** appear in the shared status list rather than inside individual
 panels. Metric threshold colors remain attached to their readings.
 

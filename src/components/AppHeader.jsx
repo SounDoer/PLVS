@@ -63,6 +63,7 @@ const TOOLBAR_TRIGGER_OPEN_CLASS =
  *   audioInputs: any[],
  *   captureApplications?: any[],
  *   sourceMixes?: ReturnType<typeof import("../hooks/useSourceMixes.js").useSourceMixes>,
+ *   sourceChannels?: import("react").ComponentProps<typeof import("./SourceChannels.jsx").SourceChannels>,
  *   safeAudioDeviceId: string,
  *   setCaptureDeviceId: (...args: any[]) => any,
  *   openMenu?: string | null,
@@ -117,6 +118,7 @@ export function AppHeader({
   audioInputs,
   captureApplications = [],
   sourceMixes,
+  sourceChannels,
   safeAudioDeviceId,
   setCaptureDeviceId,
   openMenu = null,
@@ -277,6 +279,7 @@ export function AppHeader({
                     }
                   }
                   safeAudioDeviceId={safeAudioDeviceId}
+                  sourceChannels={sourceChannels}
                   onSelect={handleSourceSelect}
                 />
               </PopoverContent>

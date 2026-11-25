@@ -15,8 +15,8 @@ In File mode, PLVS uses the channel layout stored in the file, such as 5.1(side)
 order. Channels keep their stored positions; PLVS does not remix them into a default layout. A
 layout that matches no standard layout shows **Custom**, labels each channel by its role, and
 measures loudness with that role's weight. A file without a stored layout, or one with channels
-PLVS has no role for, falls back to the channel count. A manual layout you set for that channel
-count still overrides the file.
+PLVS has no role for, falls back to the channel count. Live overrides apply only to Live.
+File Info shows both the reported **Source Layout** and the **Calculation Layout** used by PLVS.
 
 For system output monitoring, PLVS follows the selected output's configured speakers on Windows,
 macOS and Linux. Stereo produces two monitored channels; 5.1 produces six; 7.1 produces eight.
@@ -59,7 +59,7 @@ Windows application capture uses its explicitly requested capture format.
 
 ## Manual layouts
 
-Choose the layout under **Channels** in [System Settings](system-settings.md). Standard layouts from
+In Live, open **Channels** at the top of [Sources](signal-source.md). Standard layouts from
 mono through 9.1.6 are available. Manual layouts describe roles within the monitored signal; they do not expand it to additional
 device channels. Assign a role to an individual channel when a source uses a
 different channel order; the layout then shows **Custom** until you choose a standard layout again.
@@ -80,4 +80,6 @@ occupying space inside Stats or Loudness. Channels above 8 are never guessed fro
   first available ones and the setting reads **(Unavailable)**; your choice is kept and comes back
   when you switch to a source that has those channels.
 
-Channel labels can be renamed under **Channels** in Settings.
+Channel roles can be edited and reset under **Channels** in Sources. Manual choices apply to Live
+sources with the same channel count. A Mix shows its resolved layout and roles as read-only.
+To change them, use **Mix Format** in the Mix editor.

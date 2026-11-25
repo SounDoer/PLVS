@@ -39,7 +39,40 @@ function formatDepth(track) {
   return null;
 }
 
-function FileInfo({ session }) {
+function describeFileLayout(track, summary) {
+  const reported = track?.channelLayout?.trim();
+  const source = reported && !/^(unknown|\d+ channels)$/i.test(reported) ? reported : null;
+  const count = summary?.channels ?? track?.channels;
+  const unknown = summary?.loudnessLayoutKnown === false;
+  const inferred =
+    summary?.loudnessLayoutKnown === true &&
+    !summary.channelRoles?.length &&
+    !track?.channelRoles?.length;
+  const compact = formatChannelLayout(count, unknown ? null : (summary?.loudnessLayout ?? source));
+  const layout = summary?.loudnessLayout
+    ? formatChannelLayout(count, summary.loudnessLayout)
+    : null;
+  return {
+    source: track ? (source ?? "Unspecified") : null,
+    calculation: unknown
+      ? "Unknown · Loudness uses channels 1–2"
+      : layout && inferred
+        ? `${layout} (Inferred)`
+        : layout,
+    compact: unknown
+      ? `${compact} (Layout Unknown)`
+      : compact && inferred && count >= 3
+        ? `${compact} (Inferred)`
+        : compact,
+    warning: unknown
+      ? "Channel Layout Unknown. Loudness uses channels 1–2 only. True Peak Max covers every channel."
+      : inferred && count >= 3
+        ? `Channel Layout Inferred. PLVS used ${layout} to calculate loudness based on the track’s ${count} channels.`
+        : null,
+  };
+}
+
+function FileInfo({ session, layout }) {
   const metadata = session.metadata ?? {};
   const track = metadata.selectedTrack;
   const summary = session.summary;
@@ -50,7 +83,7 @@ function FileInfo({ session }) {
     ["Container", formatContainer(metadata.container)],
     ["Track", track && formatTrackLabel(track)],
     ["Track Name", track?.title],
-    ["Source Layout", track?.channelLayout],
+    ["Source Layout", layout.source],
     [
       "Dialogue Detection",
       summary && dialogue
@@ -59,12 +92,7 @@ function FileInfo({ session }) {
           : "Off"
         : null,
     ],
-    [
-      "Calculation Layout",
-      summary?.loudnessLayoutKnown === false
-        ? "Unknown; loudness uses channels 1–2."
-        : summary?.loudnessLayout,
-    ],
+    ["Calculation Layout", layout.calculation],
     ["Source Bit Depth", formatDepth(track)],
     ["Decoder Sample Format", track?.sampleFormat],
     [
@@ -88,7 +116,7 @@ function FileInfo({ session }) {
   );
 }
 
-function warningDetails(session, result, settings, activeTask) {
+function warningDetails(session, result, settings, activeTask, layoutWarning) {
   const details = [];
   if (session.state === "error")
     details.push(
@@ -97,19 +125,13 @@ function warningDetails(session, result, settings, activeTask) {
     );
   const previous = result?.analysisSettings;
   if (previous && settings) {
-    const count = result.summary.channels ?? result.summary.channelCount;
     const detectorChanged =
       previous.dialogue?.enabled !== settings.dialogue?.enabled ||
       previous.dialogue?.engine !== settings.dialogue?.engine;
-    const layoutChanged =
-      JSON.stringify(previous.channelRolesByCount?.[count] ?? null) !==
-      JSON.stringify(settings.channelRolesByCount?.[count] ?? null);
-    if (detectorChanged || layoutChanged) {
-      const changed = [detectorChanged && "Dialogue Detection", layoutChanged && "Channel Layout"]
-        .filter(Boolean)
-        .join(" and ");
-      details.push(changed + " changed since this result. Reanalyze to use the current settings.");
-    }
+    if (detectorChanged)
+      details.push(
+        "Dialogue Detection changed since this result. Reanalyze to use the current settings."
+      );
     const needs = settings.requests;
     const actual = previous.requests;
     if (
@@ -127,6 +149,7 @@ function warningDetails(session, result, settings, activeTask) {
       );
     }
   }
+  if (layoutWarning) details.push(layoutWarning);
   if (details.length && activeTask && result)
     details.push("The previous successful result remains available while analysis runs.");
   return details;
@@ -526,15 +549,13 @@ export function FileAnalysisSummary({
   const display = result ?? fileSession;
   const fileName = display?.fileName ?? "No File";
   const activeTask = Boolean(analyzingFileId && analyzingFileId === activeFileId);
-  const details = warningDetails(fileSession, result, currentSettings, activeTask);
   const track = display?.metadata?.selectedTrack;
   const summary = display?.summary;
+  const layout = describeFileLayout(track, summary);
+  const details = warningDetails(fileSession, result, currentSettings, activeTask, layout.warning);
   const duration = summary?.durationMs ?? display?.metadata?.durationMs;
   const metadata = [
-    formatChannelLayout(
-      summary?.channels ?? track?.channels,
-      summary?.loudnessLayout ?? track?.channelLayout
-    ),
+    layout.compact,
     formatSampleRate(summary?.sampleRateHz ?? track?.sampleRateHz),
     formatDepth(track),
     Number.isFinite(duration) ? formatClock(duration) : null,
@@ -602,7 +623,7 @@ export function FileAnalysisSummary({
               className="max-w-full justify-start bg-transparent text-left hover:bg-transparent"
               trigger={<span className="truncate">{metadata || "No Media Metadata"}</span>}
             >
-              <FileInfo session={display} />
+              <FileInfo session={display} layout={layout} />
             </FileDetailPopover>
           </div>
         </div>

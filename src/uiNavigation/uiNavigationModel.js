@@ -5,7 +5,6 @@ export const UI_SETTINGS_SECTIONS = Object.freeze([
   "shortcuts",
   "appearance",
   "analysis",
-  "channels",
   "transfer",
   "agent-control",
   "about",

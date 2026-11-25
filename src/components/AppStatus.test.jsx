@@ -65,8 +65,8 @@ describe("status details", () => {
     expect(screen.queryByRole("tooltip")).toBeNull();
     fireEvent.click(screen.getByRole("button", { name: /status:.*2 notices/i }));
     expect(screen.getByRole("region", { name: "status details" })).toBeTruthy();
-    fireEvent.click(screen.getByRole("button", { name: "Open Settings" }));
-    expect(onAction).toHaveBeenCalledWith("settings");
+    fireEvent.click(screen.getByRole("button", { name: "Open Channels" }));
+    expect(onAction).toHaveBeenCalledWith("channels");
     fireEvent.click(screen.getByRole("button", { name: /status:.*2 notices/i }));
     fireEvent.click(screen.getByRole("button", { name: "View Update Details" }));
     expect(onAction).toHaveBeenCalledWith("update");
@@ -77,7 +77,7 @@ describe("status details", () => {
   it("offers troubleshooting alongside the channel settings action", () => {
     const onHelp = vi.fn();
     render(<AppStatusList items={buildAppStatusItems({ layoutUnknown: true })} onHelp={onHelp} />);
-    expect(screen.getByRole("button", { name: "Open Settings" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Open Channels" })).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: "Troubleshooting" }));
     expect(onHelp).toHaveBeenCalledWith("channel-layout-unknown");
   });

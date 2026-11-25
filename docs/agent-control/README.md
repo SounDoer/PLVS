@@ -70,7 +70,7 @@ revision watcher, its settlement slot and its place in the unmount cleanup, so n
 be added without the others.
 
 `src/agentControl/settingsSurfaceCatalog.js` tracks ownership for every user-operable Settings
-control and the File toolbar's Dialogue Detection preference. Each entry is owned by Settings
+control, the Sources channel controls, and File toolbar preferences. Each entry is owned by Settings
 Control, another Agent Control family, an external destination, or an explicit user-only boundary.
 `PUBLIC_FIELDS` is derived from that catalogue, so
 adding a Settings-owned control without exposing it cannot silently create a second field list.

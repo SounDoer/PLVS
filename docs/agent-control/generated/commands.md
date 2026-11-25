@@ -265,7 +265,7 @@ None.
 
 | Name | Maps to | Required | Value |
 | --- | --- | --- | --- |
-| `--section` | local only | yes | string; one of "behavior", "shortcuts", "appearance", "analysis", "channels", "transfer", "agent-control", "about" |
+| `--section` | local only | yes | string; one of "behavior", "shortcuts", "appearance", "analysis", "transfer", "agent-control", "about" |
 | `--expected-revision` | local only | yes | integer; 0 to 9007199254740991 |
 | `--expected-ui-generation` | `expectedUiGeneration` | yes | integer; 0 to 9007199254740991 |
 | `--json` | local only | yes | boolean |
@@ -524,7 +524,7 @@ Expand a Sources group as clicking its heading does.
 - Wire method: `ui.show.sourceGroup`
 
 ```text
-plvs-cli ui show source-group --group <mixes|output|input|applications> --expected-revision <n> --expected-ui-generation <n> --json
+plvs-cli ui show source-group --group <channels|mixes|output|input|applications> --expected-revision <n> --expected-ui-generation <n> --json
 ```
 
 ### Positionals
@@ -535,7 +535,7 @@ None.
 
 | Name | Maps to | Required | Value |
 | --- | --- | --- | --- |
-| `--group` | `group` | yes | string; one of "mixes", "output", "input", "applications" |
+| `--group` | `group` | yes | string; one of "channels", "mixes", "output", "input", "applications" |
 | `--expected-revision` | local only | yes | integer; 0 to 9007199254740991 |
 | `--expected-ui-generation` | `expectedUiGeneration` | yes | integer; 0 to 9007199254740991 |
 | `--json` | local only | yes | boolean |

@@ -6,6 +6,7 @@ import {
   useLayoutEffect,
   useMemo,
   useRef,
+  useState,
 } from "react";
 import { useWorkspaceStore } from "../workspace/WorkspaceContext.jsx";
 import { useSharedTimeViewport } from "../workspace/useSharedTimeViewport.js";
@@ -19,8 +20,9 @@ import {
 } from "../analysis/analysisRequests.js";
 import { effectiveWorkspaceState } from "../analysis/effectiveChannels.js";
 import { buildVectorscopePairOptions } from "../math/vectorscopePairMath.js";
-import { seedTokensFromLabels } from "../math/channelRoles.js";
-import { rolesForLayout } from "../math/channelLayoutTable.js";
+import { CHANNEL_ROLE_VOCABULARY, seedTokensFromLabels } from "../math/channelRoles.js";
+import { layoutIdForRoles, rolesForLayout } from "../math/channelLayoutTable.js";
+import { resolveMixFormat } from "../lib/mixRouting.js";
 import {
   deriveBackendAnalysisRequests,
   deriveChannelLabelRuntime,
@@ -43,6 +45,8 @@ import { UI_PREFERENCES } from "../uiPreferences.js";
  *   channelCount: number,
  *   channelLayoutLocked: boolean,
  *   channelLabelRuntime: ReturnType<typeof deriveChannelLabelRuntime>,
+ *   sourceChannels: { channelCount: number, layoutId: string | null, roles: string[], locked: boolean, hasOverride: boolean, expanded: boolean },
+ *   setSourceChannelsExpanded: (expanded: boolean) => void,
  *   peakLabelContext: any,
  *   setChannelLabelToken: (index: number, token: string) => void,
  *   setChannelLayout: (layoutId: string) => void,
@@ -81,10 +85,23 @@ export function AnalysisSessionProvider({ children }) {
   const { setSelectedOffset, raiseNotice } = useMeterDisplayState();
   const { liveIntakeRef, fileRequestInputsRef } = useMeterRuntimeAssembly();
   const { channelCount, displayAudio } = useDisplaySnapshot();
-  const { selectedSource } = useSource();
+  const {
+    selectedSource,
+    captureDeviceId,
+    sourceMixes,
+    audioOutputs,
+    defaultOutputReference,
+    mixRouting,
+  } = useSource();
+  const [sourceChannelsExpanded, setSourceChannelsExpanded] = useState(false);
   const channelLayoutLocked = sourceMode === "live" && selectedSource?.type === "Mix";
+  const selectedMix = channelLayoutLocked
+    ? sourceMixes.list.find(({ id }) => id === captureDeviceId)
+    : null;
   const autoRolesKey = JSON.stringify(displayAudio?.autoChannelRoles ?? null);
   const autoChannelRoles = useMemo(() => JSON.parse(autoRolesKey), [autoRolesKey]);
+  const hasCustomLayout =
+    autoChannelRoles?.length === channelCount && displayAudio?.loudnessLayoutKnown !== false;
   const { fileSession, dialogueGating, resetLiveDisplayControls } = useSourceActions();
   const { docked, layout: dockLayout } = useDock();
   const {
@@ -127,12 +144,41 @@ export function AnalysisSessionProvider({ children }) {
     () =>
       deriveChannelLabelRuntime({
         channelCount,
-        channelLabelOverrides: channelLayoutLocked ? {} : channelLabelOverrides,
+        channelLabelOverrides:
+          sourceMode === "live" && !channelLayoutLocked ? channelLabelOverrides : {},
         autoChannelRoles,
       }),
-    [channelCount, channelLabelOverrides, autoChannelRoles, channelLayoutLocked]
+    [channelCount, channelLabelOverrides, autoChannelRoles, channelLayoutLocked, sourceMode]
   );
   const peakLabelContext = channelLabelRuntime.peakLabelContext;
+  const sourceChannels = useMemo(() => {
+    const mixRoles = channelLayoutLocked
+      ? (mixRouting?.roles ??
+        (selectedMix
+          ? resolveMixFormat(selectedMix, audioOutputs, defaultOutputReference).roles
+          : null))
+      : null;
+    return {
+      channelCount: mixRoles?.length ?? channelCount,
+      layoutId: mixRoles
+        ? (layoutIdForRoles(mixRoles) ?? "custom")
+        : (channelLabelRuntime.selectedLayoutId ?? (hasCustomLayout ? "custom" : null)),
+      roles: mixRoles ?? channelLabelRuntime.channelLabelTokens,
+      locked: channelLayoutLocked,
+      hasOverride: Boolean(channelLabelRuntime.channelLabelOverride),
+      expanded: sourceChannelsExpanded,
+    };
+  }, [
+    audioOutputs,
+    channelCount,
+    channelLabelRuntime,
+    channelLayoutLocked,
+    defaultOutputReference,
+    hasCustomLayout,
+    mixRouting,
+    selectedMix,
+    sourceChannelsExpanded,
+  ]);
 
   /** Use stereo (2ch) choices when idle so Settings shows default L/R instead of an empty state. */
   const vectorscopePairOptions = useMemo(() => {
@@ -256,7 +302,13 @@ export function AnalysisSessionProvider({ children }) {
 
   const commitChannelRoles = useCallback(
     (roles) => {
-      if (channelLayoutLocked || JSON.stringify(roles) === JSON.stringify(channelRoles)) return;
+      if (
+        sourceMode !== "live" ||
+        channelCount <= 0 ||
+        channelLayoutLocked ||
+        JSON.stringify(roles) === JSON.stringify(channelRoles)
+      )
+        return;
       return applyMeasurementEdit({ channelRoles: roles }, () =>
         setChannelLabelOverrides((current) => {
           const updated = { ...current };
@@ -272,12 +324,19 @@ export function AnalysisSessionProvider({ children }) {
       channelLayoutLocked,
       channelRoles,
       setChannelLabelOverrides,
+      sourceMode,
     ]
   );
 
   const setChannelLabelToken = useCallback(
     (index, token) => {
-      if (channelCount <= 0) return;
+      if (
+        !Number.isInteger(index) ||
+        index < 0 ||
+        index >= channelCount ||
+        !CHANNEL_ROLE_VOCABULARY.some(({ id }) => id === token)
+      )
+        return;
       const next = (
         channelLabelOverrides[channelCount] ?? seedTokensFromLabels(channelAutoLabels)
       ).slice();
@@ -304,6 +363,8 @@ export function AnalysisSessionProvider({ children }) {
       channelCount,
       channelLayoutLocked,
       channelLabelRuntime,
+      sourceChannels,
+      setSourceChannelsExpanded,
       peakLabelContext,
       changeDialogueVadEngine,
       setChannelLabelToken,
@@ -324,6 +385,7 @@ export function AnalysisSessionProvider({ children }) {
       channelCount,
       channelLayoutLocked,
       channelLabelRuntime,
+      sourceChannels,
       peakLabelContext,
       changeDialogueVadEngine,
       setChannelLabelToken,

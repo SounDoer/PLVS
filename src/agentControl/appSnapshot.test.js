@@ -33,7 +33,7 @@ describe("agent-control app snapshots", () => {
     expect(methods).toContain("mix.list");
     expect(features.editorDraft.kinds).toContain("mix");
     expect(features.uiNavigation.show.sourceGroup).toMatchObject({
-      groups: expect.arrayContaining(["mixes"]),
+      groups: expect.arrayContaining(["channels", "mixes"]),
     });
   });
 
@@ -225,7 +225,6 @@ describe("agent-control app snapshots", () => {
                 "shortcuts",
                 "appearance",
                 "analysis",
-                "channels",
                 "transfer",
                 "agent-control",
                 "about",

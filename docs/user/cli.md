@@ -342,7 +342,7 @@ selectors, or confirmation actions:
 
 ```powershell
 plvs-cli ui inspect <--json|--format text>
-plvs-cli ui show settings --section <behavior|shortcuts|appearance|analysis|channels|transfer|agent-control|about> --expected-revision <n> --expected-ui-generation <n> --json
+plvs-cli ui show settings --section <behavior|shortcuts|appearance|analysis|transfer|agent-control|about> --expected-revision <n> --expected-ui-generation <n> --json
 plvs-cli ui show panel-settings --panel-id <id> --expected-revision <n> --expected-ui-generation <n> --json
 plvs-cli ui show theme-editor --mode <create|edit|customize|duplicate> [--theme-id <id>] [--page <core|palettes|advanced>] --expected-revision <n> --expected-ui-generation <n> --json
 plvs-cli ui show loudness-profile-editor --mode <create|edit> [--profile-id <id>] --expected-revision <n> --expected-ui-generation <n> --json
@@ -352,7 +352,7 @@ plvs-cli ui show dock-toolbar --expected-revision <n> --expected-ui-generation <
 plvs-cli ui show panel-help --panel-id <id> --expected-revision <n> --expected-ui-generation <n> --json
 plvs-cli ui show panel-fullscreen --panel-id <id> --expected-revision <n> --expected-ui-generation <n> --json
 plvs-cli ui show add-panel --expected-revision <n> --expected-ui-generation <n> --json
-plvs-cli ui show source-group --group <mixes|output|input|applications> --expected-revision <n> --expected-ui-generation <n> --json
+plvs-cli ui show source-group --group <channels|mixes|output|input|applications> --expected-revision <n> --expected-ui-generation <n> --json
 plvs-cli ui show dropdown --control <target-id> --expected-revision <n> --expected-ui-generation <n> --json
 plvs-cli ui quick-tour <start|next|back> --expected-revision <n> --expected-ui-generation <n> --json
 plvs-cli ui targets --json

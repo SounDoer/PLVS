@@ -178,19 +178,9 @@ function renderOverlays(settings = makeSettings(), updateOverrides = {}, overlay
     openDetails: vi.fn(),
     ...updateOverrides,
   };
-  const channelSettings = {
-    channelCount: 2,
-    channelLabelTokens: [],
-    channelLabelHasOverride: false,
-    setChannelLabelToken: vi.fn(),
-    resetChannelLabels: vi.fn(),
-    selectedLayoutId: undefined,
-    setChannelLayout: undefined,
-  };
   const renderView = () => (
     <AppSettingsOverlays
       settings={standIn(settings)}
-      channelSettings={channelSettings}
       updateControls={updateControls}
       appVersion="0.0.0"
       crashReportSetting={{ enabled: true, busy: false, error: "", setEnabled: vi.fn() }}
@@ -586,15 +576,6 @@ describe("Loudness Profile editor wiring", () => {
           <LoudnessProfilePopoverContent profile={hook.result.current} />
           <AppSettingsOverlays
             settings={standIn(makeSettings())}
-            channelSettings={{
-              channelCount: 2,
-              channelLabelTokens: [],
-              channelLabelHasOverride: false,
-              setChannelLabelToken: vi.fn(),
-              resetChannelLabels: vi.fn(),
-              selectedLayoutId: undefined,
-              setChannelLayout: undefined,
-            }}
             updateControls={{
               updateInfo: null,
               refreshUpdateCheck: vi.fn(),

@@ -2,7 +2,7 @@ import { isDockSupported, isWindows, isMacOS } from "./lib/platform.js";
 import { QuickTour } from "./onboarding/QuickTour.jsx";
 import { useHistoryPerformanceHarness } from "./dev/useHistoryPerformanceHarness.js";
 import { usePanelRuntimeData } from "./workspace/usePanelRuntimeData.js";
-import { useState } from "react";
+import { useLayoutEffect, useState } from "react";
 import { WorkspaceProvider, useWorkspaceStore } from "./workspace/WorkspaceContext.jsx";
 import {
   MeterRuntimeProvider,
@@ -135,6 +135,7 @@ function AppContent() {
     statusItems,
     statusOpen,
     runStatusAction,
+    normalSourcesOpenerRef,
     openDockMenu,
     setSettingsGeometry,
     setSettingsTargets,
@@ -261,6 +262,13 @@ function AppContent() {
     selectSource: onSelectCaptureDevice,
     openDockMenu,
   });
+  const { changeMenu } = toolbarMenu;
+  useLayoutEffect(() => {
+    normalSourcesOpenerRef.current = () => changeMenu("sources", true);
+    return () => {
+      normalSourcesOpenerRef.current = null;
+    };
+  }, [changeMenu, normalSourcesOpenerRef]);
 
   const { display, routing } = useMeterRuntimeAssembly();
   const { setAudio } = display;
@@ -274,15 +282,14 @@ function AppContent() {
   const histMaxSamples = Math.round(historyRetentionSec / HIST_SAMPLE_SEC);
   const visualMaxSamples = Math.round(historyRetentionSec / VISUAL_HIST_SAMPLE_SEC);
 
-  const { histSourceList, hasHistoryData, channelCount, sourceTransportState } =
-    useDisplaySnapshot();
+  const { histSourceList, hasHistoryData, sourceTransportState } = useDisplaySnapshot();
   const totalSamples = histSourceList?.length ?? 0;
   const loudnessProfileStats = useLoudnessProfileStats();
   const showFileAnalysisResult =
     sourceMode === "file" && (fileSessions.length > 0 || fileQueue.items.length > 0);
   const {
-    channelLabelRuntime,
-    channelLayoutLocked,
+    sourceChannels,
+    setSourceChannelsExpanded,
     changeDialogueVadEngine,
     setChannelLabelToken,
     setChannelLayout,
@@ -292,7 +299,6 @@ function AppContent() {
     dialogueGatingRef,
     dialogueVadEngineRef,
   } = useAnalysisSession();
-  const { channelLabelOverride, channelLabelTokens } = channelLabelRuntime;
   useHistoryPerformanceHarness({ analysisRequests, intakeRef, setAudio });
   const { frameData, historyData, metricsData, panelChromeData, panelPresentation } =
     usePanelRuntimeData();
@@ -357,6 +363,13 @@ function AppContent() {
     audioInputs,
     captureApplications,
     sourceMixes,
+    sourceChannels: {
+      ...sourceChannels,
+      onExpandedChange: setSourceChannelsExpanded,
+      onLayout: setChannelLayout,
+      onRole: setChannelLabelToken,
+      onReset: resetChannelLabels,
+    },
     safeAudioDeviceId,
     setCaptureDeviceId: onSelectCaptureDevice,
     openMenu: toolbarMenu.openMenu,
@@ -581,16 +594,6 @@ function AppContent() {
             packTransfer={packTransfer}
             presets={presets}
             loudnessProfile={loudnessProfile}
-            channelSettings={{
-              channelCount,
-              channelLabelTokens,
-              channelLabelHasOverride: !!channelLabelOverride,
-              selectedLayoutId: channelLabelRuntime.selectedLayoutId,
-              channelLayoutLocked,
-              setChannelLayout,
-              setChannelLabelToken,
-              resetChannelLabels,
-            }}
             updateControls={updateControls}
             appVersion={APP_VERSION}
             onAgentControlEnabledChange={setAgentControlEnabled}

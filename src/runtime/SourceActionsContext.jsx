@@ -101,7 +101,6 @@ export function SourceActionsProvider({ children }) {
   const currentFileAnalysisSettings = useCallback(
     () => ({
       requestInputs: fileRequestInputsRef.current,
-      channelRolesByCount: settings.channelLabelOverrides,
       dialogue: {
         enabled: fileDialogueDetection,
         engine: fileDialogueDetection ? settings.dialogueVadEngine : null,
@@ -109,12 +108,7 @@ export function SourceActionsProvider({ children }) {
         multichannelFusion: fileDialogueDetection ? "center-priority-fallback-v1" : null,
       },
     }),
-    [
-      fileDialogueDetection,
-      settings.dialogueVadEngine,
-      settings.channelLabelOverrides,
-      fileRequestInputsRef,
-    ]
+    [fileDialogueDetection, settings.dialogueVadEngine, fileRequestInputsRef]
   );
   const { exportFileAnalysisReport, copyFileAnalysisReportMarkdown } = useFileAnalysisReportExport({
     fileSession,

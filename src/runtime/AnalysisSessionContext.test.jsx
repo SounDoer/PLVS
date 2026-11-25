@@ -146,6 +146,31 @@ describe("AnalysisSessionProvider", () => {
     expect(seen.settings.channelLabelOverrides[2]).toBeUndefined();
   });
 
+  it("keeps saved Live roles independent of File channel labels", async () => {
+    settingsStore.patch({ channelLabelOverrides: { 2: ["R", "L"] } });
+    const seen = mount();
+    const frame = () =>
+      act(() =>
+        seen.assembly.display.setAudio((audio) => ({
+          ...audio,
+          peakDb: [-1, -2],
+          autoChannelRoles: ["L", "R"],
+        }))
+      );
+    frame();
+    expect(seen.session.channelLabelRuntime.channelLabelTokens).toEqual(["R", "L"]);
+
+    await act(async () => seen.runtime.switchSource("file"));
+    frame();
+    expect(seen.session.channelLabelRuntime.channelLabelTokens).toEqual(["L", "R"]);
+    await act(async () => seen.session.setChannelLabelToken(0, "C"));
+    expect(seen.settings.channelLabelOverrides[2]).toEqual(["R", "L"]);
+
+    await act(async () => seen.runtime.switchSource("live"));
+    frame();
+    expect(seen.session.channelLabelRuntime.channelLabelTokens).toEqual(["R", "L"]);
+  });
+
   it("keeps its consumers still while frames with the same channel count arrive", () => {
     const seen = mount();
     act(() => seen.assembly.display.setAudio((current) => ({ ...current, peakDb: [-1, -2] })));

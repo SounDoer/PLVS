@@ -189,6 +189,13 @@ export function DockEditorApp() {
     reorderProfiles: (profileIds) => action("reorder-loudness-profiles", { profileIds }),
   };
   const panelId = payload.view?.startsWith("module:") ? payload.view.slice(7) : null;
+  const sourceChannels = payload.device?.sourceChannels;
+  const editSourceChannels = (change) =>
+    action("source-channels", {
+      deviceId: payload.device.safeAudioDeviceId,
+      channelCount: sourceChannels.channelCount,
+      ...change,
+    });
   const panel = panelId
     ? (payload.panelsById?.[panelId] ?? {
         id: panelId,
@@ -251,6 +258,15 @@ export function DockEditorApp() {
         <DockEditorShell title="Sources">
           <DeviceSelectionContent
             {...payload.device}
+            sourceChannels={
+              sourceChannels && {
+                ...sourceChannels,
+                onExpandedChange: (expanded) => editSourceChannels({ expanded }),
+                onLayout: (layoutId) => editSourceChannels({ layoutId }),
+                onRole: (index, role) => editSourceChannels({ index, role }),
+                onReset: () => editSourceChannels({ reset: true }),
+              }
+            }
             onSelect={(deviceId) => action("select-device", { deviceId })}
           />
         </DockEditorShell>

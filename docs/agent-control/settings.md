@@ -160,9 +160,11 @@ metrics in default order. The returned visibility list follows the effective ord
 
 ## Channel labels
 
-Channel labels are stored per channel count rather than per device. Inspection reports the current
+The Live **Sources → Channels** controls are stored per channel count rather than per device. Inspection reports the current
 `channelCount`, `mode` (`auto` or `custom`), and the complete effective `roles` array. With no active
 channels, the count is zero, roles are empty, and mutation is unavailable with `noChannels`.
+In File mode, mutation is unavailable with `liveOnly`. For a Mix, mutation is unavailable with
+`mixFormatControlsLayout`. Use the Mix editor to change that source's format.
 
 A custom update must include the current channel count and one complete role array of that exact
 length. Returning to automatic labels uses the same count with `mode: auto` and no roles. A count
@@ -172,9 +174,8 @@ partial patch. Roles accept the GUI vocabulary `generic`, `M`, `L`, `R`, `C`, `L
 
 When a live change alters the derived BS.1770 weight vector, it resets loudness accumulation and
 requires `--allow-measurement-restart`; success reports `loudnessMeasurementRestart`. A label-only
-change between roles with identical weights needs no confirmation. Already completed FILE results
-are not recomputed; mutation succeeds with `fileReanalysisRequired` and never starts analysis by
-itself. The field is not captured by Presets, is unaffected by draft editors, and successful live
+change between roles with identical weights needs no confirmation. File analysis uses the selected
+track's reported layout or a count-based fallback. The field is not captured by Presets and successful Live
 mutation waits for backend weight synchronization and Settings persistence.
 
 ## Revision, results, and dry run

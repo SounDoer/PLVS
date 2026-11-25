@@ -159,10 +159,6 @@ fn snapshot_config(app: &AppHandle) -> WorkerConfig {
     .as_ref()
     .and_then(|s| s.analysis_requests.lock().ok().map(|g| g.clone()))
     .unwrap_or_default();
-  let channel_selection = state
-    .as_ref()
-    .and_then(|s| s.channel_selection.lock().ok().map(|g| g.clone()))
-    .unwrap_or(None);
   let dialogue_gating = state
     .as_ref()
     .and_then(|s| s.dialogue_gating_enabled.lock().ok().map(|g| *g))
@@ -173,7 +169,7 @@ fn snapshot_config(app: &AppHandle) -> WorkerConfig {
     .unwrap_or_default();
   WorkerConfig {
     requests,
-    channel_selection,
+    channel_selection: None,
     dialogue_gating,
     dialogue_vad_engine,
     deterministic_spectral_time: false,
@@ -188,13 +184,6 @@ pub struct FileAnalysisSession {
 pub(crate) fn validate_run_settings(settings: &FileAnalysisRunSettings) -> Result<(), String> {
   let engine = settings.dialogue.engine.as_deref().unwrap_or("firered");
   VadEngineKind::from_key(engine).ok_or_else(|| format!("unknown VAD engine: {engine}"))?;
-  for (count, roles) in &settings.channel_roles_by_count {
-    if count.parse::<usize>().ok() != Some(roles.len())
-      || ChannelSelection::from_roles(roles.clone()).is_none()
-    {
-      return Err(format!("Invalid File channel roles for {count} channels"));
-    }
-  }
   Ok(())
 }
 
@@ -214,20 +203,9 @@ impl FileAnalysisSession {
         let engine = settings.dialogue.engine.as_deref().unwrap_or("firered");
         let dialogue_vad_engine =
           VadEngineKind::from_key(engine).ok_or_else(|| format!("unknown VAD engine: {engine}"))?;
-        let roles = probe
-          .as_ref()
-          .and_then(|probe| probe.selected_track.channels)
-          .and_then(|channels| settings.channel_roles_by_count.get(&channels.to_string()));
-        let channel_selection = match roles {
-          Some(roles) => Some(
-            ChannelSelection::from_roles(roles.clone())
-              .ok_or_else(|| "Invalid File channel roles".to_string())?,
-          ),
-          None => None,
-        };
         WorkerConfig {
           requests: settings.requests,
-          channel_selection,
+          channel_selection: None,
           dialogue_gating: settings.dialogue.enabled,
           dialogue_vad_engine,
           deterministic_spectral_time: false,
@@ -473,8 +451,8 @@ fn analyze_file_with_process(
   } else {
     MeterPipeline::new_for_file_with_duration(sample_rate, channels, duration_ms)
   };
-  // The file's own layout plays the part of a Live output's speaker mapping: a manual role
-  // selection for this channel count still overrides it.
+  // The selected track supplies its own speaker mapping. The headless analyzer can
+  // explicitly override it for a single run.
   let file_roles = crate::file_analysis::ffmpeg::layout::roles_for_layout(
     track.channel_layout.as_deref(),
     channels,
@@ -646,18 +624,14 @@ mod tests {
   #[test]
   fn validates_frozen_file_conditions_before_starting_a_worker() {
     let mut settings: FileAnalysisRunSettings = serde_json::from_value(serde_json::json!({
-      "dialogue": {"enabled": true, "engine": "firered"},
-      "channelRolesByCount": {"2": ["L", "R"]}
+      "dialogue": {"enabled": true, "engine": "firered"}
     }))
     .unwrap();
     assert!(validate_run_settings(&settings).is_ok());
     settings.dialogue.engine = Some("unsupported".into());
     assert!(validate_run_settings(&settings).is_err());
     settings.dialogue.engine = Some("silero".into());
-    settings
-      .channel_roles_by_count
-      .insert("2".into(), vec!["L".into()]);
-    assert!(validate_run_settings(&settings).is_err());
+    assert!(validate_run_settings(&settings).is_ok());
   }
   use crate::file_analysis::probe::probe_file;
   use crate::file_analysis::summary::analyze_file_track_to_summary_with_layout;

@@ -389,7 +389,7 @@ describe("Settings Control", () => {
     ).toEqual([expect.objectContaining({ code: "invalidChannelRole" })]);
   });
 
-  it("projects automatic labels and warns every FILE label change", () => {
+  it("projects automatic Live labels and refuses overrides in File mode or for a Mix", () => {
     const custom = {
       ...current,
       channelLabels: { channelCount: 2, mode: "custom", roles: ["M", "M"] },
@@ -397,7 +397,8 @@ describe("Settings Control", () => {
     const auto = planSettingsUpdate(
       custom,
       { channelLabels: { channelCount: 2, mode: "auto" } },
-      { ...context, sourceMode: "file" }
+      { ...context, sourceMode: "live" },
+      { allowMeasurementRestart: true }
     );
     expect(auto.settings.channelLabels).toEqual({
       channelCount: 2,
@@ -405,14 +406,26 @@ describe("Settings Control", () => {
       layout: "stereo",
       roles: ["L", "R"],
     });
-    expect(auto.warnings).toContainEqual({ code: "fileReanalysisRequired" });
-
-    const relabeled = planSettingsUpdate(
-      current,
-      { channelLabels: { channelCount: 2, mode: "custom", roles: ["R", "L"] } },
-      { ...context, sourceMode: "file" }
-    );
-    expect(relabeled.warnings).toContainEqual({ code: "fileReanalysisRequired" });
+    for (const { source, reason } of [
+      { source: { sourceMode: "file" }, reason: "liveOnly" },
+      {
+        source: { sourceMode: "live", channelLayoutLocked: true },
+        reason: "mixFormatControlsLayout",
+      },
+    ]) {
+      const locked = { ...context, ...source };
+      expect(buildSettingsInspection(current, locked).availability.channelLabels).toEqual({
+        writable: false,
+        reason,
+      });
+      const planned = planSettingsUpdate(
+        current,
+        { channelLabels: { channelCount: 2, mode: "custom", roles: ["R", "L"] } },
+        locked
+      );
+      expect(planned.refusal).toEqual({ code: "controlUnavailable", reason });
+      expect(planned.settings).toBe(current);
+    }
   });
 
   describe("update and crash-report preferences", () => {

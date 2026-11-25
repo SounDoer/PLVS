@@ -22,7 +22,6 @@ describe("UI Navigation state", () => {
       "shortcuts",
       "appearance",
       "analysis",
-      "channels",
       "transfer",
       "agent-control",
       "about",
@@ -304,8 +303,8 @@ describe("Status projection", () => {
         kind: "info",
         helpTopic: "channel-layout-inferred",
         helpTarget: "status-help:channel-layout-inferred:channel-layout-inferred",
-        action: "settings",
-        actionTarget: "status-action:channel-layout-inferred:settings",
+        action: "channels",
+        actionTarget: "status-action:channel-layout-inferred:channels",
       },
     ]);
   });

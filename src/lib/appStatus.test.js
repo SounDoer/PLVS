@@ -77,7 +77,7 @@ describe("inferred channel layout", () => {
       kind: "info",
       text: "Channel Layout Inferred",
       helpTopic: "channel-layout-inferred",
-      action: "settings",
+      action: "channels",
     });
     expect(item.details).toContain("8 channels as 7.1 by count");
   });

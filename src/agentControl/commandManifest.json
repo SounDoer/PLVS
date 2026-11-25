@@ -131,7 +131,6 @@
               "shortcuts",
               "appearance",
               "analysis",
-              "channels",
               "transfer",
               "agent-control",
               "about"
@@ -167,7 +166,6 @@
               "shortcuts",
               "appearance",
               "analysis",
-              "channels",
               "transfer",
               "agent-control",
               "about"
@@ -608,7 +606,7 @@
       "id": "ui.show.sourceGroup",
       "family": "ui",
       "path": ["ui", "show", "source-group"],
-      "usage": "plvs-cli ui show source-group --group <mixes|output|input|applications> --expected-revision <n> --expected-ui-generation <n> --json",
+      "usage": "plvs-cli ui show source-group --group <channels|mixes|output|input|applications> --expected-revision <n> --expected-ui-generation <n> --json",
       "summary": "Expand a Sources group as clicking its heading does.",
       "execution": "runningApp",
       "operation": "action",
@@ -624,7 +622,10 @@
           "name": "--group",
           "mapsTo": "group",
           "required": true,
-          "value": { "type": "string", "enum": ["mixes", "output", "input", "applications"] }
+          "value": {
+            "type": "string",
+            "enum": ["channels", "mixes", "output", "input", "applications"]
+          }
         },
         {
           "name": "--expected-revision",
@@ -644,7 +645,10 @@
         "additionalProperties": false,
         "required": ["group", "expectedRevision", "expectedUiGeneration"],
         "properties": {
-          "group": { "type": "string", "enum": ["mixes", "output", "input", "applications"] },
+          "group": {
+            "type": "string",
+            "enum": ["channels", "mixes", "output", "input", "applications"]
+          },
           "expectedRevision": { "type": "integer", "minimum": 0, "maximum": 9007199254740991 },
           "expectedUiGeneration": { "type": "integer", "minimum": 0, "maximum": 9007199254740991 }
         }

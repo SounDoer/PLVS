@@ -12,6 +12,13 @@ PLVS shows the codec name in the error message.
 Panels with a channel or channel pair selection use the selected audio track's channel layout
 from the first analysis. If the track lacks the chosen channels, the panel uses its available
 fallback and keeps the original selection for other files.
+
+Hover over the metadata below the file name to open **File Info**. **Source Layout** shows what
+the track reports, or **Unspecified**. **Calculation Layout** shows the layout used for loudness.
+When PLVS infers a layout for a track with three or more channels, the result shows **Inferred**
+and the warning next to the file name explains the assumption. When the layout is unknown, the
+warning explains that loudness uses channels 1–2 and True Peak Max covers every channel.
+For inferred Mono or Stereo, the inference appears in File Info.
 If you leave File Mode while choosing a file, the pending selection is discarded.
 
 When a file contains multiple audio tracks, choose one in **Select Audio Track**, then choose

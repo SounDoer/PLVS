@@ -72,9 +72,9 @@ PLVS is receiving audio, but it could not identify the channel roles. Loudness
 uses channels 1 and 2 until the layout is set. True Peak Max still covers every
 captured channel.
 
-Select **Open Settings** in Status and use **Channels** to set the layout or
-assign the roles that match your source. See [Multichannel](multichannel.md) for
-details.
+In Live, select **Open Channels** in Status to set the layout or assign the roles that match your
+source. In File mode, hover over the warning next to the file name to see the calculation limit.
+See [Multichannel](multichannel.md) for details.
 
 ## <span id="channel-layout-inferred"></span> Channel layout is inferred
 
@@ -82,9 +82,9 @@ The source does not report its speaker layout, so PLVS chose one from the channe
 example 7.1 for eight channels. This happens with multichannel inputs on macOS and Linux and with
 files that store no layout. Loudness, labels and channel weights follow that layout.
 
-If the channels are separate microphones or use a different layout, select **Open Settings** in
-Status and use **Channels** to set the layout or assign each channel's role. The notice disappears
-once you do. See [Multichannel](multichannel.md) for details.
+If the Live channels are separate microphones or use a different layout, select **Open Channels**
+in Status to assign their roles. In File mode, hover over the warning next to the file name to see
+the assumption used for a multichannel track. See [Multichannel](multichannel.md) for details.
 
 ## <span id="file-open-analysis"></span> A file won’t open or analyze
 

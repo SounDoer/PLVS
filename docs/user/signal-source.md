@@ -138,7 +138,7 @@ each checked source shows its current route. Use it to choose one destination or
 pair, turn a mono route **Off**, or restore Auto. **Per-Channel Settings** expands a
 multi-channel source into one dropdown per original channel. Each dropdown offers Auto, one
 speaker role, or Off. The Mix format also supplies the channel
-roles used in Settings. A format
+roles shown under **Channels** in Sources. A format
 change that removes a custom destination requires a routing edit before the new configuration
 can be measured.
 
@@ -167,6 +167,10 @@ Output, Input, Applications, and Mixes are grouped into collapsible sections wit
 picker scrolls when the available sources do not fit on screen. Application rows show a single
 name. Hover or focus a row to see its window title when it adds context. The system tray's
 **Source** submenu offers the same source groups, including running applications.
+
+In the window and Dock, **Channels** at the top of **Sources** shows the current channel count and
+layout. Expand it to see the roles in channel order. The expanded or collapsed state follows you
+when switching sources. See [Multichannel](multichannel.md#manual-layouts) for editing and reset.
 
 ## When capture is interrupted
 

@@ -12,15 +12,6 @@ import { settingsStore } from "../persistence/index.js";
 
 function Harness() {
   const settings = useSettings();
-  const channelSettings = {
-    channelCount: 2,
-    channelLabelTokens: [],
-    channelLabelHasOverride: false,
-    setChannelLabelToken: vi.fn(),
-    resetChannelLabels: vi.fn(),
-    selectedLayoutId: undefined,
-    setChannelLayout: undefined,
-  };
   const updateControls = {
     updateInfo: null,
     refreshUpdateCheck: vi.fn(),
@@ -35,7 +26,6 @@ function Harness() {
       </button>
       <AppSettingsOverlays
         settings={settings}
-        channelSettings={channelSettings}
         updateControls={updateControls}
         appVersion="0.0.0"
         crashReportSetting={{ enabled: true, busy: false, error: "", setEnabled: vi.fn() }}

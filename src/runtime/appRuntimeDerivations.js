@@ -63,7 +63,7 @@ export function resolveFileAnalysisSettings(settings, requestInputs, selectedTra
   const channelCount = selectedTrack?.channels ?? 0;
   const { peakLabelContext } = deriveChannelLabelRuntime({
     channelCount,
-    channelLabelOverrides: settings.channelRolesByCount ?? {},
+    channelLabelOverrides: {},
     autoChannelRoles: selectedTrack?.channelRoles,
   });
   const topology = {

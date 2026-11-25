@@ -33,7 +33,7 @@ private fixture reset token restores the real status presentation.
 The public `show` targets are:
 
 - `settings` opens Settings and selects one of `behavior`, `shortcuts`, `appearance`, `analysis`,
-  `channels`, `transfer`, `agent-control`, or `about`;
+  `transfer`, `agent-control`, or `about`;
 - `panel-settings` opens the settings surface for the exact `panelId` in the selected workbench;
 - `theme-editor` starts or focuses `create`, `edit`, `customize`, or `duplicate` authoring and may
   select the `core`, `palettes`, or `advanced` page;
@@ -45,7 +45,8 @@ The public `show` targets are:
 - `panel-help` pins a panel's gesture reference, as clicking its question mark does;
 - `panel-fullscreen` shows one panel in Fullscreen, as its header's Fullscreen button does;
 - `add-panel` opens the Panels menu's Add Panel list;
-- `source-group` expands the Sources menu's `output`, `input` or `applications` group;
+- `source-group` expands the Sources menu's `channels`, `mixes`, `output`, `input` or
+  `applications` group;
 - `dropdown` opens a named single-choice dropdown in Settings, Panel Settings or Views.
 
 A toolbar menu opens through the same path as a click on its button, so Sources refreshes its

@@ -49,13 +49,6 @@ const BASE_PROPS = {
   setInterfaceSize: vi.fn(),
   fixedThemeSelectValue: "",
   setFixedThemeIdFromPicker: vi.fn(),
-  channelCount: 0,
-  channelLabelTokens: [],
-  channelLabelHasOverride: false,
-  selectedLayoutId: null,
-  setChannelLayout: vi.fn(),
-  setChannelLabelToken: vi.fn(),
-  resetChannelLabels: vi.fn(),
   appVersion: undefined,
   latestVersion: undefined,
   releaseUrl: undefined,
@@ -154,7 +147,6 @@ describe("SettingsPanel", () => {
       "shortcuts",
       "appearance",
       "analysis",
-      "channels",
       "transfer",
       "agent-control",
       "about",
@@ -167,8 +159,6 @@ describe("SettingsPanel", () => {
         {...BASE_PROPS}
         appearance="fixed"
         fixedThemeSelectValue="plvs-dark"
-        channelCount={2}
-        channelLabelTokens={["L", "R"]}
         appVersion="0.23.4"
         hasUpdate
         latestVersion="0.23.5"
@@ -176,9 +166,15 @@ describe("SettingsPanel", () => {
         agentControlStatus={{ supported: true, cliInstalled: true, enabled: true, mcpSetup: "{}" }}
       />
     );
-    // Shortcut rows are targeted per action, channel roles per channel, and the File controls live
-    // in the File toolbar rather than in Settings.
-    const elsewhere = new Set(["channels.role", "file.dialogueDetection", "file.summaryMetrics"]);
+    // Shortcut rows are targeted per action. Sources and File controls are covered at their
+    // own entry points.
+    const elsewhere = new Set([
+      "channels.role",
+      "channels.layout",
+      "channels.resetLabels",
+      "file.dialogueDetection",
+      "file.summaryMetrics",
+    ]);
     const missing = SETTINGS_SURFACE_CONTROLS.map(({ id }) => id)
       .filter((id) => !id.startsWith("shortcuts.") && !elsewhere.has(id))
       .filter((id) => !document.querySelector(`[data-ui-target="setting:${id}"]`));
@@ -1320,120 +1316,6 @@ describe("SettingsPanel", () => {
     expect(onLibraryExport).toHaveBeenCalledTimes(1);
     fireEvent.click(importLibrary);
     expect(onSharedPackImport).toHaveBeenCalledTimes(1);
-  });
-});
-
-describe("SettingsPanel — Channel labels", () => {
-  it("shows a sole matching standard layout as text", () => {
-    const setChannelLayout = vi.fn();
-    const roles = ["L", "R", "C", "LFE", "Lb", "Rb", "Ls", "Rs", "Ltf", "Rtf", "Ltr", "Rtr"];
-    render(
-      <SettingsPanel
-        {...BASE_PROPS}
-        channelCount={12}
-        channelLabelTokens={roles}
-        selectedLayoutId="7.1.4"
-        setChannelLayout={setChannelLayout}
-      />
-    );
-
-    const layoutSelect = screen.getByLabelText("channel layout");
-    expect(layoutSelect.textContent).toContain("7.1.4");
-    expect(screen.queryByRole("combobox", { name: "channel layout" })).toBeNull();
-    expect(setChannelLayout).not.toHaveBeenCalled();
-  });
-
-  it("offers every matching standard when the channel count has multiple layouts", () => {
-    render(
-      <SettingsPanel
-        {...BASE_PROPS}
-        channelCount={8}
-        channelLabelTokens={["L", "R", "C", "LFE", "Lb", "Rb", "Ls", "Rs"]}
-        selectedLayoutId="7.1"
-      />
-    );
-
-    fireEvent.click(screen.getByLabelText("channel layout"));
-    expect(screen.getByRole("option", { name: "7.1" })).toBeTruthy();
-    expect(screen.getByRole("option", { name: "5.1.2" })).toBeTruthy();
-    expect(screen.queryByRole("option", { name: "Custom" })).toBeNull();
-  });
-
-  it("reports edited roles as Custom and allows switching back to a standard layout", () => {
-    const setChannelLayout = vi.fn();
-    const roles = ["L", "R", "C", "LFE", "Lb", "Rb", "Ls", "Rs", "Ltf", "Rtf", "Ltr", "Rtr"];
-    render(
-      <SettingsPanel
-        {...BASE_PROPS}
-        channelCount={12}
-        channelLabelTokens={[...roles.slice(0, 4), "Ls", "Rs", "Lb", "Rb", ...roles.slice(8)]}
-        selectedLayoutId="custom"
-        setChannelLayout={setChannelLayout}
-      />
-    );
-
-    expect(screen.getByLabelText("channel layout").textContent).toContain("Custom");
-    fireEvent.click(screen.getByLabelText("channel layout"));
-    expect(screen.getByRole("option", { name: "Custom" })).toBeTruthy();
-    fireEvent.click(screen.getByRole("option", { name: "7.1.4" }));
-    expect(setChannelLayout).toHaveBeenCalledWith("7.1.4");
-  });
-
-  it("shows Unknown rather than Custom when automatic detection cannot identify the layout", () => {
-    render(
-      <SettingsPanel
-        {...BASE_PROPS}
-        channelCount={12}
-        channelLabelTokens={Array.from({ length: 12 }, () => "generic")}
-        selectedLayoutId={null}
-      />
-    );
-
-    expect(screen.getByLabelText("channel layout").textContent).toContain("Unknown");
-  });
-
-  it("shows the idle hint when no input is connected", () => {
-    render(<SettingsPanel {...BASE_PROPS} channelCount={0} />);
-    expect(screen.getByText("Connect an input to label its channels.")).toBeTruthy();
-  });
-
-  it("renders one role select per channel when an input is active", () => {
-    render(<SettingsPanel {...BASE_PROPS} channelCount={2} channelLabelTokens={["L", "R"]} />);
-    expect(screen.getByLabelText("Channel 1 role")).toBeTruthy();
-    expect(screen.getByLabelText("Channel 2 role")).toBeTruthy();
-  });
-
-  it("disables Reset when there is no channel-label override", () => {
-    render(
-      <SettingsPanel
-        {...BASE_PROPS}
-        channelCount={2}
-        channelLabelTokens={["L", "R"]}
-        channelLabelHasOverride={false}
-      />
-    );
-    expect(
-      /** @type {HTMLButtonElement} */ (
-        screen.getByRole("button", { name: "Reset channel labels" })
-      ).disabled
-    ).toBe(true);
-  });
-
-  it("resets channel labels only after confirming", () => {
-    const resetChannelLabels = vi.fn();
-    render(
-      <SettingsPanel
-        {...BASE_PROPS}
-        channelCount={2}
-        channelLabelTokens={["L", "R"]}
-        channelLabelHasOverride={true}
-        resetChannelLabels={resetChannelLabels}
-      />
-    );
-    fireEvent.click(screen.getByRole("button", { name: "Reset channel labels" }));
-    expect(resetChannelLabels).not.toHaveBeenCalled();
-    fireEvent.click(screen.getByLabelText("Confirm reset channel labels"));
-    expect(resetChannelLabels).toHaveBeenCalledTimes(1);
   });
 });
 

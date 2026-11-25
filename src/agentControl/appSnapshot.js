@@ -147,6 +147,7 @@ export function buildAgentControlCapabilities(runtime, revision) {
                 sourceGroup: hasMethod("ui.show.sourceGroup")
                   ? {
                       groups: [
+                        "channels",
                         "output",
                         "input",
                         "applications",

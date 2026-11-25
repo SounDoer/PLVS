@@ -19,8 +19,6 @@ import {
   KEYBOARD_SHORTCUT_ACTIONS,
   configuredShortcutConflict,
 } from "@/data/keyboardShortcutActions.js";
-import { CHANNEL_ROLE_VOCABULARY } from "@/math/channelRoles.js";
-import { layoutsForChannelCount } from "@/math/channelLayoutTable.js";
 import { INTERFACE_SIZE_OPTIONS } from "@/settings/defaults.js";
 import { ThemePicker } from "./ThemePicker.jsx";
 import { SharesetsBrowseButton } from "./SharesetsBrowseButton.jsx";
@@ -207,14 +205,6 @@ export function visibleSettingsSection(scroller, nodes) {
  *   shortcutsReady?: boolean,
  *   shortcutRegistrationErrors?: Record<string, string>,
  *   shortcutSaveErrors?: Record<string, string>,
- *   channelCount?: number,
- *   channelLabelTokens?: any[],
- *   channelLabelHasOverride?: boolean,
- *   selectedLayoutId?: string,
- *   channelLayoutLocked?: boolean,
- *   setChannelLayout?: (...args: any[]) => any,
- *   setChannelLabelToken?: (...args: any[]) => any,
- *   resetChannelLabels?: (...args: any[]) => any,
  *   customThemeOptions?: any[],
  *   createCustomTheme?: (...args: any[]) => any,
  *   editCustomTheme?: (...args: any[]) => any,
@@ -287,14 +277,6 @@ export function SettingsContent({
   shortcutsReady = false,
   shortcutRegistrationErrors = {},
   shortcutSaveErrors = {},
-  channelCount = 0,
-  channelLabelTokens = [],
-  channelLabelHasOverride = false,
-  selectedLayoutId = null,
-  channelLayoutLocked = false,
-  setChannelLayout = () => {},
-  setChannelLabelToken = () => {},
-  resetChannelLabels = () => {},
   customThemeOptions = [],
   createCustomTheme = () => {},
   editCustomTheme = () => {},
@@ -339,7 +321,6 @@ export function SettingsContent({
   const appearanceDropdown = useDropdownNavigation("setting:appearance.mode");
   const historyDropdown = useDropdownNavigation("setting:analysis.historyRetention");
   const dialogueDropdown = useDropdownNavigation("setting:analysis.dialogueVadEngine");
-  const layoutDropdown = useDropdownNavigation("setting:channels.layout");
   const effectiveReleaseUrl = releaseUrl || RELEASES_INDEX_URL;
   const updateCheckDisabled = ["checking", "disabled", "managed"].includes(updateStatus);
   let updateStatusText = "Checking...";
@@ -376,18 +357,6 @@ export function SettingsContent({
   const agentControlStartError = agentControlStatus?.startError ?? "";
   const agentControlMcpSetup = agentControlStatus?.mcpSetup ?? "";
   const selectedDialogueVadEngine = dialogueVadEngineOption(dialogueVadEngine);
-  const channelLayouts = layoutsForChannelCount(channelCount);
-  const selectedStandardLayout = channelLayouts.find((layout) => layout.id === selectedLayoutId);
-  const showChannelLayoutSelect =
-    !channelLayoutLocked &&
-    (channelLayouts.length > 1 ||
-      (channelLayouts.length === 1 &&
-        (selectedLayoutId === null || selectedLayoutId === "custom")));
-  const channelLayoutLabel =
-    selectedLayoutId === "custom"
-      ? "Custom"
-      : (selectedStandardLayout?.name ?? selectedLayoutId ?? "Unknown");
-
   const bindSection = useCallback(
     (section) => (node) => {
       if (node) sectionNodesRef.current.set(section, node);
@@ -886,102 +855,6 @@ export function SettingsContent({
               </SelectContent>
             </Select>
           </SettingsRow>
-        </SettingsSection>
-
-        <SettingsDivider />
-
-        {/* Channel labels */}
-        <SettingsSection sectionId="channels" sectionRef={bindSection("channels")}>
-          <SettingsRow
-            labelNode={
-              <span className={ROW_LABEL_CLASS}>
-                Channels{channelCount > 0 ? ` · ${channelCount}ch` : ""}
-              </span>
-            }
-          >
-            {channelCount > 0 && !channelLayoutLocked ? (
-              <ResetAction
-                label="Reset channel labels"
-                data-ui-target="setting:channels.resetLabels"
-                isDefault={!channelLabelHasOverride}
-                onReset={resetChannelLabels}
-                confirmLabel="Confirm reset channel labels"
-                cancelLabel="Cancel reset channel labels"
-              />
-            ) : null}
-          </SettingsRow>
-          {channelCount > 0 ? (
-            <div className="flex flex-col gap-0">
-              <SettingsRow labelNode={<span className={ROW_LABEL_CLASS}>Layout</span>}>
-                {showChannelLayoutSelect ? (
-                  <Select
-                    value={selectedLayoutId ?? ""}
-                    onValueChange={setChannelLayout}
-                    {...layoutDropdown.rootProps}
-                  >
-                    <SelectTrigger
-                      variant="flush"
-                      aria-label="channel layout"
-                      {...layoutDropdown.triggerProps}
-                    >
-                      <SelectValue placeholder="Unknown" />
-                    </SelectTrigger>
-                    <SelectContent position="popper" variant="flush">
-                      {channelLayouts.map((layout) => (
-                        <SelectItem key={layout.id} value={layout.id}>
-                          {layout.name}
-                        </SelectItem>
-                      ))}
-                      {selectedLayoutId === "custom" ? (
-                        <SelectItem value="custom">Custom</SelectItem>
-                      ) : null}
-                    </SelectContent>
-                  </Select>
-                ) : (
-                  <span aria-label="channel layout" className="pl-2">
-                    {channelLayoutLabel}
-                  </span>
-                )}
-              </SettingsRow>
-              {channelLayoutLocked && (
-                <p className="px-2 pb-2 text-muted-foreground">
-                  Channel roles follow the Mix format.
-                </p>
-              )}
-              {!channelLayoutLocked &&
-                channelLabelTokens.map((token, i) => (
-                  <SettingsRow
-                    key={i}
-                    labelNode={
-                      <span className="shrink-0 tabular-nums font-mono text-[length:var(--ui-fs-axis)] text-muted-foreground">
-                        {i + 1}
-                      </span>
-                    }
-                  >
-                    <Select value={token} onValueChange={(v) => setChannelLabelToken(i, v)}>
-                      <SelectTrigger
-                        variant="flush"
-                        aria-label={`Channel ${i + 1} role`}
-                        data-ui-target={`setting:channels.role.${i + 1}`}
-                      >
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent position="popper" variant="flush">
-                        {CHANNEL_ROLE_VOCABULARY.map((role) => (
-                          <SelectItem key={role.id} value={role.id}>
-                            {role.label}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </SettingsRow>
-                ))}
-            </div>
-          ) : (
-            <span className="px-2 text-[length:var(--ui-fs-axis)] text-muted-foreground">
-              Connect an input to label its channels.
-            </span>
-          )}
         </SettingsSection>
 
         <SettingsDivider />

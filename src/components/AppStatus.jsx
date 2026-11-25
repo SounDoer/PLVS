@@ -20,6 +20,7 @@ const STATUS_ACTION_LABELS = {
   "check-update": "Check Again",
   "restart-configuration": "Restart PLVS",
   settings: "Open Settings",
+  channels: "Open Channels",
 };
 
 export function StatusIcon({ item, className = "size-3.5 shrink-0" }) {
