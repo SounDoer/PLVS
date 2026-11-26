@@ -137,9 +137,10 @@ and **Releases** are on the second row and open in your browser.
 The question-mark icon beside **Auto Download Updates** explains download availability, the **Auto Check for Updates**
 dependency, and installation confirmation on hover or keyboard focus. The version status row shows
 background download progress, a ready package, or a failed download. A failed replacement download
-does not erase an older verified ready package. Update details show the selected target version and
-actions while the release notes load. If formatting is unavailable, the notes are shown as plain
-text.
+does not erase an older verified ready package. Update details use **What’s New in vX.Y.Z** for a
+single release and **What’s New Since vX.Y.Z** for notes covering multiple releases since the
+installed version. The title and actions appear while the release notes load. If formatting is
+unavailable, the notes are shown as plain text.
 **Auto Check for Updates** controls startup and twelve-hour checks. **Auto Download Updates** requires checking to be enabled. Turning checking off also turns downloading
 off; turning checking back on leaves downloading off. When there is no known update, **Check**
 starts a manual check even if automatic checking is off. If the check fails, **Try Again** repeats
@@ -172,8 +173,8 @@ the package without installing it. Details keep their selected version even if a
 finishes, with one exception: when details offer an already downloaded package and automatic
 downloading finds a newer version, details switch to the newer version, which replaces the older
 package. If the selected version is still downloading, details show its progress and temporarily
-disable **Update and Restart**; when verification finishes, the same view becomes **Update Ready**
-without reporting the active download as an error. If that package has been replaced or removed,
+disable **Update and Restart**. When verification finishes, **Update and Restart** becomes available.
+If that package has been replaced or removed,
 confirmation fails safely and asks you to reopen details. A previously downloaded package can be
 installed without another network check.
 If a background check fails while those cached details are open, the offline installation remains

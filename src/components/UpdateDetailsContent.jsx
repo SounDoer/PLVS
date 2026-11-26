@@ -1,6 +1,7 @@
 import { lazy, Suspense } from "react";
 import { Button } from "@/components/ui/button";
-import { DialogDescription, DialogFooter, DialogTitle } from "@/components/ui/dialog";
+import { DialogFooter, DialogTitle } from "@/components/ui/dialog";
+import { hasMultipleChangelogVersions } from "../lib/changelogAggregate.js";
 
 /** @typedef {import("react").ComponentProps<typeof import("./ReleaseNotesMarkdown.jsx").ReleaseNotesMarkdown>} ReleaseNotesProps */
 
@@ -19,20 +20,22 @@ function PlainReleaseNotes({ notes }) {
   return <p className="whitespace-pre-wrap">{notes}</p>;
 }
 
-/** The same heading and version context in both native hosts. */
-export function UpdateDetailsHeader({ ready, targetVersion, currentVersion, accessory = false }) {
+/** The same heading in both native hosts. */
+export function UpdateDetailsHeader({
+  targetVersion,
+  currentVersion,
+  releaseNotes,
+  accessory = false,
+}) {
   const Title = accessory ? "h1" : DialogTitle;
-  const Description = accessory ? "p" : DialogDescription;
+  const multipleVersions = hasMultipleChangelogVersions(releaseNotes);
+  const titleVersion = multipleVersions ? currentVersion : targetVersion;
   return (
-    <>
-      <Title className="text-[length:var(--ui-fs-control)] font-semibold text-foreground">
-        {ready ? "Update Ready" : "Update Available"}
-      </Title>
-      <Description className="mt-0 text-[length:var(--ui-fs-metric-meta)] text-muted-foreground">
-        {targetVersion ? `v${targetVersion} · ` : ""}
-        {currentVersion ? `What's new since v${currentVersion}` : "What's new"}
-      </Description>
-    </>
+    <Title className="text-[length:var(--ui-fs-control)] font-semibold text-foreground">
+      {titleVersion
+        ? `What’s New ${multipleVersions ? "Since" : "in"} v${titleVersion}`
+        : "What’s New"}
+    </Title>
   );
 }
 

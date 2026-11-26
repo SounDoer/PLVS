@@ -1,6 +1,7 @@
 /** @vitest-environment jsdom */
 import { fireEvent, render, screen } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { sliceChangelogSince } from "../lib/changelogAggregate.js";
 import { UpdateDialog } from "./UpdateDialog.jsx";
 
 const BASE_PROPS = {
@@ -28,11 +29,12 @@ describe("UpdateDialog", () => {
     render(
       <UpdateDialog
         {...BASE_PROPS}
+        targetVersion="1.2.3"
         releaseNotes={"### Fixed\n- Safer updates\n\n<span data-unsafe>unsafe</span>"}
       />
     );
 
-    expect(screen.getByText("What's new since v0.9.4")).toBeTruthy();
+    expect(screen.getByRole("dialog", { name: "What’s New in v1.2.3" })).toBeTruthy();
     expect(screen.getByRole("status").textContent).toBe("Loading release notes…");
     expect(screen.getByRole("button", { name: "Update and Restart" })).toBeTruthy();
     expect(await screen.findByRole("heading", { name: "Fixed" })).toBeTruthy();
@@ -40,9 +42,31 @@ describe("UpdateDialog", () => {
     expect(screen.getByRole("dialog").querySelector("[data-unsafe]")).toBeNull();
   });
 
-  it("shows a neutral heading when the installed version is unknown", () => {
-    render(<UpdateDialog {...BASE_PROPS} currentVersion={undefined} />);
-    expect(screen.getByText("What's new")).toBeTruthy();
+  it("shows a neutral heading when the target version is unknown", () => {
+    render(<UpdateDialog {...BASE_PROPS} />);
+    expect(screen.getByRole("dialog", { name: "What’s New" })).toBeTruthy();
+  });
+
+  it.each([
+    ["0.27.0", "What’s New in v0.27.1"],
+    ["0.26.0", "What’s New Since v0.26.0"],
+    [undefined, "What’s New"],
+  ])("titles the displayed release notes with installed version %s", (currentVersion, title) => {
+    const changelog =
+      "## [0.27.1] - 2026-11-26\n\n- Latest fixes.\n\n## [0.27.0] - 2026-11-25\n\n- New features.";
+    render(
+      <UpdateDialog
+        {...BASE_PROPS}
+        currentVersion={currentVersion}
+        targetVersion="0.27.1"
+        releaseNotes={sliceChangelogSince(changelog, currentVersion)}
+        ready
+      />
+    );
+
+    expect(screen.getByRole("dialog", { name: title })).toBeTruthy();
+    expect(screen.queryByRole("heading", { name: "Update Ready" })).toBeNull();
+    expect(screen.getByRole("button", { name: "Skip This Time" })).toBeTruthy();
   });
 
   it("opens Markdown links through the external URL handler", async () => {
@@ -247,9 +271,4 @@ describe("UpdateDialog", () => {
     fireEvent.click(screen.getByRole("button", { name: "Restart" }));
     expect(onRestart).toHaveBeenCalledTimes(1);
   });
-});
-
-it("shows the selected target version even when release notes have no version heading", () => {
-  render(<UpdateDialog {...BASE_PROPS} targetVersion="1.2.3" releaseNotes="Bug fixes." />);
-  expect(screen.getByText("v1.2.3 · What's new since v0.9.4")).toBeTruthy();
 });

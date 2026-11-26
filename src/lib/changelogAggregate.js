@@ -32,6 +32,19 @@ function isNewer(version, baseline) {
   return false;
 }
 
+/** @param {string} body */
+function changelogHeaders(body) {
+  return Array.from(body.matchAll(SECTION_HEADER), (match) => ({
+    index: match.index,
+    version: parseVersion(match[1]),
+  }));
+}
+
+/** @param {string | null | undefined} notes Already sliced for display. */
+export function hasMultipleChangelogVersions(notes) {
+  return changelogHeaders(notes ?? "").filter(({ version }) => version !== null).length > 1;
+}
+
 /**
  * @param {string} body
  * @param {string} currentVersion
@@ -39,12 +52,7 @@ function isNewer(version, baseline) {
 export function sliceChangelogSince(body, currentVersion) {
   if (typeof body !== "string" || body.trim() === "") return "";
 
-  const headers = [];
-  SECTION_HEADER.lastIndex = 0;
-  let match;
-  while ((match = SECTION_HEADER.exec(body))) {
-    headers.push({ index: match.index, version: parseVersion(match[1]) });
-  }
+  const headers = changelogHeaders(body);
 
   // No version headers (legacy single-section notes) or an unparseable installed
   // version: nothing to slice on, so show the notes as they arrived.

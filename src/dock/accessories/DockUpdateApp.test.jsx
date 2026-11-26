@@ -63,7 +63,7 @@ describe("Dock update details", () => {
   it("exposes actions while notes load and confirms only its frozen target", async () => {
     client.payload.releaseNotes += "\n\n[Release notes](https://example.com/release)";
     render(<DockUpdateApp />);
-    expect(screen.getByText("v2.0.0 · What's new since v1.0.0")).toBeTruthy();
+    expect(screen.getByRole("heading", { name: "What’s New in v2.0.0" })).toBeTruthy();
     expect(client.action).toHaveBeenCalledWith("update-ready", { key: "details:a" });
     expect(screen.getByRole("status").textContent).toBe("Loading release notes…");
     fireEvent.click(screen.getByRole("button", { name: "Update and Restart" }));

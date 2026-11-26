@@ -63,6 +63,7 @@ export function UpdateDialog({
     <Dialog open={open}>
       <DialogContent
         size="lg"
+        aria-describedby={undefined}
         overlayProps={{ "data-testid": "update-overlay", onClick: handleDismiss }}
         onEscapeKeyDown={(event) => {
           event.preventDefault();
@@ -73,9 +74,9 @@ export function UpdateDialog({
         }}
       >
         <UpdateDetailsHeader
-          ready={ready}
           targetVersion={targetVersion}
           currentVersion={currentVersion}
+          releaseNotes={releaseNotes}
         />
 
         <UpdateDetailsContent

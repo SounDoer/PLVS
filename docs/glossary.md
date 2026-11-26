@@ -91,6 +91,7 @@ the UI disagree, the UI on `main` wins and this file is corrected.
 | MCP Setup                  | The Agent Control entry a chat app needs to use PLVS through MCP, shown for copying                 | MCP 设置           | connector, plugin           |
 | View Update                | The Settings action that opens the available or downloaded update's details                         | 查看更新           |                             |
 | View Update Details        | Opens the release notes, download progress and installation for an update                           | 查看更新详情       |                             |
+| What’s New                 | Update details heading showing the release notes range                                              | 更新内容           |                             |
 | Update and Restart         | Installs a ready update after confirmation and reopens PLVS                                         | 更新并重启         |                             |
 | Restart Required           | Status notice for a saved configuration waiting for PLVS to restart                                 | 需要重启           |                             |
 | Channel Layout Inferred    | Notice for a layout PLVS chose from the channel count because no usable mapping was available       | 声道布局为推断     |                             |

@@ -53,9 +53,9 @@ export function DockUpdateApp() {
         ) : (
           <UpdateDetailsHeader
             accessory
-            ready={payload.ready}
             targetVersion={payload.targetVersion}
             currentVersion={payload.currentVersion}
+            releaseNotes={payload.releaseNotes}
           />
         )}
         {payload.kind === "setup" ? (
