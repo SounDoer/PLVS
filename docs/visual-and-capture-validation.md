@@ -193,8 +193,9 @@ Some screenshot states cannot be manufactured by the public CLI. Copy
 instance ID, and run `ui:walkthrough` as above. The runner uses its dev-identity CLI's private event
 fixtures to establish Update, first-run Update Preferences, Import Review, Import Complete, Library
 Export, Crash Report, Close Confirmation, and Library Conflict through their production owners. The
-two Import fixtures use a fixed sample Preset with a bundled Loudness Profile and write nothing to
-the library. It then returns to the public `ui inspect`, `visual screenshot`, and exact `ui cancel`
+Import fixtures use fixed sample Presets and write nothing to the library. Use
+`import-complete.multiple` for a completion with two Presets. The runner then returns to the
+public `ui inspect`, `visual screenshot`, and exact `ui cancel`
 / `ui close` contracts for review and dismissal. Library Conflict has no product dismissal action,
 and cancelling the real Update Preferences choice saves it as skipped, so the runner uses the exact
 fixture reset token for both.

@@ -1,6 +1,8 @@
 /** @vitest-environment jsdom */
 import { describe, expect, it, vi } from "vitest";
-import { fireEvent, render, screen, within } from "@testing-library/react";
+import { act, fireEvent, render, screen, within } from "@testing-library/react";
+import { BlockingEditorsProvider } from "../hooks/BlockingEditorsContext.jsx";
+import { UiNavigationProvider, useUiNavigation } from "../uiNavigation/UiNavigationContext.jsx";
 import { FileAnalysisHistoryMenu } from "./FileAnalysisHistoryMenu.jsx";
 
 const files = [
@@ -33,6 +35,61 @@ function open(props = {}) {
 }
 
 describe("File menu", () => {
+  it("exposes the visible File actions to Agent Control and preserves the clear confirmation", async () => {
+    const onClearAllFiles = vi.fn();
+    const onExportStatistics = vi.fn();
+    const chooseTrack = vi.fn();
+    /** @type {any} */
+    let navigation;
+    function Harness() {
+      navigation = useUiNavigation();
+      return (
+        <FileAnalysisHistoryMenu
+          fileSessions={files}
+          activeFileId="one"
+          fileQueue={{
+            active: true,
+            items: [{ id: 4, state: "track", fileName: "tracks.mov" }],
+            sessionIds: new Set(),
+            chooseTrack,
+          }}
+          onClearAllFiles={onClearAllFiles}
+          onExportStatistics={onExportStatistics}
+          onSelectFile={vi.fn()}
+          onReanalyzeFile={vi.fn()}
+          onRemoveFile={vi.fn()}
+          onStopFile={vi.fn()}
+        />
+      );
+    }
+    render(
+      <BlockingEditorsProvider>
+        <UiNavigationProvider getRevision={() => 7}>
+          <Harness />
+        </UiNavigationProvider>
+      </BlockingEditorsProvider>
+    );
+    fireEvent.click(screen.getByRole("button", { name: "files" }));
+    const ui = navigation.inspectUi();
+    const menu = ui.surfaces.find(({ kind }) => kind === "dropdown");
+    expect(menu.choices.map(({ id }) => id)).toEqual([
+      "choose-track:4",
+      "cancel-batch",
+      "clear-all",
+      "export-statistics",
+    ]);
+    await act(async () => {
+      await navigation.decideSurface({
+        surfaceId: menu.surfaceId,
+        choice: "clear-all",
+        expectedRevision: 7,
+        expectedUiGeneration: ui.uiGeneration,
+      });
+    });
+    expect(screen.getByRole("alertdialog", { name: "Clear All Files?" })).toBeTruthy();
+    expect(onClearAllFiles).not.toHaveBeenCalled();
+  });
+
   it("shows a queued retry on the original file row and offers Resume Batch when idle", () => {
     const resumeBatch = vi.fn();
     open({

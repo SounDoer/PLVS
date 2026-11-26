@@ -5,7 +5,7 @@ export function ThemeDiscardDialog(props) {
   return (
     <ConfirmDialog
       {...props}
-      title="Discard theme changes?"
+      title="Discard Theme Changes?"
       description="Unsaved edits will be discarded and the previous theme will be restored."
       cancelLabel="Keep Editing"
       confirmLabel="Discard Changes"

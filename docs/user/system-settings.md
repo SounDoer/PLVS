@@ -63,7 +63,8 @@ workbenches are open; the current coordinator owns the operating-system registra
 the saved workbench set. If a change fails to save, Settings shows an error and PLVS restores the
 saved login setting. If PLVS cannot read or apply **Open at Login** at startup, **Retry** checks
 the system setting and reapplies the saved preference when one exists. **Close Behavior** chooses whether closing the window keeps PLVS running in the system tray or quits it.
-Choosing **Don't ask again** in the close confirmation updates **Close Behavior** in Settings.
+In **Close PLVS?**, the main button shows the selected action, **Quit** or **Minimize to Tray**.
+Choosing **Don't Ask Again** updates **Close Behavior** in Settings.
 Before either action, PLVS finishes saving pending settings. If saving fails, the window stays open
 and offers **Retry** or **Cancel**.
 If PLVS cannot hide or quit the window after saving, the close dialog offers the same retry.
@@ -394,7 +395,8 @@ Before a shared file is added, the import review lists each Item as **Add**, **A
 library**, or **Import as a copy**, shows bundled Loudness Profile dependencies, and calls out safe
 adaptations such as collision renaming or a missing legacy dependency. Confirming the review is the
 only step that writes to the Library. A Preset and its bundled Loudness Profiles are saved together
-in one operation. **Import Complete** appears after the save and reports each Item as **Added**,
+in one operation. **Import Complete** lists the Items and their results directly under the title.
+Each Item is marked **Added**,
 **Already in your library**, or **Imported as a copy**. If the Library changed during review, open
 the import again to refresh the review. Using an existing Item also checks whether the reviewed
 content still matches. If it changed, the review refreshes before you choose what to apply.
@@ -528,7 +530,8 @@ PLVS saves crash reports locally. With this option enabled, it asks before sendi
 one after a crash; with it off, PLVS never asks and sends nothing. Turning it on does not ask about reports
 saved while it was off until the next launch. With several workbenches open, only the current coordinator asks; choosing
 **Later** keeps the report saved, and PLVS asks again at the next launch or when another workbench
-becomes coordinator.
+becomes coordinator. **Don't Ask Again**, to the left of **Later**, discards this report and turns
+off future prompts.
 Feedback diagnostics are attached only when you choose to include them. Audio
 samples are never attached. In a multi-workbench run, local crash records include random instance
 and workspace identifiers so the matching per-process log can be diagnosed. See the

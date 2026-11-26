@@ -1,7 +1,7 @@
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
-import { MODAL_SURFACE_CLASS, SCRIM_CLASS } from "@/components/ui/surfaceStyles.js";
-import { cn } from "@/lib/utils";
+import { Dialog, DialogContent, DialogFooter, DialogTitle } from "@/components/ui/dialog";
+import { HoverTip } from "@/components/HoverTip.jsx";
 import { useBlockingEditor } from "../hooks/BlockingEditorsContext.jsx";
 import { discardCrashReport } from "../ipc/commands.js";
 import { openExternalUrl, PRIVACY_POLICY_URL } from "../ipc/openExternal.js";
@@ -25,6 +25,7 @@ export function CrashReportDialog({
   const [showPreview, setShowPreview] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  const laterRef = useRef(null);
   useBlockingEditor("crash-report", true);
 
   const trimmedEmail = email.trim();
@@ -80,8 +81,8 @@ export function CrashReportDialog({
     supportedActions: busy ? [] : ["close"],
     target: { phase: error ? "error" : busy ? "busy" : "decision" },
     choices: [
-      { id: "later", label: "Later", run: onClose },
       { id: "disable-asking", label: "Don't Ask Again", run: handleDisableAsking },
+      { id: "later", label: "Later", run: onClose },
       { id: "discard", label: "Don't Send", run: handleDiscard },
       { id: "send", label: "Send", run: handleSend, disabled: emailInvalid },
     ],
@@ -89,23 +90,28 @@ export function CrashReportDialog({
   });
 
   return (
-    <div className={cn(SCRIM_CLASS, LAYER_PRIORITY, "grid place-items-center p-4")}>
-      <section
-        role="dialog"
-        aria-modal="true"
-        aria-label="PLVS Quit Unexpectedly"
-        className={`flex max-h-[90vh] w-full max-w-[var(--ui-surface-wide-w)] flex-col overflow-hidden rounded-xl ${MODAL_SURFACE_CLASS}`}
+    <Dialog
+      open
+      onOpenChange={(open) => {
+        if (!open && !busy) onClose();
+      }}
+    >
+      <DialogContent
+        size="lg"
+        layer={LAYER_PRIORITY}
+        aria-describedby={undefined}
+        onOpenAutoFocus={(event) => {
+          event.preventDefault();
+          laterRef.current?.focus();
+        }}
+        onInteractOutside={(event) => event.preventDefault()}
+        onEscapeKeyDown={(event) => {
+          if (busy) event.preventDefault();
+        }}
       >
-        <header className="border-b border-border px-4 py-3">
-          <h2 className="text-[length:var(--ui-fs-panel-title)] font-semibold">
-            PLVS Quit Unexpectedly
-          </h2>
-          <p className="mt-1 text-[length:var(--ui-fs-control)] text-muted-foreground">
-            PLVS saved a crash report on this device. Review it before choosing whether to send it.
-          </p>
-        </header>
+        <DialogTitle>PLVS Quit Unexpectedly</DialogTitle>
 
-        <div className="flex min-h-0 flex-col gap-3 overflow-y-auto px-4 py-3">
+        <div className="my-3 flex min-h-0 flex-col gap-2 overflow-y-auto">
           <textarea
             aria-label="Crash report note (optional)"
             value={note}
@@ -130,12 +136,14 @@ export function CrashReportDialog({
             </span>
           ) : null}
 
-          <LinkButton
-            className="self-start text-[length:var(--ui-fs-control)] font-medium underline-offset-4 hover:underline"
-            onClick={() => setShowPreview((value) => !value)}
-          >
-            {showPreview ? "Hide Report" : "View Report"}
-          </LinkButton>
+          <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-[length:var(--ui-fs-control)]">
+            <LinkButton className="font-medium" onClick={() => setShowPreview((value) => !value)}>
+              {showPreview ? "Hide Report" : "View Report"}
+            </LinkButton>
+            <LinkButton className="font-medium" onClick={() => openExternalUrl(PRIVACY_POLICY_URL)}>
+              Privacy Policy
+            </LinkButton>
+          </div>
           {showPreview ? (
             <pre
               aria-label="Crash report payload"
@@ -145,33 +153,33 @@ export function CrashReportDialog({
             </pre>
           ) : null}
 
-          <LinkButton
-            className="self-start text-[length:var(--ui-fs-control)] font-medium underline-offset-4 hover:underline"
-            onClick={() => openExternalUrl(PRIVACY_POLICY_URL)}
-          >
-            Privacy Policy
-          </LinkButton>
-
           {sendError ? (
             <span className="text-[length:var(--ui-fs-control)] text-destructive">{error}</span>
           ) : null}
         </div>
 
-        <footer className="flex flex-wrap items-center justify-end gap-2 border-t border-border px-4 py-3">
-          <Button variant="ghost" onClick={onClose} disabled={busy}>
+        <DialogFooter divided className="shrink-0 flex-wrap items-center">
+          <HoverTip
+            tip="Discard this report and stop future crash-report prompts."
+            side="top"
+            align="start"
+            className="mr-2"
+          >
+            <Button variant="quiet" onClick={handleDisableAsking} disabled={busy}>
+              Don&apos;t Ask Again
+            </Button>
+          </HoverTip>
+          <Button ref={laterRef} variant="ghost" onClick={onClose} disabled={busy}>
             Later
           </Button>
-          <Button variant="ghost" onClick={handleDisableAsking} disabled={busy}>
-            Don't Ask Again
-          </Button>
-          <Button variant="outline" onClick={handleDiscard} disabled={busy}>
-            Don't Send
+          <Button variant="ghost" onClick={handleDiscard} disabled={busy}>
+            Don&apos;t Send
           </Button>
           <Button onClick={handleSend} disabled={busy || emailInvalid}>
             {busy ? "Sending..." : "Send"}
           </Button>
-        </footer>
-      </section>
-    </div>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }

@@ -625,15 +625,18 @@ describe("usePackTransfer development fixtures", () => {
     expect(settingsStore.read().loudnessProfiles?.profiles ?? []).toEqual([]);
   });
 
-  it("shows the completion without writing and refuses its follow-up action", async () => {
+  it.each([
+    { multiple: false, names: ["Essential Monitoring"] },
+    { multiple: true, names: ["Essential Monitoring", "Multichannel Monitoring"] },
+  ])("shows the completion without writing (multiple: $multiple)", async ({ multiple, names }) => {
     const { result } = renderHook(() => usePackTransfer());
     const action = vi.fn(async () => true);
 
-    act(() => result.current.developmentFixtures.completion.establish("fixture-a"));
+    act(() => result.current.developmentFixtures.completion.establish("fixture-a", multiple));
     expect(result.current.completion).toMatchObject({
       type: "presets",
       fixtureId: "fixture-a",
-      itemPlan: [{ name: "Essential Monitoring" }],
+      itemPlan: names.map((name) => ({ name })),
     });
     await act(async () => {
       expect(await result.current.runCompletionAction(action)).toBe(false);

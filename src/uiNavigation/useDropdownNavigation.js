@@ -8,7 +8,7 @@ import { ignoresUnfocusedClose } from "./navigationHold.js";
  * `SelectTrigger`. A caller that already owns the open state passes it in.
  *
  * @param {string | null | undefined} control A target id such as `setting:appearance.interfaceSize`.
- * @param {{ open?: boolean, onOpenChange?: (open: boolean) => void, blockingEditorId?: string }} [owned]
+ * @param {{ open?: boolean, onOpenChange?: (open: boolean) => void, blockingEditorId?: string, choices?: Parameters<typeof useUiSurface>[0]['choices'] }} [owned]
  */
 export function useDropdownNavigation(control, owned = {}) {
   const [localOpen, setLocalOpen] = useState(false);
@@ -34,6 +34,7 @@ export function useDropdownNavigation(control, owned = {}) {
     dismissible: true,
     supportedActions: ["close"],
     target: { control },
+    choices: owned.choices,
     onClose: () => onOpenChange(false),
   });
   return {

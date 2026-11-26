@@ -114,10 +114,51 @@ export function FileAnalysisHistoryMenu({
   onCopyReport = null,
   onExportStatistics = null,
 }) {
-  const navigation = useDropdownNavigation("file-history:files");
   const [confirmClear, setConfirmClear] = useState(false);
   const [confirmCancelBatch, setConfirmCancelBatch] = useState(false);
   const pending = fileQueue?.items ?? [];
+  const canExportStatistics = fileSessions.some(getSuccessfulFileSession);
+  const chooseTrack = (id) => {
+    close();
+    fileQueue.chooseTrack(id);
+  };
+  const askClear = () => {
+    close();
+    setConfirmClear(true);
+  };
+  const askCancelBatch = () => {
+    close();
+    setConfirmCancelBatch(true);
+  };
+  const showStatistics = () => {
+    close();
+    onExportStatistics();
+  };
+  const navigation = useDropdownNavigation("file-history:files", {
+    choices: [
+      ...pending
+        .filter((item) => item.state === "track")
+        .map((item) => ({
+          id: `choose-track:${item.id}`,
+          label: "Choose Track…",
+          run: () => chooseTrack(item.id),
+        })),
+      ...(fileQueue?.active
+        ? [{ id: "cancel-batch", label: "Cancel Batch…", run: askCancelBatch }]
+        : []),
+      { id: "clear-all", label: "Clear All Files…", run: askClear },
+      ...(onExportStatistics
+        ? [
+            {
+              id: "export-statistics",
+              label: "Export Statistics…",
+              disabled: !canExportStatistics,
+              run: showStatistics,
+            },
+          ]
+        : []),
+    ],
+  });
   const pendingBySession = new Map(
     pending.filter((item) => item.retryId).map((item) => [item.retryId, item])
   );
@@ -133,8 +174,8 @@ export function FileAnalysisHistoryMenu({
   ]
     .filter(Boolean)
     .join(" · ");
-  if (!fileSessions.length && !pending.length) return null;
   const close = () => navigation.rootProps.onOpenChange(false);
+  if (!fileSessions.length && !pending.length) return null;
   return (
     <>
       <Popover {...navigation.rootProps}>
@@ -255,13 +296,7 @@ export function FileAnalysisHistoryMenu({
                           onClick={() => onStopFile?.(session.id)}
                         />
                       ) : pendingRetry?.state === "track" ? (
-                        <Button
-                          variant="quiet"
-                          onClick={() => {
-                            close();
-                            fileQueue.chooseTrack(pendingRetry.id);
-                          }}
-                        >
+                        <Button variant="quiet" onClick={() => chooseTrack(pendingRetry.id)}>
                           Choose Track…
                         </Button>
                       ) : pendingRetry &&
@@ -328,10 +363,7 @@ export function FileAnalysisHistoryMenu({
                       <Button
                         variant="quiet"
                         className="col-span-3 col-start-1 row-start-1 justify-self-end"
-                        onClick={() => {
-                          close();
-                          fileQueue.chooseTrack(item.id);
-                        }}
+                        onClick={() => chooseTrack(item.id)}
                       >
                         Choose Track…
                       </Button>
@@ -380,36 +412,16 @@ export function FileAnalysisHistoryMenu({
             {fileQueue?.active || fileQueue?.canResume ? (
               <Button
                 variant="ghost"
-                onClick={() => {
-                  if (!fileQueue.active) {
-                    fileQueue.resumeBatch();
-                    return;
-                  }
-                  close();
-                  setConfirmCancelBatch(true);
-                }}
+                onClick={() => (fileQueue.active ? askCancelBatch() : fileQueue.resumeBatch())}
               >
                 {fileQueue.active ? "Cancel Batch…" : "Resume Batch"}
               </Button>
             ) : null}
-            <Button
-              variant="ghost"
-              onClick={() => {
-                close();
-                setConfirmClear(true);
-              }}
-            >
+            <Button variant="ghost" onClick={askClear}>
               Clear All Files…
             </Button>
             {onExportStatistics && (
-              <Button
-                variant="ghost"
-                disabled={!fileSessions.some(getSuccessfulFileSession)}
-                onClick={() => {
-                  close();
-                  onExportStatistics();
-                }}
-              >
+              <Button variant="ghost" disabled={!canExportStatistics} onClick={showStatistics}>
                 Export Statistics…
               </Button>
             )}

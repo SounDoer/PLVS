@@ -61,7 +61,7 @@ describe("LoudnessProfileEditor", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
     expect(onDismiss).toHaveBeenCalledOnce();
-    expect(screen.queryByRole("alertdialog", { name: "Discard profile changes?" })).toBeNull();
+    expect(screen.queryByRole("alertdialog", { name: "Discard Profile Changes?" })).toBeNull();
   });
 
   it("warns without replacing a stale profile draft", () => {

@@ -560,7 +560,7 @@ export function LoudnessProfileEditor({
       <ConfirmDialog
         open={discardOpen}
         onOpenChange={setDiscardOpen}
-        title="Discard profile changes?"
+        title="Discard Profile Changes?"
         description="Unsaved rule edits will be discarded."
         cancelLabel="Keep Editing"
         confirmLabel="Discard Changes"

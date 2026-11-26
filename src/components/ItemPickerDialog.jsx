@@ -26,6 +26,7 @@ const ITEM_PICKER_FIXTURES = {
   },
   review: "import-review.pending",
   complete: "import-complete.pending",
+  completeMultiple: "import-complete.multiple",
 };
 
 const DISPOSITION_LABEL = {
@@ -221,7 +222,11 @@ export function ItemPickerDialog({
       : mode === "review"
         ? "importReview"
         : "importComplete";
-  const fixtureMode = statistics ? "statistics" : mode;
+  const fixtureMode = statistics
+    ? "statistics"
+    : mode === "complete" && !singleCompletion
+      ? "completeMultiple"
+      : mode;
   useUiSurface({
     active: open,
     kind: surfaceKind,
@@ -271,7 +276,7 @@ export function ItemPickerDialog({
         ref={contentRef}
         centered={!pos}
         overlayProps={{ onClick: handleDismiss }}
-        {...(mode === "pick" && !statistics ? { "aria-describedby": undefined } : {})}
+        {...(!statistics && mode !== "review" ? { "aria-describedby": undefined } : {})}
         style={pos ? { left: pos.x, top: pos.y } : undefined}
       >
         <div data-testid="item-picker-drag-handle" {...dragHandlers} className="cursor-move">
@@ -280,17 +285,13 @@ export function ItemPickerDialog({
             <DialogDescription>
               Choose one or more files to export as a single CSV.
             </DialogDescription>
-          ) : mode !== "pick" ? (
+          ) : mode === "review" ? (
             <DialogDescription>
-              {mode === "complete"
-                ? singleCompletion
-                  ? `${review.itemPlan[0].name} is now in your library.`
-                  : `The ${label.toLowerCase()} are now in your library.`
-                : allExisting
-                  ? existingReview
-                    ? "This item is already in your library."
-                    : "These items are already in your library."
-                  : `Review what will be added to your library.`}
+              {allExisting
+                ? existingReview
+                  ? "This item is already in your library."
+                  : "These items are already in your library."
+                : "Review what will be added to your library."}
             </DialogDescription>
           ) : null}
         </div>

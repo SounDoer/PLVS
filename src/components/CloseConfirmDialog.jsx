@@ -33,6 +33,7 @@ export function CloseConfirmDialog({
 }) {
   const [action, setAction] = useState("quit");
   const [dontAsk, setDontAsk] = useState(false);
+  const actionLabel = action === "tray" ? "Minimize to Tray" : "Quit";
 
   function handleConfirm() {
     const a = action;
@@ -63,7 +64,7 @@ export function CloseConfirmDialog({
       { id: "cancel", label: "Cancel", run: handleCancel },
       error
         ? { id: "retry", label: "Retry", run: onRetry, afterDelivery: true }
-        : { id: "confirm", label: "Confirm", run: handleConfirm, afterDelivery: true },
+        : { id: "confirm", label: actionLabel, run: handleConfirm, afterDelivery: true },
     ],
     onCancel: handleCancel,
   });
@@ -75,8 +76,8 @@ export function CloseConfirmDialog({
         if (!v) handleCancel();
       }}
     >
-      <DialogContent size="sm" className="overflow-y-auto">
-        <DialogTitle className="sr-only">Close PLVS</DialogTitle>
+      <DialogContent size="sm" className="overflow-y-auto" aria-describedby={undefined}>
+        <DialogTitle className="mb-2">Close PLVS?</DialogTitle>
         {error ? (
           <div className="mb-3 px-2 text-[length:var(--ui-fs-control)] text-destructive">
             {error}
@@ -102,7 +103,7 @@ export function CloseConfirmDialog({
             </div>
 
             <div className="mb-3 flex min-h-[var(--ui-shell-h)] items-center justify-between gap-4 rounded-md px-2">
-              <span className={ROW_LABEL_CLASS}>Don&apos;t ask again</span>
+              <span className={ROW_LABEL_CLASS}>Don&apos;t Ask Again</span>
               <Switch aria-label="Don't ask again" checked={dontAsk} onCheckedChange={setDontAsk} />
             </div>
           </>
@@ -118,7 +119,7 @@ export function CloseConfirmDialog({
             </Button>
           ) : (
             <Button onClick={handleConfirm} disabled={busy}>
-              {busy ? "Saving…" : "Confirm"}
+              {busy ? "Saving…" : actionLabel}
             </Button>
           )}
         </DialogFooter>

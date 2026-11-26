@@ -138,6 +138,8 @@ export function AppSettingsOverlays({
   }, [authoring, authoringGeometry, settingsGeometry, dockPresentation]);
 
   const themeAuthoring = editor.authoring;
+  const themePreviewOpen = previewState?.draftId === identity && previewState.open;
+  const setThemePreviewOpen = (open) => setPreviewState({ draftId: identity, open });
   useUiNavigationTarget("themeEditor", {
     blockingEditorId: "theme",
     matches: ({ intent, themeId }) =>
@@ -199,6 +201,15 @@ export function AppSettingsOverlays({
         }
       : {},
     onCancel: editor.requestDismiss,
+    choices: themePreviewOpen
+      ? [
+          {
+            id: "close-preview",
+            label: "Close Theme Preview",
+            run: () => setThemePreviewOpen(false),
+          },
+        ]
+      : [{ id: "open-preview", label: "Open Theme Preview", run: () => setThemePreviewOpen(true) }],
   });
   useEditorDraftSurface({
     active: editor.isEditing && presented,
@@ -300,6 +311,12 @@ export function AppSettingsOverlays({
   });
   useDevelopmentEventFixtureAdapter("import-complete.pending", {
     ...pack.developmentFixtures.completion,
+    canEstablish: packIdle,
+    surface: { kind: "importComplete", target: { phase: "complete" } },
+  });
+  useDevelopmentEventFixtureAdapter("import-complete.multiple", {
+    ...pack.developmentFixtures.completion,
+    establish: (fixtureId) => pack.developmentFixtures.completion.establish(fixtureId, true),
     canEstablish: packIdle,
     surface: { kind: "importComplete", target: { phase: "complete" } },
   });
@@ -450,8 +467,8 @@ export function AppSettingsOverlays({
       onCore: editor.updateCore,
       onResetCore: editor.resetCore,
       onPaletteColor: editor.updatePaletteColor,
-      previewOpen: previewState?.draftId === identity && previewState.open,
-      onPreviewOpenChange: (open) => setPreviewState({ draftId: identity, open }),
+      previewOpen: themePreviewOpen,
+      onPreviewOpenChange: setThemePreviewOpen,
       onIntensityStop: editor.updateIntensityStop,
       onIntensityStops: editor.updateIntensityStops,
       onApplyPreset: editor.applyPreset,

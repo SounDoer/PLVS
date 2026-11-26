@@ -1,6 +1,6 @@
 /** @vitest-environment jsdom */
 
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { BlockingEditorsProvider, useBlockingEditors } from "../hooks/BlockingEditorsContext.jsx";
 import { CrashReportDialog } from "./CrashReportDialog.jsx";
@@ -58,6 +58,21 @@ function renderDialog(overrides = {}) {
 beforeEach(() => vi.clearAllMocks());
 
 describe("CrashReportDialog", () => {
+  it("uses the shared modal and focuses Later beside the quiet opt-out action", async () => {
+    renderDialog();
+    const dialog = screen.getByRole("dialog", { name: "PLVS Quit Unexpectedly" });
+    expect(dialog.hasAttribute("aria-describedby")).toBe(false);
+    expect(within(dialog).queryByText("PLVS saved a crash report on this device.")).toBeNull();
+    const actionNames = within(dialog)
+      .getAllByRole("button")
+      .slice(-4)
+      .map((button) => button.textContent);
+    expect(actionNames).toEqual(["Don't Ask Again", "Later", "Don't Send", "Send"]);
+    await waitFor(() =>
+      expect(document.activeElement).toBe(screen.getByRole("button", { name: "Later" }))
+    );
+  });
+
   it("opens the Privacy Policy from the send decision", () => {
     renderDialog();
     fireEvent.click(screen.getByRole("button", { name: "Privacy Policy" }));

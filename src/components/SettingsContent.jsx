@@ -572,6 +572,7 @@ export function SettingsContent({
       console.warn("Unable to show the requested Settings section", error)
     );
   }, [appVersion, sectionRequest, settingsOpen, showSection]);
+  const askResetConfiguration = () => setResetConfirmOpen(true);
   useUiSurface({
     active: settingsOpen,
     kind: "settings",
@@ -580,6 +581,17 @@ export function SettingsContent({
     dismissible: true,
     supportedActions: ["close"],
     target: { section: activeSection },
+    choices:
+      activeSection === "transfer"
+        ? [
+            {
+              id: "reset-configuration",
+              label: "Reset PLVS to Default",
+              disabled: configurationBusy,
+              run: askResetConfiguration,
+            },
+          ]
+        : undefined,
     onClose: () => handleOpenChange(false),
   });
 
@@ -1042,7 +1054,7 @@ export function SettingsContent({
           <div className={ROW_CLASS}>
             <Button
               variant="ghost"
-              onClick={() => setResetConfirmOpen(true)}
+              onClick={askResetConfiguration}
               disabled={configurationBusy}
               aria-label="Reset PLVS to default"
               data-ui-target="setting:transfer.configurationReset"

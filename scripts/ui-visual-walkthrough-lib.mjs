@@ -72,6 +72,7 @@ export const EVENT_FIXTURES = Object.freeze({
   "update-preferences.pending": { surfaceKind: "update", phase: "preferences", action: "reset" },
   "import-review.pending": { surfaceKind: "importReview", phase: "review", action: "cancel" },
   "import-complete.pending": { surfaceKind: "importComplete", phase: "complete", action: "close" },
+  "import-complete.multiple": { surfaceKind: "importComplete", phase: "complete", action: "close" },
   "library-export.pending": {
     surfaceKind: "libraryExport",
     phase: "chooseType",

@@ -65,6 +65,14 @@ its header icon. Use the confirmation surface's `cancel` or `confirm` choice. Th
 on the same menu, with the updated UI generation. It resets the current window's display settings
 and preserves Dock settings and position. The initial reset choices are disabled at defaults.
 
+In File mode, open the Files menu with `ui show dropdown --control file-history:files`.
+Its `choose-track:<item-id>` and `export-statistics` choices open the corresponding pickers.
+`clear-all` and `cancel-batch` open the application's warnings and leave the decision to their
+confirmation surfaces. The track and batch choices appear only while their controls are shown.
+Settings exposes `reset-configuration` in Transfer to open the same reset warning as its button.
+The Theme Editor's `open-preview` and `close-preview` choices show and dismiss Theme Preview
+without changing the draft.
+
 Where Mixes are supported, the normal-window Sources surface declares Mix choices through `ui inspect`. Use its
 `add-mix`, `edit:<mix-id>`, or `select:<mix-id>` choice with `ui decide`. The Dock Sources surface
 also exposes `select:<mix-id>` for each saved Mix. The normal-window `sourceMixEditor`

@@ -53,7 +53,7 @@ describe("ThemeEditor", () => {
     fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
     expect(onPageChange).toHaveBeenCalledWith("advanced");
     expect(onDismiss).toHaveBeenCalledOnce();
-    expect(screen.queryByRole("alertdialog", { name: "Discard theme changes?" })).toBeNull();
+    expect(screen.queryByRole("alertdialog", { name: "Discard Theme Changes?" })).toBeNull();
   });
 
   it("previews fixed fills without attenuating trace strokes", () => {
@@ -524,11 +524,11 @@ describe("ThemeEditor", () => {
 
     expect(confirmSpy).not.toHaveBeenCalled();
     expect(onCancel).not.toHaveBeenCalled();
-    expect(screen.getByRole("alertdialog", { name: "Discard theme changes?" })).toBeTruthy();
+    expect(screen.getByRole("alertdialog", { name: "Discard Theme Changes?" })).toBeTruthy();
 
     fireEvent.click(screen.getByRole("button", { name: "Keep Editing" }));
     expect(onCancel).not.toHaveBeenCalled();
-    expect(screen.queryByRole("alertdialog", { name: "Discard theme changes?" })).toBeNull();
+    expect(screen.queryByRole("alertdialog", { name: "Discard Theme Changes?" })).toBeNull();
 
     fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
     fireEvent.click(screen.getByRole("button", { name: "Discard Changes" }));

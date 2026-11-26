@@ -271,7 +271,10 @@ describe("ItemPickerDialog completion mode", () => {
     );
 
     expect(screen.getByText("Import Complete")).toBeTruthy();
-    expect(screen.getByText("Shared is now in your library.")).toBeTruthy();
+    expect(
+      screen.getByRole("dialog", { name: "Import Complete" }).hasAttribute("aria-describedby")
+    ).toBe(false);
+    expect(screen.queryByText("Shared is now in your library.")).toBeNull();
     expect(screen.getByText("Shared").closest("li").textContent).toContain("Added");
     fireEvent.click(screen.getByRole("button", { name: actionLabel }));
     expect(onAction).toHaveBeenCalledTimes(1);
@@ -303,7 +306,7 @@ describe("ItemPickerDialog completion mode", () => {
 });
 
 describe("ItemPickerDialog completion summary", () => {
-  it("names the kind in the plural after a multi-item import", () => {
+  it("shows the multi-item results directly below the title", () => {
     render(
       <ItemPickerDialog
         open
@@ -319,7 +322,10 @@ describe("ItemPickerDialog completion summary", () => {
       />
     );
 
-    expect(screen.getByText("The presets are now in your library.")).toBeTruthy();
+    const dialog = screen.getByRole("dialog", { name: "Import Complete" });
+    expect(dialog.hasAttribute("aria-describedby")).toBe(false);
+    expect(screen.queryByText("The presets are now in your library.")).toBeNull();
+    expect(screen.getAllByText("Added")).toHaveLength(2);
   });
 });
 

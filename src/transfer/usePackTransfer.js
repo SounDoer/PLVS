@@ -288,8 +288,8 @@ export function usePackTransfer() {
 
   // Development fixtures show the real review and completion dialogs for a fixed sample pack.
   // Neither writes to the library; Add on the review stays an ordinary user action.
-  function fixturePlan() {
-    const { type, pack } = parseClipboardItem(developmentImportPackText());
+  function fixturePlan(multiple = false) {
+    const { type, pack } = parseClipboardItem(developmentImportPackText(multiple));
     return {
       type,
       pack,
@@ -308,8 +308,8 @@ export function usePackTransfer() {
       },
     },
     completion: {
-      establish(fixtureId) {
-        const { type, itemPlan } = fixturePlan();
+      establish(fixtureId, multiple = false) {
+        const { type, itemPlan } = fixturePlan(multiple);
         setReview(null);
         setCompletion({ type, origin: "clipboard", itemPlan, fixtureId });
       },

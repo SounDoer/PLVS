@@ -17,6 +17,7 @@ describe("CloseConfirmDialog", () => {
     );
     expect(screen.getByLabelText("Close behavior")).toBeTruthy();
     expect(screen.getByRole("switch", { name: /don't ask again/i })).toBeTruthy();
+    expect(screen.getByRole("heading", { name: "Close PLVS?" }).className).not.toContain("sr-only");
   });
 
   it("defaults to Quit selected", () => {
@@ -36,7 +37,7 @@ describe("CloseConfirmDialog", () => {
     expect(onCancel).toHaveBeenCalled();
   });
 
-  it("calls onConfirm('quit', false) when Confirm clicked with defaults", () => {
+  it("calls onConfirm('quit', false) when Quit is clicked with defaults", () => {
     const onConfirm = vi.fn();
     render(
       <CloseConfirmDialog
@@ -46,7 +47,7 @@ describe("CloseConfirmDialog", () => {
         onRetry={undefined}
       />
     );
-    fireEvent.click(screen.getByText("Confirm"));
+    fireEvent.click(screen.getByRole("button", { name: "Quit" }));
     expect(onConfirm).toHaveBeenCalledWith("quit", false);
   });
 
@@ -61,8 +62,19 @@ describe("CloseConfirmDialog", () => {
       />
     );
     fireEvent.click(screen.getByRole("switch"));
-    fireEvent.click(screen.getByText("Confirm"));
+    fireEvent.click(screen.getByRole("button", { name: "Quit" }));
     expect(onConfirm).toHaveBeenCalledWith("quit", true);
+  });
+
+  it("uses the selected close behavior as the primary action label", () => {
+    const onConfirm = vi.fn();
+    render(<CloseConfirmDialog open onConfirm={onConfirm} onCancel={vi.fn()} onRetry={vi.fn()} />);
+    fireEvent.keyDown(screen.getByRole("combobox", { name: "Close behavior" }), {
+      key: "ArrowDown",
+    });
+    fireEvent.click(screen.getByRole("option", { name: "Minimize to Tray" }));
+    fireEvent.click(screen.getByRole("button", { name: "Minimize to Tray" }));
+    expect(onConfirm).toHaveBeenCalledWith("tray", false);
   });
 
   it("shows a persistence error with retry and cancel actions", () => {
