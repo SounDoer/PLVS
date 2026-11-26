@@ -151,7 +151,7 @@ function TrayRows({ items, branchKey, pickerKey, onToggleBranch, onTogglePicker,
                 id={id}
                 hidden={!expanded}
                 className={cn(
-                  "mt-0.5",
+                  "mt-1",
                   items[index + 1]?.kind === "submenu" && "mb-1 border-b border-border pb-1"
                 )}
               >
