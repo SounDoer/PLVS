@@ -102,13 +102,17 @@ Settings window while keeping Dock active.
 
 With one workbench open, its window, Start / Stop, Source, Preset and Settings controls appear
 directly in the Tray menu. With several open, each workbench's Source-derived name appears directly
-at the top level. Its submenu contains those same controls, followed by **Quit Workbench**, without
-an intermediate Workbenches menu. Each Source and Preset submenu shows that workbench's choices and current
-selection; Settings opens in that workbench. Update actions and **Quit PLVS** remain at the top
-level because they affect the application as a whole. **Show** brings the selected workbench
-to the front, restoring it if minimized. A workbench with an open editor or dialog refuses to quit
-and comes to the front instead,
-so you can finish or close what is open first. **Quit PLVS** flushes and closes the complete
+at the top level. Its submenu begins with **Locate** and ends with **Quit Workbench**. **Locate**
+brings the selected workbench forward and briefly lights its inside edge in its theme's accent
+colour, even with **Hide Window Frame** enabled. The outline and glow fade together. With reduced
+motion enabled, the outline appears briefly and stays static. A visible Dock strip lights up in
+place. A hidden workbench or a minimized window is restored. Each Source and Preset submenu shows that workbench's choices
+and current selection, and Settings opens in that workbench. **New Workbench** is available at
+the top level with one or several workbenches open. It opens another with **Automatic** selected
+and its Transport **Stopped**. Update actions and **Quit PLVS** also remain at the top level.
+**Show** brings the selected workbench to the front, restoring it if minimized. A workbench with
+an open editor or dialog refuses to quit and comes to the front so you can finish or close what is
+open first. **Quit PLVS** flushes and closes the complete
 workbench set; quitting one workbench does not close its peers. PLVS checks again for open
 editors before closing prepared workbenches. If a remote Quit Workbench fails before closing,
 PLVS attempts to restore its previous capture state and place in the restore set.

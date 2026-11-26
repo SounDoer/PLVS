@@ -76,6 +76,29 @@ describe("AppLifecycleProvider", () => {
     expect(typeof result.current.updateControls.refreshUpdateCheck).toBe("function");
   });
 
+  it("briefly outlines the workbench after Locate and replays the cue on another Locate", async () => {
+    vi.useFakeTimers();
+    try {
+      renderHook(() => useAppLifecycle(), { wrapper });
+      const locate = vi.mocked(useRuntimeCoordination).mock.lastCall[0].actions.locate;
+      const outline = () => document.querySelector(".workbench-locate");
+      expect(outline()).toBeNull();
+
+      await act(() => locate());
+      const firstCue = outline();
+      expect(firstCue?.classList.contains("pointer-events-none")).toBe(true);
+      act(() => vi.advanceTimersByTime(800));
+      await act(() => locate());
+      expect(outline()).not.toBe(firstCue);
+      act(() => vi.advanceTimersByTime(800));
+      expect(outline()).toBeTruthy();
+      act(() => vi.advanceTimersByTime(400));
+      expect(outline()).toBeNull();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
   it("clears the active File with the local shortcut before Live has ever run", async () => {
     const { result } = renderHook(() => useMeterRuntime(), { wrapper });
     act(() => result.current.switchSource("file"));

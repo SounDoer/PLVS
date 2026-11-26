@@ -646,6 +646,7 @@ describe("useTray", () => {
     expect(root.map((item) => item.text).filter(Boolean)).toEqual([
       "Spotify",
       "VLC",
+      "New Workbench",
       "Check for Updates…",
       "Quit PLVS",
     ]);
@@ -653,6 +654,7 @@ describe("useTray", () => {
     const peer = findText(submenuOptions(), "Spotify");
     const owner = findText(submenuOptions(), "VLC");
     expect(peer.items.map((item) => item.text).filter(Boolean)).toEqual([
+      "Locate",
       "Show",
       "Stop",
       "Source: Output · Automatic",
@@ -661,6 +663,7 @@ describe("useTray", () => {
       "Quit Workbench",
     ]);
     expect(owner.items.map((item) => item.text).filter(Boolean)).toEqual([
+      "Locate",
       "Hide",
       "Start",
       "Source: Output · Automatic",
@@ -669,6 +672,49 @@ describe("useTray", () => {
       "Quit Workbench",
     ]);
     expect(menuItemOptions().some((item) => item.text.startsWith("Workbench:"))).toBe(false);
+  });
+
+  it("locates the selected workbench independently of its Show or Hide action", async () => {
+    const onLocateWindow = vi.fn().mockResolvedValue(undefined);
+    window.__PLVS_INITIAL_STATE__ = { instanceId: "owner" };
+    invoke.mockResolvedValue([
+      { instanceId: "owner", displayName: "Speakers", visible: true },
+      { instanceId: "peer", displayName: "Speakers (2)", visible: false },
+    ]);
+    renderHook(() => useTray({ ...defaultProps, onLocateWindow }));
+    await act(async () => {});
+
+    await act(async () =>
+      findText(findText(submenuOptions(), "Speakers").items, "Locate").action()
+    );
+    expect(onLocateWindow).toHaveBeenCalledOnce();
+    expect(coordination.issue).not.toHaveBeenCalled();
+
+    await act(async () => {
+      findText(findText(submenuOptions(), "Speakers (2)").items, "Locate").action();
+    });
+    expect(coordination.issue).toHaveBeenCalledExactlyOnceWith("peer", "locate", null);
+    expect(defaultProps.onToggleWindow).not.toHaveBeenCalled();
+  });
+
+  it("opens a new workbench from the single-workbench tray and respects the update guard", async () => {
+    const { rerender } = renderHook((props) => useTray(props), { initialProps: defaultProps });
+    await act(async () => {});
+    const root = vi.mocked(Menu.new).mock.calls[0][0].items;
+    const entry = findText(root, "New Workbench");
+    expect(entry.enabled).toBe(true);
+    expect(findText(root, "Locate")).toBeUndefined();
+
+    await act(async () => entry.action());
+    expect(invoke.mock.calls.filter(([command]) => command === "runtime_open_workbench")).toEqual([
+      ["runtime_open_workbench"],
+    ]);
+
+    invoke.mockClear();
+    rerender({ ...defaultProps, updateBusy: true });
+    await act(async () => entry.action());
+    expect(entry.enabled).toBe(false);
+    expect(invoke).not.toHaveBeenCalledWith("runtime_open_workbench");
   });
 
   it("routes a peer's Source, Preset, Settings and Hide to that peer", async () => {

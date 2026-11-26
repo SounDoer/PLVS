@@ -28,6 +28,8 @@ the UI disagree, the UI on `main` wins and this file is corrected.
 | -------------------------- | --------------------------------------------------------------------------------------------------- | ------------------ | --------------------------- |
 | Workbench                  | One running PLVS measurement unit with its own Source, Workspace and measurement; several can run   | 工作台             | window, instance (CLI only) |
 | Main Workbench             | The Workbench that owns application-wide work such as updates                                       | 主工作台           |                             |
+| New Workbench              | Tray action that opens another Workbench                                                            | 新建工作台         |                             |
+| Locate                     | Tray action that reveals and briefly outlines the selected Workbench                                | 定位               |                             |
 | Workspace                  | The panels in the window, their arrangement and each panel's settings                               | 工作区             | layout                      |
 | Preset                     | A saved Workspace that can be switched back to                                                      | 预设               | scene, saved layout         |
 | Add Preset                 | Saves the current layout as a new Preset                                                            | 添加预设           |                             |

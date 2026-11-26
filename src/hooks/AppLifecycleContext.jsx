@@ -1,5 +1,6 @@
-import { createContext, useCallback, useContext, useEffect, useState } from "react";
+import { createContext, useCallback, useContext, useEffect, useRef, useState } from "react";
 import { getCurrentWindow } from "@tauri-apps/api/window";
+import { LAYER_INDICATOR } from "../components/ui/layers.js";
 import { useAppSettings } from "../settings/SettingsContext.jsx";
 import { useDock } from "../dock/DockContext.jsx";
 import { useMeterRuntime } from "../runtime/MeterRuntimeContext.jsx";
@@ -22,6 +23,8 @@ import { useInstanceIdentity } from "./useInstanceIdentity.js";
 import { useTray } from "./useTray.js";
 import { useTrayActions } from "./useTrayActions.js";
 import { useAppKeyboardShortcuts } from "./useAppKeyboardShortcuts.js";
+
+const LOCATE_DURATION_MS = 1200;
 
 /**
  * @typedef {{
@@ -134,6 +137,17 @@ export function AppLifecycleProvider({ children }) {
     setWindowVisible(await window.isVisible());
   }, [docked, resumeDockMode]);
 
+  const [locatePulse, setLocatePulse] = useState(0);
+  const locateTimer = useRef(0);
+  useEffect(() => () => window.clearTimeout(locateTimer.current), []);
+  const onLocateWindow = useCallback(async () => {
+    await onShowWindow();
+    window.clearTimeout(locateTimer.current);
+    // A new key restarts the animation when Locate is selected again during the cue.
+    setLocatePulse((pulse) => pulse + 1);
+    locateTimer.current = window.setTimeout(() => setLocatePulse(0), LOCATE_DURATION_MS);
+  }, [onShowWindow]);
+
   const updateControls = useUpdateController({
     preferences: updatePreferences,
     startupEligible:
@@ -239,6 +253,7 @@ export function AppLifecycleProvider({ children }) {
     show: onShowWindow,
     busy: updateBusy,
     actions: {
+      locate: onLocateWindow,
       hide: () => requestCloseAction("tray"),
       settings: trayActions.onOpenSettings,
       selectSource: onSelectCaptureDevice,
@@ -252,6 +267,7 @@ export function AppLifecycleProvider({ children }) {
     windowVisible,
     onStartClick,
     onToggleWindow,
+    onLocateWindow,
     onQuit: () => requestCloseAction("quit"),
     colorScheme: resolvedTheme.colorScheme,
     updateBusy,
@@ -296,6 +312,15 @@ export function AppLifecycleProvider({ children }) {
       }}
     >
       {children}
+      {locatePulse > 0 && (
+        <div
+          key={locatePulse}
+          aria-hidden="true"
+          className={`workbench-locate pointer-events-none fixed inset-0 ${LAYER_INDICATOR}`}
+          data-docked={docked ? "" : undefined}
+          style={{ animationDuration: `${LOCATE_DURATION_MS}ms` }}
+        />
+      )}
     </AppLifecycleContext.Provider>
   );
 }

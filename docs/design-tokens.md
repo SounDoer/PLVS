@@ -333,16 +333,18 @@ hover, and Primary during dragging.
 
 ## Motion
 
-| Kind              | Examples                                                                                   | Rule                                                   |
-| ----------------- | ------------------------------------------------------------------------------------------ | ------------------------------------------------------ |
-| State feedback    | Hover, press, selection, validity: colour, fill, border, opacity, shadow                   | Instant. No transition                                 |
-| Spatial change    | The Settings drawer sliding in, a menu appearing, a chevron turning, a switch thumb moving | Use the framework default duration for transitions     |
-| Tooltip entry     | The shared tooltip appearing                                                               | `HoverTip` owns its entry delay and opacity transition |
-| Data smoothing    | The Level Meter fill, the correlation marker gliding along its rail                        | Owned by the instrument; not a UI transition           |
-| Looping indicator | The indeterminate update bar                                                               | Keyframes in `index.css`                               |
+| Kind              | Examples                                                                                   | Rule                                                                          |
+| ----------------- | ------------------------------------------------------------------------------------------ | ----------------------------------------------------------------------------- |
+| State feedback    | Hover, press, selection, validity: colour, fill, border, opacity, shadow                   | Instant. No transition                                                        |
+| Spatial change    | The Settings drawer sliding in, a menu appearing, a chevron turning, a switch thumb moving | Use the framework default duration for transitions                            |
+| Tooltip entry     | The shared tooltip appearing                                                               | `HoverTip` owns its entry delay and opacity transition                        |
+| Locate cue        | The Tray briefly marks the selected Workbench                                              | Show the accent edge immediately, then fade the edge and inward glow together |
+| Data smoothing    | The Level Meter fill, the correlation marker gliding along its rail                        | Owned by the instrument; not a UI transition                                  |
+| Looping indicator | The indeterminate update bar                                                               | Keyframes in `index.css`                                                      |
 
 Reduced motion makes CSS transitions and animations effectively instant in `index.css` and
-disables the indeterminate update animation. Entry delays remain. The Level Meter spring reads
+disables the indeterminate update animation. The Locate cue becomes a brief static accent edge.
+Entry delays remain. The Level Meter spring reads
 the system preference separately.
 
 Use `SortableList` and `DragHandle` for vertical list reordering. The pressed row immediately uses

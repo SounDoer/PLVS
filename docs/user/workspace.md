@@ -8,8 +8,8 @@ Multiple workbenches are supported on Windows and macOS. On macOS, launching PLV
 workbench is visible opens another workbench; launching it while all PLVS windows are hidden brings
 an existing workbench forward instead.
 
-Launch PLVS again when you need to meter another Source. Each additional workbench opens Stopped
-with Automatic selected, so its Transport looks and behaves like the first workbench without
+Choose **New Workbench** in the Tray when you need to meter another Source. Each additional
+workbench opens Stopped with Automatic selected, so its Transport looks and behaves like the first workbench without
 starting capture by itself. Press **Start** to meter the default output, or choose another Source
 first. It then keeps its own Source, layout, active Preset, active Loudness Profile, Theme, window
 position and Dock state. There is no workbench naming or profile-creation step: PLVS uses the

@@ -108,8 +108,8 @@ fn macos_reopen_action(has_visible_windows: bool, main_window_visible: bool) -> 
   }
 }
 
-/// Opens one additional workbench exactly as a second launch does, for Agent Control's
-/// `workbench open`. The new process registers itself, opens Stopped with Automatic selected, and
+/// Opens one additional workbench for the Tray and Agent Control's `workbench open`.
+/// The new process registers itself, opens Stopped with Automatic selected, and
 /// applies the same startup guards as any launch, including the update installer's gate.
 #[tauri::command]
 fn runtime_open_workbench(context: tauri::State<'_, AppLaunchContext>) -> Result<(), String> {

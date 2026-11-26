@@ -6,6 +6,7 @@ import { createNativeTrayMenu } from "../lib/nativeTrayMenu.js";
 import { Image } from "@tauri-apps/api/image";
 import { resolveResource } from "@tauri-apps/api/path";
 import { isTauri } from "../ipc/env.js";
+import { openAdditionalWorkbench } from "../ipc/commands.js";
 import { isMacOS } from "../lib/platform.js";
 import {
   formatAudioDeviceLabel,
@@ -208,6 +209,12 @@ function menuDefinitions(cfg) {
           kind: "submenu",
           text: instance.displayName,
           items: [
+            menuItem(
+              `${prefix}:locate`,
+              "Locate",
+              local ? cfg.onLocateWindow : () => cfg.onInstanceAction(instance, "locate"),
+              !inputs.updateBusy
+            ),
             ...workbenchDefinitions(
               {
                 ...inputs,
@@ -239,6 +246,8 @@ function menuDefinitions(cfg) {
       })
     : workbenchDefinitions(cfg, `workbench:${ownerId}`);
   items.push(separator("app:separator"));
+  items.push(menuItem("app:new-workbench", "New Workbench", cfg.onNewWorkbench, !cfg.updateBusy));
+  items.push(separator("app:new-workbench-separator"));
   if (cfg.updateMenu) {
     items.push(
       menuItem(
@@ -267,6 +276,7 @@ function menuDefinitions(cfg) {
  *   windowVisible?: boolean,
  *   onStartClick: (...args: any[]) => any,
  *   onToggleWindow: (...args: any[]) => any,
+ *   onLocateWindow?: () => Promise<void>,
  *   onQuit: (...args: any[]) => any,
  *   colorScheme: string,
  *   updateBusy?: boolean,
@@ -288,6 +298,7 @@ export function useTray({
   windowVisible = true,
   onStartClick,
   onToggleWindow,
+  onLocateWindow,
   onQuit,
   colorScheme,
   updateBusy = false,
@@ -328,11 +339,23 @@ export function useTray({
   const onSelectSourceRef = useRef(onSelectSource);
   const onApplyPresetRef = useRef(presets.apply);
   const updateBusyRef = useRef(updateBusy);
-  const navigationRef = useRef({ onOpenSettings, updateMenu });
+  const navigationRef = useRef({ onLocateWindow, onOpenSettings, updateMenu });
   useLayoutEffect(() => {
     updateBusyRef.current = updateBusy;
-    navigationRef.current = { onOpenSettings, updateMenu };
-  }, [updateBusy, onOpenSettings, updateMenu]);
+    navigationRef.current = { onLocateWindow, onOpenSettings, updateMenu };
+  }, [updateBusy, onLocateWindow, onOpenSettings, updateMenu]);
+  const stableLocateWindow = useCallback(() => {
+    if (updateBusyRef.current) return;
+    void navigationRef.current
+      .onLocateWindow?.()
+      .catch((error) => console.warn("Unable to locate PLVS workbench from Tray", error));
+  }, []);
+  const stableNewWorkbench = useCallback(() => {
+    if (updateBusyRef.current) return;
+    void openAdditionalWorkbench().catch((error) =>
+      console.warn("Unable to open a new PLVS workbench from Tray", error)
+    );
+  }, []);
   const stableOpenSettings = useCallback(() => {
     if (updateBusyRef.current) return;
     void Promise.resolve(navigationRef.current.onOpenSettings()).catch((error) =>
@@ -394,7 +417,8 @@ export function useTray({
     if (updateBusyRef.current) return;
     void issueInstanceCommand(instance.instanceId, action, payload).catch((error) => {
       console.warn("Unable to control PLVS workbench from Tray", error);
-      void issueInstanceCommand(instance.instanceId, "show").catch(() => {});
+      if (action !== "locate")
+        void issueInstanceCommand(instance.instanceId, "show").catch(() => {});
     });
   }, []);
   const stableQuitInstance = useCallback(
@@ -515,6 +539,8 @@ export function useTray({
       ...inputs,
       onToggleCapture: stableToggleCapture,
       onToggleWindow: stableToggleWindow,
+      onLocateWindow: stableLocateWindow,
+      onNewWorkbench: stableNewWorkbench,
       onQuit: stableQuit,
       onSelectSource: stableSelectSource,
       onApplyPreset: stableApplyPreset,
@@ -528,6 +554,8 @@ export function useTray({
     [
       stableToggleCapture,
       stableToggleWindow,
+      stableLocateWindow,
+      stableNewWorkbench,
       stableQuit,
       stableSelectSource,
       stableApplyPreset,

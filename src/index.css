@@ -426,12 +426,66 @@ html[data-keyboard-nav="true"] button:not(:disabled):focus-visible[class~="hover
   --ui-waveform-critical-range: var(--ui-waveform-critical-range-history);
 }
 
-/* Motion rule -- see design-tokens.md. State feedback never animates; what is left is spatial
-   change (a drawer sliding in, a menu appearing, a chevron turning) and the update progress bar. A
-   system "reduce motion" preference switches all of it off here, in one place, so a component
-   cannot forget. The duration is not zero: Radix waits for `animationend` before it unmounts a
-   closing layer. Canvas drawing and the Level Meter spring are not CSS and handle the preference
-   themselves. */
+.workbench-locate {
+  --locate-glow-near: 12px;
+  --locate-glow-far: 30px;
+}
+
+.workbench-locate[data-docked] {
+  --locate-glow-near: 5px;
+  --locate-glow-far: 11px;
+}
+
+.workbench-locate::before,
+.workbench-locate::after {
+  content: "";
+  position: absolute;
+  inset: 1px;
+  border-radius: 5px;
+  animation-duration: inherit;
+  animation-timing-function: ease-out;
+  animation-fill-mode: both;
+}
+
+.workbench-locate::before {
+  z-index: 1;
+  border: 1.5px solid var(--primary);
+  animation-name: workbench-locate-edge;
+}
+
+.workbench-locate::after {
+  box-shadow:
+    inset 0 0 var(--locate-glow-near) color-mix(in srgb, var(--primary) 52%, transparent),
+    inset 0 0 var(--locate-glow-far) color-mix(in srgb, var(--primary) 30%, transparent);
+  animation-name: workbench-locate-glow;
+}
+
+@keyframes workbench-locate-edge {
+  0%,
+  58.33% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+
+@keyframes workbench-locate-glow {
+  0% {
+    opacity: 0;
+  }
+  10%,
+  58.33% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+
+/* Motion rule -- see design-tokens.md. Reduced motion switches off CSS motion in one place.
+   Radix waits for `animationend` to unmount closing layers, so the duration is nonzero. Canvas
+   drawing and the Level Meter spring handle the preference separately. */
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
@@ -443,6 +497,14 @@ html[data-keyboard-nav="true"] button:not(:disabled):focus-visible[class~="hover
 
   .update-progress-indeterminate {
     animation: none;
+  }
+
+  .workbench-locate::before {
+    animation-name: none;
+  }
+
+  .workbench-locate::after {
+    content: none;
   }
 }
 

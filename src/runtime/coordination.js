@@ -100,7 +100,7 @@ async function handleRuntimeCommand(command, prepared) {
       return;
     }
     if (
-      ["hide", "settings", "selectSource", "applyPreset", "clearActiveSource"].includes(
+      ["locate", "hide", "settings", "selectSource", "applyPreset", "clearActiveSource"].includes(
         command.action
       )
     ) {

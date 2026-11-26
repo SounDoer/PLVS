@@ -23,6 +23,7 @@ import {
 
 describe("runtime coordination", () => {
   it.each([
+    ["locate", null],
     ["hide", null],
     ["settings", null],
     ["selectSource", "output-peer"],

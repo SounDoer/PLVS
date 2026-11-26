@@ -167,6 +167,7 @@ impl RuntimeCommandMailbox {
     if !matches!(
       action,
       "show"
+        | "locate"
         | "hide"
         | "settings"
         | "selectSource"

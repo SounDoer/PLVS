@@ -6,8 +6,8 @@ import { describe, expect, it } from "vitest";
 
 /**
  * State feedback never animates: a hover, press, selection or validity change switches colour,
- * fill, border, opacity and shadow at once. Motion is kept for spatial change and data smoothing
- * only, at the framework's default duration -- see design-tokens.md.
+ * fill, border, opacity and shadow at once. Dedicated cues such as Locate own their keyframes
+ * and reduced-motion fallback in index.css. See design-tokens.md.
  *
  * Before this rule the app carried about forty colour transitions at four different durations,
  * none of which a "reduce motion" system preference could switch off.
