@@ -86,7 +86,7 @@ describe("AppLifecycleProvider", () => {
 
       await act(() => locate());
       const firstCue = outline();
-      expect(firstCue?.classList.contains("pointer-events-none")).toBe(true);
+      expect(firstCue?.getAttribute("aria-hidden")).toBe("true");
       act(() => vi.advanceTimersByTime(800));
       await act(() => locate());
       expect(outline()).not.toBe(firstCue);

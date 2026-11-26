@@ -54,6 +54,14 @@ describe("motion contract", () => {
     expect(offenders()).toEqual([]);
   });
 
+  it("lets pointer input pass through the Workbench Locate cue", () => {
+    const lifecycle = readFileSync(
+      new URL("../../hooks/AppLifecycleContext.jsx", import.meta.url),
+      "utf8"
+    );
+    expect(lifecycle).toMatch(/workbench-locate\s+pointer-events-none\b/);
+  });
+
   it("switches CSS motion off for a reduce-motion preference", () => {
     const css = readFileSync(new URL("../../index.css", import.meta.url), "utf8");
     const rule = css.match(/@media \(prefers-reduced-motion: reduce\) \{[\s\S]*?\n\}/)?.[0] ?? "";
