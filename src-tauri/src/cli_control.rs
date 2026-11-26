@@ -130,6 +130,13 @@ pub enum ControlCommand {
     expected_revision: u64,
     expected_ui_generation: u64,
   },
+  TrayInspect,
+  TrayAction {
+    action: String,
+    item: Option<String>,
+    expected_revision: u64,
+    expected_ui_generation: u64,
+  },
   WindowInspect,
   WindowResize {
     width: u64,
@@ -153,6 +160,11 @@ pub enum ControlCommand {
   UpdateInspect,
   UpdateCheck {
     expected_revision: u64,
+  },
+  UpdateShowDetails {
+    version: String,
+    expected_revision: u64,
+    expected_ui_generation: u64,
   },
   UpdateInstall {
     version: String,
@@ -561,6 +573,7 @@ pub fn parse_control_args(args: &[String]) -> Result<ControlCommand, String> {
     }
     [command, rest @ ..] if command == "workspace" => return parse_workspace_args(rest),
     [command, rest @ ..] if command == "ui" => return parse_ui_args(rest),
+    [command, rest @ ..] if command == "tray" => return parse_tray_args(rest),
     [command, rest @ ..] if command == "window" => return parse_window_args(rest),
     [command, rest @ ..] if command == "workbench" => return parse_workbench_args(rest),
     [command, rest @ ..] if command == "update" => return parse_update_args(rest),
@@ -587,7 +600,7 @@ pub fn parse_control_args(args: &[String]) -> Result<ControlCommand, String> {
     [command, ..] => return Err(format!("Unknown control command: {command}")),
     [] => {}
   }
-  Err("Usage: plvs-cli <capabilities|inspect|ui|window|update|pointer|editor-draft|measurement|view|wait|module|workspace|panel|axis|preset|theme|loudness-profile|config|settings|transport|device|dock|visual> ...".to_string())
+  Err("Usage: plvs-cli <capabilities|inspect|ui|tray|window|update|pointer|editor-draft|measurement|view|wait|module|workspace|panel|axis|preset|theme|loudness-profile|config|settings|transport|device|dock|visual> ...".to_string())
 }
 
 fn parse_development_args(args: &[String]) -> Result<ControlCommand, String> {
@@ -1473,8 +1486,58 @@ fn parse_ui_args(args: &[String]) -> Result<ControlCommand, String> {
   }
 }
 
+fn parse_tray_args(args: &[String]) -> Result<ControlCommand, String> {
+  if args.iter().any(|arg| is_help(arg)) {
+    return Ok(ControlCommand::FamilyHelp("tray".to_string()));
+  }
+  if args == ["inspect", "--json"] {
+    return Ok(ControlCommand::TrayInspect);
+  }
+  let [action, options @ ..] = args else {
+    return Err("Expected tray inspect, open, close, or activate.".to_string());
+  };
+  if !matches!(action.as_str(), "open" | "close" | "activate") {
+    return Err("Expected tray inspect, open, close, or activate.".to_string());
+  }
+  let mut item = None;
+  let mut revision = None;
+  let mut generation = None;
+  let mut json = false;
+  let mut remaining = options.iter();
+  while let Some(option) = remaining.next() {
+    match option.as_str() {
+      "--json" if !json => json = true,
+      "--item" if action != "close" && item.is_none() => {
+        item = Some(
+          remaining
+            .next()
+            .filter(|key| !key.trim().is_empty())
+            .ok_or("Provide a Tray item key after --item.")?
+            .clone(),
+        );
+      }
+      "--expected-revision" if revision.is_none() => {
+        revision = Some(parse_ui_safe_integer(remaining.next(), option)?);
+      }
+      "--expected-ui-generation" if generation.is_none() => {
+        generation = Some(parse_ui_safe_integer(remaining.next(), option)?);
+      }
+      option => return Err(format!("Unknown or duplicate Tray option: {option}")),
+    }
+  }
+  if !json || (action == "activate" && item.is_none()) {
+    return Err("Tray actions require --json. Tray activate also requires --item.".to_string());
+  }
+  Ok(ControlCommand::TrayAction {
+    action: action.clone(),
+    item,
+    expected_revision: revision.ok_or("Tray actions require --expected-revision.")?,
+    expected_ui_generation: generation.ok_or("Tray actions require --expected-ui-generation.")?,
+  })
+}
+
 fn parse_window_args(args: &[String]) -> Result<ControlCommand, String> {
-  const USAGE: &str = "Usage:\n  plvs-cli window inspect --json\n  plvs-cli window resize --width <css-px> --height <css-px> --expected-revision <n> --json\n  plvs-cli window move --monitor <monitor-id> --x <css-px> --y <css-px> --expected-revision <n> --json\n  plvs-cli window hide --expected-revision <n> --json\n  plvs-cli window show --expected-revision <n> --json\n  plvs-cli window maximize --expected-revision <n> --json\n  plvs-cli window unmaximize --expected-revision <n> --json\n  plvs-cli window minimize --expected-revision <n> --json";
+  const USAGE: &str = "Usage:\n  plvs-cli window inspect --json\n  plvs-cli window resize --width <css-px> --height <css-px> --expected-revision <n> --json\n  plvs-cli window move --monitor <monitor-id> --x <css-px> --y <css-px> --expected-revision <n> --json\n  plvs-cli window hide --expected-revision <n> --json\n  plvs-cli window show --expected-revision <n> --json\n  plvs-cli window locate --expected-revision <n> --json\n  plvs-cli window maximize --expected-revision <n> --json\n  plvs-cli window unmaximize --expected-revision <n> --json\n  plvs-cli window minimize --expected-revision <n> --json";
   if args.iter().any(|arg| is_help(arg)) {
     return Ok(ControlCommand::FamilyHelp("window".to_string()));
   }
@@ -1486,7 +1549,7 @@ fn parse_window_args(args: &[String]) -> Result<ControlCommand, String> {
   };
   if !matches!(
     action.as_str(),
-    "resize" | "move" | "hide" | "show" | "maximize" | "unmaximize" | "minimize"
+    "resize" | "move" | "hide" | "show" | "locate" | "maximize" | "unmaximize" | "minimize"
   ) {
     return Err(USAGE.to_string());
   }
@@ -1624,7 +1687,7 @@ fn parse_workbench_args(args: &[String]) -> Result<ControlCommand, String> {
 }
 
 fn parse_update_args(args: &[String]) -> Result<ControlCommand, String> {
-  const USAGE: &str = "Usage:\n  plvs-cli update inspect --json\n  plvs-cli update check --expected-revision <n> --json\n  plvs-cli update install --version <version> --expected-revision <n> --json";
+  const USAGE: &str = "Usage:\n  plvs-cli update inspect --json\n  plvs-cli update check --expected-revision <n> --json\n  plvs-cli update show-details --version <version> --expected-revision <n> --expected-ui-generation <n> --json\n  plvs-cli update install --version <version> --expected-revision <n> --json";
   if args.iter().any(|arg| is_help(arg)) {
     return Ok(ControlCommand::FamilyHelp("update".to_string()));
   }
@@ -1634,10 +1697,12 @@ fn parse_update_args(args: &[String]) -> Result<ControlCommand, String> {
   let [action, options @ ..] = args else {
     return Err(USAGE.to_string());
   };
-  if action != "check" && action != "install" {
+  if !matches!(action.as_str(), "check" | "install" | "show-details") {
     return Err(USAGE.to_string());
   }
+  let details = action == "show-details";
   let installing = action == "install";
+  let mut expected_ui_generation = None;
   let mut version = None;
   let mut expected_revision = None;
   let mut json = false;
@@ -1655,7 +1720,14 @@ fn parse_update_args(args: &[String]) -> Result<ControlCommand, String> {
         )?);
         index += 2;
       }
-      "--version" if installing && version.is_none() => {
+      "--expected-ui-generation" if details && expected_ui_generation.is_none() => {
+        expected_ui_generation = Some(parse_ui_safe_integer(
+          options.get(index + 1),
+          "--expected-ui-generation",
+        )?);
+        index += 2;
+      }
+      "--version" if (installing || details) && version.is_none() => {
         version = Some(
           options
             .get(index + 1)
@@ -1670,6 +1742,15 @@ fn parse_update_args(args: &[String]) -> Result<ControlCommand, String> {
   }
   if !json {
     return Err(format!("The update {action} action requires --json."));
+  }
+  if details {
+    return Ok(ControlCommand::UpdateShowDetails {
+      version: version.ok_or("The update show-details action requires --version.")?,
+      expected_revision: expected_revision
+        .ok_or("The update show-details action requires --expected-revision.")?,
+      expected_ui_generation: expected_ui_generation
+        .ok_or("The update show-details action requires --expected-ui-generation.")?,
+    });
   }
   if installing {
     return Ok(ControlCommand::UpdateInstall {
@@ -1866,9 +1947,10 @@ fn parse_visual_args(args: &[String]) -> Result<ControlCommand, String> {
     Some("dock-editor") => "dockEditor",
     Some("dock-update") => "dockUpdate",
     Some("dock-settings") => "dockSettings",
+    Some("tray") => "tray",
     Some(value) => {
       return Err(format!(
-        "Unknown visual screenshot target: {value}. Expected main, workspace, panel, dock-header, dock-editor, dock-update, or dock-settings."
+        "Unknown visual screenshot target: {value}. Expected main, workspace, panel, dock-header, dock-editor, dock-update, dock-settings, or tray."
       ))
     }
     None if target_id.is_some() => "named",
@@ -4383,6 +4465,8 @@ fn command_name(command: &ControlCommand) -> String {
     ControlCommand::PanelGesture { method, .. } => method.clone(),
     ControlCommand::UiDecide { .. } => "ui.decide".to_string(),
     ControlCommand::UiClose { .. } => "ui.close".to_string(),
+    ControlCommand::TrayInspect => "tray.inspect".to_string(),
+    ControlCommand::TrayAction { action, .. } => format!("tray.{action}"),
     ControlCommand::WindowInspect => "window.inspect".to_string(),
     ControlCommand::WindowResize { .. } => "window.resize".to_string(),
     ControlCommand::WindowMove { .. } => "window.move".to_string(),
@@ -4390,6 +4474,7 @@ fn command_name(command: &ControlCommand) -> String {
     ControlCommand::WorkbenchLifecycle { method, .. } => method.clone(),
     ControlCommand::UpdateInspect => "update.inspect".to_string(),
     ControlCommand::UpdateCheck { .. } => "update.check".to_string(),
+    ControlCommand::UpdateShowDetails { .. } => "update.showDetails".to_string(),
     ControlCommand::UpdateInstall { .. } => "update.install".to_string(),
     ControlCommand::UiCancel { .. } => "ui.cancel".to_string(),
     ControlCommand::EditorDraftRead { method, .. }
@@ -4510,6 +4595,7 @@ fn request_for_command<R: Read>(
     | ControlCommand::Inspect
     | ControlCommand::UiInspect
     | ControlCommand::WindowInspect
+    | ControlCommand::TrayInspect
     | ControlCommand::UpdateInspect
     | ControlCommand::UiTargets
     | ControlCommand::MeasurementRead { .. }
@@ -4759,6 +4845,30 @@ fn request_for_command<R: Read>(
       "width": width,
       "height": height,
       "expectedRevision": expected_revision,
+    }),
+    ControlCommand::TrayAction {
+      item,
+      expected_revision,
+      expected_ui_generation,
+      ..
+    } => {
+      let mut params = serde_json::json!({
+        "expectedRevision": expected_revision,
+        "expectedUiGeneration": expected_ui_generation,
+      });
+      if let Some(item) = item {
+        params["item"] = serde_json::json!(item);
+      }
+      params
+    }
+    ControlCommand::UpdateShowDetails {
+      version,
+      expected_revision,
+      expected_ui_generation,
+    } => serde_json::json!({
+      "version": version,
+      "expectedRevision": expected_revision,
+      "expectedUiGeneration": expected_ui_generation,
     }),
     ControlCommand::UpdateInstall {
       version,
@@ -7291,7 +7401,7 @@ mod tests {
       "id" => "stats".to_string(),
       "main|workspace"
       | "main|workspace|dock"
-      | "main|workspace|panel|dock-header|dock-editor|dock-update|dock-settings" => {
+      | "main|workspace|panel|dock-header|dock-editor|dock-update|dock-settings|tray" => {
         "main".to_string()
       }
       "n" => "0".to_string(),
@@ -10404,6 +10514,7 @@ mod tests {
       ("dock-editor", "dockEditor"),
       ("dock-update", "dockUpdate"),
       ("dock-settings", "dockSettings"),
+      ("tray", "tray"),
     ] {
       let command = parse_control_args(&args(&[
         "visual",

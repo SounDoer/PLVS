@@ -10,15 +10,17 @@ async function capabilities(ctx) {
   const { requestId, clock, live } = ctx;
   const { runtime } = ctx.snap;
   const visualControl = live().visual;
-  const capabilityRuntime = visualControl
-    ? {
-        ...runtime,
-        visual: {
-          screenshot: visualControl.platformCapabilities?.screenshot?.available === true,
-          recording: visualControl.platformCapabilities?.recording?.available === true,
-        },
-      }
-    : runtime;
+  const tray = live().trayControl;
+  const capabilityRuntime = {
+    ...runtime,
+    tray: tray && { owner: tray.owner, panel: tray.customPanel },
+    ...(visualControl && {
+      visual: {
+        screenshot: visualControl.platformCapabilities?.screenshot?.available === true,
+        recording: visualControl.platformCapabilities?.recording?.available === true,
+      },
+    }),
+  };
   return {
     requestId,
     result: buildAgentControlCapabilities(capabilityRuntime, clock.current()),

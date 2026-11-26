@@ -29,3 +29,49 @@ export function trayActionDismisses(key, ownerId) {
     key === `workbench:${ownerId}:quit`
   );
 }
+
+/** @typedef {{ branchKey?: string, pickerKey?: string, groupKeys?: string[] }} TrayNavigation */
+
+/** @param {TrayPanelItem[]} items @param {string} key @returns {TrayNavigation | null} */
+export function trayNavigationFor(items, key) {
+  /** @param {TrayPanelItem[]} rows @param {string} [branchKey] */
+  function findPicker(rows, branchKey) {
+    for (const picker of rows) {
+      if (!picker.pageTitle || picker.enabled === false) continue;
+      if (picker.key === key) return { branchKey, pickerKey: key };
+      if (picker.items?.some((item) => item.key === key && item.kind === "group")) {
+        return { branchKey, pickerKey: picker.key, groupKeys: [key] };
+      }
+    }
+    return null;
+  }
+  for (const branch of items) {
+    if (branch.kind !== "submenu" || branch.pageTitle || branch.enabled === false) continue;
+    if (branch.key === key) return { branchKey: key };
+    const navigation = findPicker(branch.items ?? [], branch.key);
+    if (navigation) return navigation;
+  }
+  return findPicker(items);
+}
+
+/** @param {TrayPanelItem[]} items @param {TrayNavigation} navigation @param {string} key */
+export function findPresentedTrayChoice(items, navigation, key) {
+  const branch = items.find((item) => item.key === navigation.branchKey && item.enabled !== false);
+  const rows = [...items, ...(branch?.items ?? [])];
+  const picker = rows.find(
+    (item) => item.key === navigation.pickerKey && item.pageTitle && item.enabled !== false
+  );
+  const choices = rows.concat(
+    picker?.items?.flatMap((item) =>
+      item.kind !== "group"
+        ? [item]
+        : navigation.groupKeys?.includes(item.key)
+          ? (item.items ?? [])
+          : []
+    ) ?? []
+  );
+  return choices.find(
+    (item) =>
+      item.key === key && item.enabled !== false && [undefined, "item", "check"].includes(item.kind)
+  );
+}

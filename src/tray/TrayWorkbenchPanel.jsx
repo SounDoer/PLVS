@@ -56,10 +56,9 @@ function ChoiceRow({ item, onAction }) {
   );
 }
 
-/** @param {{ item: TrayPanelItem, onAction: (item: TrayPanelItem) => void }} props */
-function SourceGroup({ item, onAction }) {
+/** @param {{ item: TrayPanelItem, open: boolean, toggle: (key: string) => void, onAction: (item: TrayPanelItem) => void }} props */
+function SourceGroup({ item, open, toggle, onAction }) {
   const id = useId();
-  const [open, setOpen] = useState(false);
   const choices = item.items ?? [];
   const selected = choices.find((choice) => choice.checked);
   return (
@@ -68,7 +67,7 @@ function SourceGroup({ item, onAction }) {
         className={ROW}
         aria-expanded={open}
         aria-controls={id}
-        onClick={() => setOpen(!open)}
+        onClick={() => toggle(item.key)}
       >
         <Disclosure open={open} />
         <span className="shrink-0 font-medium text-muted-foreground">{item.text}</span>
@@ -99,12 +98,23 @@ function SourceGroup({ item, onAction }) {
  *   items: TrayPanelItem[],
  *   branchKey?: string,
  *   pickerKey?: string,
+ *   groupKeys?: string[],
+ *   onToggleGroup?: (key: string) => void,
  *   onToggleBranch?: (item: TrayPanelItem, trigger: HTMLButtonElement) => void,
  *   onTogglePicker?: (item: TrayPanelItem, trigger: HTMLButtonElement, byKeyboard: boolean) => void,
  *   onAction: (item: TrayPanelItem) => void,
  * }} props
  */
-function TrayRows({ items, branchKey, pickerKey, onToggleBranch, onTogglePicker, onAction }) {
+function TrayRows({
+  items,
+  branchKey,
+  pickerKey,
+  groupKeys,
+  onToggleGroup,
+  onToggleBranch,
+  onTogglePicker,
+  onAction,
+}) {
   const listId = useId();
   return (
     <ul>
@@ -115,7 +125,12 @@ function TrayRows({ items, branchKey, pickerKey, onToggleBranch, onTogglePicker,
         if (item.kind === "group") {
           return (
             <li key={item.key}>
-              <SourceGroup item={item} onAction={onAction} />
+              <SourceGroup
+                item={item}
+                open={groupKeys?.includes(item.key) ?? false}
+                toggle={onToggleGroup}
+                onAction={onAction}
+              />
             </li>
           );
         }
@@ -133,6 +148,7 @@ function TrayRows({ items, branchKey, pickerKey, onToggleBranch, onTogglePicker,
           <li key={item.key}>
             <MenuRow
               className={cn(ROW, (!picker || expanded) && "font-medium", expanded && "bg-ui-hover")}
+              data-tray-menu-key={item.key}
               aria-controls={picker ? (expanded ? "tray-workbench-picker" : undefined) : id}
               aria-expanded={expanded}
               disabled={item.enabled === false}
@@ -172,6 +188,13 @@ function TrayRows({ items, branchKey, pickerKey, onToggleBranch, onTogglePicker,
   );
 }
 
+/** @param {HTMLElement | null} root @param {string} key */
+function findMenuTrigger(root, key) {
+  return Array.from(root?.querySelectorAll("button") ?? []).find(
+    (button) => button.getAttribute("data-tray-menu-key") === key
+  );
+}
+
 export function TrayWorkbenchPanel() {
   const [snapshot, setSnapshot] = useState({
     items: /** @type {TrayPanelItem[]} */ ([]),
@@ -179,18 +202,18 @@ export function TrayWorkbenchPanel() {
     presentation: 0,
   });
   const [navigation, setNavigation] = useState(
-    /** @type {{ branchKey?: string, pickerKey?: string }} */ ({})
+    /** @type {import("./trayWorkbenchProtocol.js").TrayNavigation} */ ({})
   );
   const [notice, setNotice] = useState("");
   const [placement, setPlacement] = useState(
-    /** @type {{ layout: PanelLayout, pickerKey?: string } | null} */ (null)
+    /** @type {{ layout: PanelLayout, presentation: number, branchKey?: string, pickerKey?: string, groupKeys?: string[] } | null} */ (
+      null
+    )
   );
   const mainRef = useRef(/** @type {HTMLElement | null} */ (null));
   const contentsRef = useRef(null);
   const pickerRef = useRef(/** @type {HTMLElement | null} */ (null));
   const pickerContentsRef = useRef(null);
-  const branchTrigger = useRef(/** @type {HTMLButtonElement | null} */ (null));
-  const pickerTrigger = useRef(/** @type {HTMLButtonElement | null} */ (null));
   const focusPicker = useRef(false);
   const lastLayout = useRef("");
   const pendingLayout = useRef(Promise.resolve());
@@ -202,14 +225,16 @@ export function TrayWorkbenchPanel() {
   const picker = (expanded?.items ?? snapshot.items).find(
     (item) => item.key === navigation.pickerKey && item.pageTitle
   );
+  const branchKey = expanded?.key;
   const pickerKey = picker?.key;
+  const groupKeys = picker ? navigation.groupKeys : undefined;
   const sideBounds = placement?.pickerKey === pickerKey ? placement?.layout.side : null;
 
   useEffect(() => {
     const announceReady = () => emitTo("main", TRAY_WORKBENCH_ACTION, { kind: "ready" });
     const listeners = Promise.all([
       listen(TRAY_WORKBENCH_STATE, ({ payload }) => {
-        const { theme, interfaceSize, items, presentation } = payload;
+        const { theme, interfaceSize, items, presentation, navigation } = payload;
         const revision = theme && `${theme.id}:${theme.revision}`;
         if (isThemePublication(theme) && revision !== appliedThemeRevision.current) {
           applyResolvedThemeToDocument(theme);
@@ -223,7 +248,7 @@ export function TrayWorkbenchPanel() {
         }
         if (presentation !== receivedPresentation.current) {
           receivedPresentation.current = presentation;
-          setNavigation({});
+          setNavigation(navigation ?? {});
           setNotice("");
         }
         setSnapshot({ items, interfaceSize, presentation });
@@ -241,18 +266,18 @@ export function TrayWorkbenchPanel() {
     function onEscape(event) {
       if (event.key !== "Escape" || event.repeat) return;
       if (pickerKey) {
-        setNavigation({ branchKey: expanded?.key });
-        pickerTrigger.current?.focus({ preventScroll: true });
-      } else if (expanded) {
+        setNavigation({ branchKey });
+        findMenuTrigger(mainRef.current, pickerKey)?.focus({ preventScroll: true });
+      } else if (branchKey) {
         setNavigation({});
-        branchTrigger.current?.focus({ preventScroll: true });
+        findMenuTrigger(mainRef.current, branchKey)?.focus({ preventScroll: true });
       } else {
         void getCurrentWindow().hide();
       }
     }
     window.addEventListener("keydown", onEscape);
     return () => window.removeEventListener("keydown", onEscape);
-  }, [expanded, pickerKey]);
+  }, [branchKey, pickerKey]);
 
   useLayoutEffect(() => {
     if (!sideBounds || !focusPicker.current) return;
@@ -267,7 +292,7 @@ export function TrayWorkbenchPanel() {
     const contents = contentsRef.current;
     const pickerSurface = pickerRef.current;
     const pickerContents = pickerContentsRef.current;
-    const trigger = pickerKey ? pickerTrigger.current : null;
+    const trigger = pickerKey ? findMenuTrigger(main, pickerKey) : null;
     if (!main || !contents || !snapshot.presentation) return;
     let frame;
     function applyLayout() {
@@ -296,7 +321,9 @@ export function TrayWorkbenchPanel() {
         side,
         webviewScale,
         snapshot.presentation,
+        branchKey,
         pickerKey,
+        groupKeys,
       ]);
       if (key === lastLayout.current) return;
       lastLayout.current = key;
@@ -308,7 +335,15 @@ export function TrayWorkbenchPanel() {
             await invoke("layout_tray_workbench_panel", { width, height, side, webviewScale, show })
           );
           if (show) presented.current = snapshot.presentation;
-          if (layout && key === lastLayout.current) setPlacement({ layout, pickerKey });
+          if (layout && key === lastLayout.current) {
+            setPlacement({
+              layout,
+              presentation: snapshot.presentation,
+              branchKey,
+              pickerKey,
+              groupKeys,
+            });
+          }
         } catch (error) {
           setNotice(String(error));
         }
@@ -330,7 +365,32 @@ export function TrayWorkbenchPanel() {
       main.removeEventListener("scroll", scheduleLayout);
       window.removeEventListener("resize", scheduleLayout);
     };
-  }, [snapshot.presentation, snapshot.interfaceSize, pickerKey]);
+  }, [snapshot.presentation, snapshot.interfaceSize, branchKey, pickerKey, groupKeys]);
+
+  useEffect(() => {
+    if (
+      !placement ||
+      placement.presentation !== snapshot.presentation ||
+      placement.branchKey !== branchKey ||
+      placement.pickerKey !== pickerKey ||
+      (pickerKey && !placement.layout.side) ||
+      placement.groupKeys !== groupKeys
+    )
+      return;
+    // Report the rendered WebView client after its native placement and React commit.
+    let frame = requestAnimationFrame(() => {
+      frame = requestAnimationFrame(() => {
+        void emitTo("main", TRAY_WORKBENCH_ACTION, {
+          kind: "rendered",
+          presentation: placement.presentation,
+          navigation: { branchKey, pickerKey, groupKeys },
+          viewport: { width: window.innerWidth, height: window.innerHeight },
+          devicePixelRatio: window.devicePixelRatio,
+        });
+      });
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [placement, snapshot.presentation, branchKey, pickerKey, groupKeys]);
 
   /** @param {TrayPanelItem} item */
   async function request({ key, dismiss }) {
@@ -354,19 +414,17 @@ export function TrayWorkbenchPanel() {
         <div ref={contentsRef} className="p-1">
           <TrayRows
             items={snapshot.items}
-            branchKey={expanded?.key}
+            branchKey={branchKey}
             pickerKey={pickerKey}
-            onToggleBranch={(item, trigger) => {
-              branchTrigger.current = trigger;
+            onToggleBranch={(item) => {
               setNotice("");
-              setNavigation(item.key === expanded?.key ? {} : { branchKey: item.key });
+              setNavigation(item.key === branchKey ? {} : { branchKey: item.key });
             }}
-            onTogglePicker={(item, trigger, byKeyboard) => {
-              pickerTrigger.current = trigger;
+            onTogglePicker={(item, _trigger, byKeyboard) => {
               focusPicker.current = byKeyboard && item.key !== pickerKey;
               setNotice("");
               setNavigation({
-                branchKey: expanded?.key,
+                branchKey,
                 pickerKey: item.key === pickerKey ? undefined : item.key,
               });
             }}
@@ -392,7 +450,22 @@ export function TrayWorkbenchPanel() {
           style={sideBounds ?? { ...initialBounds, visibility: placement ? "hidden" : undefined }}
         >
           <div ref={pickerContentsRef} className="p-1">
-            <TrayRows items={picker.items ?? []} onAction={request} />
+            <TrayRows
+              items={picker.items ?? []}
+              groupKeys={groupKeys}
+              onToggleGroup={(key) =>
+                setNavigation((current) => {
+                  const groups = current.groupKeys ?? [];
+                  return {
+                    ...current,
+                    groupKeys: groups.includes(key)
+                      ? groups.filter((group) => group !== key)
+                      : [...groups, key],
+                  };
+                })
+              }
+              onAction={request}
+            />
           </div>
         </section>
       )}

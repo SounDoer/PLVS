@@ -9,6 +9,7 @@ import { createStereoFixtureWav } from "./theme-gallery-lib.mjs";
 import { hostPlatform, writeJsonAtomic } from "./acceptance-evidence.mjs";
 import { APP_DATA_ROOT_ARG, MAIN_DEV_PORT, portIsFree } from "./dev-worktree.mjs";
 
+import { runTrayContract } from "./accept-tray.mjs";
 import { runWindowContract, runWorkbenchContract } from "./accept-window-workbench.mjs";
 
 const target = "toolbar:dialogue-detection";
@@ -133,9 +134,10 @@ export async function runIsolatedAgentControl({
     }
     if (
       allowUnavailable &&
-      ["appNotRunning", "agentControlNotReady", "frontendNotReady", "discoveryFailed"].includes(
+      (["appNotRunning", "agentControlNotReady", "frontendNotReady", "discoveryFailed"].includes(
         response.error?.code
-      )
+      ) ||
+        (args[0] === "tray" && response.error?.code === "controlUnavailable"))
     )
       return null;
     cliLog.push({ args: [...selector, ...args], status: child.status, response });
@@ -494,6 +496,15 @@ export async function runIsolatedAgentControl({
           await start(previous);
         },
       });
+    } else if (scenario === "tray-platform-contract") {
+      await runTrayContract({
+        invoke,
+        instances,
+        until,
+        steps: evidence.steps,
+        firstInstance: instance,
+        screenshotPath: join(outDir, "tray.png"),
+      });
     } else if (scenario === "workbench-platform-contract")
       await runWorkbenchContract({
         invoke,
@@ -542,9 +553,12 @@ export async function runIsolatedAgentControl({
     let cleanupFailed = false;
     if (
       app &&
-      ["configuration-relaunch", "workbench-platform-contract", "welcome-relaunch"].includes(
-        scenario
-      )
+      [
+        "configuration-relaunch",
+        "workbench-platform-contract",
+        "tray-platform-contract",
+        "welcome-relaunch",
+      ].includes(scenario)
     ) {
       try {
         if (restartingFrom) await discover(restartingFrom);

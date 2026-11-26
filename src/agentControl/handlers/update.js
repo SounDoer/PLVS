@@ -70,26 +70,15 @@ async function check(ctx) {
 
 const INSTALL_BUSY = new Set(["installing", "restarting"]);
 
-/**
- * About's Install: opens the update details for the newest known version and confirms them, through
- * the same controller path as the dialog's button. The caller names the version it inspected, so a
- * newer candidate that replaced it is refused instead of installed. The response is delivered
- * before installation starts; downloading, the all-workbench save barrier and the relaunch follow.
- *
- * @param {import("../bridge/types.js").BridgeContext} ctx
- */
-async function install(ctx) {
-  const { request, requestId, live } = ctx;
-  const revision = assertExpectedRevision(ctx, "The app", { required: true });
-  const updateControl = live().updateControl;
+function requireUpdateCandidate(updateControl, version) {
   const inspection = buildUpdateInspection(updateControl);
   if (!inspection.enabled) {
     throw semanticFailure(
       "updateUnavailable",
       "$.method",
-      "This workbench does not install updates.",
+      "This workbench does not manage updates.",
       -32012,
-      { status: updateControl.info.status }
+      { status: inspection.status }
     );
   }
   if (INSTALL_BUSY.has(updateControl.installStatus)) {
@@ -104,15 +93,67 @@ async function install(ctx) {
       -32010
     );
   }
-  if (target.version !== request.params.version) {
+  if (target.version !== version) {
     throw semanticFailure(
       "updateVersionMismatch",
       "$.params.version",
-      `The update available is ${target.version}, not ${request.params.version}.`,
+      `The update available is ${target.version}, not ${version}.`,
       -32012,
-      { requestedVersion: request.params.version, availableVersion: target.version }
+      { requestedVersion: version, availableVersion: target.version }
     );
   }
+  return target;
+}
+
+function requireDetailsTarget(updateControl, version) {
+  const target = requireUpdateCandidate(updateControl, version);
+  if (updateControl.detailsVersion && updateControl.detailsVersion !== version) {
+    throw semanticFailure(
+      "uiConflict",
+      "$.params.version",
+      "Dismiss the details for the other update first.",
+      -32042,
+      { openVersion: updateControl.detailsVersion }
+    );
+  }
+  return target;
+}
+
+async function showDetails(ctx) {
+  const { request, requestId, clock, live } = ctx;
+  const { version, expectedUiGeneration } = request.params;
+  assertExpectedRevision(ctx, "The app", { required: true });
+  const currentUiGeneration = live().uiNavigation?.inspectUi()?.uiGeneration;
+  if (currentUiGeneration !== expectedUiGeneration) {
+    throw semanticFailure(
+      "uiGenerationConflict",
+      "$.params.expectedUiGeneration",
+      "The visible UI changed. Run ui inspect again.",
+      -32042,
+      { expectedUiGeneration, currentUiGeneration }
+    );
+  }
+  requireDetailsTarget(live().updateControl, version);
+  await live().updateControl.showWindow();
+  const control = live().updateControl;
+  const target = requireDetailsTarget(control, version);
+  control.openDetails(target);
+  return { requestId, result: { revision: clock.current(), version } };
+}
+
+/**
+ * About's Install: opens the update details for the newest known version and confirms them, through
+ * the same controller path as the dialog's button. The caller names the version it inspected, so a
+ * newer candidate that replaced it is refused instead of installed. The response is delivered
+ * before installation starts; downloading, the all-workbench save barrier and the relaunch follow.
+ *
+ * @param {import("../bridge/types.js").BridgeContext} ctx
+ */
+async function install(ctx) {
+  const { request, requestId, live } = ctx;
+  const revision = assertExpectedRevision(ctx, "The app", { required: true });
+  const updateControl = live().updateControl;
+  const target = requireUpdateCandidate(updateControl, request.params.version);
   if (!updateControl.installationSupported) {
     throw semanticFailure(
       "updateInstallationUnsupported",
@@ -146,4 +187,5 @@ export const updateHandlers = {
   "update.inspect": { run: inspect },
   "update.check": { run: check },
   "update.install": { run: install },
+  "update.showDetails": { run: showDetails },
 };

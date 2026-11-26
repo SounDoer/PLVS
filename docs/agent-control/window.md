@@ -78,6 +78,9 @@ tray does, and fails with `busy` while an update is installing. In Dock, Hide su
 and Show restores it. Show also requests that the window be brought forward, including from a
 minimized state on backends that support it. `changed` reports whether visibility itself changed.
 
+`window locate` shows the selected Workbench and briefly pulses its Accent border, using the same
+cue as Locate in the Tray. The cue also runs when the Workbench was already visible.
+
 ## Revision
 
 Window geometry and visibility live in `window inspect`. A window change can advance the global

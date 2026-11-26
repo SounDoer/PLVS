@@ -1281,6 +1281,286 @@
       }
     },
     {
+      "id": "window.locate",
+      "family": "window",
+      "path": ["window", "locate"],
+      "usage": "plvs-cli window locate --expected-revision <n> --json",
+      "summary": "Show the Workbench and pulse its Accent border, as Locate does.",
+      "execution": "runningApp",
+      "operation": "action",
+      "wireMethod": "window.locate",
+      "json": "required",
+      "expectedRevision": "required",
+      "dryRun": false,
+      "outputFile": "none",
+      "risk": "ordinary",
+      "positionals": [],
+      "options": [
+        {
+          "name": "--expected-revision",
+          "required": true,
+          "value": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          }
+        },
+        {
+          "name": "--json",
+          "required": true,
+          "value": {
+            "type": "boolean"
+          }
+        }
+      ],
+      "wireParams": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["expectedRevision"],
+        "properties": {
+          "expectedRevision": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          }
+        }
+      }
+    },
+    {
+      "id": "tray.inspect",
+      "family": "tray",
+      "path": ["tray", "inspect"],
+      "usage": "plvs-cli tray inspect --json",
+      "summary": "Inspect the Tray menu tree and its current presentation.",
+      "execution": "runningApp",
+      "operation": "query",
+      "wireMethod": "tray.inspect",
+      "json": "required",
+      "expectedRevision": "none",
+      "dryRun": false,
+      "outputFile": "none",
+      "positionals": [],
+      "options": [
+        {
+          "name": "--json",
+          "required": true,
+          "value": {
+            "type": "boolean"
+          }
+        }
+      ],
+      "wireParams": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [],
+        "properties": {}
+      },
+      "featureGate": "tray.inspect"
+    },
+    {
+      "id": "tray.open",
+      "family": "tray",
+      "path": ["tray", "open"],
+      "usage": "plvs-cli tray open [--item <item-id>] --expected-revision <n> --expected-ui-generation <n> --json",
+      "summary": "Open the Tray panel at the root, a Workbench, a picker, or a Source group.",
+      "execution": "runningApp",
+      "operation": "action",
+      "wireMethod": "tray.open",
+      "json": "required",
+      "expectedRevision": "required",
+      "dryRun": false,
+      "outputFile": "none",
+      "risk": "ordinary",
+      "positionals": [],
+      "options": [
+        {
+          "name": "--item",
+          "required": false,
+          "value": {
+            "type": "string"
+          }
+        },
+        {
+          "name": "--expected-revision",
+          "required": true,
+          "value": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          }
+        },
+        {
+          "name": "--expected-ui-generation",
+          "required": true,
+          "value": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          }
+        },
+        {
+          "name": "--json",
+          "required": true,
+          "value": {
+            "type": "boolean"
+          }
+        }
+      ],
+      "wireParams": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["expectedRevision", "expectedUiGeneration"],
+        "properties": {
+          "expectedRevision": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          },
+          "expectedUiGeneration": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          },
+          "item": {
+            "type": "string"
+          }
+        }
+      },
+      "featureGate": "tray.panel"
+    },
+    {
+      "id": "tray.close",
+      "family": "tray",
+      "path": ["tray", "close"],
+      "usage": "plvs-cli tray close --expected-revision <n> --expected-ui-generation <n> --json",
+      "summary": "Dismiss the Tray panel.",
+      "execution": "runningApp",
+      "operation": "action",
+      "wireMethod": "tray.close",
+      "json": "required",
+      "expectedRevision": "required",
+      "dryRun": false,
+      "outputFile": "none",
+      "risk": "ordinary",
+      "positionals": [],
+      "options": [
+        {
+          "name": "--expected-revision",
+          "required": true,
+          "value": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          }
+        },
+        {
+          "name": "--expected-ui-generation",
+          "required": true,
+          "value": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          }
+        },
+        {
+          "name": "--json",
+          "required": true,
+          "value": {
+            "type": "boolean"
+          }
+        }
+      ],
+      "wireParams": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["expectedRevision", "expectedUiGeneration"],
+        "properties": {
+          "expectedRevision": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          },
+          "expectedUiGeneration": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          }
+        }
+      },
+      "featureGate": "tray.panel"
+    },
+    {
+      "id": "tray.activate",
+      "family": "tray",
+      "path": ["tray", "activate"],
+      "usage": "plvs-cli tray activate --item <item-id> --expected-revision <n> --expected-ui-generation <n> --json",
+      "summary": "Activate an enabled choice on the current Tray panel page.",
+      "execution": "runningApp",
+      "operation": "action",
+      "wireMethod": "tray.activate",
+      "json": "required",
+      "expectedRevision": "required",
+      "dryRun": false,
+      "outputFile": "none",
+      "risk": "ordinary",
+      "positionals": [],
+      "options": [
+        {
+          "name": "--item",
+          "required": true,
+          "value": {
+            "type": "string"
+          }
+        },
+        {
+          "name": "--expected-revision",
+          "required": true,
+          "value": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          }
+        },
+        {
+          "name": "--expected-ui-generation",
+          "required": true,
+          "value": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          }
+        },
+        {
+          "name": "--json",
+          "required": true,
+          "value": {
+            "type": "boolean"
+          }
+        }
+      ],
+      "wireParams": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["expectedRevision", "expectedUiGeneration", "item"],
+        "properties": {
+          "expectedRevision": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          },
+          "expectedUiGeneration": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          },
+          "item": {
+            "type": "string"
+          }
+        }
+      },
+      "featureGate": "tray.panel"
+    },
+    {
       "id": "window.maximize",
       "family": "window",
       "path": ["window", "maximize"],
@@ -1563,6 +1843,77 @@
         "properties": {
           "version": { "type": "string" },
           "expectedRevision": { "type": "integer", "minimum": 0, "maximum": 9007199254740991 }
+        }
+      }
+    },
+    {
+      "id": "update.showDetails",
+      "family": "update",
+      "path": ["update", "show-details"],
+      "usage": "plvs-cli update show-details --version <version> --expected-revision <n> --expected-ui-generation <n> --json",
+      "summary": "Open the details for the specified available update.",
+      "execution": "runningApp",
+      "operation": "action",
+      "wireMethod": "update.showDetails",
+      "json": "required",
+      "expectedRevision": "required",
+      "dryRun": false,
+      "outputFile": "none",
+      "risk": "ordinary",
+      "positionals": [],
+      "options": [
+        {
+          "name": "--version",
+          "mapsTo": "version",
+          "required": true,
+          "value": {
+            "type": "string"
+          }
+        },
+        {
+          "name": "--expected-revision",
+          "required": true,
+          "value": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          }
+        },
+        {
+          "name": "--expected-ui-generation",
+          "required": true,
+          "value": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          }
+        },
+        {
+          "name": "--json",
+          "required": true,
+          "value": {
+            "type": "boolean"
+          }
+        }
+      ],
+      "wireParams": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["version", "expectedRevision", "expectedUiGeneration"],
+        "properties": {
+          "version": {
+            "type": "string"
+          },
+          "expectedRevision": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          },
+          "expectedUiGeneration": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          }
         }
       }
     },
@@ -7891,7 +8242,7 @@
       "id": "visual.screenshot",
       "family": "visual",
       "path": ["visual", "screenshot"],
-      "usage": "plvs-cli visual screenshot <--target <main|workspace|panel|dock-header|dock-editor|dock-update|dock-settings> | --target-id <target-id>> [--panel-id <panel-id>] [--expected-revision <n>] [--expected-ui-generation <n>] --out <file> --json",
+      "usage": "plvs-cli visual screenshot <--target <main|workspace|panel|dock-header|dock-editor|dock-update|dock-settings|tray> | --target-id <target-id>> [--panel-id <panel-id>] [--expected-revision <n>] [--expected-ui-generation <n>] --out <file> --json",
       "summary": "Capture a PLVS surface screenshot.",
       "execution": "runningApp",
       "operation": "action",
@@ -7916,7 +8267,8 @@
               "dock-header",
               "dock-editor",
               "dock-update",
-              "dock-settings"
+              "dock-settings",
+              "tray"
             ]
           },
           "mapsTo": "target.kind"

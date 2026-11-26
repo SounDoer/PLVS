@@ -219,10 +219,16 @@ const groups = [
       "window.move",
       "window.hide",
       "window.show",
+      "window.locate",
       "window.maximize",
       "window.unmaximize",
       "window.minimize",
     ],
+  },
+  {
+    scenario: "tray-platform-contract",
+    disposition: "platformContract",
+    commands: ["tray.inspect", "tray.open", "tray.close", "tray.activate"],
   },
   {
     scenario: "pointer-platform-contract",
@@ -260,7 +266,7 @@ const groups = [
   {
     scenario: "update-check",
     disposition: "external",
-    commands: ["update.check", "update.install"],
+    commands: ["update.check", "update.install", "update.showDetails"],
     owner: "update",
   },
   {

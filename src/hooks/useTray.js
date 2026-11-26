@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { emitTo, listen } from "@tauri-apps/api/event";
+import { Window } from "@tauri-apps/api/window";
 import { TrayIcon } from "@tauri-apps/api/tray";
 import { createNativeTrayMenu } from "../lib/nativeTrayMenu.js";
 import { Image } from "@tauri-apps/api/image";
@@ -103,6 +104,14 @@ function presetLabelFor({ presetList, presetActiveId, presetDirty }) {
 }
 
 const menuItem = (key, text, action, enabled = true) => ({ key, text, action, enabled });
+async function reportNativeAction(action) {
+  try {
+    await action();
+  } catch (error) {
+    console.warn("Unable to activate Tray item", error);
+  }
+}
+
 const separator = (key) => ({ key, kind: "separator" });
 
 function sourceDefinitions(cfg, prefix) {
@@ -421,23 +430,17 @@ export function useTray({
       .catch((error) => console.warn("Unable to locate PLVS workbench from Tray", error));
   }, []);
   const stableNewWorkbench = useCallback(() => {
-    if (updateBusyRef.current) return;
-    void openAdditionalWorkbench().catch((error) =>
-      console.warn("Unable to open a new PLVS workbench from Tray", error)
-    );
+    if (updateBusyRef.current) return false;
+    return openAdditionalWorkbench();
   }, []);
   const stableOpenSettings = useCallback(() => {
-    if (updateBusyRef.current) return;
-    void Promise.resolve(navigationRef.current.onOpenSettings()).catch((error) =>
-      console.warn("Unable to open Settings from Tray", error)
-    );
+    if (updateBusyRef.current) return false;
+    return navigationRef.current.onOpenSettings();
   }, []);
   const stableOpenUpdate = useCallback(() => {
     const entry = navigationRef.current.updateMenu;
-    if (updateBusyRef.current || !entry?.enabled) return;
-    void Promise.resolve(entry.action()).catch((error) =>
-      console.warn("Unable to open updates from Tray", error)
-    );
+    if (updateBusyRef.current || !entry?.enabled) return false;
+    return entry.action();
   }, []);
   useEffect(() => {
     onStartClickRef.current = onStartClick;
@@ -458,28 +461,25 @@ export function useTray({
   // Stable callbacks that always call the latest ref.
   const stableToggleCapture = useCallback(() => onStartClickRef.current(), []);
   const stableToggleWindow = useCallback(() => {
-    if (!updateBusyRef.current) return onToggleWindowRef.current();
+    if (updateBusyRef.current) return false;
+    return onToggleWindowRef.current();
   }, []);
   const stableQuit = useCallback(() => {
     if (!updateBusyRef.current) onQuitRef.current();
   }, []);
   const stableSelectSource = useCallback((id) => onSelectSourceRef.current(id), []);
   const stableApplyPreset = useCallback((id) => {
-    if (updateBusyRef.current) return;
-    // The items are disabled while the guard is up, but native updates are asynchronous and a
-    // click can beat the update. The controller refuses it either way; the tray has
-    // no surface to report that on, so the rejection is dropped here rather than left unhandled.
-    const result = onApplyPresetRef.current(id);
-    if (result && typeof result.catch === "function") return result.catch(() => {});
+    if (updateBusyRef.current) return false;
+    return onApplyPresetRef.current(id);
   }, []);
   const stableToggleInstance = useCallback(
-    (instance) => {
+    async (instance) => {
       const action = instance.captureStatus === "running" ? "stop" : "start";
-      return invoke("runtime_route_instance_transport", { instanceId: instance.instanceId, action })
-        .then((routedToPeer) => {
-          if (!routedToPeer) return stableToggleCapture();
-        })
-        .catch((error) => console.warn("Unable to control PLVS workbench from Tray", error));
+      const routedToPeer = await invoke("runtime_route_instance_transport", {
+        instanceId: instance.instanceId,
+        action,
+      });
+      if (!routedToPeer) return stableToggleCapture();
     },
     [stableToggleCapture]
   );
@@ -604,38 +604,47 @@ export function useTray({
     interfaceSize,
   };
   const menuInputsRef = useRef(menuInputs);
-  useEffect(() => {
+  useLayoutEffect(() => {
     menuInputsRef.current = menuInputs;
   });
 
   const panelReady = useRef(false);
   const openingPanel = useRef(false);
-  const panelOpenRequested = useRef(false);
+  const panelOpenRequested = useRef(
+    /** @type {import("../tray/trayWorkbenchProtocol.js").TrayNavigation | null} */ (null)
+  );
   const panelDefinitions = useRef(
     /** @type {() => import("../lib/nativeTrayMenu.js").TrayMenuDefinition[]} */ (() => [])
   );
   const panelPresentation = useRef(0);
   const panelActionQueue = useRef(Promise.resolve());
-  const publishPanel = useCallback(async (open = false) => {
+  const renderedPanel = useRef(null);
+  const inspectionVersion = useRef({ signature: "", generation: 0 });
+  const publishPanel = useCallback(async (navigation = null) => {
     if (!panelReady.current) return;
-    if (open) panelPresentation.current = Math.max(panelPresentation.current + 1, Date.now());
+    if (navigation) panelPresentation.current += 1;
     const { resolvedTheme, interfaceSize } = menuInputsRef.current;
     await emitTo(TRAY_WORKBENCH_LABEL, TRAY_WORKBENCH_STATE, {
       items: panelItems(panelDefinitions.current(), window.__PLVS_INITIAL_STATE__?.instanceId),
       theme: createThemePublication(resolvedTheme),
       interfaceSize,
       presentation: panelPresentation.current,
+      navigation,
     });
   }, []);
 
-  /** @param {import("@tauri-apps/api/tray").TrayIconEventBase<"Click">["rect"]} iconBounds */
+  /**
+   * @param {import("@tauri-apps/api/tray").TrayIconEventBase<"Click">["rect"] | undefined} iconBounds
+   * @param {import("../tray/trayWorkbenchProtocol.js").TrayNavigation} [navigation]
+   */
   const stableOpenWorkbenchPanel = useCallback(
-    async (iconBounds) => {
-      if (openingPanel.current) return;
+    async (iconBounds, navigation = {}) => {
+      if (openingPanel.current) return null;
       openingPanel.current = true;
       try {
-        panelOpenRequested.current = true;
-        if (isMac) {
+        panelOpenRequested.current = navigation;
+        const presentation = panelPresentation.current + 1;
+        if (isMac && iconBounds) {
           const { position, size } = iconBounds;
           await invoke("open_tray_workbench_panel", {
             clickedIcon: { x: position.x, y: position.y, width: size.width, height: size.height },
@@ -644,14 +653,16 @@ export function useTray({
           await invoke("open_tray_workbench_panel");
         }
         if (!panelReady.current) await emitTo(TRAY_WORKBENCH_LABEL, TRAY_WORKBENCH_PROBE);
-        refreshInstancesRef.current();
+        void refreshInstancesRef.current();
         if (panelOpenRequested.current && panelReady.current) {
-          panelOpenRequested.current = false;
-          await publishPanel(true);
+          const pendingNavigation = panelOpenRequested.current;
+          panelOpenRequested.current = null;
+          await publishPanel(pendingNavigation);
         }
+        return presentation;
       } catch (error) {
-        panelOpenRequested.current = false;
-        console.warn("Unable to open the Workbench panel", error);
+        panelOpenRequested.current = null;
+        throw error;
       } finally {
         openingPanel.current = false;
       }
@@ -659,41 +670,49 @@ export function useTray({
     [isMac, publishPanel]
   );
 
-  useEffect(() => {
-    if (!useWorkbenchPanel || !isTauri() || !isCoordinator) return;
-    /** @param {string} key */
-    async function activate(key) {
+  /** @param {string} key @param {(() => Promise<void>) | undefined} [guard] */
+  const activatePanelItem = useCallback((key, guard) => {
+    const next = panelActionQueue.current.then(async () => {
+      await guard?.();
       const item = findTrayAction(panelDefinitions.current(), key);
       if (!item) throw new Error("This Tray action is no longer available.");
       const holdFocus =
         isTrayLocateAction(key) || (/^workbench:[^:]+:window$/.test(key) && item.text === "Show");
       if (holdFocus) await invoke("set_tray_workbench_focus_hold", { active: true });
       try {
-        await item.action();
+        if (guard && trayActionDismisses(key, window.__PLVS_INITIAL_STATE__?.instanceId)) {
+          await (await Window.getByLabel(TRAY_WORKBENCH_LABEL))?.hide();
+        }
+        if ((await item.action()) === false)
+          throw new Error("The Workbench refused this Tray action.");
       } finally {
         if (holdFocus) await invoke("set_tray_workbench_focus_hold", { active: false });
         await refreshInstancesRef.current();
       }
-    }
+    });
+    // The peer mailbox accepts one pending command while the panel stays open.
+    panelActionQueue.current = next.catch(() => {});
+    return next;
+  }, []);
 
-    /** @param {{ payload: { kind: string, key?: string } }} event */
-    async function handleAction({ payload: { kind, key } }) {
+  useEffect(() => {
+    if (!useWorkbenchPanel || !isTauri() || !isCoordinator) return;
+    async function handleAction({ payload }) {
+      const { kind, key } = payload;
       try {
         if (kind === "ready") {
           panelReady.current = true;
           if (!openingPanel.current) {
-            const open = panelOpenRequested.current;
-            panelOpenRequested.current = false;
-            await publishPanel(open);
+            const navigation = panelOpenRequested.current;
+            panelOpenRequested.current = null;
+            await publishPanel(navigation);
           }
           return;
         }
-        if (kind !== "activate" || !key) return;
-        // The peer mailbox accepts one pending command. A second click can arrive while the
-        // first action settles because the panel stays open.
-        const next = panelActionQueue.current.then(() => activate(key));
-        panelActionQueue.current = next.catch(() => {});
-        await next;
+        if (kind === "rendered" && payload.presentation === panelPresentation.current) {
+          renderedPanel.current = payload;
+        }
+        if (kind === "activate" && key) await activatePanelItem(key);
       } catch (error) {
         await emitTo(TRAY_WORKBENCH_LABEL, TRAY_WORKBENCH_NOTICE, String(error));
       }
@@ -701,10 +720,10 @@ export function useTray({
     const subscription = listen(TRAY_WORKBENCH_ACTION, handleAction);
     return () => {
       panelReady.current = false;
-      panelOpenRequested.current = false;
+      panelOpenRequested.current = null;
       void subscription.then((stop) => stop());
     };
-  }, [isCoordinator, publishPanel, useWorkbenchPanel]);
+  }, [activatePanelItem, isCoordinator, publishPanel, useWorkbenchPanel]);
 
   const sourceStructureKey = JSON.stringify({
     outputs: audioOutputs.map(({ id, label }) => [id, label]),
@@ -713,22 +732,23 @@ export function useTray({
     mixes: sourceMixes.map(({ id, label }) => [id, label]),
   });
 
+  // The native menu event channel does not await the handler's promise.
   const menuConfig = useCallback(
     (inputs) => ({
       ...inputs,
       onToggleCapture: stableToggleCapture,
       onToggleWindow: stableToggleWindow,
       onLocateWindow: stableLocateWindow,
-      onNewWorkbench: stableNewWorkbench,
+      onNewWorkbench: () => reportNativeAction(stableNewWorkbench),
       onQuit: stableQuit,
       onSelectSource: stableSelectSource,
-      onApplyPreset: stableApplyPreset,
-      onToggleInstance: stableToggleInstance,
+      onApplyPreset: (id) => reportNativeAction(() => stableApplyPreset(id)),
+      onToggleInstance: (instance) => reportNativeAction(() => stableToggleInstance(instance)),
       onInstanceAction: stableInstanceAction,
       onQuitInstance: stableQuitInstance,
       onQuitAll: stableQuitAll,
-      onOpenSettings: stableOpenSettings,
-      onOpenUpdate: stableOpenUpdate,
+      onOpenSettings: () => reportNativeAction(stableOpenSettings),
+      onOpenUpdate: () => reportNativeAction(stableOpenUpdate),
     }),
     [
       stableToggleCapture,
@@ -754,12 +774,24 @@ export function useTray({
         ...cfg,
         // The next queued action can run before React commits the new menu.
         instances: instancesRef.current,
+        onNewWorkbench: stableNewWorkbench,
+        onApplyPreset: stableApplyPreset,
+        onToggleInstance: stableToggleInstance,
+        onOpenSettings: stableOpenSettings,
+        onOpenUpdate: stableOpenUpdate,
         onLocateWindow: () => navigationRef.current.onLocateWindow?.(),
         onInstanceAction: (instance, action, payload = null) =>
           issueInstanceCommand(instance.instanceId, action, payload),
       });
     };
-  }, [menuConfig]);
+  }, [
+    menuConfig,
+    stableApplyPreset,
+    stableNewWorkbench,
+    stableOpenSettings,
+    stableOpenUpdate,
+    stableToggleInstance,
+  ]);
 
   // Create tray once on mount.
   useEffect(() => {
@@ -800,7 +832,9 @@ export function useTray({
             event.button === "Right" &&
             event.buttonState === "Up"
           ) {
-            void stableOpenWorkbenchPanel(event.rect);
+            void stableOpenWorkbenchPanel(event.rect).catch((error) =>
+              console.warn("Unable to open the Workbench panel", error)
+            );
           }
         },
       });
@@ -874,4 +908,43 @@ export function useTray({
       await trayRef.current?.setIcon(icon);
     })();
   }, [iconScheme]);
+
+  return {
+    owner: isCoordinator && isTauri(),
+    customPanel: useWorkbenchPanel,
+    async read({ refresh = false } = {}) {
+      if (!trayRef.current) return null;
+      if (refresh) await refreshInstancesRef.current();
+      const panel = useWorkbenchPanel ? await Window.getByLabel(TRAY_WORKBENCH_LABEL) : null;
+      const visible = useWorkbenchPanel ? ((await panel?.isVisible()) ?? false) : null;
+      const rendered =
+        visible && renderedPanel.current?.presentation === panelPresentation.current
+          ? renderedPanel.current
+          : null;
+      const items = panelItems(
+        panelDefinitions.current(),
+        window.__PLVS_INITIAL_STATE__?.instanceId
+      );
+      const navigation = rendered?.navigation ?? {};
+      const signature = JSON.stringify([items, visible, rendered?.presentation, navigation]);
+      if (inspectionVersion.current.signature !== signature) {
+        inspectionVersion.current = {
+          signature,
+          generation: inspectionVersion.current.generation + 1,
+        };
+      }
+      return {
+        items,
+        visible,
+        navigation,
+        uiGeneration: inspectionVersion.current.generation,
+        rendered,
+      };
+    },
+    open: (navigation) => stableOpenWorkbenchPanel(undefined, navigation),
+    async close() {
+      await (await Window.getByLabel(TRAY_WORKBENCH_LABEL))?.hide();
+    },
+    activate: activatePanelItem,
+  };
 }

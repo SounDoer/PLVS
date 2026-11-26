@@ -36,6 +36,11 @@ Manifest version `1`. Entries are shown in stable presentation order.
 | `window.move` | `window move` | runningApp / action | required | no | none | ordinary |
 | `window.hide` | `window hide` | runningApp / action | required | no | none | ordinary |
 | `window.show` | `window show` | runningApp / action | required | no | none | ordinary |
+| `window.locate` | `window locate` | runningApp / action | required | no | none | ordinary |
+| `tray.inspect` | `tray inspect` | runningApp / query | none | no | none |  |
+| `tray.open` | `tray open` | runningApp / action | required | no | none | ordinary |
+| `tray.close` | `tray close` | runningApp / action | required | no | none | ordinary |
+| `tray.activate` | `tray activate` | runningApp / action | required | no | none | ordinary |
 | `window.maximize` | `window maximize` | runningApp / action | required | no | none | ordinary |
 | `window.unmaximize` | `window unmaximize` | runningApp / action | required | no | none | ordinary |
 | `window.minimize` | `window minimize` | runningApp / action | required | no | none | ordinary |
@@ -45,6 +50,7 @@ Manifest version `1`. Entries are shown in stable presentation order.
 | `update.inspect` | `update inspect` | runningApp / query | none | no | none |  |
 | `update.check` | `update check` | runningApp / action | required | no | none | ordinary |
 | `update.install` | `update install` | runningApp / action | required | no | none | risky |
+| `update.showDetails` | `update show-details` | runningApp / action | required | no | none | ordinary |
 | `pointer.move` | `pointer move` | runningApp / action | required | no | none | ordinary |
 | `measurement.describe` | `measurement describe` | runningApp / query | none | no | none |  |
 | `measurement.inspect` | `measurement inspect` | runningApp / query | none | no | none |  |
@@ -933,6 +939,138 @@ None.
 | `--expected-revision` | local only | yes | integer; 0 to 9007199254740991 |
 | `--json` | local only | yes | boolean |
 
+## `window.locate`
+
+Show the Workbench and pulse its Accent border, as Locate does.
+
+- CLI path: `window locate`
+- Execution: `runningApp`; operation: `action`
+- Risk: `ordinary`
+- JSON: `required`; expected revision: `required`; dry-run: `false`; output file: `none`
+- Wire method: `window.locate`
+
+```text
+plvs-cli window locate --expected-revision <n> --json
+```
+
+### Positionals
+
+None.
+
+### Options
+
+| Name | Maps to | Required | Value |
+| --- | --- | --- | --- |
+| `--expected-revision` | local only | yes | integer; 0 to 9007199254740991 |
+| `--json` | local only | yes | boolean |
+
+## `tray.inspect`
+
+Inspect the Tray menu tree and its current presentation.
+
+- CLI path: `tray inspect`
+- Execution: `runningApp`; operation: `query`
+- JSON: `required`; expected revision: `none`; dry-run: `false`; output file: `none`
+- Wire method: `tray.inspect`
+- Feature gate: `tray.inspect`
+
+```text
+plvs-cli tray inspect --json
+```
+
+### Positionals
+
+None.
+
+### Options
+
+| Name | Maps to | Required | Value |
+| --- | --- | --- | --- |
+| `--json` | local only | yes | boolean |
+
+## `tray.open`
+
+Open the Tray panel at the root, a Workbench, a picker, or a Source group.
+
+- CLI path: `tray open`
+- Execution: `runningApp`; operation: `action`
+- Risk: `ordinary`
+- JSON: `required`; expected revision: `required`; dry-run: `false`; output file: `none`
+- Wire method: `tray.open`
+- Feature gate: `tray.panel`
+
+```text
+plvs-cli tray open [--item <item-id>] --expected-revision <n> --expected-ui-generation <n> --json
+```
+
+### Positionals
+
+None.
+
+### Options
+
+| Name | Maps to | Required | Value |
+| --- | --- | --- | --- |
+| `--item` | local only | no | string |
+| `--expected-revision` | local only | yes | integer; 0 to 9007199254740991 |
+| `--expected-ui-generation` | local only | yes | integer; 0 to 9007199254740991 |
+| `--json` | local only | yes | boolean |
+
+## `tray.close`
+
+Dismiss the Tray panel.
+
+- CLI path: `tray close`
+- Execution: `runningApp`; operation: `action`
+- Risk: `ordinary`
+- JSON: `required`; expected revision: `required`; dry-run: `false`; output file: `none`
+- Wire method: `tray.close`
+- Feature gate: `tray.panel`
+
+```text
+plvs-cli tray close --expected-revision <n> --expected-ui-generation <n> --json
+```
+
+### Positionals
+
+None.
+
+### Options
+
+| Name | Maps to | Required | Value |
+| --- | --- | --- | --- |
+| `--expected-revision` | local only | yes | integer; 0 to 9007199254740991 |
+| `--expected-ui-generation` | local only | yes | integer; 0 to 9007199254740991 |
+| `--json` | local only | yes | boolean |
+
+## `tray.activate`
+
+Activate an enabled choice on the current Tray panel page.
+
+- CLI path: `tray activate`
+- Execution: `runningApp`; operation: `action`
+- Risk: `ordinary`
+- JSON: `required`; expected revision: `required`; dry-run: `false`; output file: `none`
+- Wire method: `tray.activate`
+- Feature gate: `tray.panel`
+
+```text
+plvs-cli tray activate --item <item-id> --expected-revision <n> --expected-ui-generation <n> --json
+```
+
+### Positionals
+
+None.
+
+### Options
+
+| Name | Maps to | Required | Value |
+| --- | --- | --- | --- |
+| `--item` | local only | yes | string |
+| `--expected-revision` | local only | yes | integer; 0 to 9007199254740991 |
+| `--expected-ui-generation` | local only | yes | integer; 0 to 9007199254740991 |
+| `--json` | local only | yes | boolean |
+
 ## `window.maximize`
 
 Maximize the normal window as the title bar does.
@@ -1156,6 +1294,33 @@ None.
 | --- | --- | --- | --- |
 | `--version` | `version` | yes | string |
 | `--expected-revision` | local only | yes | integer; 0 to 9007199254740991 |
+| `--json` | local only | yes | boolean |
+
+## `update.showDetails`
+
+Open the details for the specified available update.
+
+- CLI path: `update show-details`
+- Execution: `runningApp`; operation: `action`
+- Risk: `ordinary`
+- JSON: `required`; expected revision: `required`; dry-run: `false`; output file: `none`
+- Wire method: `update.showDetails`
+
+```text
+plvs-cli update show-details --version <version> --expected-revision <n> --expected-ui-generation <n> --json
+```
+
+### Positionals
+
+None.
+
+### Options
+
+| Name | Maps to | Required | Value |
+| --- | --- | --- | --- |
+| `--version` | `version` | yes | string |
+| `--expected-revision` | local only | yes | integer; 0 to 9007199254740991 |
+| `--expected-ui-generation` | local only | yes | integer; 0 to 9007199254740991 |
 | `--json` | local only | yes | boolean |
 
 ## `pointer.move`
@@ -4124,7 +4289,7 @@ Capture a PLVS surface screenshot.
 - Schema references: `visual.target`, `agentControl.revision`
 
 ```text
-plvs-cli visual screenshot <--target <main|workspace|panel|dock-header|dock-editor|dock-update|dock-settings> | --target-id <target-id>> [--panel-id <panel-id>] [--expected-revision <n>] [--expected-ui-generation <n>] --out <file> --json
+plvs-cli visual screenshot <--target <main|workspace|panel|dock-header|dock-editor|dock-update|dock-settings|tray> | --target-id <target-id>> [--panel-id <panel-id>] [--expected-revision <n>] [--expected-ui-generation <n>] --out <file> --json
 ```
 
 ### Positionals
@@ -4135,7 +4300,7 @@ None.
 
 | Name | Maps to | Required | Value |
 | --- | --- | --- | --- |
-| `--target` | `target.kind` | no | string; one of "main", "workspace", "panel", "dock-header", "dock-editor", "dock-update", "dock-settings" |
+| `--target` | `target.kind` | no | string; one of "main", "workspace", "panel", "dock-header", "dock-editor", "dock-update", "dock-settings", "tray" |
 | `--target-id` | `target.targetId` | no | string |
 | `--panel-id` | `target.panelId` | no | string |
 | `--expected-revision` | `expectedRevision` | no | integer; 0 to inf |

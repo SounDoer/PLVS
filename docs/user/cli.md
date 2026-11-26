@@ -303,6 +303,7 @@ plvs-cli window resize --width <css-px> --height <css-px> --expected-revision <n
 plvs-cli window move --monitor <monitor-id> --x <css-px> --y <css-px> --expected-revision <n> --json
 plvs-cli window hide --expected-revision <n> --json
 plvs-cli window show --expected-revision <n> --json
+plvs-cli window locate --expected-revision <n> --json
 plvs-cli window maximize --expected-revision <n> --json
 plvs-cli window unmaximize --expected-revision <n> --json
 plvs-cli window minimize --expected-revision <n> --json
@@ -310,7 +311,8 @@ plvs-cli window minimize --expected-revision <n> --json
 
 A size that does not fit the current monitor fails instead of being shrunk. On native Wayland,
 `capabilities` omits `window move` and `window minimize`, whose results cannot be verified on
-that backend. `window hide` and `window show` remain available. See
+that backend. Hide, Show, and Locate remain available. Locate brings the target Workbench forward
+and briefly highlights it in its Accent color. See
 [Window Control](../agent-control/window.md).
 
 Workbench Control opens another workbench as a second launch does, and quits one workbench or all
@@ -325,12 +327,28 @@ plvs-cli workbench quit-all --expected-revision <n> --json
 `open` returns the new workbench's `instanceId`; a quit is delivered before the process exits. See
 [Workbench Control](../agent-control/workbench.md).
 
-Update Control reads the update state, runs Check for Updates once, and installs a named update
+Tray Control inspects the menu on Windows, macOS, and Linux. On Windows and macOS it can also open
+the panel at a Workbench or picker, activate an enabled choice, dismiss the panel, and capture it
+with `visual screenshot --target tray`.
+
+```powershell
+plvs-cli tray inspect --json
+plvs-cli tray open [--item <item-id>] --expected-revision <n> --expected-ui-generation <n> --json
+plvs-cli tray activate --item <item-id> --expected-revision <n> --expected-ui-generation <n> --json
+plvs-cli tray close --expected-revision <n> --expected-ui-generation <n> --json
+```
+
+Select the Workbench that advertises `features.tray` in `capabilities`. Use the revision and UI
+generation from `tray inspect`. On Linux the desktop owns the popup, so use the individual command
+families to act on the items it reports. See [Tray Control](../agent-control/tray.md).
+
+Update Control reads the update state, runs Check for Updates once, opens update details, and installs a named update
 as About's Install does; Auto Check and Auto Download are ordinary `settings update` fields:
 
 ```powershell
 plvs-cli update inspect --json
 plvs-cli update check --expected-revision <n> --json
+plvs-cli update show-details --version <version> --expected-revision <n> --expected-ui-generation <n> --json
 plvs-cli update install --version <version> --expected-revision <n> --json
 ```
 
@@ -440,7 +458,7 @@ desktop visible behind transparent surfaces:
 
 ```powershell
 plvs-cli visual describe --json
-plvs-cli visual screenshot <--target <main|workspace|panel|dock-header|dock-editor|dock-update|dock-settings> | --target-id <target-id>> [--panel-id <id>] [--expected-revision <n>] [--expected-ui-generation <n>] --out <file.png> --json
+plvs-cli visual screenshot <--target <main|workspace|panel|dock-header|dock-editor|dock-update|dock-settings|tray> | --target-id <target-id>> [--panel-id <id>] [--expected-revision <n>] [--expected-ui-generation <n>] --out <file.png> --json
 plvs-cli visual recording start --target <main|workspace|dock> [--audio <none|measured-source>] [--cursor <none|visible>] [--indicator <visible|hidden>] [--fps <15|30|60>] [--max-duration-seconds <1..1800>] [--expected-revision <n>] --json
 plvs-cli visual recording inspect <recording-id> --json
 plvs-cli visual recording wait <recording-id> [--timeout-ms <100..300000>] [--out <file.mp4>] --json

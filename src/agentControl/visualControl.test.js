@@ -44,6 +44,7 @@ describe("visual control contract", () => {
       "dockEditor",
       "dockUpdate",
       "dockSettings",
+      "tray",
     ]);
     expect(VISUAL_RECORDING_TARGET_KINDS).toEqual(["main", "workspace", "dock"]);
     expect(VISUAL_AUDIO_SOURCES).toEqual(["none", "measuredSource"]);

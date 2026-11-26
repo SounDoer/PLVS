@@ -42,6 +42,7 @@ export const ISOLATED_SCENARIOS = [
   "configuration-relaunch",
   "welcome-relaunch",
   "window-platform-contract",
+  "tray-platform-contract",
   "workbench-platform-contract",
   LIVE_SOURCE_RECONNECT,
 ];
@@ -476,7 +477,7 @@ export async function runAgentControlAcceptance({
   const artifacts = [];
   const warnings = [
     "Capture-rig commands remain owned by smoke:capture.",
-    "Run configuration-relaunch, window-platform-contract, and workbench-platform-contract separately against isolated profiles.",
+    "Run the configuration, window, Workbench, and Tray contracts separately against isolated profiles.",
   ];
   let cleanupStatus = "passed";
   let failure = null;

@@ -402,13 +402,17 @@ export async function runUiVisualWalkthrough({
 
       const capture = async (spec, revision, uiGeneration, journalField) => {
         const screenshotPath = join(outDir, spec.output);
+        const captureGeneration =
+          spec.target === "tray"
+            ? (await run(["tray", "inspect", "--json"])).uiGeneration
+            : uiGeneration;
         const screenshotArgs = ["visual", "screenshot", "--target", spec.target];
         if (spec.panelId) screenshotArgs.push("--panel-id", spec.panelId);
         screenshotArgs.push(
           "--expected-revision",
           String(revision),
           "--expected-ui-generation",
-          String(uiGeneration),
+          String(captureGeneration),
           "--out",
           screenshotPath,
           "--json"
@@ -425,7 +429,11 @@ export async function runUiVisualWalkthrough({
             metadata: result.artifact,
           };
         });
-        return result;
+        // Cleanup still addresses the main window surface established for this step.
+        return {
+          ...result,
+          uiGeneration: spec.target === "tray" ? uiGeneration : result.uiGeneration,
+        };
       };
       const captured = await capture(
         scenario.screenshot,

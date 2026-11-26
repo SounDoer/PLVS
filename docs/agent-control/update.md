@@ -26,6 +26,12 @@ inspect`'s `status` list; the Update details dialog opens only when the user ask
 
 The check leaves the global revision unchanged but requires `--expected-revision`.
 
+## Show details
+
+`update show-details --version <version>` brings the Workbench forward and opens the details of
+the specified available update. It requires the current revision and main-window UI generation.
+Opening details leaves the install and download controls for a separate action.
+
 ## Install
 
 `update install --version <version>` installs the newest known update through About's Install: it

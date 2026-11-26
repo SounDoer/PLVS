@@ -287,16 +287,19 @@ async function setVisibility(ctx) {
   const { request, requestId, clock, live } = ctx;
   requireRevision(request, clock);
   const windowControl = requireWindow(live().windowControl);
-  const visible = request.method === "window.show";
+  const locate = request.method === "window.locate";
+  const visible = request.method !== "window.hide";
   const wasVisible = windowControl.visible;
   // Show always runs: it also raises a visible but minimized or covered window.
   if (wasVisible !== visible || visible) {
-    const accepted = visible ? await windowControl.show() : await windowControl.hide();
+    const accepted = await windowControl[locate ? "locate" : visible ? "show" : "hide"]();
     if (accepted === false) {
       throw semanticFailure(
         "busy",
         "$.method",
-        "The window cannot be hidden while PLVS is busy.",
+        visible
+          ? "The Workbench cannot be located while PLVS is busy."
+          : "The window cannot be hidden while PLVS is busy.",
         -32012
       );
     }
@@ -323,4 +326,5 @@ export const windowHandlers = {
   "window.minimize": { run: setWindowState },
   "window.hide": { run: setVisibility },
   "window.show": { run: setVisibility },
+  "window.locate": { run: setVisibility },
 };

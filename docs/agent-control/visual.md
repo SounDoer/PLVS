@@ -31,6 +31,8 @@ artifact. `recording.unavailable` is `null` while recording is available; otherw
 - `panel` is one currently rendered Panel body selected by `--panel-id`; hidden inactive tabs fail.
 - `dock-header`, `dock-editor`, `dock-update`, and `dock-settings` are the complete client areas of those accessory WebViews. They
   are screenshot-only and must currently exist, be ready, and be visible.
+- `tray` is the visible Tray panel and its picker on Windows and macOS. Use the revision and UI
+  generation from `tray inspect` for optional guards. See [Tray Control](tray.md).
 - `dock` is recording-only on Windows and macOS: the screen region of the Dock strip extended
   toward the middle of the screen by the toolbar and the tallest editor, so the toolbar and an
   open editor appear in the same take. The region is fixed for the take; it is screen pixels, so

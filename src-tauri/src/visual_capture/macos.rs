@@ -73,6 +73,7 @@ impl VisualCapturePlatform for MacOsPlatform {
           "dockEditor",
           "dockUpdate",
           "dockSettings",
+          "tray",
         ],
       },
       recording: RecordingCapabilities {
@@ -167,7 +168,12 @@ async fn capture_webview_screenshot(
           request.rect.height,
           matches!(
             request.window_label.as_str(),
-            "dock-header" | "dock-editor" | "dock-update" | "dock-settings" | "dock-authoring"
+            "dock-header"
+              | "dock-editor"
+              | "dock-update"
+              | "dock-settings"
+              | "dock-authoring"
+              | "tray-workbench"
           ),
           path.as_ptr(),
           path.len(),
@@ -267,7 +273,8 @@ mod tests {
   fn macos_capabilities_expose_measured_source_window_and_dock_recording() {
     let capabilities = MacOsPlatform.capabilities();
     assert!(capabilities.screenshot.available);
-    assert_eq!(capabilities.screenshot.targets.len(), 7);
+    assert_eq!(capabilities.screenshot.targets.len(), 8);
+    assert!(capabilities.screenshot.targets.contains(&"tray"));
     assert!(capabilities.recording.available);
     assert_eq!(
       capabilities.recording.targets,

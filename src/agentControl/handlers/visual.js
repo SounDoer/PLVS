@@ -1,3 +1,4 @@
+import { settleTrayScreenshot } from "./tray.js";
 import {
   buildVisualDescription,
   dockRecordingRegion,
@@ -64,12 +65,20 @@ async function describe(ctx) {
   if (!visualControl?.platformCapabilities) {
     throw visualSemanticFailure({ reason: "visualUnavailable" });
   }
+  const runtime = visualControl.getRuntime();
+  const tray = ctx.live().trayControl;
+  const trayState = tray?.owner && tray.customPanel ? await tray.read() : null;
   return {
     requestId,
     result: buildVisualDescription({
       revision: clock.current(),
       platform: visualControl.platformCapabilities,
-      runtime: visualControl.getRuntime(),
+      runtime: trayState?.rendered
+        ? {
+            ...runtime,
+            availableScreenshotTargets: [...(runtime?.availableScreenshotTargets ?? []), "tray"],
+          }
+        : runtime,
     }),
   };
 }
@@ -84,7 +93,11 @@ async function screenshot(ctx) {
   }
   const availableTargets = visualControl.getRuntime()?.availableScreenshotTargets ?? [];
   const surfaceKind = request.params.target.kind === "named" ? "main" : request.params.target.kind;
-  if (!availableTargets.includes(surfaceKind)) {
+  const trayTarget = surfaceKind === "tray";
+  const available = trayTarget
+    ? visualControl.platformCapabilities.screenshot.targets?.includes("tray")
+    : availableTargets.includes(surfaceKind);
+  if (!available) {
     throw visualSemanticFailure({ reason: "targetUnavailable" });
   }
   if (visual.captureActive.current) {
@@ -94,13 +107,15 @@ async function screenshot(ctx) {
   visual.captureActive.current = true;
   visual.captures.set(requestId, controller);
   try {
-    const settled = await visualControl.settle(request.params.target, {
-      expectedRevision: request.params.expectedRevision,
-      getRevision: () => clock.current(),
-      expectedUiGeneration: request.params.expectedUiGeneration,
-      getUiGeneration: () => uiNavigation?.inspectUi?.().uiGeneration ?? 0,
-      signal: controller.signal,
-    });
+    const settled = trayTarget
+      ? await settleTrayScreenshot(ctx)
+      : await visualControl.settle(request.params.target, {
+          expectedRevision: request.params.expectedRevision,
+          getRevision: () => clock.current(),
+          expectedUiGeneration: request.params.expectedUiGeneration,
+          getUiGeneration: () => uiNavigation?.inspectUi?.().uiGeneration ?? 0,
+          signal: controller.signal,
+        });
     const artifact = await visualControl.captureScreenshot({
       windowLabel: settled.windowLabel,
       rect: settled.rect,

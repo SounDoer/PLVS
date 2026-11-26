@@ -271,6 +271,7 @@ function request(method, params = {}, id = "req-1") {
  *   agentView?: any,
  *   agentViewContext?: any,
  *   agentVisual?: any,
+ *   trayControl?: any,
  *   agentUi?: any,
  *   agentEditorDraft?: any,
  *   agentDevelopmentFixtures?: any,
@@ -326,6 +327,7 @@ function Harness({
   agentView = defaultView,
   agentViewContext = {},
   agentVisual = null,
+  trayControl = null,
   agentUi = {
     uiGeneration: 0,
     inspectUi: () => ({
@@ -570,6 +572,7 @@ function Harness({
         }),
     },
     visual: agentVisual,
+    trayControl,
     uiNavigation: agentUi,
     editorDraft: agentEditorDraft,
     developmentFixtures: agentDevelopmentFixtures,
@@ -1329,6 +1332,7 @@ describe("useAgentControlBridge", () => {
     });
     mount({
       agentVisual: visual,
+      trayControl: { owner: true, customPanel: true, read: async () => null },
       exportConfiguration: () => ({}),
       importConfiguration: async () => {},
       normalizeConfiguration: (configuration) => configuration,

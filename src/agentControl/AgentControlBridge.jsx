@@ -179,6 +179,8 @@ export function AgentControlBridge() {
     requestCloseAction,
     windowVisible,
     onShowWindow,
+    onLocateWindow,
+    trayControl,
     crashReportSetting,
   } = useAppLifecycle();
   // Capture reveals a covered or minimized window, never one deliberately hidden (Tray Hide).
@@ -200,10 +202,19 @@ export function AgentControlBridge() {
       unmaximize: unmaximizeWindow,
       minimize: minimizeWindow,
       show: onShowWindow,
+      locate: () => (updateBusy ? false : onLocateWindow()),
       // The tray's Hide: persistence is flushed first, and it is refused while an update installs.
       hide: () => requestCloseAction("tray"),
     }),
-    [docked, onShowWindow, requestCloseAction, runtime.windowPositionAvailable, windowVisible]
+    [
+      docked,
+      onLocateWindow,
+      onShowWindow,
+      requestCloseAction,
+      runtime.windowPositionAvailable,
+      updateBusy,
+      windowVisible,
+    ]
   );
   // Quit Workbench, Quit PLVS and a second launch, through the paths the Tray and the OS use.
   const workbenchControl = useMemo(
@@ -477,13 +488,15 @@ export function AgentControlBridge() {
       initialized: updateControls.initialized,
       info: updateControls.updateInfo,
       installStatus: updateControls.installStatus,
+      detailsVersion: updateControls.details?.target.version ?? null,
       installationSupported: updateControls.installationSupported === true,
       check: updateControls.refreshUpdateCheck,
       // About's Install: open the update details for the target, then confirm them.
       openDetails: updateControls.openDetails,
+      showWindow: onShowWindow,
       confirmInstall: updateControls.confirmInstall,
     }),
-    [updateControls]
+    [onShowWindow, updateControls]
   );
   const developmentUpdate = useMemo(
     () => ({
@@ -834,6 +847,7 @@ export function AgentControlBridge() {
     developmentPerformance,
     developmentUpdate,
     windowControl,
+    trayControl,
     workbenchControl,
     updateControl,
     pointerControl,

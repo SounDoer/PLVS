@@ -33,6 +33,8 @@ const LOCATE_DURATION_MS = 1200;
  *   crashReporting: ReturnType<typeof useCrashReporting>,
  *   windowVisible: boolean,
  *   onShowWindow: () => Promise<void>,
+ *   onLocateWindow: () => Promise<void>,
+ *   trayControl: ReturnType<typeof useTray>,
  *   updateBusy: boolean,
  *   updateControls: ReturnType<typeof useUpdateController>,
  *   requestCloseAction: (action: string, dontAskAgain?: boolean) => Promise<boolean>,
@@ -215,8 +217,7 @@ export function AppLifecycleProvider({ children }) {
     if (!isTauri()) return;
     const window = getCurrentWindow();
     if (await window.isVisible()) {
-      await requestCloseAction("tray");
-      return;
+      return requestCloseAction("tray");
     }
     await toggleAppWindow({
       docked,
@@ -272,7 +273,7 @@ export function AppLifecycleProvider({ children }) {
       clearActiveSource: () => dispatchShortcut?.("clear") ?? false,
     },
   });
-  useTray({
+  const trayControl = useTray({
     ...trayActions,
     running,
     windowVisible,
@@ -311,6 +312,8 @@ export function AppLifecycleProvider({ children }) {
         crashReporting,
         windowVisible,
         onShowWindow,
+        onLocateWindow,
+        trayControl,
         updateBusy,
         updateControls,
         requestCloseAction,

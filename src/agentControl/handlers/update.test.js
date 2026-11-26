@@ -71,6 +71,18 @@ describe("Update Control", () => {
     }
   });
 
+  it("shows the named update without starting installation", async () => {
+    const updateControl = installable({ showWindow: vi.fn(async () => {}) });
+    const args = { version: "1.2.0", expectedRevision: 0, expectedUiGeneration: 4 };
+    const ctx = context("update.showDetails", args, updateControl);
+    ctx.snap.uiNavigation = { inspectUi: () => ({ uiGeneration: 4 }) };
+    const response = await updateHandlers["update.showDetails"].run(ctx);
+    expect(response.result).toEqual({ revision: 0, version: "1.2.0" });
+    expect(updateControl.showWindow).toHaveBeenCalledOnce();
+    expect(updateControl.openDetails).toHaveBeenCalledExactlyOnceWith(updateControl.info.update);
+    expect(updateControl.confirmInstall).not.toHaveBeenCalled();
+  });
+
   /** @returns {any} */
   function installable(overrides = {}) {
     return control("ok", {

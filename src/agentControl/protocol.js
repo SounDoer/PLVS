@@ -899,6 +899,7 @@ export function normalizeAgentControlRequest(input) {
     input.method === "dock.inspect" ||
     input.method === "window.inspect" ||
     input.method === "update.inspect" ||
+    input.method === "tray.inspect" ||
     input.method === "ui.targets"
   ) {
     const field = Object.keys(input.params)[0];
@@ -909,10 +910,35 @@ export function normalizeAgentControlRequest(input) {
     };
   }
 
-  if (input.method === "update.install") {
-    const field = unknownField(input.params, new Set(["version", "expectedRevision"]));
+  if (["tray.open", "tray.close", "tray.activate"].includes(input.method)) {
+    const allowsItem = input.method !== "tray.close";
+    const field = unknownField(
+      input.params,
+      new Set(["expectedRevision", "expectedUiGeneration", ...(allowsItem ? ["item"] : [])])
+    );
     if (field) return invalidParams(`$.params.${field}`, `Unknown parameter: ${field}.`);
-    const revisionError = validateExpectedRevision(input.params);
+    const guardError =
+      validateExpectedRevision(input.params) ?? validateExpectedUiGeneration(input.params);
+    if (guardError) return guardError;
+    if (
+      (input.params.item !== undefined || input.method === "tray.activate") &&
+      (typeof input.params.item !== "string" || input.params.item.trim() === "")
+    ) {
+      return invalidParams("$.params.item", "item must be a Tray menu key from tray inspect.");
+    }
+    return { ok: true, request: { id: input.id, method: input.method, params: input.params } };
+  }
+
+  if (input.method === "update.install" || input.method === "update.showDetails") {
+    const details = input.method === "update.showDetails";
+    const field = unknownField(
+      input.params,
+      new Set(["version", "expectedRevision", ...(details ? ["expectedUiGeneration"] : [])])
+    );
+    if (field) return invalidParams(`$.params.${field}`, `Unknown parameter: ${field}.`);
+    const revisionError =
+      validateExpectedRevision(input.params) ??
+      (details ? validateExpectedUiGeneration(input.params) : null);
     if (revisionError) return revisionError;
     if (
       typeof input.params.version !== "string" ||
@@ -925,7 +951,7 @@ export function normalizeAgentControlRequest(input) {
       request: {
         id: input.id,
         method: input.method,
-        params: { version: input.params.version, expectedRevision: input.params.expectedRevision },
+        params: input.params,
       },
     };
   }
@@ -967,6 +993,7 @@ export function normalizeAgentControlRequest(input) {
       "window.resize",
       "window.hide",
       "window.show",
+      "window.locate",
       "window.maximize",
       "window.unmaximize",
       "window.minimize",

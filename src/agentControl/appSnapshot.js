@@ -33,6 +33,8 @@ function featureGateAvailable(featureGate, runtime) {
   if (featureGate === undefined) return true;
   if (featureGate === "sourceMixes")
     return ["windows", "macos", "linux"].includes(runtime.platform);
+  if (featureGate === "tray.inspect") return runtime?.tray?.owner === true;
+  if (featureGate === "tray.panel") return runtime?.tray?.owner === true && runtime.tray.panel;
   if (featureGate === "visual") return visual !== undefined;
   if (featureGate === "visual.screenshot") return visual?.screenshot === true;
   if (featureGate === "visual.recording") return visual?.recording === true;
@@ -86,6 +88,9 @@ export function buildAgentControlCapabilities(runtime, revision) {
     features: {
       // Device Control lists and selects running applications beside devices.
       ...(hasMethod("device.list") ? { device: { applications: true } } : {}),
+      ...(hasMethod("tray.inspect")
+        ? { tray: { inspect: true, panel: hasMethod("tray.open") } }
+        : {}),
       ...(runtime.dockCapabilities ? { dock: runtime.dockCapabilities } : {}),
       ...(hasMethod("editorDraft.describe")
         ? {
@@ -172,6 +177,7 @@ export function buildAgentControlCapabilities(runtime, revision) {
                 : false,
               hide: hasMethod("window.hide"),
               show: hasMethod("window.show"),
+              locate: hasMethod("window.locate"),
               maximize: hasMethod("window.maximize"),
               unmaximize: hasMethod("window.unmaximize"),
               minimize: hasMethod("window.minimize"),

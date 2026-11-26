@@ -29,6 +29,9 @@ bool plvs_tray_status_item_geometry(const void *item, PlvsClickedIcon clicked,
     // The status item's button belongs to one screen. AppKit also displays replicas in other
     // menu bars. Take the bounds from the click so the panel opens beneath the clicked replica.
     for (NSScreen *candidate in screens) {
+        if (clicked.width <= 0 || clicked.height <= 0) {
+            break;
+        }
         if (!NSPointInRect(pointer, candidate.frame)) {
             continue;
         }
@@ -36,8 +39,7 @@ bool plvs_tray_status_item_geometry(const void *item, PlvsClickedIcon clicked,
         NSRect eventBounds = NSMakeRect(clicked.x / scale,
             desktopTop - (clicked.y + clicked.height) / scale,
             clicked.width / scale, clicked.height / scale);
-        if (NSPointInRect(pointer, NSInsetRect(eventBounds, -1, -1)) && clicked.width > 0 &&
-            clicked.height > 0) {
+        if (NSPointInRect(pointer, NSInsetRect(eventBounds, -1, -1))) {
             bounds = eventBounds;
         } else if (!NSPointInRect(pointer, NSInsetRect(bounds, -1, -1))) {
             // An inactive menu bar can deliver the primary button's bounds for a replica.
