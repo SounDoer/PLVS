@@ -37,6 +37,7 @@ export async function createNativeTrayMenu(definitions) {
 
   async function syncNode(definition, used) {
     used.add(definition.key);
+    const isSubmenu = definition.kind === "submenu" || definition.kind === "group";
     let node = nodes.get(definition.key);
     if (!node) {
       node = { definition, action: definition.action, children: [], handle: null };
@@ -45,7 +46,7 @@ export async function createNativeTrayMenu(definitions) {
         enabled: definition.enabled ?? true,
         action: () => node.action?.(),
       };
-      if (definition.kind === "submenu") {
+      if (isSubmenu) {
         for (const child of definition.items) node.children.push(await syncNode(child, used));
         node.handle = await Submenu.new({
           text: definition.text,
@@ -69,8 +70,7 @@ export async function createNativeTrayMenu(definitions) {
         await node.handle.setEnabled(definition.enabled ?? true);
       if (definition.kind === "check" && node.definition.checked !== definition.checked)
         await node.handle.setChecked(definition.checked);
-      if (definition.kind === "submenu")
-        await syncChildren(node.handle, node.children, definition.items, used);
+      if (isSubmenu) await syncChildren(node.handle, node.children, definition.items, used);
     }
     node.definition = definition;
     return node;

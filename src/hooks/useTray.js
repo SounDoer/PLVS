@@ -24,7 +24,6 @@ import { useTaskbarColorScheme } from "./useTaskbarColorScheme.js";
 import { issueInstanceCommand, quitAllInstances } from "../runtime/coordination.js";
 import { createThemePublication } from "../theme/themeRuntime.js";
 import {
-  groupTraySources,
   isTrayLocateAction,
   trayActionDismisses,
   trayPageTitle,
@@ -133,16 +132,18 @@ function sourceDefinitions(cfg, prefix) {
     ["Mixes", cfg.sourceMixes, (label) => label],
   ]) {
     if (!sources.length) continue;
-    items.push(separator(`${prefix}:${group}:separator`));
-    items.push(menuItem(`${prefix}:${group}:header`, group, null, false));
-    for (const source of sources)
-      items.push({
+    items.push({
+      key: `${prefix}:${group}:header`,
+      kind: "group",
+      text: group,
+      items: sources.map((source) => ({
         ...menuItem(`${prefix}:source:${source.id}`, formatLabel(source.label), () =>
           cfg.onSelectSource(source.id)
         ),
         kind: "check",
         checked: cfg.safeAudioDeviceId === source.id,
-      });
+      })),
+    });
   }
   return items;
 }
@@ -306,7 +307,7 @@ function panelItems(items, ownerId) {
         checked,
         pageTitle,
         dismiss: trayActionDismisses(key, ownerId),
-        items: pageTitle === "Source" && items ? groupTraySources(key, items) : items,
+        items,
       };
     });
 }
@@ -376,7 +377,8 @@ export function useTray({
   presets = { list: [], activeId: null, dirty: false, blocked: false, apply: () => {} },
 }) {
   const isMac = isMacOS();
-  const useWorkbenchPanel = isWindows();
+  // Linux AppIndicator hosts own the menu and do not report clicks or the icon bounds.
+  const useWorkbenchPanel = isWindows() || isMac;
   const isCoordinator = useCoordinatorRole();
   // On Windows the icon sits on the taskbar, whose mode is independent of the PLVS theme. The
   // PLVS theme remains the fallback until the taskbar mode is known and on other platforms.
@@ -612,25 +614,36 @@ export function useTray({
     });
   }, []);
 
-  const stableOpenWorkbenchPanel = useCallback(async () => {
-    if (openingPanel.current) return;
-    openingPanel.current = true;
-    try {
-      panelOpenRequested.current = true;
-      await invoke("open_tray_workbench_panel");
-      if (!panelReady.current) await emitTo(TRAY_WORKBENCH_LABEL, TRAY_WORKBENCH_PROBE);
-      refreshInstancesRef.current();
-      if (panelOpenRequested.current && panelReady.current) {
+  /** @param {import("@tauri-apps/api/tray").TrayIconEventBase<"Click">["rect"]} iconBounds */
+  const stableOpenWorkbenchPanel = useCallback(
+    async (iconBounds) => {
+      if (openingPanel.current) return;
+      openingPanel.current = true;
+      try {
+        panelOpenRequested.current = true;
+        if (isMac) {
+          const { position, size } = iconBounds;
+          await invoke("open_tray_workbench_panel", {
+            clickedIcon: { x: position.x, y: position.y, width: size.width, height: size.height },
+          });
+        } else {
+          await invoke("open_tray_workbench_panel");
+        }
+        if (!panelReady.current) await emitTo(TRAY_WORKBENCH_LABEL, TRAY_WORKBENCH_PROBE);
+        refreshInstancesRef.current();
+        if (panelOpenRequested.current && panelReady.current) {
+          panelOpenRequested.current = false;
+          await publishPanel(true);
+        }
+      } catch (error) {
         panelOpenRequested.current = false;
-        await publishPanel(true);
+        console.warn("Unable to open the Workbench panel", error);
+      } finally {
+        openingPanel.current = false;
       }
-    } catch (error) {
-      panelOpenRequested.current = false;
-      console.warn("Unable to open the Workbench panel", error);
-    } finally {
-      openingPanel.current = false;
-    }
-  }, [publishPanel]);
+    },
+    [isMac, publishPanel]
+  );
 
   useEffect(() => {
     if (!useWorkbenchPanel || !isTauri() || !isCoordinator) return;
@@ -771,7 +784,7 @@ export function useTray({
             event.button === "Right" &&
             event.buttonState === "Up"
           ) {
-            void stableOpenWorkbenchPanel();
+            void stableOpenWorkbenchPanel(event.rect);
           }
         },
       });

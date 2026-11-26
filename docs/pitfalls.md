@@ -71,6 +71,19 @@ React state is too late for this ordering: `setFocusView` schedules the decorati
 commit. The shadow is Rust-owned—normal windows have it and the docked strip does not—so JavaScript
 must not manage it independently.
 
+### Tray coordinates come from the clicked menu bar on macOS
+
+AppKit can show replicas of one status item on multiple displays while its button still belongs to
+another screen. Anchor the Tray panel to the click's screen and preserve that anchor while its
+pickers resize. Pass AppKit points in the destination screen's coordinate space so moving a reused
+WebView between backing scales does not resize the panel. AppKit can keep the panel key when a
+click targets another window of the same process. The local mouse monitor handles that dismissal.
+
+On Linux, the Tauri AppIndicator backend publishes a menu over D-Bus and returns no icon rectangle
+or tray mouse events, including for GTK windows on X11. Keep the menu attached to the native tray
+host on this backend. Cursor position alone cannot identify the status item or the event that opened
+the host menu.
+
 ### Windows will not put a background window back on top
 
 `SetWindowPos(HWND_TOPMOST)` from a process that is not in the foreground returns success and does

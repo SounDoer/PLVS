@@ -95,19 +95,21 @@ PLVS stays open and reports the error. When an operation is canceled, workbenche
 open can resume even if another workbench has already closed.
 
 PLVS also keeps one system Tray. On Windows and macOS, left-clicking its icon shows or hides the
-main window, while right-clicking opens the menu. On Linux, icon interactions depend on the desktop's
-tray host; use the menu's **Show** or **Hide**, available on all three platforms.
-On Windows, the Tray menu follows the current Theme and Interface Size. It fits its visible
+main window, while right-clicking opens the menu. On Linux, the desktop's AppIndicator host
+opens the native menu and controls submenu placement, appearance and dismissal. Source groups
+open as submenus in the native menu. The menu includes
+**Show** and **Hide** on all three platforms.
+On Windows and macOS, the Tray menu follows the current Theme and Interface Size. It fits its visible
 options and scrolls when they exceed the available space. **Locate**, **Show** / **Hide**,
 **Start** / **Stop**, Source and Preset selection leave the menu open. Quitting another
 Workbench removes its entry while the menu stays open. Opening Settings, checking for updates,
 and opening a new Workbench dismiss the menu. Quitting the Workbench that owns the Tray or
 quitting PLVS closes its menu.
-On Windows, selecting a Workbench expands its controls in place. **Source** and **Preset** open
-beside those controls. Source groups such as **Output**, **Input**, and **Applications** start
+On Windows and macOS, selecting a Workbench expands its controls in place. **Source** and **Preset** open
+beside those controls. Source groups such as **Output**, **Input**, **Applications**, and **Mixes** (when available) start
 collapsed and expand when selected. Long lists scroll inside the side menu. Selecting a Source
 or Preset keeps its menu open. Press **Esc** to close the side menu, then again to collapse the
-Workbench controls.
+Workbench controls, then once more to dismiss the Tray menu.
 **Settings…** brings the owning workbench forward and opens Settings. In Dock mode, it shows the
 Settings window while keeping Dock active.
 

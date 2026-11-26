@@ -495,8 +495,7 @@ describe("useTray", () => {
     expect(onToggleWindow).toHaveBeenCalledOnce();
   });
 
-  it("keeps the Show/Hide menu action wired to the latest window callback", async () => {
-    vi.mocked(isMacOS).mockReturnValue(true);
+  it("keeps the native Show/Hide action wired to the latest window callback", async () => {
     const firstToggleWindow = vi.fn();
     const secondToggleWindow = vi.fn();
     const { rerender } = renderHook(
@@ -514,7 +513,7 @@ describe("useTray", () => {
     expect(secondToggleWindow).toHaveBeenCalledOnce();
   });
 
-  it("includes Show/Hide on Windows without adding Pin items", async () => {
+  it("includes Show/Hide in the Linux native menu without adding Pin items", async () => {
     renderHook(() => useTray(defaultProps));
     await act(async () => {});
     const texts = menuItemOptions().map((o) => o.text);
@@ -524,8 +523,7 @@ describe("useTray", () => {
     expect(texts).not.toContain("Unpin Window");
   });
 
-  it.each([false, true])("keeps Show/Hide current with isMacOS=%s", async (isMac) => {
-    vi.mocked(isMacOS).mockReturnValue(isMac);
+  it("keeps Show/Hide current in the Linux native menu", async () => {
     const setMenu = vi.fn();
     vi.mocked(TrayIcon.new).mockResolvedValue(standIn({ setMenu, close: vi.fn() }));
     const { rerender } = renderHook(
@@ -706,8 +704,9 @@ describe("useTray", () => {
     expect(defaultProps.onToggleWindow).not.toHaveBeenCalled();
   });
 
-  it("opens the Windows panel on right-click and holds it open until peer Locate completes", async () => {
-    vi.mocked(isWindows).mockReturnValue(true);
+  it.each(["win", "mac"])("%s tray panel stays open during Locate", async (platform) => {
+    vi.mocked(isWindows).mockReturnValue(platform === "win");
+    vi.mocked(isMacOS).mockReturnValue(platform === "mac");
     window.__PLVS_INITIAL_STATE__ = { instanceId: "owner" };
     const instances = [
       { instanceId: "owner", displayName: "Speakers", visible: true, captureStatus: "stopped" },
@@ -747,9 +746,16 @@ describe("useTray", () => {
       type: "Click",
       button: "Right",
       buttonState: "Up",
+      rect: { position: { x: 1200, y: 0 }, size: { width: 64, height: 48 } },
     });
     await act(async () => trayOptions.action(rightClick));
-    expect(invoke).toHaveBeenCalledWith("open_tray_workbench_panel");
+    if (platform === "mac") {
+      expect(invoke).toHaveBeenCalledWith("open_tray_workbench_panel", {
+        clickedIcon: { x: 1200, y: 0, width: 64, height: 48 },
+      });
+    } else {
+      expect(invoke).toHaveBeenCalledWith("open_tray_workbench_panel");
+    }
     const onAction = listen.mock.calls.find(([name]) => name === "tray-workbench://action")[1];
     await act(async () => onAction({ payload: { kind: "ready" } }));
     const lastPanel = () =>
@@ -1032,10 +1038,10 @@ describe("useTray", () => {
     // Parent label reflects the selected source and its type.
     expect(findText(submenuOptions(), "Source: Input · USB Mic")).toBeTruthy();
 
-    // Group headers present (disabled MenuItems).
-    const headers = menuItemOptions();
-    expect(findText(headers, "Output")).toMatchObject({ enabled: false });
-    expect(findText(headers, "Input")).toMatchObject({ enabled: false });
+    const source = findText(submenuOptions(), "Source: Input · USB Mic");
+    expect(source.items.map(({ text }) => text)).toEqual(["Automatic", "Output", "Input"]);
+    expect(findText(source.items, "Output").items.map(({ text }) => text)).toEqual(["Speakers"]);
+    expect(findText(source.items, "Input").items.map(({ text }) => text)).toEqual(["USB Mic"]);
 
     // The selected device's CheckMenuItem is checked; Automatic is not.
     const checks = checkItemOptions();
@@ -1214,7 +1220,9 @@ describe("useTray", () => {
     await act(async () => {});
 
     expect(findText(submenuOptions(), "Source: Application · VLC")).toBeTruthy();
-    expect(findText(menuItemOptions(), "Applications")).toMatchObject({ enabled: false });
+    expect(findText(submenuOptions(), "Applications").items.map(({ text }) => text)).toEqual([
+      "VLC",
+    ]);
     const appItem = findText(checkItemOptions(), "VLC");
     expect(appItem).toMatchObject({ checked: true });
     appItem.action();
@@ -1257,13 +1265,15 @@ describe("useTray", () => {
     await act(async () => {});
 
     expect(findText(submenuOptions(), "Source: Mix · Playback (Stereo)")).toBeTruthy();
-    const groups = ["Output", "Input", "Applications", "Mixes"];
-    expect(
-      menuItemOptions()
-        .filter(({ text }) => groups.includes(text))
-        .map(({ text }) => text)
-    ).toEqual(groups);
-    expect(findText(menuItemOptions(), "Mixes")).toMatchObject({ enabled: false });
+    const source = findText(submenuOptions(), "Source: Mix · Playback (Stereo)");
+    expect(source.items.map(({ text }) => text)).toEqual([
+      "Automatic",
+      "Output",
+      "Input",
+      "Applications",
+      "Mixes",
+    ]);
+    expect(findText(source.items, "Mixes").items.map(({ text }) => text)).toEqual([mix.label]);
     const item = findText(checkItemOptions(), mix.label);
     expect(item).toMatchObject({ checked: true });
     item.action();
@@ -1376,8 +1386,7 @@ describe("useTray", () => {
     expect(findText(submenuOptions(), "Preset: Mastering (modified)")).toBeTruthy();
   });
 
-  it("disables Presets and Quit but not Start/Stop or Source while updating (macOS)", async () => {
-    vi.mocked(isMacOS).mockReturnValue(true);
+  it("disables Presets and Quit but leaves Start/Stop and Source available in the native menu during an update", async () => {
     const setMenu = vi.fn();
     const onToggleWindow = vi.fn();
     const onQuit = vi.fn();

@@ -93,10 +93,22 @@ pub fn set_tray_workbench_focus_hold(
 pub async fn open_tray_workbench_panel(
   app: tauri::AppHandle,
   window: tauri::WebviewWindow,
+  clicked_icon: Option<ClickedIcon>,
 ) -> Result<(), String> {
-  if window.label() != "main" || app.tray_by_id(TRAY_ID).is_none() {
-    return Err("Only the Workbench that owns the Tray can open its panel.".into());
+  let tray = app
+    .tray_by_id(TRAY_ID)
+    .filter(|_| window.label() == "main")
+    .ok_or("Only the Workbench that owns the Tray can open its panel.")?;
+  if cfg!(target_os = "linux") {
+    return Err("The Linux Tray host owns the Workbench menu.".into());
   }
+  #[cfg(target_os = "macos")]
+  {
+    let geometry = status_item_geometry(&tray, clicked_icon)?;
+    *STATUS_ITEM_GEOMETRY.lock().unwrap() = Some(geometry);
+  }
+  #[cfg(not(target_os = "macos"))]
+  let _ = (clicked_icon, tray);
   if app.get_webview_window(LABEL).is_some() {
     return Ok(());
   }
@@ -110,9 +122,11 @@ pub async fn open_tray_workbench_panel(
     .always_on_top(true)
     .skip_taskbar(true)
     .shadow(false);
-  #[cfg(windows)]
+  #[cfg(any(windows, target_os = "macos"))]
   let panel = panel.transparent(true);
   let panel = panel.build().map_err(|error| error.to_string())?;
+  #[cfg(target_os = "macos")]
+  install_outside_click_monitor(&panel)?;
   place_panel(
     &app,
     &window,
@@ -176,45 +190,150 @@ pub fn layout_tray_workbench_panel(
   Ok(layout)
 }
 
+#[repr(C)]
+#[derive(Clone, Copy, Default, serde::Deserialize)]
+pub struct ClickedIcon {
+  x: f64,
+  y: f64,
+  width: f64,
+  height: f64,
+}
+
+#[cfg(target_os = "macos")]
+static STATUS_ITEM_GEOMETRY: std::sync::Mutex<Option<StatusItemGeometry>> =
+  std::sync::Mutex::new(None);
+
+#[cfg(target_os = "macos")]
+#[repr(C)]
+#[derive(Clone, Copy, Default)]
+struct StatusItemGeometry {
+  x: f64,
+  y: f64,
+  width: f64,
+  height: f64,
+  screen_x: f64,
+  screen_y: f64,
+  screen_width: f64,
+  screen_height: f64,
+  scale: f64,
+}
+
+#[cfg(target_os = "macos")]
+fn status_item_geometry(
+  tray: &tauri::tray::TrayIcon,
+  clicked_icon: Option<ClickedIcon>,
+) -> Result<StatusItemGeometry, String> {
+  extern "C" {
+    fn plvs_tray_status_item_geometry(
+      status_item: *const std::ffi::c_void,
+      clicked_icon: ClickedIcon,
+      geometry: *mut StatusItemGeometry,
+    ) -> bool;
+  }
+  tray
+    .with_inner_tray_icon(move |icon| {
+      let status_item = icon.ns_status_item()?;
+      let mut geometry = StatusItemGeometry::default();
+      // The retained NSStatusItem stays alive throughout this main-thread call.
+      unsafe {
+        plvs_tray_status_item_geometry(
+          std::ptr::from_ref(&**status_item).cast(),
+          clicked_icon.unwrap_or_default(),
+          &mut geometry,
+        )
+      }
+      .then_some(geometry)
+    })
+    .map_err(|error| error.to_string())?
+    .ok_or_else(|| "The macOS Tray icon has no screen bounds.".into())
+}
+
+#[cfg(target_os = "macos")]
+fn install_outside_click_monitor(panel: &tauri::WebviewWindow) -> Result<(), String> {
+  extern "C" {
+    fn plvs_tray_dismiss_on_outside_click(window: *mut std::ffi::c_void);
+  }
+  let handle = panel.clone();
+  panel
+    .run_on_main_thread(move || {
+      if let Ok(window) = handle.ns_window() {
+        // The retained WebviewWindow owns the NSWindow on this thread.
+        unsafe { plvs_tray_dismiss_on_outside_click(window) };
+      }
+    })
+    .map_err(|error| error.to_string())
+}
+
 fn place_panel(
   app: &tauri::AppHandle,
-  main: &tauri::WebviewWindow,
+  _main: &tauri::WebviewWindow,
   panel: &tauri::WebviewWindow,
   width: f64,
   height: f64,
   webview_scale: Option<f64>,
   side: Option<PickerLayout>,
 ) -> Result<PanelLayout, String> {
-  let tray = app
-    .tray_by_id(TRAY_ID)
-    .ok_or("The Workbench does not own the Tray.")?;
-  let anchor = tray.rect().ok().flatten().map(|rect| {
+  #[cfg(target_os = "macos")]
+  let (origin, area, anchor, monitor_scale) = {
+    let geometry = STATUS_ITEM_GEOMETRY
+      .lock()
+      .unwrap()
+      .ok_or("The macOS Tray menu has no opening anchor.")?;
+    let scale = geometry.scale;
+    let position = |x, y| tauri::LogicalPosition::new(x, y).to_physical::<i32>(scale);
+    let size = |width, height| tauri::LogicalSize::new(width, height).to_physical::<u32>(scale);
     (
-      rect.position.to_physical::<i32>(1.0),
-      rect.size.to_physical::<u32>(1.0),
+      position(geometry.screen_x, geometry.screen_y),
+      size(geometry.screen_width, geometry.screen_height),
+      Some((
+        position(geometry.x, geometry.y),
+        size(geometry.width, geometry.height),
+      )),
+      scale,
     )
-  });
-  let monitor = anchor
-    .and_then(|(point, size)| {
-      app
-        .monitor_from_point(
-          f64::from(point.x) + f64::from(size.width) / 2.0,
-          f64::from(point.y) + f64::from(size.height) / 2.0,
-        )
-        .ok()
-        .flatten()
-    })
-    .or_else(|| main.current_monitor().ok().flatten())
-    .ok_or("No monitor is available for the Tray Workbench panel.")?;
-  // The tray icon already marks the shell edge. The work area includes space reserved by
-  // PLVS Dock, which would push an anchored menu away from its icon.
-  let (origin, area) = if anchor.is_some() {
-    (*monitor.position(), *monitor.size())
-  } else {
-    let work_area = monitor.work_area();
-    (work_area.position, work_area.size)
   };
-  let scale = webview_scale.unwrap_or_else(|| monitor.scale_factor());
+  #[cfg(not(target_os = "macos"))]
+  let (origin, area, anchor, monitor_scale) = {
+    let tray = app
+      .tray_by_id(TRAY_ID)
+      .ok_or("The Workbench does not own the Tray.")?;
+    let anchor = tray.rect().ok().flatten().map(|rect| {
+      (
+        rect.position.to_physical::<i32>(1.0),
+        rect.size.to_physical::<u32>(1.0),
+      )
+    });
+    let monitor = anchor
+      .and_then(|(point, size)| {
+        app
+          .monitor_from_point(
+            f64::from(point.x) + f64::from(size.width) / 2.0,
+            f64::from(point.y) + f64::from(size.height) / 2.0,
+          )
+          .ok()
+          .flatten()
+      })
+      .or_else(|| _main.current_monitor().ok().flatten())
+      .ok_or("No monitor is available for the Tray Workbench panel.")?;
+    // The tray icon already marks the shell edge. The work area includes space reserved by
+    // PLVS Dock, which would push an anchored menu away from its icon.
+    let (origin, area) = if anchor.is_some() {
+      (*monitor.position(), *monitor.size())
+    } else {
+      let work_area = monitor.work_area();
+      (work_area.position, work_area.size)
+    };
+    (origin, area, anchor, monitor.scale_factor())
+  };
+  // WKWebView follows the backing scale. A reused window may still report the previous
+  // screen's ratio when it starts moving to the clicked status item.
+  #[cfg(target_os = "macos")]
+  let scale = {
+    let _ = (app, webview_scale);
+    monitor_scale
+  };
+  #[cfg(not(target_os = "macos"))]
+  let scale = webview_scale.unwrap_or(monitor_scale);
   let bounds = panel_work_area(origin, area, anchor);
   let size = PhysicalSize::new(
     ((width * scale).ceil() as u32).clamp(1, area.width),
@@ -236,10 +355,21 @@ fn place_panel(
       ),
     )
   });
+  // AppKit uses the existing window's scale to convert physical setters. Supply points
+  // based on the destination screen so a status item on a different display stays anchored.
+  #[cfg(target_os = "macos")]
+  let (window_point, window_size) = (
+    point.to_logical::<f64>(monitor_scale),
+    size.to_logical::<f64>(monitor_scale),
+  );
+  #[cfg(not(target_os = "macos"))]
+  let (window_point, window_size) = (point, size);
   panel
-    .set_position(point)
+    .set_position(window_point)
     .map_err(|error| error.to_string())?;
-  panel.set_size(size).map_err(|error| error.to_string())?;
+  panel
+    .set_size(window_size)
+    .map_err(|error| error.to_string())?;
   let main = main.relative_to(point);
   let side = side.map(|side| side.relative_to(point));
   #[cfg(windows)]
