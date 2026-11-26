@@ -244,6 +244,9 @@ html[data-keyboard-nav="true"] :focus-visible {
   border-color: transparent;
   background-color: transparent;
 }
+.plvs-input[data-input-border="visible"] {
+  border-color: var(--input);
+}
 :is(.plvs-input, [data-control-field]):not(:disabled):not([readonly]):is(
     :focus-visible,
     [data-state="open"]

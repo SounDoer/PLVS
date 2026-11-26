@@ -36,7 +36,7 @@ describe("PresetsPopoverContent", () => {
     expect(screen.queryByText("No presets yet. Save the current view to start.")).toBeNull();
 
     expect(add.querySelector("svg")).toBeTruthy();
-    expect(add.textContent).toBe("Add");
+    expect(add.textContent).toBe("Add Preset");
   });
 
   it("gives the new preset name input an accessible name", () => {
@@ -77,7 +77,7 @@ describe("PresetsPopoverContent", () => {
     expect(save).toHaveBeenCalledWith("Mix");
   });
 
-  it("renders each preset name", () => {
+  it("places the create controls after the preset list, with the name before Add Preset", () => {
     render(
       <PresetsPopoverContent
         presets={{
@@ -90,9 +90,14 @@ describe("PresetsPopoverContent", () => {
       />
     );
 
-    expect(screen.getByPlaceholderText("New preset name")).toBeTruthy();
+    const lastPreset = screen.getByRole("button", { name: "Apply preset Mix" });
+    const name = screen.getByRole("textbox", { name: "New preset name" });
+    const add = screen.getByRole("button", { name: "Add preset" });
     expect(screen.getByText("Focus")).toBeTruthy();
-    expect(screen.getByText("Mix")).toBeTruthy();
+    expect(
+      lastPreset.compareDocumentPosition(name) & Node.DOCUMENT_POSITION_FOLLOWING
+    ).toBeTruthy();
+    expect(name.compareDocumentPosition(add) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   });
 
   it("resizes to the first-preset placeholder after the last preset is deleted", () => {

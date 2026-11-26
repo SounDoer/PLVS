@@ -42,8 +42,8 @@ Escape; it is not restored on the next launch.
 
 The **Panels** menu adds panels, including a second instance of a meter you want to watch two ways
 at once. Removing every panel leaves an empty Workspace that stays empty when PLVS reopens.
-The **Presets** menu saves and switches between whole layouts. When none exist yet, name
-your first Preset in the create field and select **Add**. The selected Preset shows as modified
+The **Presets** menu saves and switches between whole layouts. To save the current layout as a new
+Preset, enter a name at the bottom of the menu and select **Add Preset**. The selected Preset shows as modified
 while anything it restores differs from the current layout, and the mark clears as soon as you
 return to the same settings.
 

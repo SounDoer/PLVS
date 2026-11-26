@@ -97,30 +97,6 @@ export function PresetsPopoverContent({
           <SharesetsBrowseButton category="presets" />
         </header>
       ) : null}
-      <div className="flex items-center gap-2 px-2 py-1">
-        <input
-          type="text"
-          aria-label="New preset name"
-          data-ui-target="presets-menu:name"
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-          onKeyDown={(e) => {
-            if (e.key === "Enter") handleSave();
-          }}
-          placeholder={newPresetPlaceholder}
-          // `size={1}` + `flex-1`: fill the Presets surface without typed text growing it.
-          size={1}
-          className="plvs-input h-[var(--ui-control-h)] min-w-0 flex-1 rounded-md border border-input bg-transparent px-2 py-1 text-[length:var(--ui-fs-control)] placeholder:text-muted-foreground"
-        />
-        <AddButton
-          label="Add"
-          aria-label="Add preset"
-          data-ui-target="presets-menu:add"
-          className={cn("w-auto shrink-0", blockedClass)}
-          onClick={handleSave}
-          disabled={blocked || !name.trim()}
-        />
-      </div>
       {presets.list.length > 0 ? (
         // `grid-cols-1` (= minmax(0,1fr)) constrains the column to the popover width; a bare grid
         // makes an implicit auto column that sizes to the longest name and overflows the max-w cap,
@@ -263,6 +239,31 @@ export function PresetsPopoverContent({
           Finish or cancel the active editor first.
         </p>
       ) : null}
+      <div className="flex items-center gap-2 px-2 py-1">
+        <input
+          type="text"
+          aria-label="New preset name"
+          data-ui-target="presets-menu:name"
+          data-input-border="visible"
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") handleSave();
+          }}
+          placeholder={newPresetPlaceholder}
+          // `size={1}` + `flex-1`: fill the Presets surface without typed text growing it.
+          size={1}
+          className="plvs-input h-[var(--ui-control-h)] min-w-0 flex-1 rounded-md border border-input bg-transparent px-2 py-1 text-[length:var(--ui-fs-control)] placeholder:text-muted-foreground"
+        />
+        <AddButton
+          label="Add Preset"
+          aria-label="Add preset"
+          data-ui-target="presets-menu:add"
+          className={cn("w-auto shrink-0", blockedClass)}
+          onClick={handleSave}
+          disabled={blocked || !name.trim()}
+        />
+      </div>
     </div>
   );
 }

@@ -30,6 +30,7 @@ the UI disagree, the UI on `main` wins and this file is corrected.
 | Main Workbench             | The Workbench that owns application-wide work such as updates                                       | 主工作台           |                             |
 | Workspace                  | The panels in the window, their arrangement and each panel's settings                               | 工作区             | layout                      |
 | Preset                     | A saved Workspace that can be switched back to                                                      | 预设               | scene, saved layout         |
+| Add Preset                 | Saves the current layout as a new Preset                                                            | 添加预设           |                             |
 | Panel                      | One meter placed in the Workspace; the same meter can be added more than once                       | 面板               | module                      |
 | Panels                     | The toolbar menu that adds, renames and removes panels                                              | 面板菜单           | Modules                     |
 | Panel Settings             | A panel's own analysis and display options                                                          | 面板设置           |                             |
