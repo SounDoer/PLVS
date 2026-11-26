@@ -4,7 +4,6 @@ import {
   UpdateDetailsContent,
   UpdateDetailsHeader,
 } from "../../components/UpdateDetailsContent.jsx";
-import { PRIVACY_POLICY_URL } from "../../ipc/openExternal.js";
 import { UpdateSetupContent } from "../../components/UpdatePreferencesControls.jsx";
 
 export function DockUpdateApp() {
@@ -68,7 +67,6 @@ export function DockUpdateApp() {
             onInterfaceSizeChange={(value) => send("welcome-interface-size-change", { value })}
             onCrashReportChange={(value) => send("welcome-crash-report-change", { value })}
             installationUnavailableReason={payload.installationUnavailableReason}
-            onPrivacy={() => send("update-link", { url: PRIVACY_POLICY_URL })}
             installationSupported={payload.installationSupported}
             busy={payload.busy}
             error={payload.error}

@@ -85,33 +85,6 @@ it("explains the check dependency and read-only installation separately", () => 
     screen.getByRole("switch", { name: "automatically download updates" }).hasAttribute("disabled")
   ).toBe(true);
 });
-it("opens privacy only on an explicit action without saving update preferences", () => {
-  const onPrivacy = vi.fn(),
-    onSave = vi.fn(),
-    onChange = vi.fn();
-  render(
-    <UpdateSetupContent
-      preferences={{ autoCheck: true, autoDownload: false }}
-      appearance="system"
-      interfaceSize="default"
-      askToSendCrashReports={true}
-      onAppearanceChange={vi.fn()}
-      onInterfaceSizeChange={vi.fn()}
-      onCrashReportChange={vi.fn()}
-      onChange={onChange}
-      onSave={onSave}
-      onPrivacy={onPrivacy}
-      installationSupported
-      busy={false}
-      error={null}
-    />
-  );
-  expect(onPrivacy).not.toHaveBeenCalled();
-  fireEvent.click(screen.getByRole("button", { name: "Privacy Policy" }));
-  expect(onPrivacy).toHaveBeenCalledOnce();
-  expect(onSave).not.toHaveBeenCalled();
-  expect(onChange).not.toHaveBeenCalled();
-});
 it("names Continue as a pointer target that only locates the button", () => {
   const onSave = vi.fn();
   render(

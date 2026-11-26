@@ -122,16 +122,15 @@ saved items that you can edit, rename, or delete. Once deleted, either one stays
 **Reset PLVS to Default** brings them back. PLVS never starts capturing audio on its own: pick a
 signal source (see [Signal Source](signal-source.md)) and press Start when you're ready to monitor.
 
-On a fresh first launch, **Welcome to PLVS** offers five preferences: **Appearance**,
-**Interface Size**, **Auto Check for Updates**, **Auto Download Updates**, and **Ask to Send Crash Reports**.
+On a fresh first launch, **Welcome to PLVS** offers five preferences: **Interface Size**,
+**Appearance**, **Auto Check for Updates**, **Auto Download Updates**, and **Ask to Send Crash Reports**.
 Appearance starts at **Follow System**, Interface Size at **Default**, automatic checking on,
 automatic downloading off, and crash-report prompting on. Appearance and Interface Size apply
 immediately so you can see their effect. **Ask to Send Crash Reports** controls whether PLVS asks before
-sending a report after a crash; it does not send reports automatically. The prompt links to the
-privacy policy and has a single **Continue** button to save your choices and proceed to the Quick
-Tour invitation. Escape and clicking outside do not dismiss it. No automatic update request is
-made before confirmation. Existing users do not see this prompt on upgrade and keep their saved
-preferences. All five preferences can be changed later in Settings.
+sending a report after a crash; it does not send reports automatically. Select **Continue** to save
+your choices and proceed to the Quick Tour invitation. Escape and clicking outside do not dismiss
+the prompt. No automatic update request is made before confirmation. Existing users keep their
+saved preferences on upgrade. All five preferences can be changed later in Settings.
 
 When checking is enabled, PLVS checks at startup and every 12 hours. Manual checks remain available
 with automatic checking off. Update state appears in the toolbar's shared status area. Open its

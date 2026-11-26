@@ -1,8 +1,6 @@
 import { useState } from "react";
 import { CircleHelp } from "lucide-react";
 import { HoverTip } from "./HoverTip.jsx";
-import { openExternalUrl, PRIVACY_POLICY_URL } from "../ipc/openExternal.js";
-import { LinkButton } from "./ui/link-button";
 import { IconAction } from "./ui/icon-action";
 import { Switch } from "./ui/switch";
 import { Button } from "./ui/button";
@@ -121,26 +119,12 @@ export function UpdateSetupContent({
   onSave,
   installationSupported,
   installationUnavailableReason = null,
-  onPrivacy = () => openExternalUrl(PRIVACY_POLICY_URL),
   busy,
   error,
 }) {
   return (
     <>
       <div className="mt-3 flex flex-col gap-[var(--ui-drawer-row-gap)] text-[length:var(--ui-fs-control)]">
-        <div className="flex min-h-[var(--ui-shell-h)] items-center justify-between gap-4 text-muted-foreground">
-          <span>Appearance</span>
-          <Select value={appearance} onValueChange={onAppearanceChange} disabled={busy}>
-            <SelectTrigger aria-label="appearance" variant="flush">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent position="popper" variant="flush">
-              <SelectItem value="system">Follow System</SelectItem>
-              <SelectItem value="plvs-light">Light</SelectItem>
-              <SelectItem value="plvs-dark">Dark</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
         <div className="flex min-h-[var(--ui-shell-h)] items-center justify-between gap-4 text-muted-foreground">
           <span>Interface Size</span>
           <Select value={interfaceSize} onValueChange={onInterfaceSizeChange} disabled={busy}>
@@ -156,7 +140,19 @@ export function UpdateSetupContent({
             </SelectContent>
           </Select>
         </div>
-        <div className="my-1 border-t border-border" />
+        <div className="flex min-h-[var(--ui-shell-h)] items-center justify-between gap-4 text-muted-foreground">
+          <span>Appearance</span>
+          <Select value={appearance} onValueChange={onAppearanceChange} disabled={busy}>
+            <SelectTrigger aria-label="appearance" variant="flush">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent position="popper" variant="flush">
+              <SelectItem value="system">Follow System</SelectItem>
+              <SelectItem value="plvs-light">Light</SelectItem>
+              <SelectItem value="plvs-dark">Dark</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
         <UpdatePreferencesControls
           preferences={preferences}
           onChange={onChange}
@@ -191,11 +187,6 @@ export function UpdateSetupContent({
           {error}
         </p>
       ) : null}
-      <p className="mt-3 text-[length:var(--ui-fs-metric-meta)] text-muted-foreground">
-        <LinkButton className="underline underline-offset-2" onClick={onPrivacy}>
-          Privacy Policy
-        </LinkButton>
-      </p>
       <div className="mt-3 flex justify-end gap-2">
         <Button disabled={busy} data-ui-target="welcome:continue" onClick={onSave}>
           Continue

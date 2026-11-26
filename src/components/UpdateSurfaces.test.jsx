@@ -152,6 +152,19 @@ describe("first-launch update choice", () => {
       </BlockingEditorsProvider>
     );
     expect(screen.getByRole("heading", { name: "Welcome to PLVS" })).toBeTruthy();
+    const dialog = screen.getByRole("dialog", { name: "Welcome to PLVS" });
+    expect(
+      Array.from(dialog.querySelectorAll('[role="combobox"], [role="switch"]'), (control) =>
+        control.getAttribute("aria-label")
+      )
+    ).toEqual([
+      "interface size",
+      "appearance",
+      "automatically check for updates",
+      "automatically download updates",
+      "ask to send crash reports",
+    ]);
+    expect(screen.queryByText("Privacy Policy")).toBeNull();
     expect(screen.queryByRole("button", { name: "Skip" })).toBeNull();
     expect(screen.queryByRole("button", { name: "Save" })).toBeNull();
     expect(mock.settings.setUpdatePreferences).not.toHaveBeenCalled();
