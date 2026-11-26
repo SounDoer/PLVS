@@ -184,10 +184,11 @@ Sound invalidates the device, PLVS rebuilds the stream and starts a fresh measur
 PLVS briefly retries a recording input if the audio system invalidates its stream or the input
 briefly disappears during Live capture. On Linux, it also retries when the audio server ends
 the stream PLVS uses to meter playback or reports a service interruption. A retry of a selected
-device must match the original endpoint. On Windows,
-if a recording stream delivers no data for five seconds without another reported stream error,
-PLVS tries the same input once if it can still find it. This includes a sound interface's own
-loopback input.
+device must match the original endpoint. If PLVS reports that the selected audio source changed,
+select **Start** to retry. If capture still won't start, reselect the source and try again.
+On Windows, if a recording stream delivers no data for five seconds without another reported
+stream error, PLVS tries the same input once if it can still find it. This includes a sound
+interface's own loopback input.
 
 PLVS keeps the previous measurement while it tries to recover. **Audio Capture Recovered** in
 Status means that audio is coming in again and a fresh measurement has started. Readings such as

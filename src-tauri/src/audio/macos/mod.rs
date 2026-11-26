@@ -307,7 +307,7 @@ fn run_macos_tap_worker(args: MacosTapWorkerArgs) -> Result<(), CaptureWorkerErr
     .is_some_and(|key| key != device_id::endpoint_key(&uid))
   {
     return Err(
-      "The selected audio endpoint changed. Select the intended Source before starting."
+      "The selected audio source changed. Select Start to retry. If that fails, reselect it in Source."
         .to_string()
         .into(),
     );

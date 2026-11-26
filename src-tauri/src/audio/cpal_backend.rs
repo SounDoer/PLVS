@@ -699,7 +699,8 @@ impl CaptureSession {
       && super::device_enum::native_endpoint_key(&device).as_deref() != endpoint_key
     {
       return Err(
-        "The selected audio endpoint changed. Select the intended Source before starting.".into(),
+        "The selected audio source changed. Select Start to retry. If that fails, reselect it in Source."
+          .into(),
       );
     }
     let sample_rate = supported.sample_rate();

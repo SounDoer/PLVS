@@ -515,7 +515,7 @@ describe("useAudioEngine", () => {
         await waitFor(() =>
           expect(props.halt).toHaveBeenCalledWith(
             new Error(
-              "The selected audio endpoint changed. Select the intended Source before starting."
+              "The selected audio source changed. Select Start to retry. If that fails, reselect it in Source."
             )
           )
         );
