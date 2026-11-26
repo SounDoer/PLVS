@@ -207,6 +207,16 @@ pub fn start_restore_reconciliation(
   let _ = std::thread::Builder::new()
     .name("workspace-restore-reconciliation".to_string())
     .spawn(move || {
+      // Windows staggers restored Workbenches. Keep the sleeps off the GUI thread so the
+      // first window can start rendering and handle IPC while its peers launch.
+      if let Err(error) = spawn_missing_restored_workspaces(
+        &identity_root,
+        &current_workspace_id,
+        &registry,
+        isolated_app_data.as_deref(),
+      ) {
+        log::warn!("Unable to restore every saved workspace: {error}");
+      }
       for delay in [
         std::time::Duration::from_secs(8),
         std::time::Duration::from_secs(12),
@@ -227,7 +237,7 @@ pub fn start_restore_reconciliation(
     });
 }
 
-pub fn spawn_missing_restored_workspaces(
+fn spawn_missing_restored_workspaces(
   identity_root: &Path,
   current_workspace_id: &str,
   registry: &InstanceRegistry,

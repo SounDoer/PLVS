@@ -3,7 +3,11 @@ import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { renderHook } from "@testing-library/react";
 import { act, useState } from "react";
 
-const { invoke, listen } = vi.hoisted(() => ({ invoke: vi.fn(), listen: vi.fn() }));
+const { invoke, listen, emitTo } = vi.hoisted(() => ({
+  invoke: vi.fn(),
+  listen: vi.fn(),
+  emitTo: vi.fn(),
+}));
 const coordination = vi.hoisted(() => ({
   issue: vi.fn(),
   quitAll: vi.fn(),
@@ -30,7 +34,7 @@ const { nativeHandle } = vi.hoisted(() => ({
     }),
 }));
 vi.mock("@tauri-apps/api/core", () => ({ invoke }));
-vi.mock("@tauri-apps/api/event", () => ({ listen }));
+vi.mock("@tauri-apps/api/event", () => ({ listen, emitTo }));
 vi.mock("../runtime/coordination.js", () => ({
   issueInstanceCommand: (...args) => coordination.issue(...args),
   quitAllInstances: (...args) => coordination.quitAll(...args),
@@ -64,7 +68,10 @@ vi.mock("@tauri-apps/api/path", () => ({
   resolveResource: vi.fn().mockResolvedValue("/fake/tray.png"),
 }));
 vi.mock("../ipc/env.js", () => ({ isTauri: () => true }));
-vi.mock("../lib/platform.js", () => ({ isMacOS: vi.fn(() => false) }));
+vi.mock("../lib/platform.js", () => ({
+  isMacOS: vi.fn(() => false),
+  isWindows: vi.fn(() => false),
+}));
 vi.mock("./useTaskbarColorScheme.js", () => ({ useTaskbarColorScheme: vi.fn(() => null) }));
 // Intentionally NOT mocked: formatAudioDeviceLabel returns an object
 // ({ primary, secondary, full }), and the real function must run so a test
@@ -76,7 +83,7 @@ import { TrayIcon } from "@tauri-apps/api/tray";
 import { Image } from "@tauri-apps/api/image";
 import { Menu, MenuItem, CheckMenuItem, Submenu } from "@tauri-apps/api/menu";
 import { resolveResource } from "@tauri-apps/api/path";
-import { isMacOS } from "../lib/platform.js";
+import { isMacOS, isWindows } from "../lib/platform.js";
 import { setCoordinatorRole } from "../lib/runtimeRole.js";
 import { useTaskbarColorScheme } from "./useTaskbarColorScheme.js";
 
@@ -120,10 +127,12 @@ function deferred() {
 describe("useTray", () => {
   beforeEach(() => {
     delete window.__PLVS_INITIAL_STATE__;
+    vi.mocked(isWindows).mockReturnValue(false);
     setCoordinatorRole(undefined);
     vi.clearAllMocks();
     invoke.mockResolvedValue([]);
     listen.mockResolvedValue(vi.fn());
+    emitTo.mockResolvedValue(undefined);
     coordination.issue.mockResolvedValue();
     coordination.quitAll.mockResolvedValue();
     vi.mocked(isMacOS).mockReturnValue(false);
@@ -695,6 +704,69 @@ describe("useTray", () => {
     });
     expect(coordination.issue).toHaveBeenCalledExactlyOnceWith("peer", "locate", null);
     expect(defaultProps.onToggleWindow).not.toHaveBeenCalled();
+  });
+
+  it("opens the Windows panel on right-click and holds it open until peer Locate completes", async () => {
+    vi.mocked(isWindows).mockReturnValue(true);
+    window.__PLVS_INITIAL_STATE__ = { instanceId: "owner" };
+    const instances = [
+      { instanceId: "owner", displayName: "Speakers", visible: true, captureStatus: "stopped" },
+      { instanceId: "peer", displayName: "Speakers (2)", visible: true, captureStatus: "running" },
+    ];
+    invoke.mockImplementation(async (command) =>
+      command === "runtime_list_instances" ? instances : true
+    );
+    renderHook(() => useTray(defaultProps));
+    await act(async () => {});
+
+    const trayOptions = vi.mocked(TrayIcon.new).mock.calls[0][0];
+    expect(trayOptions.menu).toBeUndefined();
+    const rightClick = /** @type {Parameters<typeof trayOptions.action>[0]} */ ({
+      type: "Click",
+      button: "Right",
+      buttonState: "Up",
+    });
+    await act(async () => trayOptions.action(rightClick));
+    expect(invoke).toHaveBeenCalledWith("open_tray_workbench_panel", { show: false });
+    const onAction = listen.mock.calls.find(([name]) => name === "tray-workbench://action")[1];
+    await act(async () => onAction({ payload: { kind: "ready" } }));
+    expect(invoke).toHaveBeenCalledWith("open_tray_workbench_panel", { show: true });
+    const panelItems = emitTo.mock.calls.find(([, name]) => name === "tray-workbench://state")[2];
+    expect(panelItems.map(({ text }) => text).filter(Boolean)).toEqual([
+      "Speakers",
+      "Speakers (2)",
+      "New Workbench",
+      "Quit PLVS",
+    ]);
+    const peer = panelItems.find(({ key }) => key === "workbench:peer");
+    expect(peer.items.map(({ text }) => text).filter(Boolean)).toEqual([
+      "Locate",
+      "Hide",
+      "Stop",
+      "Source: Output · Automatic",
+      "Preset: Editing…",
+      "Settings…",
+      "Quit Workbench",
+    ]);
+    const acknowledgement = deferred();
+    coordination.issue.mockReturnValueOnce(acknowledgement.promise);
+    await act(async () => {
+      void onAction({ payload: { kind: "activate", key: "workbench:peer:locate" } });
+    });
+    expect(invoke).toHaveBeenCalledWith("set_tray_workbench_locating", { active: true });
+    expect(coordination.issue).toHaveBeenCalledExactlyOnceWith("peer", "locate");
+    expect(invoke).not.toHaveBeenCalledWith("set_tray_workbench_locating", { active: false });
+    await act(async () => acknowledgement.resolve());
+    expect(invoke).toHaveBeenCalledWith("set_tray_workbench_locating", { active: false });
+
+    await act(async () =>
+      onAction({ payload: { kind: "activate", key: "workbench:peer:transport" } })
+    );
+    expect(invoke).toHaveBeenCalledWith("runtime_route_instance_transport", {
+      instanceId: "peer",
+      action: "stop",
+    });
+    expect(defaultProps.onStartClick).not.toHaveBeenCalled();
   });
 
   it("opens a new workbench from the single-workbench tray and respects the update guard", async () => {

@@ -48,6 +48,7 @@ pub mod sharesets_preview_fixture;
 mod sidecar;
 mod state;
 mod taskbar_theme;
+mod tray_workbench_panel;
 pub mod update_cache;
 pub mod update_gate;
 mod update_runtime;
@@ -325,6 +326,8 @@ pub fn run() {
       coordinator::runtime_publish_instance_state,
       coordinator::runtime_list_instances,
       runtime_open_workbench,
+      tray_workbench_panel::open_tray_workbench_panel,
+      tray_workbench_panel::set_tray_workbench_locating,
       coordinator::runtime_retire_current_workspace,
       coordinator::runtime_restore_retired_workspace,
       coordinator::runtime_route_global_shortcut,
@@ -728,16 +731,6 @@ pub fn run() {
       }
 
       if is_coordinator && restore_launch.is_none() {
-        if let Err(error) = coordinator::spawn_missing_restored_workspaces(
-          &prepared.root,
-          app
-            .state::<runtime_identity::RuntimeIdentity>()
-            .workspace_id(),
-          &app.state::<coordinator::InstanceRegistry>(),
-          isolated_app_data.as_deref(),
-        ) {
-          log::warn!("Unable to restore every saved workspace: {error}");
-        }
         coordinator::start_restore_reconciliation(
           &prepared.root,
           app

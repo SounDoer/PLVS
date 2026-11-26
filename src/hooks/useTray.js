@@ -1,13 +1,13 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
-import { listen } from "@tauri-apps/api/event";
+import { emitTo, listen } from "@tauri-apps/api/event";
 import { TrayIcon } from "@tauri-apps/api/tray";
 import { createNativeTrayMenu } from "../lib/nativeTrayMenu.js";
 import { Image } from "@tauri-apps/api/image";
 import { resolveResource } from "@tauri-apps/api/path";
 import { isTauri } from "../ipc/env.js";
 import { openAdditionalWorkbench } from "../ipc/commands.js";
-import { isMacOS } from "../lib/platform.js";
+import { isMacOS, isWindows } from "../lib/platform.js";
 import {
   formatAudioDeviceLabel,
   isUnavailableApplicationSource,
@@ -22,6 +22,14 @@ import {
 import { useCoordinatorRole } from "../lib/runtimeRole.js";
 import { useTaskbarColorScheme } from "./useTaskbarColorScheme.js";
 import { issueInstanceCommand, quitAllInstances } from "../runtime/coordination.js";
+import {
+  isTrayLocateAction,
+  TRAY_WORKBENCH_ACTION,
+  TRAY_WORKBENCH_LABEL,
+  TRAY_WORKBENCH_NOTICE,
+  TRAY_WORKBENCH_PROBE,
+  TRAY_WORKBENCH_STATE,
+} from "../tray/trayWorkbenchProtocol.js";
 
 // The dark icon is a white glyph for a dark surface; the light icon is a black glyph.
 /**
@@ -270,6 +278,34 @@ function menuDefinitions(cfg) {
   return items;
 }
 
+/** @param {import("../lib/nativeTrayMenu.js").TrayMenuDefinition[]} items */
+function panelItems(items) {
+  return items.map(({ key, kind, text, enabled, checked, items: children }) => ({
+    key,
+    kind,
+    text,
+    enabled,
+    checked,
+    items: children && panelItems(children),
+  }));
+}
+
+/**
+ * @param {import("../lib/nativeTrayMenu.js").TrayMenuDefinition[]} items
+ * @param {string} key
+ */
+function findTrayAction(items, key) {
+  for (const item of items) {
+    if (item.enabled === false) continue;
+    if (item.key === key && item.action) return item.action;
+    if (item.items) {
+      const action = findTrayAction(item.items, key);
+      if (action) return action;
+    }
+  }
+  return null;
+}
+
 /**
  * @param {{
  *   running: boolean,
@@ -315,6 +351,7 @@ export function useTray({
   presets = { list: [], activeId: null, dirty: false, blocked: false, apply: () => {} },
 }) {
   const isMac = isMacOS();
+  const useWorkbenchPanel = isWindows();
   const isCoordinator = useCoordinatorRole();
   // On Windows the icon sits on the taskbar, whose mode is independent of the PLVS theme. The
   // PLVS theme remains the fallback until the taskbar mode is known and on other platforms.
@@ -527,6 +564,90 @@ export function useTray({
   useEffect(() => {
     menuInputsRef.current = menuInputs;
   });
+
+  const panelReady = useRef(false);
+  const openingPanel = useRef(false);
+  const panelOpenRequested = useRef(false);
+  const panelDefinitions = useRef(
+    /** @type {() => import("../lib/nativeTrayMenu.js").TrayMenuDefinition[]} */ (() => [])
+  );
+  const locatingFromPanel = useRef(false);
+  const publishPanel = useCallback(async () => {
+    if (!panelReady.current) return;
+    await emitTo(
+      TRAY_WORKBENCH_LABEL,
+      TRAY_WORKBENCH_STATE,
+      panelItems(panelDefinitions.current())
+    );
+  }, []);
+
+  const stableOpenWorkbenchPanel = useCallback(async () => {
+    if (openingPanel.current) return;
+    openingPanel.current = true;
+    try {
+      const ready = panelReady.current;
+      panelOpenRequested.current = !ready;
+      await invoke("open_tray_workbench_panel", { show: ready });
+      if (!ready && !panelReady.current) await emitTo(TRAY_WORKBENCH_LABEL, TRAY_WORKBENCH_PROBE);
+      refreshInstancesRef.current();
+      await publishPanel();
+      if (panelOpenRequested.current && panelReady.current) {
+        panelOpenRequested.current = false;
+        await invoke("open_tray_workbench_panel", { show: true });
+      }
+    } catch (error) {
+      panelOpenRequested.current = false;
+      console.warn("Unable to open the Workbench panel", error);
+    } finally {
+      openingPanel.current = false;
+    }
+  }, [publishPanel]);
+
+  useEffect(() => {
+    if (!useWorkbenchPanel || !isTauri() || !isCoordinator) return;
+    /** @param {{ payload: { kind: string, key?: string } }} event */
+    async function handleAction({ payload: { kind, key } }) {
+      try {
+        if (kind === "ready") {
+          panelReady.current = true;
+          await publishPanel();
+          if (panelOpenRequested.current && !openingPanel.current) {
+            panelOpenRequested.current = false;
+            await invoke("open_tray_workbench_panel", { show: true });
+          }
+          return;
+        }
+        if (kind !== "activate" || !key) return;
+        const action = findTrayAction(panelDefinitions.current(), key);
+        if (!action) throw new Error("This Tray action is no longer available.");
+        if (!isTrayLocateAction(key)) {
+          await action();
+        } else if (!locatingFromPanel.current) {
+          locatingFromPanel.current = true;
+          try {
+            await invoke("set_tray_workbench_locating", { active: true });
+            await action();
+          } finally {
+            try {
+              await invoke("set_tray_workbench_locating", { active: false });
+            } finally {
+              locatingFromPanel.current = false;
+            }
+          }
+        }
+        refreshInstancesRef.current();
+      } catch (error) {
+        await emitTo(TRAY_WORKBENCH_LABEL, TRAY_WORKBENCH_NOTICE, String(error));
+      }
+    }
+    const subscription = listen(TRAY_WORKBENCH_ACTION, handleAction);
+    return () => {
+      panelReady.current = false;
+      panelOpenRequested.current = false;
+      void subscription.then((stop) => stop());
+    };
+  }, [isCoordinator, publishPanel, useWorkbenchPanel]);
+
   const sourceStructureKey = JSON.stringify({
     outputs: audioOutputs.map(({ id, label }) => [id, label]),
     inputs: audioInputs.map(({ id, label }) => [id, label]),
@@ -568,6 +689,20 @@ export function useTray({
     ]
   );
 
+  useLayoutEffect(() => {
+    panelDefinitions.current = () => {
+      const cfg = menuConfig(menuInputsRef.current);
+      return menuDefinitions({
+        ...cfg,
+        onLocateWindow: () => navigationRef.current.onLocateWindow?.(),
+        onInstanceAction: (instance, action, payload = null) =>
+          action === "locate"
+            ? issueInstanceCommand(instance.instanceId, action)
+            : cfg.onInstanceAction(instance, action, payload),
+      });
+    };
+  }, [menuConfig]);
+
   // Create tray once on mount.
   useEffect(() => {
     if (!isTauri() || !isCoordinator) return;
@@ -575,14 +710,16 @@ export function useTray({
 
     (async () => {
       const snapshot = menuInputsRef.current;
-      const nativeMenu = await createNativeTrayMenu(menuDefinitions(menuConfig(snapshot)));
+      const nativeMenu = useWorkbenchPanel
+        ? null
+        : await createNativeTrayMenu(menuDefinitions(menuConfig(snapshot)));
 
       const createdScheme = iconSchemeRef.current;
       const icon = await loadTrayIcon(createdScheme);
 
       await closeTrayIcon();
       if (cancelled) {
-        await nativeMenu.close();
+        await nativeMenu?.close();
         return;
       }
       const tray = await TrayIcon.new({
@@ -590,7 +727,7 @@ export function useTray({
         icon,
         iconAsTemplate: true,
         tooltip: "PLVS",
-        menu: nativeMenu.menu,
+        menu: nativeMenu?.menu,
         showMenuOnLeftClick: false,
         action: (event) => {
           if (event.type === "Enter" || (event.type === "Click" && event.buttonState === "Down")) {
@@ -599,11 +736,19 @@ export function useTray({
           if (event.type === "Click" && event.button === "Left" && event.buttonState === "Up") {
             stableToggleWindow();
           }
+          if (
+            useWorkbenchPanel &&
+            event.type === "Click" &&
+            event.button === "Right" &&
+            event.buttonState === "Up"
+          ) {
+            void stableOpenWorkbenchPanel();
+          }
         },
       });
 
       if (cancelled) {
-        await nativeMenu.close();
+        await nativeMenu?.close();
         tray.close();
       } else {
         setCurrentTrayIcon(tray);
@@ -614,7 +759,7 @@ export function useTray({
           await tray.setIcon(await loadTrayIcon(iconSchemeRef.current));
         }
         // Reconcile anything that changed during async creation without replacing the menu.
-        await nativeMenu.update(menuDefinitions(menuConfig(menuInputsRef.current)));
+        await nativeMenu?.update(menuDefinitions(menuConfig(menuInputsRef.current)));
       }
     })();
 
@@ -627,16 +772,24 @@ export function useTray({
       nativeMenuRef.current = null;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isCoordinator]);
+  }, [isCoordinator, useWorkbenchPanel]);
 
   // The attached menu and surviving action channels stay stable for every state change.
   useEffect(() => {
-    if (!isTauri() || !nativeMenuRef.current) return;
+    if (!isTauri() || !isCoordinator) return;
+    if (useWorkbenchPanel) {
+      void publishPanel().catch((error) =>
+        console.warn("Unable to update the Workbench panel", error)
+      );
+    }
     void nativeMenuRef.current
-      .update(menuDefinitions(menuConfig(menuInputsRef.current)))
+      ?.update(menuDefinitions(menuConfig(menuInputsRef.current)))
       .catch((error) => console.warn("Unable to update PLVS Tray menu", error));
   }, [
     menuConfig,
+    isCoordinator,
+    publishPanel,
+    useWorkbenchPanel,
     windowVisible,
     running,
     updateBusy,

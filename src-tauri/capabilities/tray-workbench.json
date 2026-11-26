@@ -1,0 +1,7 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "tray-workbench",
+  "description": "Lets the Tray Workbench panel exchange state with main and dismiss itself.",
+  "windows": ["tray-workbench"],
+  "permissions": ["core:event:default", "core:window:allow-hide"]
+}

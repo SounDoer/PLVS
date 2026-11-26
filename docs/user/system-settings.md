@@ -97,6 +97,7 @@ open can resume even if another workbench has already closed.
 PLVS also keeps one system Tray. On Windows and macOS, left-clicking its icon shows or hides the
 main window, while right-clicking opens the menu. On Linux, icon interactions depend on the desktop's
 tray host; use the menu's **Show** or **Hide**, available on all three platforms.
+On Windows, **Locate** leaves the menu and selected Workbench submenu open.
 **Settings…** brings the owning workbench forward and opens Settings. In Dock mode, it shows the
 Settings window while keeping Dock active.
 

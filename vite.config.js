@@ -99,6 +99,7 @@ export default defineConfig({
         "dock-header": fileURLToPath(new URL("./dock-header.html", import.meta.url)),
         "dock-settings": fileURLToPath(new URL("./dock-settings.html", import.meta.url)),
         "dock-update": fileURLToPath(new URL("./dock-update.html", import.meta.url)),
+        "tray-workbench": fileURLToPath(new URL("./tray-workbench.html", import.meta.url)),
       },
     },
     // PLVS is a local Tauri app with one primary route; keep the warning for real growth.

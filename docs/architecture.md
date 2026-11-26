@@ -95,8 +95,13 @@ namespaces.
 The heartbeat descriptor also carries a frontend-owned Tray snapshot: source choices and selection,
 preset labels and selection, and availability guards. Only the internal Tray inventory includes
 this presentation data; public CLI instance summaries retain their existing shape. With multiple
-workbenches the Tray builds the same complete control group for each instance. The attached native
-menu lives for the Tray's lifetime. Keyed reconciliation updates labels, checks, enabled state and
+workbenches the Tray builds the same complete control group for each instance. Windows opens an
+app-owned accessory directly on right-click. It uses the same menu definitions and action guards.
+An icon-anchored menu fits the monitor bounds so a Dock reservation cannot move it away from
+the Tray. Without an icon anchor, the menu centers within the available work area.
+Locate holds the accessory open during the target's activation, then returns keyboard focus to
+the menu. Other platforms attach a native menu for the Tray's lifetime.
+Keyed reconciliation updates labels, checks, enabled state and
 child membership while retaining surviving item handles and their action channels. Callbacks read
 the latest workbench state. Replacing the attached menu can detach the Windows command handler
 while an older popup is still open; see [ADR 0041](https://github.com/SounDoer/PLVS/blob/421b7333059d94f36a41197ae9c7a0de11c96a66/docs/adr/0041-retain-native-tray-menu-handles.md).
