@@ -6,9 +6,11 @@ const mocks = vi.hoisted(() => ({
   invoke: vi.fn(),
   exit: vi.fn(),
   flush: vi.fn(),
+  listen: vi.fn(async (_event, _handler) => () => {}),
 }));
 
 vi.mock("@tauri-apps/api/core", () => ({ invoke: mocks.invoke }));
+vi.mock("@tauri-apps/api/event", () => ({ listen: mocks.listen }));
 vi.mock("@tauri-apps/plugin-process", () => ({ exit: mocks.exit }));
 vi.mock("../persistence/index.js", () => ({ flushPersistence: mocks.flush }));
 vi.mock("../ipc/env.js", () => ({ isTauri: () => true }));
@@ -22,6 +24,90 @@ import {
 } from "./coordination.js";
 
 describe("runtime coordination", () => {
+  it("processes a native wake without waiting for the WebView timer", async () => {
+    vi.useFakeTimers();
+    try {
+      let command = null;
+      const show = vi.fn().mockResolvedValue(undefined);
+      mocks.invoke.mockImplementation(async (name) =>
+        name === "runtime_poll_command" ? command : null
+      );
+      const { unmount } = renderHook(() =>
+        useRuntimeCoordination({
+          blockingEditors: [],
+          running: false,
+          stop: vi.fn(),
+          start: vi.fn(),
+          show,
+        })
+      );
+      await act(async () => {});
+      expect(show).not.toHaveBeenCalled();
+
+      command = { commandId: "show-command", action: "show" };
+      const wake = mocks.listen.mock.lastCall[1];
+      await act(async () => wake());
+
+      expect(show).toHaveBeenCalledOnce();
+      expect(mocks.invoke).toHaveBeenCalledWith("runtime_ack_command", {
+        commandId: "show-command",
+        outcome: "completed",
+        detail: null,
+      });
+      unmount();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("keeps a native wake that arrives while the previous command is being handled", async () => {
+    vi.useFakeTimers();
+    try {
+      let command = null;
+      let finishShow = () => {};
+      const show = vi
+        .fn()
+        .mockImplementationOnce(
+          () =>
+            new Promise((resolve) => {
+              finishShow = () => resolve(undefined);
+            })
+        )
+        .mockResolvedValue(undefined);
+      mocks.invoke.mockImplementation(async (name) =>
+        name === "runtime_poll_command" ? command : null
+      );
+      const { unmount } = renderHook(() =>
+        useRuntimeCoordination({
+          blockingEditors: [],
+          running: false,
+          stop: vi.fn(),
+          start: vi.fn(),
+          show,
+        })
+      );
+      await act(async () => {});
+      const wake = mocks.listen.mock.lastCall[1];
+
+      command = { commandId: "first-show", action: "show" };
+      await act(async () => wake());
+      command = { commandId: "second-show", action: "show" };
+      await act(async () => wake());
+      expect(show).toHaveBeenCalledOnce();
+
+      await act(async () => finishShow());
+      expect(show).toHaveBeenCalledTimes(2);
+      expect(mocks.invoke).toHaveBeenCalledWith("runtime_ack_command", {
+        commandId: "second-show",
+        outcome: "completed",
+        detail: null,
+      });
+      unmount();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
   it.each([
     ["locate", null],
     ["hide", null],

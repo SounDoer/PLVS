@@ -260,6 +260,38 @@ impl RuntimeCommandMailbox {
     Ok(issued)
   }
 
+  pub(super) fn watch_pending(
+    &self,
+    instance_id: &str,
+    mut wake: impl FnMut() + Send + 'static,
+  ) -> Result<notify::RecommendedWatcher, String> {
+    use notify::Watcher;
+
+    validate_component(instance_id)?;
+    // Watch the directory because issuing a command replaces the pending file atomically.
+    let directory = fs::canonicalize(self.directory.join("pending"))
+      .map_err(|error| format!("Unable to resolve the runtime command directory: {error}"))?;
+    let command_path = directory.join(format!("{instance_id}.json"));
+    let mut watcher =
+      notify::recommended_watcher(move |result: notify::Result<notify::Event>| match result {
+        Ok(event)
+          if event.need_rescan()
+            || (!event.kind.is_access()
+              && !event.kind.is_remove()
+              && event.paths.contains(&command_path)) =>
+        {
+          wake();
+        }
+        Ok(_) => {}
+        Err(error) => log::warn!("Runtime command watch error: {error}"),
+      })
+      .map_err(|error| format!("Unable to create the runtime command watch: {error}"))?;
+    watcher
+      .watch(&directory, notify::RecursiveMode::NonRecursive)
+      .map_err(|error| format!("Unable to watch pending runtime commands: {error}"))?;
+    Ok(watcher)
+  }
+
   pub fn poll(&self, instance_id: &str) -> Result<Option<RuntimeCommand>, String> {
     validate_component(instance_id)?;
     let path = self.pending_path(instance_id);
@@ -473,6 +505,26 @@ mod tests {
   use std::sync::{Mutex, OnceLock};
 
   use super::*;
+
+  #[test]
+  fn watch_wakes_only_for_its_instances_atomic_command_write() {
+    let root = tempfile::tempdir().unwrap();
+    let mailbox = RuntimeCommandMailbox::open(root.path()).unwrap();
+    let (wake, received) = std::sync::mpsc::channel();
+    let _watch = mailbox
+      .watch_pending("watch-target", move || {
+        let _ = wake.send(());
+      })
+      .unwrap();
+
+    mailbox.issue("unrelated", "op-unrelated", "show").unwrap();
+    assert!(received.recv_timeout(Duration::from_millis(200)).is_err());
+    let issued = mailbox.issue("watch-target", "op-target", "show").unwrap();
+    received.recv_timeout(Duration::from_secs(3)).unwrap();
+    let command = mailbox.poll("watch-target").unwrap().unwrap();
+    assert_eq!(command.command_id, issued.command_id);
+    assert_eq!(command.action, "show");
+  }
 
   #[test]
   fn tray_commands_preserve_target_payloads_and_reject_invalid_shapes() {

@@ -1,6 +1,7 @@
 import { useEffect, useLayoutEffect, useReducer, useRef } from "react";
 import { flushSync } from "react-dom";
 import { invoke } from "@tauri-apps/api/core";
+import { listen } from "@tauri-apps/api/event";
 import { exit } from "@tauri-apps/plugin-process";
 import { flushPersistence } from "../persistence/index.js";
 import { isTauri } from "../ipc/env.js";
@@ -255,23 +256,36 @@ export function useRuntimeCoordination({
     }
     const prepared = new Map();
     let handling = false;
+    let wakePending = false;
+    let disposed = false;
     const poll = async () => {
-      if (handling) return;
+      if (disposed || handling) return;
       handling = true;
       try {
-        const command = await invoke("runtime_poll_command");
-        if (command) await handleRuntimeCommand(command, prepared);
-        await recoverExpiredPreparations(currentRef.current, prepared);
+        do {
+          wakePending = false;
+          const command = await invoke("runtime_poll_command");
+          if (disposed) return;
+          if (command) await handleRuntimeCommand(command, prepared);
+          await recoverExpiredPreparations(currentRef.current, prepared);
+        } while (wakePending && !disposed);
       } catch (_) {
         // A transient read failure is retried; the command remains on disk until acknowledged.
       } finally {
         handling = false;
       }
     };
-    void poll();
+    const subscription = listen("runtime-command-pending", () => {
+      wakePending = true;
+      void poll();
+    });
+    // Check again after subscribing so a command written during registration is picked up.
+    void subscription.then(poll, poll);
     const timer = window.setInterval(poll, COMMAND_POLL_MS);
     return () => {
+      disposed = true;
       window.clearInterval(timer);
+      void subscription.then((unlisten) => unlisten()).catch(() => {});
       lifecycle = null;
     };
   }, []);

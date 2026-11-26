@@ -59,6 +59,45 @@ describe("useInstanceIdentity", () => {
     await waitFor(() => expect(ownsCoordinatorResources()).toBe(true));
   });
 
+  it("waits for an in-flight heartbeat and publishes the current visibility before returning", async () => {
+    /** @type {(state: { displayName: string, isCoordinator: boolean }) => void} */
+    let finishHeartbeat = () => {
+      throw new Error("The heartbeat has not started.");
+    };
+    invoke.mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          finishHeartbeat = resolve;
+        })
+    );
+    const { result } = renderHook(() =>
+      useInstanceIdentity({ sourceLabel: "VLC", running: false })
+    );
+    await waitFor(() => expect(invoke).toHaveBeenCalledTimes(1));
+
+    isVisible.mockResolvedValue(false);
+    const published = vi.fn();
+    const publishHidden = result.current().then(published);
+    await Promise.resolve();
+    expect(published).not.toHaveBeenCalled();
+    expect(invoke).toHaveBeenCalledTimes(1);
+
+    finishHeartbeat({ displayName: "VLC", isCoordinator: false });
+    await publishHidden;
+    expect(invoke).toHaveBeenCalledTimes(2);
+    expect(invoke).toHaveBeenLastCalledWith("runtime_publish_instance_state", {
+      update: expect.objectContaining({ visible: false }),
+    });
+    expect(published).toHaveBeenCalledOnce();
+
+    isVisible.mockResolvedValue(true);
+    await result.current();
+    expect(invoke).toHaveBeenCalledTimes(3);
+    expect(invoke).toHaveBeenLastCalledWith("runtime_publish_instance_state", {
+      update: expect.objectContaining({ visible: true }),
+    });
+  });
+
   it("publishes workbench menu state without losing its last focus when that state changes", async () => {
     const { rerender } = renderHook(
       ({ trayState }) =>

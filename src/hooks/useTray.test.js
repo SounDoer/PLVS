@@ -832,6 +832,54 @@ describe("useTray", () => {
     expect(coordination.issue).toHaveBeenNthCalledWith(2, "peer", "hide", null);
   });
 
+  it("uses the refreshed peer visibility for successive panel clicks", async () => {
+    vi.mocked(isMacOS).mockReturnValue(true);
+    window.__PLVS_INITIAL_STATE__ = { instanceId: "owner" };
+    const owner = { instanceId: "owner", displayName: "Speakers", visible: true };
+    const peer = { instanceId: "peer", displayName: "Speakers (2)", visible: true };
+    const hiddenInventory = deferred();
+    const hide = deferred();
+    const show = deferred();
+    let inventory = [owner, peer];
+    invoke.mockImplementation(async (command) =>
+      command === "runtime_list_instances" ? inventory : true
+    );
+    coordination.issue.mockReturnValueOnce(hide.promise).mockReturnValueOnce(show.promise);
+    renderHook(() => useTray(defaultProps));
+    await act(async () => {});
+    const onAction = listen.mock.calls.find(([name]) => name === "tray-workbench://action")[1];
+    await act(async () => onAction({ payload: { kind: "ready" } }));
+    const click = () => onAction({ payload: { kind: "activate", key: "workbench:peer:window" } });
+
+    await act(async () => {
+      void click();
+      void click();
+    });
+    expect(coordination.issue).toHaveBeenCalledExactlyOnceWith("peer", "hide", null);
+    invoke.mockImplementation(async (command) =>
+      command === "runtime_list_instances" ? hiddenInventory.promise : true
+    );
+    await act(async () => hide.resolve());
+    expect(coordination.issue).toHaveBeenCalledTimes(1);
+
+    await act(async () => hiddenInventory.resolve([owner, { ...peer, visible: false }]));
+    expect(coordination.issue).toHaveBeenNthCalledWith(2, "peer", "show", null);
+    const windowButton = () =>
+      emitTo.mock.calls
+        .filter(([, name]) => name === "tray-workbench://state")
+        .at(-1)[2]
+        .items.find(({ key }) => key === "workbench:peer")
+        .items.find(({ key }) => key === "workbench:peer:window").text;
+    expect(windowButton()).toBe("Show");
+
+    inventory = [owner, peer];
+    invoke.mockImplementation(async (command) =>
+      command === "runtime_list_instances" ? inventory : true
+    );
+    await act(async () => show.resolve());
+    expect(windowButton()).toBe("Hide");
+  });
+
   it("opens a new workbench from the single-workbench tray and respects the update guard", async () => {
     const { rerender } = renderHook((props) => useTray(props), { initialProps: defaultProps });
     await act(async () => {});

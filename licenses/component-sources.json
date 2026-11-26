@@ -935,6 +935,14 @@
       "license": "MIT",
       "noticeSha256": "493eb01d751e9ef57fbaa5daefe2f665477fd1a3f6c3ff5fc1a096c58e8b0455"
     },
+    "rust:inotify-sys@0.1.8": {
+      "license": "ISC",
+      "noticeSha256": "1ff21fe351dd7da19e6e436ab53b277fb4a69ffb82cb66385b4640568fea3f1a"
+    },
+    "rust:inotify@0.11.5": {
+      "license": "ISC",
+      "noticeSha256": "4bb94c2fc4f0bbece1072be1a5bc49da1b4652b47173ba9f41b7392c2e52f099"
+    },
     "rust:ipnet@2.12.1": {
       "license": "MIT OR Apache-2.0",
       "noticeSha256": "3ad1cb801ff0bcb37b7c57196eb60c765e00594610c546219d5a3cf8452f2c61"
@@ -1058,6 +1066,14 @@
     "rust:keyboard-types@0.8.3": {
       "license": "MIT OR Apache-2.0",
       "noticeSha256": "22823a0ac3d2da261ff332347c6db7e5bcaa1740f74d153b1a8d64b91390d22e"
+    },
+    "rust:kqueue-sys@1.1.2": {
+      "license": "MIT",
+      "noticeSha256": "828a3212bffa93aa5d8b9418218a0950b2459d2be3c911673b636630f4f97797"
+    },
+    "rust:kqueue@1.2.1": {
+      "license": "MIT",
+      "noticeSha256": "828a3212bffa93aa5d8b9418218a0950b2459d2be3c911673b636630f4f97797"
     },
     "rust:libappindicator@0.9.0": {
       "license": "Apache-2.0 OR MIT",
@@ -1243,6 +1259,14 @@
       "license": "MIT",
       "noticeSha256": "b0e9f871bf92a7d59cd46f0a9b9092caf9ea00c594aa5367154db4f685bf1128"
     },
+    "rust:notify-types@2.3.1": {
+      "license": "MIT OR Apache-2.0",
+      "noticeSha256": "e15e7f6d3ab369f7e9f37ef4b15fdc3f358bde2366b92a744d1810779b18f04b"
+    },
+    "rust:notify@8.2.2": {
+      "license": "CC0-1.0",
+      "noticeSha256": "3f1275035ea73e18a250ebb03df7234e89c9f654e920a877a07031a252ce3b80"
+    },
     "rust:num_enum@0.7.6": {
       "license": "BSD-3-Clause OR MIT OR Apache-2.0",
       "noticeSha256": "7b4443c3250dce72dd6a8967eb9fb024fcb41cdda67d7fce237803abbf01cee2"
@@ -1397,6 +1421,17 @@
       "noticeSha256": "73ea560a54ac6f890cf4b4449e5f8b4317082616bc00eaef65d56574200a7056"
     },
     "rust:objc2-core-location@0.3.2": {
+      "license": "Zlib OR Apache-2.0 OR MIT",
+      "supplements": [
+        {
+          "file": "licenses/upstream/7f976f7e9cb2d87df7230606feb932c3f21ac0e664045a775b600046ff850c54.txt",
+          "url": "https://raw.githubusercontent.com/madsmtm/objc2/7b1abfd750a2cacaea71d6a56ecfb83cb7de560b/LICENSE.md",
+          "sha256": "7f976f7e9cb2d87df7230606feb932c3f21ac0e664045a775b600046ff850c54"
+        }
+      ],
+      "noticeSha256": "73ea560a54ac6f890cf4b4449e5f8b4317082616bc00eaef65d56574200a7056"
+    },
+    "rust:objc2-core-services@0.3.2": {
       "license": "Zlib OR Apache-2.0 OR MIT",
       "supplements": [
         {

@@ -8,7 +8,7 @@ use std::{
 use atomic_write_file::AtomicWriteFile;
 use fs4::{FileExt, TryLockError};
 use serde::{Deserialize, Serialize};
-use tauri::State;
+use tauri::{Emitter, Manager, State};
 
 use crate::runtime_identity::RuntimeIdentity;
 
@@ -439,6 +439,38 @@ pub fn runtime_finish_operation(
   operation_id: String,
 ) -> Result<(), String> {
   operations.finish(&operation_id)
+}
+
+pub(crate) struct RuntimeCommandWatch(Mutex<Option<notify::RecommendedWatcher>>);
+
+impl RuntimeCommandWatch {
+  pub(crate) fn start(
+    app: &tauri::AppHandle,
+    identity_root: &Path,
+    instance_id: &str,
+  ) -> Result<(), String> {
+    let handle = app.clone();
+    let watcher =
+      RuntimeCommandMailbox::open(identity_root)?.watch_pending(instance_id, move || {
+        if let Err(error) = handle.emit_to(
+          tauri::EventTarget::webview_window("main"),
+          "runtime-command-pending",
+          (),
+        ) {
+          log::debug!("Unable to wake the Workbench for a runtime command: {error}");
+        }
+      })?;
+    app.manage(Self(Mutex::new(Some(watcher))));
+    Ok(())
+  }
+
+  pub(crate) fn stop(&self) {
+    self
+      .0
+      .lock()
+      .expect("runtime command watch poisoned")
+      .take();
+  }
 }
 
 #[tauri::command]

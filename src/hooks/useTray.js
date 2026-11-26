@@ -391,7 +391,13 @@ export function useTray({
   const trayRef = useRef(null);
   const nativeMenuRef = useRef(null);
   const [instances, setInstances] = useState([]);
-  const refreshInstancesRef = useRef(() => {});
+  const instancesRef = useRef(instances);
+  const updateInstances = useCallback((next) => {
+    if (sameTrayInstances(instancesRef.current, next)) return;
+    instancesRef.current = next;
+    setInstances(next);
+  }, []);
+  const refreshInstancesRef = useRef(async () => {});
   const inventoryGenerationRef = useRef(0);
   // Quit is acknowledged just before the peer process exits. Ignore its trailing heartbeat until
   // the registry observes the exit; if the process fails to exit, make it available again.
@@ -479,11 +485,13 @@ export function useTray({
   );
   const stableInstanceAction = useCallback((instance, action, payload = null) => {
     if (updateBusyRef.current) return;
-    return issueInstanceCommand(instance.instanceId, action, payload).catch((error) => {
-      console.warn("Unable to control PLVS workbench from Tray", error);
-      if (action !== "locate")
-        void issueInstanceCommand(instance.instanceId, "show").catch(() => {});
-    });
+    return issueInstanceCommand(instance.instanceId, action, payload)
+      .then(() => refreshInstancesRef.current())
+      .catch((error) => {
+        console.warn("Unable to control PLVS workbench from Tray", error);
+        if (action !== "locate")
+          void issueInstanceCommand(instance.instanceId, "show").catch(() => {});
+      });
   }, []);
   const stableQuitInstance = useCallback(
     (instance) => {
@@ -497,13 +505,13 @@ export function useTray({
           // Invalidate inventory reads started before the successful quit acknowledgement.
           inventoryGenerationRef.current += 1;
           departingInstancesRef.current.set(instance.instanceId, Date.now() + 10_000);
-          setInstances((current) =>
-            current.filter((item) => item.instanceId !== instance.instanceId)
+          updateInstances(
+            instancesRef.current.filter((item) => item.instanceId !== instance.instanceId)
           );
         })
         .catch((error) => console.warn("Unable to quit PLVS workbench from Tray", error));
     },
-    [stableQuit]
+    [stableQuit, updateInstances]
   );
   const quittingAllRef = useRef(false);
   const stableQuitAll = useCallback(async () => {
@@ -534,11 +542,17 @@ export function useTray({
       return undefined;
     }
     let cancelled = false;
+    let latestRefresh = Promise.resolve();
     const refresh = () => {
       const generation = ++inventoryGenerationRef.current;
-      invoke("runtime_list_instances")
+      const request = invoke("runtime_list_instances")
         .then((next) => {
-          if (cancelled || generation !== inventoryGenerationRef.current) return;
+          if (cancelled) return;
+          if (generation !== inventoryGenerationRef.current) {
+            // A queued action needs the new inventory even if a periodic read superseded this one.
+            if (latestRefresh !== request) return latestRefresh;
+            return;
+          }
           const inventory = Array.isArray(next) ? next : [];
           for (const [instanceId, deadline] of departingInstancesRef.current) {
             if (
@@ -551,21 +565,21 @@ export function useTray({
           const normalized = inventory.filter(
             (item) => !departingInstancesRef.current.has(item.instanceId)
           );
-          setInstances((current) =>
-            sameTrayInstances(current, normalized) ? current : normalized
-          );
+          updateInstances(normalized);
         })
         .catch(() => {});
+      latestRefresh = request;
+      return request;
     };
     refreshInstancesRef.current = refresh;
     refresh();
     const timer = setInterval(refresh, 2000);
     return () => {
       cancelled = true;
-      refreshInstancesRef.current = () => {};
+      refreshInstancesRef.current = async () => {};
       clearInterval(timer);
     };
-  }, [isCoordinator]);
+  }, [isCoordinator, updateInstances]);
 
   // Everything menuDefinitions reads that can change after creation. The ref keeps the
   // creation effect current if state changes while TrayIcon.new is still pending.
@@ -658,7 +672,7 @@ export function useTray({
         await item.action();
       } finally {
         if (holdFocus) await invoke("set_tray_workbench_focus_hold", { active: false });
-        refreshInstancesRef.current();
+        await refreshInstancesRef.current();
       }
     }
 
@@ -738,6 +752,8 @@ export function useTray({
       const cfg = menuConfig(menuInputsRef.current);
       return menuDefinitions({
         ...cfg,
+        // The next queued action can run before React commits the new menu.
+        instances: instancesRef.current,
         onLocateWindow: () => navigationRef.current.onLocateWindow?.(),
         onInstanceAction: (instance, action, payload = null) =>
           issueInstanceCommand(instance.instanceId, action, payload),

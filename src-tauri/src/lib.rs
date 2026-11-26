@@ -459,6 +459,13 @@ pub fn run() {
           tray_state: None,
         },
       )?;
+      if let Err(error) = coordinator::RuntimeCommandWatch::start(
+        app.handle(),
+        &prepared.root,
+        runtime_identity.instance_id(),
+      ) {
+        log::warn!("Runtime command notifications unavailable, using interval checks: {error}");
+      }
       app.manage(runtime_identity);
       app.manage(coordinator_role);
       app.manage(registration);
@@ -911,6 +918,11 @@ pub fn run() {
     .build(update_runtime::app_context())
     .expect("error while building tauri application")
     .run(|app, event| {
+      if matches!(event, tauri::RunEvent::Exit) {
+        if let Some(watch) = app.try_state::<coordinator::RuntimeCommandWatch>() {
+          watch.stop();
+        }
+      }
       #[cfg(target_os = "macos")]
       if matches!(
         event,
@@ -920,8 +932,6 @@ pub fn run() {
           log::warn!("Dock exit recovery deferred: {error}");
         }
       }
-      #[cfg(not(target_os = "macos"))]
-      let _ = (app, event);
       #[cfg(target_os = "macos")]
       if let tauri::RunEvent::Reopen {
         has_visible_windows,

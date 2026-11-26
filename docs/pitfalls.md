@@ -84,6 +84,14 @@ or tray mouse events, including for GTK windows on X11. Keep the menu attached t
 host on this backend. Cursor position alone cannot identify the status item or the event that opened
 the host menu.
 
+### Pending Workbench commands need a native wakeup
+
+Hidden WebViews can stretch JavaScript timer intervals. PLVS watches the pending command directory
+with the platform filesystem notifier and wakes the owning Workbench when its command arrives.
+Watch the directory because a mailbox write replaces its file atomically. The Workbench still
+reads and acknowledges the mailbox through its lifecycle handlers. Keep the interval check for
+missed notifications and prepared-operation expiry.
+
 ### Windows will not put a background window back on top
 
 `SetWindowPos(HWND_TOPMOST)` from a process that is not in the foreground returns success and does

@@ -121,6 +121,50 @@ export function AppLifecycleProvider({ children }) {
     };
   }, []);
 
+  const updateControls = useUpdateController({
+    preferences: updatePreferences,
+    startupEligible:
+      !running &&
+      meterRuntime.liveLifecycle !== "stopping" &&
+      !fileTaskBusy &&
+      activeBlockingEditors.length === 0,
+  });
+  const { installStatus } = updateControls;
+  const updateBusy = installStatus === "installing" || installStatus === "restarting";
+
+  const sourceBusy =
+    ["starting", "stopping"].includes(meterRuntime.liveLifecycle) ||
+    meterRuntime.liveDeviceTransition !== null;
+  const trayMixes = sourceMixes?.supported
+    ? sourceMixes.list.map(({ id, name }) => ({ id, label: name }))
+    : [];
+  const publishInstanceState = useInstanceIdentity({
+    sourceLabel: sourceDisplayName,
+    running,
+    trayState: {
+      audioOutputs: audioOutputs.map(({ id, label }) => ({ id, label })),
+      audioInputs: audioInputs.map(({ id, label }) => ({ id, label })),
+      captureApplications: captureApplications.map(({ id, label }) => ({ id, label })),
+      sourceMixes: trayMixes,
+      safeAudioDeviceId,
+      defaultOutputLabel,
+      sourceBusy,
+      presetList: presets.list.map(({ id, name }) => ({ id, name })),
+      presetActiveId: presets.activeId,
+      presetDirty: presets.dirty,
+      presetsBlocked: presets.blocked,
+      updateBusy,
+    },
+  });
+
+  const syncWindowVisibility = useCallback(
+    async (/** @type {ReturnType<typeof getCurrentWindow>} */ window) => {
+      setWindowVisible(await window.isVisible());
+      await publishInstanceState();
+    },
+    [publishInstanceState]
+  );
+
   const onHideWindow = useCallback(async () => {
     if (!isTauri()) return;
     const window = getCurrentWindow();
@@ -129,15 +173,15 @@ export function AppLifecycleProvider({ children }) {
       window,
       suspendDock: suspendDockMode,
     });
-    setWindowVisible(await window.isVisible());
-  }, [docked, suspendDockMode]);
+    await syncWindowVisibility(window);
+  }, [docked, suspendDockMode, syncWindowVisibility]);
 
   const onShowWindow = useCallback(async () => {
     if (!isTauri()) return;
     const window = getCurrentWindow();
     await showAppWindow({ docked, window, resumeDock: resumeDockMode });
-    setWindowVisible(await window.isVisible());
-  }, [docked, resumeDockMode]);
+    await syncWindowVisibility(window);
+  }, [docked, resumeDockMode, syncWindowVisibility]);
 
   const [locatePulse, setLocatePulse] = useState(0);
   const locateTimer = useRef(0);
@@ -149,17 +193,6 @@ export function AppLifecycleProvider({ children }) {
     setLocatePulse((pulse) => pulse + 1);
     locateTimer.current = window.setTimeout(() => setLocatePulse(0), LOCATE_DURATION_MS);
   }, [onShowWindow]);
-
-  const updateControls = useUpdateController({
-    preferences: updatePreferences,
-    startupEligible:
-      !running &&
-      meterRuntime.liveLifecycle !== "stopping" &&
-      !fileTaskBusy &&
-      activeBlockingEditors.length === 0,
-  });
-  const { installStatus } = updateControls;
-  const updateBusy = installStatus === "installing" || installStatus === "restarting";
 
   const closeConfirm = useCloseConfirm({ onHideWindow, onShowWindow, closeBlocked: updateBusy });
   const {
@@ -191,38 +224,14 @@ export function AppLifecycleProvider({ children }) {
       suspendDock: suspendDockMode,
       resumeDock: resumeDockMode,
     });
-    setWindowVisible(await window.isVisible());
-  }, [docked, requestCloseAction, resumeDockMode, suspendDockMode]);
+    await syncWindowVisibility(window);
+  }, [docked, requestCloseAction, resumeDockMode, suspendDockMode, syncWindowVisibility]);
 
   useEffect(() => {
     if (!docked || !crashReporting.pendingReport) return;
     void exitDockRestoringAttributes();
   }, [crashReporting.pendingReport, docked, exitDockRestoringAttributes]);
 
-  const sourceBusy =
-    ["starting", "stopping"].includes(meterRuntime.liveLifecycle) ||
-    meterRuntime.liveDeviceTransition !== null;
-  const trayMixes = sourceMixes?.supported
-    ? sourceMixes.list.map(({ id, name }) => ({ id, label: name }))
-    : [];
-  useInstanceIdentity({
-    sourceLabel: sourceDisplayName,
-    running,
-    trayState: {
-      audioOutputs: audioOutputs.map(({ id, label }) => ({ id, label })),
-      audioInputs: audioInputs.map(({ id, label }) => ({ id, label })),
-      captureApplications: captureApplications.map(({ id, label }) => ({ id, label })),
-      sourceMixes: trayMixes,
-      safeAudioDeviceId,
-      defaultOutputLabel,
-      sourceBusy,
-      presetList: presets.list.map(({ id, name }) => ({ id, name })),
-      presetActiveId: presets.activeId,
-      presetDirty: presets.dirty,
-      presetsBlocked: presets.blocked,
-      updateBusy,
-    },
-  });
   const stopRuntimeForCoordination = useCallback(async () => {
     await stopLiveForCoordination();
     if (fileImport?.importBusy) await fileImport.cancel();
