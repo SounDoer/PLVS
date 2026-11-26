@@ -9,12 +9,14 @@ const fileSession = {
   fileName: "final.wav",
   path: "C:/mix/final.wav",
   metadata: {
+    container: "wav",
     selectedTrack: {
       index: 0,
       codec: "pcm_f32le",
       channels: 2,
       sampleRateHz: 48000,
       bitsPerSample: 32,
+      sampleFormat: "flt",
     },
   },
   analysisSettings: { dialogue: { enabled: true, engine: "firered" } },
@@ -69,7 +71,20 @@ describe("File summary", () => {
     expect(info.contains(metadata)).toBe(true);
     expect(info.querySelector("svg")).toBeNull();
     fireEvent.mouseEnter(metadata);
+    const popover = screen.getByRole("dialog", { name: "file details" });
+    expect(Array.from(popover.querySelectorAll("dt"), (row) => row.textContent)).toEqual([
+      "Path",
+      "Container",
+      "Track",
+      "Source Layout",
+      "Calculation Layout",
+      "Dialogue Detection",
+    ]);
     expect(screen.getByText("C:/mix/final.wav")).toBeTruthy();
+    expect(screen.getByText("WAV")).toBeTruthy();
+    expect(
+      screen.getByText("Audio Track 0 · PCM f32le · 48 kHz · 32-bit Float · 2 ch")
+    ).toBeTruthy();
     expect(screen.getByText("Unspecified")).toBeTruthy();
     expect(screen.getByText("Stereo (Inferred)")).toBeTruthy();
     expect(screen.queryByRole("button", { name: "file analysis warning" })).toBeNull();
@@ -79,6 +94,28 @@ describe("File summary", () => {
     expect(info.getAttribute("aria-pressed")).toBe("true");
     fireEvent.keyDown(screen.getByRole("dialog", { name: "file details" }), { key: "Escape" });
     await waitFor(() => expect(screen.queryByText("C:/mix/final.wav")).toBeNull());
+  });
+
+  it("shows the selected track name and declared duration without using lossy decoder precision as bit depth", () => {
+    const session = {
+      ...fileSession,
+      metadata: {
+        container: "mov",
+        durationMs: 181000,
+        selectedTrack: {
+          ...fileSession.metadata.selectedTrack,
+          index: 2,
+          codec: "aac",
+          sampleFormat: "fltp",
+          title: "Commentary",
+        },
+      },
+    };
+    render(<FileAnalysisSummary {...props} fileSession={session} fileSessions={[session]} />);
+    fireEvent.click(screen.getByRole("button", { name: "file details" }));
+    expect(screen.getByText("Audio Track 2 · AAC · 48 kHz · 2 ch")).toBeTruthy();
+    expect(screen.getByText("Track Name").nextElementSibling.textContent).toBe("Commentary");
+    expect(screen.getByText("Declared Duration").nextElementSibling.textContent).toBe("00:03:01");
   });
 
   it.each([

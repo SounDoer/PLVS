@@ -13,8 +13,11 @@ Panels with a channel or channel pair selection use the selected audio track's c
 from the first analysis. If the track lacks the chosen channels, the panel uses its available
 fallback and keeps the original selection for other files.
 
-Hover over the metadata below the file name to open **File Info**. **Source Layout** shows what
-the track reports, or **Unspecified**. **Calculation Layout** shows the layout used for loudness.
+Hover over the metadata below the file name to open **File Info**. The file path and container
+appear first, followed by the selected **Track** with its codec, sample rate, source bit depth
+when available, and channel count. **Source Layout** shows what the track reports, or
+**Unspecified**. **Calculation Layout** shows the layout used for loudness, followed by the
+**Dialogue Detection** setting used for this analysis.
 When PLVS infers a layout for a track with three or more channels, the result shows **Inferred**
 and the warning next to the file name explains the assumption. When the layout is unknown, the
 warning explains that loudness uses channels 1–2 and True Peak Max covers every channel.

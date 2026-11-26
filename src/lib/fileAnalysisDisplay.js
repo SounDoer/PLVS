@@ -90,15 +90,24 @@ export function formatChannelLayout(channels, layout = null) {
   return `${channels} ch`;
 }
 
-export function formatTrackLabel(track) {
+export function formatSourceBitDepth(track) {
+  if (!track || !Number.isFinite(track.bitsPerSample) || track.bitsPerSample <= 0) return null;
+  if (/^pcm_f/.test(track.codec)) return track.bitsPerSample + "-bit Float";
+  if (/^pcm_|^(flac|alac|wavpack|ape|tta)$/.test(track.codec)) return track.bitsPerSample + "-bit";
+  return null;
+}
+
+export function formatTrackLabel(track, { detailed = false } = {}) {
   if (!track) return "No audio track metadata";
-  return joinParts([
-    `Audio track ${track.index ?? 0}`,
+  const parts = [
+    `${detailed ? "Audio Track" : "Audio track"} ${track.index ?? 0}`,
     formatLanguage(track.language),
     formatCodec(track.codec),
     formatSampleRate(track.sampleRateHz),
-    formatChannelLayout(track.channels, track.channelLayout),
-  ]);
+    detailed ? formatSourceBitDepth(track) : null,
+    formatChannelLayout(track.channels, detailed ? null : track.channelLayout),
+  ];
+  return detailed ? parts.filter(Boolean).join(" · ") : joinParts(parts);
 }
 
 export function formatSessionMetadataLine(session) {

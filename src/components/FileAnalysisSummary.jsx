@@ -13,6 +13,7 @@ import {
   formatChannelLayout,
   formatContainer,
   formatSampleRate,
+  formatSourceBitDepth,
   formatTrackLabel,
 } from "../lib/fileAnalysisDisplay.js";
 import { SHELL_SURFACE_BASE } from "../lib/shellLayout.js";
@@ -31,13 +32,6 @@ const metricGap = "gap-[var(--ui-shell-gap)]";
 const icon = "size-[length:var(--ui-icon-management-action)] shrink-0";
 const detailButton =
   "flex shrink-0 items-center p-1 text-muted-foreground hover:bg-ui-hover hover:text-foreground";
-
-function formatDepth(track) {
-  if (!track || !Number.isFinite(track.bitsPerSample) || track.bitsPerSample <= 0) return null;
-  if (/^pcm_f/.test(track.codec)) return track.bitsPerSample + "-bit Float";
-  if (/^pcm_|^(flac|alac|wavpack|ape|tta)$/.test(track.codec)) return track.bitsPerSample + "-bit";
-  return null;
-}
 
 function describeFileLayout(track, summary) {
   const reported = track?.channelLayout?.trim();
@@ -81,26 +75,24 @@ function FileInfo({ session, layout }) {
   const details = [
     ["Path", session.path ?? metadata.path],
     ["Container", formatContainer(metadata.container)],
-    ["Track", track && formatTrackLabel(track)],
+    ["Track", track && formatTrackLabel(track, { detailed: true })],
     ["Track Name", track?.title],
-    ["Source Layout", layout.source],
-    [
-      "Dialogue Detection",
-      summary && dialogue
-        ? dialogue.enabled
-          ? (detector?.label ?? dialogue.engine)
-          : "Off"
-        : null,
-    ],
-    ["Calculation Layout", layout.calculation],
-    ["Source Bit Depth", formatDepth(track)],
-    ["Decoder Sample Format", track?.sampleFormat],
     [
       "Declared Duration",
       Number.isFinite(metadata.durationMs) &&
       Number.isFinite(summary?.durationMs) &&
       Math.abs(metadata.durationMs - summary.durationMs) > 250
         ? formatClock(metadata.durationMs)
+        : null,
+    ],
+    ["Source Layout", layout.source],
+    ["Calculation Layout", layout.calculation],
+    [
+      "Dialogue Detection",
+      summary && dialogue
+        ? dialogue.enabled
+          ? (detector?.label ?? dialogue.engine)
+          : "Off"
         : null,
     ],
   ].filter(([, value]) => value != null);
@@ -557,7 +549,7 @@ export function FileAnalysisSummary({
   const metadata = [
     layout.compact,
     formatSampleRate(summary?.sampleRateHz ?? track?.sampleRateHz),
-    formatDepth(track),
+    formatSourceBitDepth(track),
     Number.isFinite(duration) ? formatClock(duration) : null,
   ]
     .filter(Boolean)
