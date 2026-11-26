@@ -25,6 +25,7 @@ import { cn } from "@/lib/utils";
  *   compact?: boolean,
  *   className?: string,
  *   onArmedChange?: (...args: any[]) => any,
+ *   confirmation?: { armed: boolean, setArmed: (armed: boolean) => void },
  *   [key: string]: any,
  * }} props
  */
@@ -41,9 +42,11 @@ export function ResetAction({
   compact = false,
   className,
   onArmedChange,
+  confirmation,
   ...props
 }) {
-  const [armed, setArmed] = useState(false);
+  const [observedArmed, setObservedArmed] = useState(false);
+  const armed = confirmation?.armed ?? observedArmed;
 
   return (
     <div
@@ -58,12 +61,13 @@ export function ResetAction({
       {...props}
     >
       <InlineConfirm
+        confirmation={confirmation}
         className="w-10 shrink-0 justify-end"
         onConfirm={onReset}
         confirmLabel={confirmLabel}
         cancelLabel={cancelLabel}
         onArmedChange={(nextArmed) => {
-          setArmed(nextArmed);
+          setObservedArmed(nextArmed);
           onArmedChange?.(nextArmed);
         }}
         preserveTriggerSize

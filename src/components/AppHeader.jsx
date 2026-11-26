@@ -68,9 +68,13 @@ const TOOLBAR_TRIGGER_OPEN_CLASS =
  *   setCaptureDeviceId: (...args: any[]) => any,
  *   openMenu?: string | null,
  *   onMenuOpenChange?: (menu: string, open: boolean) => void,
+ *   panelsReset?: { armed: boolean, setArmed: (armed: boolean) => void },
+ *   viewsReset?: { armed: boolean, setArmed: (armed: boolean) => void },
  *   panelPresentation?: import("../lib/panelPresentation.js").PanelPresentation,
  *   setPanelPresentation?: (value: import("../lib/panelPresentation.js").PanelPresentation) => void,
  *   focusView: import("../lib/focusView.js").FocusView,
+ *   canResetWindowView?: boolean,
+ *   resetWindowView?: () => Promise<void>,
  *   pinned: boolean,
  *   setPinned: (...args: any[]) => any,
  *   setAutoHideControls: (...args: any[]) => any,
@@ -123,9 +127,13 @@ export function AppHeader({
   setCaptureDeviceId,
   openMenu = null,
   onMenuOpenChange = () => {},
+  panelsReset,
+  viewsReset,
   panelPresentation,
   setPanelPresentation,
   focusView,
+  canResetWindowView,
+  resetWindowView,
   pinned,
   setPinned,
   setAutoHideControls,
@@ -317,8 +325,18 @@ export function AppHeader({
               />
             </span>
           </PopoverTrigger>
-          <PopoverContent align="end" sideOffset={6} className={TOOLBAR_POPOVER_CLASS}>
-            <ModulesPopoverContent />
+          <PopoverContent
+            align="end"
+            sideOffset={6}
+            className={TOOLBAR_POPOVER_CLASS}
+            onInteractOutside={(event) => {
+              // The reset confirmation is portaled outside this menu but still belongs to it.
+              if (event.target instanceof Element && event.target.closest('[role="alertdialog"]')) {
+                event.preventDefault();
+              }
+            }}
+          >
+            <ModulesPopoverContent resetConfirmation={panelsReset} />
           </PopoverContent>
         </Popover>
         <Popover {...menuProps("views")}>
@@ -335,6 +353,9 @@ export function AppHeader({
           </PopoverTrigger>
           <PopoverContent align="end" sideOffset={6} className={TOOLBAR_POPOVER_CLASS}>
             <FocusViewPopoverContent
+              canResetWindowView={canResetWindowView}
+              resetWindowView={resetWindowView}
+              resetConfirmation={viewsReset}
               pinned={pinned}
               setPinned={setPinned}
               panelPresentation={panelPresentation}

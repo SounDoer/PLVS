@@ -33,6 +33,7 @@ the UI disagree, the UI on `main` wins and this file is corrected.
 | Add Preset                 | Saves the current layout as a new Preset                                                            | 添加预设           |                             |
 | Panel                      | One meter placed in the Workspace; the same meter can be added more than once                       | 面板               | module                      |
 | Panels                     | The toolbar menu that adds, renames and removes panels                                              | 面板菜单           | Modules                     |
+| Reset Layout               | Restores the default panels, layout, and panel settings                                             | 重置布局           |                             |
 | Panel Settings             | A panel's own analysis and display options                                                          | 面板设置           |                             |
 | Split                      | Dividing the Workspace into side-by-side or stacked panels by dragging a panel to an edge           | 分屏               |                             |
 | Tab                        | A panel dropped onto another panel's title, sharing its space                                       | 标签页             |                             |
@@ -69,6 +70,7 @@ the UI disagree, the UI on `main` wins and this file is corrected.
 | Footer                     | The bar along the bottom of the window showing the current Source, Loudness Profile and Preset      | 底栏               |                             |
 | Dock                       | A slim, always-on-top meter strip parked at the top or bottom edge of the screen                    | Dock               |                             |
 | Views                      | The toolbar menu for window presentation: Always on Top, Hide Window Frame, opacity, Dock placement | 视图               | Focus View (CLI only)       |
+| Reset View Settings        | Restores the normal window's display settings                                                       | 重置视图设置       |                             |
 | Always on Top              | Keeps the PLVS window above other windows                                                           | 窗口置顶           | pin                         |
 | Hide Panel Headers         | Hides each panel's title, tabs and action row                                                       | 隐藏面板标题栏     | compact panels              |
 | Hide Axes & Labels         | Hides chart scales and channel and mode labels; readings stay visible                               | 隐藏坐标轴与标签   |                             |

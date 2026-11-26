@@ -1,6 +1,6 @@
 /** @vitest-environment jsdom */
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, within } from "@testing-library/react";
 
 import { ModulesPopoverContent } from "./WorkspaceToolbar.jsx";
 import { WorkspaceProvider } from "./WorkspaceContext.jsx";
@@ -42,7 +42,7 @@ describe("ModulesPopoverContent", () => {
     expect(row?.querySelector("svg")).toBeTruthy();
   });
 
-  it("arms then resets the layout via the Reset control", () => {
+  it("asks for confirmation before resetting the layout from the header", () => {
     render(
       <WorkspaceProvider>
         <ModulesPopoverContent />
@@ -51,12 +51,18 @@ describe("ModulesPopoverContent", () => {
 
     const resetAtDefaults = screen.getByRole("button", { name: "Reset layout" });
     expect(/** @type {HTMLButtonElement} */ (resetAtDefaults).disabled).toBe(true);
+    expect(resetAtDefaults.closest("header")?.textContent).toBe("Panels");
     fireEvent.click(screen.getByLabelText("Delete Level Meter"));
     fireEvent.click(screen.getByLabelText("Confirm delete Level Meter"));
     fireEvent.click(screen.getByRole("button", { name: "Reset layout" }));
-    expect(screen.getByLabelText("Confirm reset layout")).toBeTruthy();
-    fireEvent.click(screen.getByLabelText("Confirm reset layout"));
-    // Default workspace has seven panels; the first is the Level Meter.
+    const dialog = screen.getByRole("alertdialog", { name: "Reset Panel Layout?" });
+    fireEvent.click(within(dialog).getByRole("button", { name: "Cancel" }));
+    expect(screen.queryByText("Level Meter")).toBeNull();
+
+    fireEvent.click(screen.getByRole("button", { name: "Reset layout" }));
+    fireEvent.click(
+      within(screen.getByRole("alertdialog")).getByRole("button", { name: "Reset Layout" })
+    );
     expect(screen.getByText("Level Meter")).toBeTruthy();
   });
 

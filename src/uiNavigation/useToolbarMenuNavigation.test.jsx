@@ -56,6 +56,17 @@ async function show(result, menu) {
   return pending;
 }
 
+async function decide(result, surfaceId, choice) {
+  await act(async () => {
+    await result.current.navigation.decideSurface({
+      surfaceId,
+      choice,
+      expectedRevision: 5,
+      expectedUiGeneration: result.current.navigation.inspectUi().uiGeneration,
+    });
+  });
+}
+
 describe("toolbar menu navigation", () => {
   it("opens a menu through the click path and closes it through ui close", async () => {
     const { result, options } = renderMenus();
@@ -91,6 +102,35 @@ describe("toolbar menu navigation", () => {
 
     expect(shown.surface.target.menu).toBe("presets");
     expect(result.current.navigation.inspectUi().surfaces).toHaveLength(1);
+  });
+
+  it("opens the Panels reset confirmation through the header's shared state", async () => {
+    const { result } = renderMenus({ canResetPanels: true });
+    const { surface } = await show(result, "panels");
+    expect(surface.choices).toEqual([{ id: "reset-layout", label: "Reset Layout" }]);
+
+    await decide(result, surface.surfaceId, "reset-layout");
+    expect(result.current.menus.panelsReset.armed).toBe(true);
+    await show(result, "views");
+    expect(result.current.menus.panelsReset.armed).toBe(false);
+  });
+
+  it("uses the Views menu's inline confirmation before running the window reset", async () => {
+    const resetWindowView = vi.fn(async () => {});
+    const { result } = renderMenus({ canResetWindowView: true, resetWindowView });
+    const { surface } = await show(result, "views");
+
+    await decide(result, surface.surfaceId, "reset-view-settings");
+    expect(result.current.menus.viewsReset.armed).toBe(true);
+    expect(resetWindowView).not.toHaveBeenCalled();
+    await decide(result, surface.surfaceId, "cancel-reset");
+    expect(result.current.menus.viewsReset.armed).toBe(false);
+    expect(resetWindowView).not.toHaveBeenCalled();
+
+    await decide(result, surface.surfaceId, "reset-view-settings");
+    await decide(result, surface.surfaceId, "confirm-reset");
+    expect(result.current.menus.viewsReset.armed).toBe(false);
+    expect(resetWindowView).toHaveBeenCalledOnce();
   });
 
   it("refuses a menu whose control is not shown, or while Settings covers the toolbar", async () => {

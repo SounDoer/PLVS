@@ -23,11 +23,42 @@ describe("FocusViewPopoverContent", () => {
     render(<FocusViewPopoverContent />);
 
     expect(screen.getByText("Views")).toBeTruthy();
+    expect(
+      /** @type {HTMLButtonElement} */ (screen.getByRole("button", { name: "reset view settings" }))
+        .disabled
+    ).toBe(true);
     expect(screen.getByRole("switch", { name: "Always on Top" })).toBeTruthy();
     expect(screen.getByRole("switch", { name: "Auto-hide Controls" })).toBeTruthy();
     expect(screen.getByRole("switch", { name: "Hide Panel Headers" })).toBeTruthy();
     expect(screen.getByRole("switch", { name: "Hide Window Frame" })).toBeTruthy();
     expect(screen.getByRole("switch", { name: "Glass" })).toBeTruthy();
+  });
+
+  it("confirms resetting window views inline in the header and leaves the Dock selector alone", () => {
+    const resetWindowView = vi.fn().mockResolvedValue(undefined);
+    const onDockChange = vi.fn();
+    render(
+      <FocusViewPopoverContent
+        canResetWindowView
+        resetWindowView={resetWindowView}
+        showDock
+        dockEdge="top"
+        onDockChange={onDockChange}
+      />
+    );
+
+    const reset = () => screen.getByRole("button", { name: "reset view settings" });
+    expect(reset().closest("header")?.textContent).toBe("Views");
+    fireEvent.click(reset());
+    fireEvent.click(screen.getByRole("button", { name: "Cancel reset view settings" }));
+    expect(resetWindowView).not.toHaveBeenCalled();
+    fireEvent.click(reset());
+    expect(screen.queryByRole("alertdialog")).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "Confirm reset view settings" }));
+
+    expect(resetWindowView).toHaveBeenCalledOnce();
+    expect(onDockChange).not.toHaveBeenCalled();
+    expect(screen.getByRole("combobox", { name: "Dock position" }).textContent).toContain("Top");
   });
 
   it("orders Views switches from window behaviour to content density", () => {

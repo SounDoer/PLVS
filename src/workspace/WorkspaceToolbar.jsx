@@ -1,4 +1,4 @@
-import { Check, Pencil, Trash2, X } from "lucide-react";
+import { Check, Pencil, RotateCcw, Trash2, X } from "lucide-react";
 import { useEffect, useState } from "react";
 import { InlineConfirm } from "@/components/InlineConfirm.jsx";
 import {
@@ -7,8 +7,8 @@ import {
   ManagementIconAction,
 } from "@/components/ManagementRow.jsx";
 import { AddButton } from "@/components/AddButton";
+import { ConfirmDialog } from "@/components/ConfirmDialog.jsx";
 import { PanelSettingsHeader } from "@/components/PanelSettingsHeader.jsx";
-import { ResetAction } from "@/components/ResetAction.jsx";
 import { TruncatingLabel } from "@/components/TruncatingLabel.jsx";
 import { POPOVER_HEADER_CLASS, POPOVER_TITLE_CLASS } from "@/components/ui/surfaceStyles.js";
 import { cn } from "@/lib/utils";
@@ -154,11 +154,15 @@ function AddModuleView({ onAdd, onBack }) {
 // Panels Popover - manage panel instances from the header
 // ---------------------------------------------------------------------------
 
-export function ModulesPopoverContent() {
+/** @param {{ resetConfirmation?: { armed: boolean, setArmed: (armed: boolean) => void } }} [props] */
+export function ModulesPopoverContent({ resetConfirmation } = {}) {
   const { state, addPanel, resetWorkspace, setHoveredPanelId } = useWorkspaceStore();
   const panelIds = state.panelOrder.filter((id) => state.panelsById[id]);
   const isDefault = workspaceUsesDefaults(state);
   const [adding, setAdding] = useState(false);
+  const [internalConfirmingReset, setInternalConfirmingReset] = useState(false);
+  const confirmingReset = resetConfirmation?.armed ?? internalConfirmingReset;
+  const setConfirmingReset = resetConfirmation?.setArmed ?? setInternalConfirmingReset;
 
   useEffect(() => () => setHoveredPanelId(null), [setHoveredPanelId]);
   // `ui show add-panel` opens the list the Add Panel button opens; the Panels menu must be open.
@@ -180,7 +184,17 @@ export function ModulesPopoverContent() {
 
   return (
     <>
-      <p className={`${POPOVER_HEADER_CLASS} ${POPOVER_TITLE_CLASS}`}>Panels</p>
+      <header className={`${POPOVER_HEADER_CLASS} justify-between`}>
+        <p className={POPOVER_TITLE_CLASS}>Panels</p>
+        <HoverTip tip={isDefault ? "Using Defaults" : "Reset Layout"} align="end">
+          <ManagementIconAction
+            label="Reset layout"
+            icon={<RotateCcw className="size-[length:var(--ui-icon-management-action)]" />}
+            disabled={isDefault}
+            onClick={() => setConfirmingReset(true)}
+          />
+        </HoverTip>
+      </header>
       {/* `grid-cols-1` (= minmax(0,1fr)) constrains the column to the popover width; a bare grid
           makes an implicit auto column that sizes to the longest name and overflows the max-w cap,
           so `truncate` on the rows never kicks in. */}
@@ -194,22 +208,21 @@ export function ModulesPopoverContent() {
           </p>
         ) : null}
       </div>
-      <div className="mt-1 flex items-center gap-1 pt-1">
+      <div className="mt-1 pt-1">
         <AddButton
           label="Add Panel"
           data-ui-target="panels-menu:add"
-          className="min-w-0 flex-1"
           onClick={() => setAdding(true)}
         />
-        <ResetAction
-          label="Reset layout"
-          tip="Reset Layout"
-          isDefault={isDefault}
-          onReset={resetWorkspace}
-          confirmLabel="Confirm reset layout"
-          cancelLabel="Cancel reset layout"
-        />
       </div>
+      <ConfirmDialog
+        open={confirmingReset}
+        onOpenChange={setConfirmingReset}
+        title="Reset Panel Layout?"
+        description="This will restore the default panels, layout, and panel settings."
+        confirmLabel="Reset Layout"
+        onConfirm={resetWorkspace}
+      />
     </>
   );
 }

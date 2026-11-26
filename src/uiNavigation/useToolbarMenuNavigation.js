@@ -44,6 +44,9 @@ export function sourceMixSelectionChoice(mix, selectedSourceId, selectSource, cl
  *   sourceMixes?: ReturnType<typeof import("../hooks/useSourceMixes.js").useSourceMixes>,
  *   selectedSourceId?: string,
  *   selectSource?: (id: string) => Promise<boolean>,
+ *   canResetPanels?: boolean,
+ *   canResetWindowView?: boolean,
+ *   resetWindowView?: () => Promise<void>,
  *   openDockMenu: (view: string) => Promise<void>,
  * }} options
  */
@@ -59,13 +62,28 @@ export function useToolbarMenuNavigation({
   sourceMixes,
   selectedSourceId,
   selectSource,
+  canResetPanels = false,
+  canResetWindowView = false,
+  resetWindowView,
   openDockMenu,
 }) {
   const [openMenu, setOpenMenu] = useState(/** @type {string | null} */ (null));
+  const [resetMenu, setResetMenu] = useState(/** @type {"panels" | "views" | null} */ (null));
+  const setPanelsReset = useCallback((armed) => setResetMenu(armed ? "panels" : null), []);
+  const setViewsReset = useCallback((armed) => setResetMenu(armed ? "views" : null), []);
+  const panelsReset = {
+    armed: openMenu === "panels" && resetMenu === "panels",
+    setArmed: setPanelsReset,
+  };
+  const viewsReset = {
+    armed: openMenu === "views" && resetMenu === "views",
+    setArmed: setViewsReset,
+  };
   const changeMenu = useCallback(
     (/** @type {string} */ menu, /** @type {boolean} */ open) => {
       if (open && menu === "sources") void refreshSources?.();
       setOpenMenu((current) => (open ? menu : current === menu ? null : current));
+      setResetMenu((current) => (open || current === menu ? null : current));
       if (autoHideControls) holdControls(open);
     },
     [autoHideControls, holdControls, refreshSources]
@@ -75,7 +93,10 @@ export function useToolbarMenuNavigation({
 
   // A menu does not survive the window form or its own control going away.
   const menuGone = openMenu !== null && (docked || !available(openMenu));
-  if (menuGone) setOpenMenu(null);
+  if (menuGone) {
+    setOpenMenu(null);
+    setResetMenu(null);
+  }
 
   useUiNavigationTarget("toolbarMenu", {
     show: async ({ menu }) => {
@@ -115,6 +136,39 @@ export function useToolbarMenuNavigation({
           ]),
         ]
       : undefined;
+  let choices = mixChoices;
+  if (openMenu === "panels") {
+    choices = [
+      {
+        id: "reset-layout",
+        label: "Reset Layout",
+        disabled: !canResetPanels,
+        run: () => setPanelsReset(true),
+      },
+    ];
+  }
+  if (openMenu === "views") {
+    choices = viewsReset.armed
+      ? [
+          { id: "cancel-reset", label: "Cancel Reset", run: () => setViewsReset(false) },
+          {
+            id: "confirm-reset",
+            label: "Reset View Settings",
+            run: () => {
+              setViewsReset(false);
+              return resetWindowView?.();
+            },
+          },
+        ]
+      : [
+          {
+            id: "reset-view-settings",
+            label: "Reset View Settings",
+            disabled: !canResetWindowView,
+            run: () => setViewsReset(true),
+          },
+        ];
+  }
   useUiSurface({
     active: openMenu !== null && !menuGone && controlsVisible,
     kind: "toolbarMenu",
@@ -124,8 +178,8 @@ export function useToolbarMenuNavigation({
     supportedActions: ["close"],
     target: { menu: openMenu, presentation: "window" },
     onClose: () => changeMenu(openMenu, false),
-    choices: mixChoices,
+    choices,
   });
 
-  return { openMenu, changeMenu };
+  return { openMenu, changeMenu, panelsReset, viewsReset };
 }

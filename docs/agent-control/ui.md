@@ -59,6 +59,12 @@ the button opens, anchored to that button, with `presentation: "dock"`. Sources 
 `uiTargetNotVisible` while there are no conditions. `ui close` closes the menu as a click outside
 does. Select sources, presets, and profiles through their owning families when available.
 
+In a normal window, the Panels menu's `reset-layout` choice opens the same warning dialog as
+its header icon. Use the confirmation surface's `cancel` or `confirm` choice. The Views menu's
+`reset-view-settings` choice arms its inline confirmation. Use `cancel-reset` or `confirm-reset`
+on the same menu, with the updated UI generation. It resets the current window's display settings
+and preserves Dock settings and position. The initial reset choices are disabled at defaults.
+
 Where Mixes are supported, the normal-window Sources surface declares Mix choices through `ui inspect`. Use its
 `add-mix`, `edit:<mix-id>`, or `select:<mix-id>` choice with `ui decide`. The Dock Sources surface
 also exposes `select:<mix-id>` for each saved Mix. The normal-window `sourceMixEditor`

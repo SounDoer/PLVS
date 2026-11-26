@@ -18,6 +18,7 @@ import { IconAction } from "@/components/ui/icon-action";
  * @param {string} props.cancelLabel   aria-label for the cancel button
  * @param {string} [props.className]
  * @param {(armed: boolean) => void} [props.onArmedChange]
+ * @param {{ armed: boolean, setArmed: (armed: boolean) => void }} [props.confirmation]
  * @param {boolean} [props.preserveTriggerSize]
  */
 export function InlineConfirm({
@@ -27,9 +28,12 @@ export function InlineConfirm({
   cancelLabel,
   className,
   onArmedChange,
+  confirmation: controlledConfirmation,
   preserveTriggerSize = false,
 }) {
-  const [armed, setArmed] = useState(false);
+  const [internalArmed, setInternalArmed] = useState(false);
+  const armed = controlledConfirmation?.armed ?? internalArmed;
+  const setArmed = controlledConfirmation?.setArmed ?? setInternalArmed;
   const focusTargetRef = useRef(null);
   const focusPathRef = useRef(null);
   const restoreFocusRef = useRef(false);
@@ -59,7 +63,7 @@ export function InlineConfirm({
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [armed]);
+  }, [armed, setArmed]);
 
   if (!armed) {
     return trigger(() => {

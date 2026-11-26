@@ -152,6 +152,41 @@ describe("WindowChromeProvider", () => {
     );
   });
 
+  it("resets the current window's view settings while preserving the Dock's view settings", async () => {
+    settingsStore.patch({
+      windowPinned: true,
+      focusView: { autoHideControls: true, compactPanels: true, borderless: true },
+      panelPresentation: {
+        workspace: { hidePanelHeaders: true, hideAxesAndLabels: true },
+        dock: { hideAxesAndLabels: true },
+      },
+      surfaceOpacity: 40,
+      dockSurfaceOpacity: 25,
+    });
+    const { result } = renderHook(() => useWindowChrome(), { wrapper });
+    expect(result.current.canResetWindowView).toBe(true);
+
+    await act(() => result.current.resetWindowView());
+
+    expect(result.current.canResetWindowView).toBe(false);
+    expect(result.current.view).toMatchObject({
+      pinned: false,
+      focusView: { autoHideControls: false, compactPanels: false, borderless: false },
+      panelPresentation: {
+        workspace: { hidePanelHeaders: false, hideAxesAndLabels: false },
+        dock: { hideAxesAndLabels: true },
+      },
+      surfaceOpacity: 100,
+      dockSurfaceOpacity: 25,
+    });
+    settingsStore.flush();
+    expect(settingsStore.read()).toMatchObject({
+      windowPinned: false,
+      surfaceOpacity: 100,
+      dockSurfaceOpacity: 25,
+    });
+  });
+
   it("keeps the last slider value and applies native shadow changes in order", async () => {
     const { result } = renderHook(() => useWindowChrome(), { wrapper });
     let finishZero;

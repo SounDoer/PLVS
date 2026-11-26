@@ -41,7 +41,9 @@ Escape; it is not restored on the next launch.
 ## Panels and presets
 
 The **Panels** menu adds panels, including a second instance of a meter you want to watch two ways
-at once. Removing every panel leaves an empty Workspace that stays empty when PLVS reopens.
+at once. **Reset Layout** in its header opens a confirmation to restore the default panels,
+layout, and panel settings. Removing every panel leaves an empty Workspace that stays empty when
+PLVS reopens.
 The **Presets** menu saves and switches between whole layouts. To save the current layout as a new
 Preset, enter a name at the bottom of the menu and select **Add Preset**. The selected Preset shows as modified
 while anything it restores differs from the current layout, and the mark clears as soon as you
@@ -122,6 +124,9 @@ the transparency of Workspace and panel fills; text, measurement data, states, f
 controls, and borders remain opaque for legibility. The Dock has its own **Surface Opacity** in Dock
 **Views**, which changes only the strip's fill in the same way. Over a full-screen window, lowering
 it lets that window show through the gaps between meters.
+
+**Reset View Settings** in the Views header restores the window's display settings after you
+confirm beside the icon. Dock position and Dock-specific settings are preserved.
 
 On macOS, setting **Surface Opacity** to 0 also removes the native window shadow. This prevents
 AppKit from drawing shadow-shaped outlines around the remaining opaque text and meter graphics;

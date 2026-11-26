@@ -1,5 +1,6 @@
 import { normalizePanelPresentation } from "../lib/panelPresentation.js";
 import { RangeInput } from "@/components/ui/range-input.jsx";
+import { ResetAction } from "@/components/ResetAction.jsx";
 import { DEFAULT_FOCUS_VIEW, normalizeFocusView } from "@/lib/focusView.js";
 import { DEFAULT_SURFACE_OPACITY, DEFAULT_GLASS_ENABLED } from "@/settings/defaults.js";
 import { Label } from "@/components/ui/label";
@@ -38,6 +39,9 @@ export function FocusSwitch({ id, label, checked, onCheckedChange, uiTarget }) {
 /**
  * @param {{
  *   panelPresentation?: import("../lib/panelPresentation.js").PanelPresentation,
+ *   canResetWindowView?: boolean,
+ *   resetWindowView?: () => Promise<void>,
+ *   resetConfirmation?: { armed: boolean, setArmed: (armed: boolean) => void },
  *   setPanelPresentation?: (value: import("../lib/panelPresentation.js").PanelPresentation) => void,
  *   pinned?: boolean,
  *   setPinned?: (...args: any[]) => any,
@@ -56,6 +60,9 @@ export function FocusSwitch({ id, label, checked, onCheckedChange, uiTarget }) {
  * }} props
  */
 export function FocusViewPopoverContent({
+  canResetWindowView = false,
+  resetWindowView,
+  resetConfirmation,
   panelPresentation,
   setPanelPresentation,
   pinned = false,
@@ -80,7 +87,16 @@ export function FocusViewPopoverContent({
   const dockDropdown = useDropdownNavigation("view:dock");
   return (
     <div className="grid gap-1">
-      <p className={`${POPOVER_HEADER_CLASS} ${POPOVER_TITLE_CLASS}`}>Views</p>
+      <header className={POPOVER_HEADER_CLASS}>
+        <p className={`flex-1 ${POPOVER_TITLE_CLASS}`}>Views</p>
+        <ResetAction
+          label="reset view settings"
+          tip="Reset View Settings"
+          confirmation={resetConfirmation}
+          isDefault={!canResetWindowView}
+          onReset={() => void resetWindowView?.().catch(() => {})}
+        />
+      </header>
       <FocusSwitch
         id="focus-view-always-on-top"
         label="Always on Top"

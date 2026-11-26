@@ -4,6 +4,7 @@ import { useHistoryPerformanceHarness } from "./dev/useHistoryPerformanceHarness
 import { usePanelRuntimeData } from "./workspace/usePanelRuntimeData.js";
 import { useLayoutEffect, useState } from "react";
 import { WorkspaceProvider, useWorkspaceStore } from "./workspace/WorkspaceContext.jsx";
+import { workspaceUsesDefaults } from "./workspace/constants.js";
 import {
   MeterRuntimeProvider,
   useMeterDisplayState,
@@ -203,6 +204,8 @@ function AppContent() {
     onDockHeightChange,
   } = useDock();
   const {
+    canResetWindowView,
+    resetWindowView,
     setPinned,
     setAutoHideControls,
     setCompactPanels,
@@ -258,6 +261,9 @@ function AppContent() {
     holdControls: holdFocusControls,
     refreshSources: refreshInventory,
     sourceMixes,
+    canResetPanels: !workspaceUsesDefaults(workspaceState),
+    canResetWindowView,
+    resetWindowView,
     selectedSourceId: safeAudioDeviceId,
     selectSource: onSelectCaptureDevice,
     openDockMenu,
@@ -374,9 +380,13 @@ function AppContent() {
     setCaptureDeviceId: onSelectCaptureDevice,
     openMenu: toolbarMenu.openMenu,
     onMenuOpenChange: toolbarMenu.changeMenu,
+    panelsReset: toolbarMenu.panelsReset,
+    viewsReset: toolbarMenu.viewsReset,
     focusView,
     focusViewActive,
     pinned,
+    canResetWindowView,
+    resetWindowView,
     setPinned,
     setAutoHideControls,
     setCompactPanels,

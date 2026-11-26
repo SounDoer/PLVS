@@ -1,10 +1,14 @@
-import { normalizePanelPresentation } from "../lib/panelPresentation.js";
+import {
+  DEFAULT_PANEL_PRESENTATION,
+  normalizePanelPresentation,
+} from "../lib/panelPresentation.js";
 import { createContext, useCallback, useContext, useEffect, useLayoutEffect, useRef } from "react";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { useAppSettings } from "../settings/SettingsContext.jsx";
 import { useDock } from "../dock/DockContext.jsx";
 import { isTauri } from "../ipc/env.js";
 import { isMacOS } from "../lib/platform.js";
+import { DEFAULT_FOCUS_VIEW } from "../lib/focusView.js";
 import { useAlwaysOnTop } from "./useAlwaysOnTop.js";
 import { setWindowDecorations, useFocusViewWindow } from "./useFocusViewWindow.js";
 import {
@@ -14,7 +18,12 @@ import {
 import { setGlassEffect, useGlassEffect } from "./useGlassEffect.js";
 import { useViewsChromeReveal } from "./useViewsChromeReveal.js";
 import { settingsStore } from "../persistence/index.js";
-import { normalizeSettingsFocusView } from "../settings/defaults.js";
+import {
+  DEFAULT_GLASS_ENABLED,
+  DEFAULT_SURFACE_OPACITY,
+  normalizeSettingsFocusView,
+  normalizeSurfaceOpacity,
+} from "../settings/defaults.js";
 
 /**
  * @typedef {{
@@ -27,6 +36,8 @@ import { normalizeSettingsFocusView } from "../settings/defaults.js";
  *     glassEnabled: boolean,
  *   },
  *   applyViewState: (next: any, options?: { changed?: string[] }) => Promise<void>,
+ *   canResetWindowView: boolean,
+ *   resetWindowView: () => Promise<void>,
  *   setPinned: (value: boolean) => void,
  *   setAutoHideControls: (value: boolean) => void,
  *   setPanelPresentation: (value: import("../lib/panelPresentation.js").PanelPresentation) => void,
@@ -41,6 +52,42 @@ import { normalizeSettingsFocusView } from "../settings/defaults.js";
  * }} WindowChrome
  */
 const WindowChromeContext = createContext(/** @type {WindowChrome | null} */ (null));
+
+const WINDOW_VIEW_DEFAULTS = {
+  pinned: false,
+  focusView: DEFAULT_FOCUS_VIEW,
+  panelPresentation: DEFAULT_PANEL_PRESENTATION,
+  surfaceOpacity: DEFAULT_SURFACE_OPACITY,
+  glassEnabled: DEFAULT_GLASS_ENABLED,
+};
+
+function windowViewResetChanges(view) {
+  const defaults = WINDOW_VIEW_DEFAULTS;
+  // Hide Panel Headers is written through panel presentation, which also updates its legacy value.
+  return [
+    ["view.pinned", view.pinned, defaults.pinned],
+    [
+      "view.focusView.autoHideControls",
+      view.focusView.autoHideControls,
+      defaults.focusView.autoHideControls,
+    ],
+    ["view.focusView.borderless", view.focusView.borderless, defaults.focusView.borderless],
+    [
+      "view.panelPresentation.workspace.hidePanelHeaders",
+      view.panelPresentation.workspace.hidePanelHeaders,
+      defaults.panelPresentation.workspace.hidePanelHeaders,
+    ],
+    [
+      "view.panelPresentation.workspace.hideAxesAndLabels",
+      view.panelPresentation.workspace.hideAxesAndLabels,
+      defaults.panelPresentation.workspace.hideAxesAndLabels,
+    ],
+    ["view.surfaceOpacity", view.surfaceOpacity, defaults.surfaceOpacity],
+    ...(isMacOS() ? [["view.glassEnabled", view.glassEnabled, defaults.glassEnabled]] : []),
+  ]
+    .filter(([, value, fallback]) => value !== fallback)
+    .map(([path]) => /** @type {string} */ (path));
+}
 
 function mergeChangedFields(current, next, changed, prefix) {
   return Object.fromEntries(
@@ -211,8 +258,7 @@ export function WindowChromeProvider({ children }) {
     viewUpdate.current = runViewUpdate;
   }, [runViewUpdate]);
   const pendingViewUpdate = useRef(/** @type {Promise<void> | null} */ (null));
-  const applyViewState = useCallback((next, options) => {
-    const run = () => viewUpdate.current(next, options);
+  const queueViewUpdate = useCallback((run) => {
     const pending = pendingViewUpdate.current;
     const result = pending ? pending.then(run, run) : run();
     pendingViewUpdate.current = result;
@@ -222,6 +268,27 @@ export function WindowChromeProvider({ children }) {
     void result.then(release, release);
     return result;
   }, []);
+  const applyViewState = useCallback(
+    (next, options) => queueViewUpdate(() => viewUpdate.current(next, options)),
+    [queueViewUpdate]
+  );
+  const resetWindowView = useCallback(
+    () =>
+      queueViewUpdate(async () => {
+        const stored = settingsStore.read();
+        const changed = windowViewResetChanges({
+          pinned: stored.windowPinned === true,
+          focusView: storedFocusView(stored),
+          panelPresentation: normalizePanelPresentation(stored.panelPresentation, stored.focusView),
+          surfaceOpacity: normalizeSurfaceOpacity(
+            settingsStore.readPendingField("surfaceOpacity") ?? stored.surfaceOpacity
+          ),
+          glassEnabled: stored.glassEnabled === true,
+        });
+        if (changed.length) await viewUpdate.current(WINDOW_VIEW_DEFAULTS, { changed });
+      }),
+    [queueViewUpdate]
+  );
   const setPanelPresentation = (raw) => {
     const next = normalizePanelPresentation(raw);
     const changed = Object.entries(panelPresentation).flatMap(([surface, values]) =>
@@ -298,20 +365,23 @@ export function WindowChromeProvider({ children }) {
     autoHideControls: focusView.autoHideControls,
     frameless,
   });
+  const view = {
+    pinned,
+    focusView,
+    surfaceOpacity,
+    dockSurfaceOpacity,
+    glassEnabled,
+    panelPresentation,
+  };
 
   return (
     <WindowChromeContext.Provider
       value={{
-        view: {
-          pinned,
-          focusView,
-          surfaceOpacity,
-          dockSurfaceOpacity,
-          glassEnabled,
-          panelPresentation,
-        },
+        view,
         setPanelPresentation,
         applyViewState,
+        canResetWindowView: windowViewResetChanges(view).length > 0,
+        resetWindowView,
         setPinned,
         setAutoHideControls,
         setCompactPanels,
