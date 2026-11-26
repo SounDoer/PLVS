@@ -33,7 +33,7 @@ describe("Tauri dependency contracts", () => {
       )
       .map((file) => file.replaceAll("\\", "/"))
       .sort();
-    expect(constructors).toEqual(["dock_accessories.rs", "lib.rs"]);
+    expect(constructors).toEqual(["dock_accessories.rs", "lib.rs", "tray_workbench_panel.rs"]);
   });
 
   it("keeps the direct window-vibrancy dependency aligned with Tauri", () => {
