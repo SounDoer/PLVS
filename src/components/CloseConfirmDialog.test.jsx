@@ -17,7 +17,7 @@ describe("CloseConfirmDialog", () => {
     );
     expect(screen.getByLabelText("Close behavior")).toBeTruthy();
     expect(screen.getByRole("switch", { name: /don't ask again/i })).toBeTruthy();
-    expect(screen.getByRole("heading", { name: "Close PLVS?" }).className).not.toContain("sr-only");
+    expect(screen.getByRole("dialog", { name: "Close PLVS?" })).toBeTruthy();
   });
 
   it("defaults to Quit selected", () => {

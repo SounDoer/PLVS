@@ -93,6 +93,22 @@
       "touches": []
     },
     {
+      "id": "import-complete-multiple",
+      "durable": [],
+      "ui": {
+        "kind": "eventFixture",
+        "name": "import-complete.multiple",
+        "surfaceKind": "importComplete",
+        "phase": "complete",
+        "action": "close"
+      },
+      "screenshot": {
+        "target": "main",
+        "output": "import-complete-multiple.png"
+      },
+      "touches": []
+    },
+    {
       "id": "library-export",
       "durable": [],
       "ui": {
