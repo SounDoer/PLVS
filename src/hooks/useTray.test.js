@@ -711,12 +711,34 @@ describe("useTray", () => {
     window.__PLVS_INITIAL_STATE__ = { instanceId: "owner" };
     const instances = [
       { instanceId: "owner", displayName: "Speakers", visible: true, captureStatus: "stopped" },
-      { instanceId: "peer", displayName: "Speakers (2)", visible: true, captureStatus: "running" },
+      {
+        instanceId: "peer",
+        displayName: "Speakers (2)",
+        visible: true,
+        captureStatus: "running",
+        trayState: {
+          sourceBusy: false,
+          audioOutputs: [{ id: "speakers", label: "Speakers" }],
+          captureApplications: [{ id: "app:chrome", label: "Chrome" }],
+        },
+      },
     ];
     invoke.mockImplementation(async (command) =>
       command === "runtime_list_instances" ? instances : true
     );
-    renderHook(() => useTray(defaultProps));
+    const initialTheme = {
+      id: "plvs-dark",
+      revision: 1,
+      colorScheme: "dark",
+      css: { "--popover": "#252525" },
+    };
+    const { rerender } = renderHook(
+      ({ resolvedTheme, interfaceSize }) =>
+        useTray({ ...defaultProps, resolvedTheme, interfaceSize }),
+      {
+        initialProps: { resolvedTheme: initialTheme, interfaceSize: "default" },
+      }
+    );
     await act(async () => {});
 
     const trayOptions = vi.mocked(TrayIcon.new).mock.calls[0][0];
@@ -727,11 +749,14 @@ describe("useTray", () => {
       buttonState: "Up",
     });
     await act(async () => trayOptions.action(rightClick));
-    expect(invoke).toHaveBeenCalledWith("open_tray_workbench_panel", { show: false });
+    expect(invoke).toHaveBeenCalledWith("open_tray_workbench_panel");
     const onAction = listen.mock.calls.find(([name]) => name === "tray-workbench://action")[1];
     await act(async () => onAction({ payload: { kind: "ready" } }));
-    expect(invoke).toHaveBeenCalledWith("open_tray_workbench_panel", { show: true });
-    const panelItems = emitTo.mock.calls.find(([, name]) => name === "tray-workbench://state")[2];
+    const lastPanel = () =>
+      emitTo.mock.calls.filter(([, name]) => name === "tray-workbench://state").at(-1)[2];
+    const { items: panelItems, presentation } = lastPanel();
+    expect(lastPanel()).toMatchObject({ theme: initialTheme, interfaceSize: "default" });
+    expect(presentation).toBeGreaterThan(0);
     expect(panelItems.map(({ text }) => text).filter(Boolean)).toEqual([
       "Speakers",
       "Speakers (2)",
@@ -748,16 +773,37 @@ describe("useTray", () => {
       "Settings…",
       "Quit Workbench",
     ]);
+    const source = peer.items.find(({ key }) => key === "workbench:peer:source");
+    expect(source).toMatchObject({
+      pageTitle: "Source",
+      items: [
+        { kind: "check", text: "Automatic", checked: true },
+        { kind: "group", text: "Output", items: [{ kind: "check", text: "Speakers" }] },
+        { kind: "group", text: "Applications", items: [{ kind: "check", text: "Chrome" }] },
+      ],
+    });
+    expect(peer.items.find(({ key }) => key === "workbench:peer:preset").pageTitle).toBe("Preset");
+    expect(peer.items.find(({ key }) => key.endsWith(":settings")).dismiss).toBe(true);
+    for (const action of ["locate", "window", "transport", "quit"]) {
+      expect(peer.items.find(({ key }) => key.endsWith(":" + action)).dismiss).toBe(false);
+    }
+    const owner = panelItems.find(({ key }) => key === "workbench:owner");
+    expect(owner.items.find(({ key }) => key.endsWith(":quit")).dismiss).toBe(true);
+    expect(panelItems.find(({ key }) => key === "app:new-workbench").dismiss).toBe(true);
+    const nextTheme = { ...initialTheme, id: "plvs-light", revision: 2, colorScheme: "light" };
+    rerender({ resolvedTheme: nextTheme, interfaceSize: "large" });
+    await act(async () => {});
+    expect(lastPanel()).toMatchObject({ theme: nextTheme, interfaceSize: "large", presentation });
     const acknowledgement = deferred();
     coordination.issue.mockReturnValueOnce(acknowledgement.promise);
     await act(async () => {
       void onAction({ payload: { kind: "activate", key: "workbench:peer:locate" } });
     });
-    expect(invoke).toHaveBeenCalledWith("set_tray_workbench_locating", { active: true });
-    expect(coordination.issue).toHaveBeenCalledExactlyOnceWith("peer", "locate");
-    expect(invoke).not.toHaveBeenCalledWith("set_tray_workbench_locating", { active: false });
+    expect(invoke).toHaveBeenCalledWith("set_tray_workbench_focus_hold", { active: true });
+    expect(coordination.issue).toHaveBeenCalledExactlyOnceWith("peer", "locate", null);
+    expect(invoke).not.toHaveBeenCalledWith("set_tray_workbench_focus_hold", { active: false });
     await act(async () => acknowledgement.resolve());
-    expect(invoke).toHaveBeenCalledWith("set_tray_workbench_locating", { active: false });
+    expect(invoke).toHaveBeenCalledWith("set_tray_workbench_focus_hold", { active: false });
 
     await act(async () =>
       onAction({ payload: { kind: "activate", key: "workbench:peer:transport" } })
@@ -767,6 +813,17 @@ describe("useTray", () => {
       action: "stop",
     });
     expect(defaultProps.onStartClick).not.toHaveBeenCalled();
+
+    coordination.issue.mockClear();
+    const selectingSource = deferred();
+    coordination.issue.mockReturnValueOnce(selectingSource.promise);
+    await act(async () => {
+      void onAction({ payload: { kind: "activate", key: "workbench:peer:source:default" } });
+      void onAction({ payload: { kind: "activate", key: "workbench:peer:window" } });
+    });
+    expect(coordination.issue).toHaveBeenCalledExactlyOnceWith("peer", "selectSource", "default");
+    await act(async () => selectingSource.resolve());
+    expect(coordination.issue).toHaveBeenNthCalledWith(2, "peer", "hide", null);
   });
 
   it("opens a new workbench from the single-workbench tray and respects the update guard", async () => {

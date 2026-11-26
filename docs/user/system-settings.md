@@ -97,7 +97,17 @@ open can resume even if another workbench has already closed.
 PLVS also keeps one system Tray. On Windows and macOS, left-clicking its icon shows or hides the
 main window, while right-clicking opens the menu. On Linux, icon interactions depend on the desktop's
 tray host; use the menu's **Show** or **Hide**, available on all three platforms.
-On Windows, **Locate** leaves the menu and selected Workbench submenu open.
+On Windows, the Tray menu follows the current Theme and Interface Size. It fits its visible
+options and scrolls when they exceed the available space. **Locate**, **Show** / **Hide**,
+**Start** / **Stop**, Source and Preset selection leave the menu open. Quitting another
+Workbench removes its entry while the menu stays open. Opening Settings, checking for updates,
+and opening a new Workbench dismiss the menu. Quitting the Workbench that owns the Tray or
+quitting PLVS closes its menu.
+On Windows, selecting a Workbench expands its controls in place. **Source** and **Preset** open
+beside those controls. Source groups such as **Output**, **Input**, and **Applications** start
+collapsed and expand when selected. Long lists scroll inside the side menu. Selecting a Source
+or Preset keeps its menu open. Press **Esc** to close the side menu, then again to collapse the
+Workbench controls.
 **Settings…** brings the owning workbench forward and opens Settings. In Dock mode, it shows the
 Settings window while keeping Dock active.
 
@@ -107,8 +117,8 @@ at the top level. Its submenu begins with **Locate** and ends with **Quit Workbe
 brings the selected workbench forward and briefly lights its inside edge in its theme's accent
 colour, even with **Hide Window Frame** enabled. The outline and glow fade together. With reduced
 motion enabled, the outline appears briefly and stays static. A visible Dock strip lights up in
-place. A hidden workbench or a minimized window is restored. Each Source and Preset submenu shows that workbench's choices
-and current selection, and Settings opens in that workbench. **New Workbench** is available at
+place. A hidden workbench or a minimized window is restored. Source and Preset show that
+workbench's choices and current selection, and Settings opens in that workbench. **New Workbench** is available at
 the top level with one or several workbenches open. It opens another with **Automatic** selected
 and its Transport **Stopped**. Update actions and **Quit PLVS** also remain at the top level.
 **Show** brings the selected workbench to the front, restoring it if minimized. A workbench with

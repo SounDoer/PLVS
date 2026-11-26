@@ -12,6 +12,7 @@ import { useDevelopmentEventFixtureAdapter } from "../dev/DevelopmentEventFixtur
 import { DEVELOPMENT_CRASH_REPORT } from "../dev/developmentEventFixtureData.js";
 import { hideAppWindow, showAppWindow, toggleAppWindow } from "../lib/windowVisibility.js";
 import { isTauri } from "../ipc/env.js";
+import { useResolvedTheme } from "../theme/useResolvedTheme.js";
 import { useSceneGuard } from "./SceneGuardContext.jsx";
 import { useWindowChrome } from "./WindowChromeContext.jsx";
 import { usePresetLibrary } from "./PresetsContext.jsx";
@@ -58,9 +59,10 @@ export function AppLifecycleProvider({ children }) {
     keyboardShortcuts,
     shortcutCapturing,
     focusView,
-    resolvedTheme,
+    interfaceSize,
     updatePreferences,
   } = useAppSettings();
+  const resolvedTheme = useResolvedTheme();
   const { docked, suspendDockMode, resumeDockMode, exitDockRestoringAttributes } = useDock();
   const { reveal } = useWindowChrome();
   const toggleFocusControls = reveal.toggleControls;
@@ -270,6 +272,8 @@ export function AppLifecycleProvider({ children }) {
     onLocateWindow,
     onQuit: () => requestCloseAction("quit"),
     colorScheme: resolvedTheme.colorScheme,
+    resolvedTheme,
+    interfaceSize,
     updateBusy,
     audioOutputs,
     audioInputs,

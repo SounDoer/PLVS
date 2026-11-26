@@ -96,11 +96,15 @@ The heartbeat descriptor also carries a frontend-owned Tray snapshot: source cho
 preset labels and selection, and availability guards. Only the internal Tray inventory includes
 this presentation data; public CLI instance summaries retain their existing shape. With multiple
 workbenches the Tray builds the same complete control group for each instance. Windows opens an
-app-owned accessory directly on right-click. It uses the same menu definitions and action guards.
-An icon-anchored menu fits the monitor bounds so a Dock reservation cannot move it away from
-the Tray. Without an icon anchor, the menu centers within the available work area.
-Locate holds the accessory open during the target's activation, then returns keyboard focus to
-the menu. Other platforms attach a native menu for the Tray's lifetime.
+app-owned accessory directly on right-click. It uses the same menu definitions and action guards
+and receives the owner's active Theme publication and Interface Size. It measures its content in
+CSS pixels, then the native host sizes and positions it using the WebView scale. Workbench actions
+expand in place. Source and Preset share a scrollable side menu within the same WebView. The native
+window region follows the two surfaces so the gap and uncovered area do not intercept input.
+The main menu fits the monitor bounds so a Dock reservation cannot move it away from the Tray.
+Without an icon anchor, it centers within the available work area. Locate and Show hold the accessory
+open during target activation, then return keyboard focus to the menu. Other platforms attach a
+native menu for the Tray's lifetime.
 Keyed reconciliation updates labels, checks, enabled state and
 child membership while retaining surviving item handles and their action channels. Callbacks read
 the latest workbench state. Replacing the attached menu can detach the Windows command handler

@@ -22,8 +22,12 @@ import {
 import { useCoordinatorRole } from "../lib/runtimeRole.js";
 import { useTaskbarColorScheme } from "./useTaskbarColorScheme.js";
 import { issueInstanceCommand, quitAllInstances } from "../runtime/coordination.js";
+import { createThemePublication } from "../theme/themeRuntime.js";
 import {
+  groupTraySources,
   isTrayLocateAction,
+  trayActionDismisses,
+  trayPageTitle,
   TRAY_WORKBENCH_ACTION,
   TRAY_WORKBENCH_LABEL,
   TRAY_WORKBENCH_NOTICE,
@@ -278,16 +282,33 @@ function menuDefinitions(cfg) {
   return items;
 }
 
-/** @param {import("../lib/nativeTrayMenu.js").TrayMenuDefinition[]} items */
-function panelItems(items) {
-  return items.map(({ key, kind, text, enabled, checked, items: children }) => ({
-    key,
-    kind,
-    text,
-    enabled,
-    checked,
-    items: children && panelItems(children),
-  }));
+/**
+ * @param {import("../lib/nativeTrayMenu.js").TrayMenuDefinition[]} items
+ * @param {string} [ownerId]
+ * @returns {import("../tray/trayWorkbenchProtocol.js").TrayPanelItem[]}
+ */
+function panelItems(items, ownerId) {
+  return items
+    .filter(
+      ({ key }) =>
+        !/^(app:(new-workbench|update)-separator|workbench:[^:]+:(source|quit)-separator)$/.test(
+          key
+        )
+    )
+    .map(({ key, kind, text, enabled, checked, items: children }) => {
+      const pageTitle = trayPageTitle(key);
+      const items = children && panelItems(children, ownerId);
+      return {
+        key,
+        kind,
+        text,
+        enabled,
+        checked,
+        pageTitle,
+        dismiss: trayActionDismisses(key, ownerId),
+        items: pageTitle === "Source" && items ? groupTraySources(key, items) : items,
+      };
+    });
 }
 
 /**
@@ -297,7 +318,7 @@ function panelItems(items) {
 function findTrayAction(items, key) {
   for (const item of items) {
     if (item.enabled === false) continue;
-    if (item.key === key && item.action) return item.action;
+    if (item.key === key && item.action) return item;
     if (item.items) {
       const action = findTrayAction(item.items, key);
       if (action) return action;
@@ -315,6 +336,8 @@ function findTrayAction(items, key) {
  *   onLocateWindow?: () => Promise<void>,
  *   onQuit: (...args: any[]) => any,
  *   colorScheme: string,
+ *   resolvedTheme?: any,
+ *   interfaceSize?: string,
  *   updateBusy?: boolean,
  *   onOpenSettings?: (...args: any[]) => any,
  *   updateMenu?: { text: string, enabled: boolean, action: (...args: any[]) => any } | null,
@@ -337,6 +360,8 @@ export function useTray({
   onLocateWindow,
   onQuit,
   colorScheme,
+  resolvedTheme = null,
+  interfaceSize = "default",
   updateBusy = false,
   onOpenSettings = () => {},
   updateMenu = null,
@@ -425,7 +450,7 @@ export function useTray({
   // Stable callbacks that always call the latest ref.
   const stableToggleCapture = useCallback(() => onStartClickRef.current(), []);
   const stableToggleWindow = useCallback(() => {
-    if (!updateBusyRef.current) onToggleWindowRef.current();
+    if (!updateBusyRef.current) return onToggleWindowRef.current();
   }, []);
   const stableQuit = useCallback(() => {
     if (!updateBusyRef.current) onQuitRef.current();
@@ -437,14 +462,14 @@ export function useTray({
     // click can beat the update. The controller refuses it either way; the tray has
     // no surface to report that on, so the rejection is dropped here rather than left unhandled.
     const result = onApplyPresetRef.current(id);
-    if (result && typeof result.catch === "function") result.catch(() => {});
+    if (result && typeof result.catch === "function") return result.catch(() => {});
   }, []);
   const stableToggleInstance = useCallback(
     (instance) => {
       const action = instance.captureStatus === "running" ? "stop" : "start";
-      invoke("runtime_route_instance_transport", { instanceId: instance.instanceId, action })
+      return invoke("runtime_route_instance_transport", { instanceId: instance.instanceId, action })
         .then((routedToPeer) => {
-          if (!routedToPeer) stableToggleCapture();
+          if (!routedToPeer) return stableToggleCapture();
         })
         .catch((error) => console.warn("Unable to control PLVS workbench from Tray", error));
     },
@@ -452,7 +477,7 @@ export function useTray({
   );
   const stableInstanceAction = useCallback((instance, action, payload = null) => {
     if (updateBusyRef.current) return;
-    void issueInstanceCommand(instance.instanceId, action, payload).catch((error) => {
+    return issueInstanceCommand(instance.instanceId, action, payload).catch((error) => {
       console.warn("Unable to control PLVS workbench from Tray", error);
       if (action !== "locate")
         void issueInstanceCommand(instance.instanceId, "show").catch(() => {});
@@ -465,7 +490,7 @@ export function useTray({
         stableQuit();
         return;
       }
-      void issueInstanceCommand(instance.instanceId, "quitInstance")
+      return issueInstanceCommand(instance.instanceId, "quitInstance")
         .then(() => {
           // Invalidate inventory reads started before the successful quit acknowledgement.
           inventoryGenerationRef.current += 1;
@@ -559,6 +584,8 @@ export function useTray({
     presetsBlocked: presets.blocked === true,
     instances,
     updateMenu,
+    resolvedTheme,
+    interfaceSize,
   };
   const menuInputsRef = useRef(menuInputs);
   useEffect(() => {
@@ -571,29 +598,31 @@ export function useTray({
   const panelDefinitions = useRef(
     /** @type {() => import("../lib/nativeTrayMenu.js").TrayMenuDefinition[]} */ (() => [])
   );
-  const locatingFromPanel = useRef(false);
-  const publishPanel = useCallback(async () => {
+  const panelPresentation = useRef(0);
+  const panelActionQueue = useRef(Promise.resolve());
+  const publishPanel = useCallback(async (open = false) => {
     if (!panelReady.current) return;
-    await emitTo(
-      TRAY_WORKBENCH_LABEL,
-      TRAY_WORKBENCH_STATE,
-      panelItems(panelDefinitions.current())
-    );
+    if (open) panelPresentation.current = Math.max(panelPresentation.current + 1, Date.now());
+    const { resolvedTheme, interfaceSize } = menuInputsRef.current;
+    await emitTo(TRAY_WORKBENCH_LABEL, TRAY_WORKBENCH_STATE, {
+      items: panelItems(panelDefinitions.current(), window.__PLVS_INITIAL_STATE__?.instanceId),
+      theme: createThemePublication(resolvedTheme),
+      interfaceSize,
+      presentation: panelPresentation.current,
+    });
   }, []);
 
   const stableOpenWorkbenchPanel = useCallback(async () => {
     if (openingPanel.current) return;
     openingPanel.current = true;
     try {
-      const ready = panelReady.current;
-      panelOpenRequested.current = !ready;
-      await invoke("open_tray_workbench_panel", { show: ready });
-      if (!ready && !panelReady.current) await emitTo(TRAY_WORKBENCH_LABEL, TRAY_WORKBENCH_PROBE);
+      panelOpenRequested.current = true;
+      await invoke("open_tray_workbench_panel");
+      if (!panelReady.current) await emitTo(TRAY_WORKBENCH_LABEL, TRAY_WORKBENCH_PROBE);
       refreshInstancesRef.current();
-      await publishPanel();
       if (panelOpenRequested.current && panelReady.current) {
         panelOpenRequested.current = false;
-        await invoke("open_tray_workbench_panel", { show: true });
+        await publishPanel(true);
       }
     } catch (error) {
       panelOpenRequested.current = false;
@@ -605,37 +634,39 @@ export function useTray({
 
   useEffect(() => {
     if (!useWorkbenchPanel || !isTauri() || !isCoordinator) return;
+    /** @param {string} key */
+    async function activate(key) {
+      const item = findTrayAction(panelDefinitions.current(), key);
+      if (!item) throw new Error("This Tray action is no longer available.");
+      const holdFocus =
+        isTrayLocateAction(key) || (/^workbench:[^:]+:window$/.test(key) && item.text === "Show");
+      if (holdFocus) await invoke("set_tray_workbench_focus_hold", { active: true });
+      try {
+        await item.action();
+      } finally {
+        if (holdFocus) await invoke("set_tray_workbench_focus_hold", { active: false });
+        refreshInstancesRef.current();
+      }
+    }
+
     /** @param {{ payload: { kind: string, key?: string } }} event */
     async function handleAction({ payload: { kind, key } }) {
       try {
         if (kind === "ready") {
           panelReady.current = true;
-          await publishPanel();
-          if (panelOpenRequested.current && !openingPanel.current) {
+          if (!openingPanel.current) {
+            const open = panelOpenRequested.current;
             panelOpenRequested.current = false;
-            await invoke("open_tray_workbench_panel", { show: true });
+            await publishPanel(open);
           }
           return;
         }
         if (kind !== "activate" || !key) return;
-        const action = findTrayAction(panelDefinitions.current(), key);
-        if (!action) throw new Error("This Tray action is no longer available.");
-        if (!isTrayLocateAction(key)) {
-          await action();
-        } else if (!locatingFromPanel.current) {
-          locatingFromPanel.current = true;
-          try {
-            await invoke("set_tray_workbench_locating", { active: true });
-            await action();
-          } finally {
-            try {
-              await invoke("set_tray_workbench_locating", { active: false });
-            } finally {
-              locatingFromPanel.current = false;
-            }
-          }
-        }
-        refreshInstancesRef.current();
+        // The peer mailbox accepts one pending command. A second click can arrive while the
+        // first action settles because the panel stays open.
+        const next = panelActionQueue.current.then(() => activate(key));
+        panelActionQueue.current = next.catch(() => {});
+        await next;
       } catch (error) {
         await emitTo(TRAY_WORKBENCH_LABEL, TRAY_WORKBENCH_NOTICE, String(error));
       }
@@ -696,9 +727,7 @@ export function useTray({
         ...cfg,
         onLocateWindow: () => navigationRef.current.onLocateWindow?.(),
         onInstanceAction: (instance, action, payload = null) =>
-          action === "locate"
-            ? issueInstanceCommand(instance.instanceId, action)
-            : cfg.onInstanceAction(instance, action, payload),
+          issueInstanceCommand(instance.instanceId, action, payload),
       });
     };
   }, [menuConfig]);
@@ -804,6 +833,8 @@ export function useTray({
     presets.dirty,
     presets.blocked,
     instances,
+    resolvedTheme,
+    interfaceSize,
   ]);
 
   // Update tray icon when the scheme it sits on changes.

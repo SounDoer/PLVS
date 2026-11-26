@@ -4,12 +4,69 @@ use tauri::{Manager, PhysicalPosition, PhysicalSize, WebviewUrl, WebviewWindowBu
 
 const LABEL: &str = "tray-workbench";
 const TRAY_ID: &str = "plvs-main-tray";
-const WIDTH: f64 = 410.0;
-const HEIGHT: f64 = 420.0;
-static LOCATING: AtomicBool = AtomicBool::new(false);
+const INITIAL_WIDTH: f64 = 320.0;
+const INITIAL_HEIGHT: f64 = 32.0;
+const ANCHOR_GAP: i32 = 8;
+const PICKER_GAP: f64 = 6.0;
+static HOLD_FOCUS: AtomicBool = AtomicBool::new(false);
+
+#[derive(Clone, Copy, serde::Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct PickerLayout {
+  height: f64,
+  trigger_top: f64,
+}
+
+#[derive(serde::Serialize)]
+struct PanelBounds {
+  left: f64,
+  top: f64,
+  width: f64,
+  height: f64,
+}
+
+#[derive(serde::Serialize)]
+pub struct PanelLayout {
+  main: PanelBounds,
+  side: Option<PanelBounds>,
+}
+
+#[derive(Clone, Copy)]
+struct PanelRect {
+  position: PhysicalPosition<i32>,
+  size: PhysicalSize<u32>,
+}
+
+impl PanelRect {
+  fn right(self) -> i32 {
+    self.position.x + self.size.width as i32
+  }
+
+  fn bottom(self) -> i32 {
+    self.position.y + self.size.height as i32
+  }
+
+  fn relative_to(self, origin: PhysicalPosition<i32>) -> Self {
+    Self {
+      position: PhysicalPosition::new(self.position.x - origin.x, self.position.y - origin.y),
+      size: self.size,
+    }
+  }
+
+  fn logical(self, scale: f64) -> PanelBounds {
+    let position = self.position.to_logical::<f64>(scale);
+    let size = self.size.to_logical::<f64>(scale);
+    PanelBounds {
+      left: position.x,
+      top: position.y,
+      width: size.width,
+      height: size.height,
+    }
+  }
+}
 
 #[tauri::command]
-pub fn set_tray_workbench_locating(
+pub fn set_tray_workbench_focus_hold(
   app: tauri::AppHandle,
   window: tauri::WebviewWindow,
   active: bool,
@@ -18,17 +75,17 @@ pub fn set_tray_workbench_locating(
     return Err("Only the Workbench that owns the Tray can control its panel.".into());
   }
   if active {
-    LOCATING.store(true, Ordering::Relaxed);
+    HOLD_FOCUS.store(true, Ordering::Relaxed);
     return Ok(());
   }
-  // Locate can focus another Workbench. Return keyboard focus to the still-open menu.
+  // Locate and Show can focus another Workbench. Return focus to the open menu.
   let result = app.get_webview_window(LABEL).map_or(Ok(()), |panel| {
     if panel.is_visible()? && !panel.is_focused()? {
       panel.set_focus()?;
     }
     Ok::<(), tauri::Error>(())
   });
-  LOCATING.store(false, Ordering::Relaxed);
+  HOLD_FOCUS.store(false, Ordering::Relaxed);
   result.map_err(|error| error.to_string())
 }
 
@@ -36,12 +93,98 @@ pub fn set_tray_workbench_locating(
 pub async fn open_tray_workbench_panel(
   app: tauri::AppHandle,
   window: tauri::WebviewWindow,
-  show: bool,
 ) -> Result<(), String> {
-  if window.label() != "main" {
+  if window.label() != "main" || app.tray_by_id(TRAY_ID).is_none() {
     return Err("Only the Workbench that owns the Tray can open its panel.".into());
   }
+  if app.get_webview_window(LABEL).is_some() {
+    return Ok(());
+  }
 
+  let panel = WebviewWindowBuilder::new(&app, LABEL, WebviewUrl::App("tray-workbench.html".into()))
+    .title("PLVS — Workbenches")
+    .inner_size(INITIAL_WIDTH, INITIAL_HEIGHT)
+    .visible(false)
+    .decorations(false)
+    .resizable(false)
+    .always_on_top(true)
+    .skip_taskbar(true)
+    .shadow(false);
+  #[cfg(windows)]
+  let panel = panel.transparent(true);
+  let panel = panel.build().map_err(|error| error.to_string())?;
+  place_panel(
+    &app,
+    &window,
+    &panel,
+    INITIAL_WIDTH,
+    INITIAL_HEIGHT,
+    None,
+    None,
+  )?;
+  let handle = panel.clone();
+  let focused = AtomicBool::new(false);
+  panel.on_window_event(move |event| {
+    if let tauri::WindowEvent::Focused(is_focused) = event {
+      let was_focused = focused.swap(*is_focused, Ordering::Relaxed);
+      if was_focused && !is_focused && !HOLD_FOCUS.load(Ordering::Relaxed) {
+        let _ = handle.hide();
+      }
+    }
+  });
+  Ok(())
+}
+
+#[tauri::command]
+pub fn layout_tray_workbench_panel(
+  app: tauri::AppHandle,
+  window: tauri::WebviewWindow,
+  width: f64,
+  height: f64,
+  side: Option<PickerLayout>,
+  webview_scale: f64,
+  show: bool,
+) -> Result<PanelLayout, String> {
+  if window.label() != LABEL {
+    return Err("Only the Tray panel can submit its layout.".into());
+  }
+  if [width, height, webview_scale]
+    .into_iter()
+    .any(|value| !value.is_finite() || value <= 0.0)
+    || side.is_some_and(|side| {
+      !side.height.is_finite() || side.height <= 0.0 || !side.trigger_top.is_finite()
+    })
+  {
+    return Err("Invalid Tray panel dimensions.".into());
+  }
+  let main = app
+    .get_webview_window("main")
+    .ok_or("The Tray panel has no owning Workbench.")?;
+  let layout = place_panel(
+    &app,
+    &main,
+    &window,
+    width,
+    height,
+    Some(webview_scale),
+    side,
+  )?;
+  if show {
+    window.show().map_err(|error| error.to_string())?;
+    window.set_focus().map_err(|error| error.to_string())?;
+  }
+  Ok(layout)
+}
+
+fn place_panel(
+  app: &tauri::AppHandle,
+  main: &tauri::WebviewWindow,
+  panel: &tauri::WebviewWindow,
+  width: f64,
+  height: f64,
+  webview_scale: Option<f64>,
+  side: Option<PickerLayout>,
+) -> Result<PanelLayout, String> {
   let tray = app
     .tray_by_id(TRAY_ID)
     .ok_or("The Workbench does not own the Tray.")?;
@@ -61,7 +204,7 @@ pub async fn open_tray_workbench_panel(
         .ok()
         .flatten()
     })
-    .or_else(|| window.current_monitor().ok().flatten())
+    .or_else(|| main.current_monitor().ok().flatten())
     .ok_or("No monitor is available for the Tray Workbench panel.")?;
   // The tray icon already marks the shell edge. The work area includes space reserved by
   // PLVS Dock, which would push an anchored menu away from its icon.
@@ -71,47 +214,163 @@ pub async fn open_tray_workbench_panel(
     let work_area = monitor.work_area();
     (work_area.position, work_area.size)
   };
-  let scale = monitor.scale_factor();
+  let scale = webview_scale.unwrap_or_else(|| monitor.scale_factor());
+  let bounds = panel_work_area(origin, area, anchor);
   let size = PhysicalSize::new(
-    ((WIDTH * scale).round() as u32).min(area.width),
-    ((HEIGHT * scale).round() as u32).min(area.height),
+    ((width * scale).ceil() as u32).clamp(1, area.width),
+    ((height * scale).ceil() as u32).clamp(1, bounds.size.height),
   );
-  let point = panel_position(origin, area, size, anchor);
-
-  let panel = if let Some(panel) = app.get_webview_window(LABEL) {
-    panel
-  } else {
-    let panel =
-      WebviewWindowBuilder::new(&app, LABEL, WebviewUrl::App("tray-workbench.html".into()))
-        .title("PLVS — Workbenches")
-        .inner_size(WIDTH, HEIGHT)
-        .visible(false)
-        .decorations(false)
-        .resizable(false)
-        .always_on_top(true)
-        .skip_taskbar(true)
-        .build()
-        .map_err(|error| error.to_string())?;
-    let handle = panel.clone();
-    let focused = AtomicBool::new(false);
-    panel.on_window_event(move |event| {
-      if let tauri::WindowEvent::Focused(is_focused) = event {
-        let was_focused = focused.swap(*is_focused, Ordering::Relaxed);
-        if was_focused && !is_focused && !LOCATING.load(Ordering::Relaxed) {
-          let _ = handle.hide();
-        }
-      }
-    });
-    panel
+  let main = PanelRect {
+    position: panel_position(origin, area, size, anchor),
+    size,
   };
-  // Some Linux hosts have no tray rect or global positioning.
-  let _ = panel.set_position(point);
+  let side = side.and_then(|side| picker_rect(bounds, main, side, scale));
+  let (point, size) = side.map_or((main.position, main.size), |side| {
+    let x = main.position.x.min(side.position.x);
+    let y = main.position.y.min(side.position.y);
+    (
+      PhysicalPosition::new(x, y),
+      PhysicalSize::new(
+        (main.right().max(side.right()) - x) as u32,
+        (main.bottom().max(side.bottom()) - y) as u32,
+      ),
+    )
+  });
+  panel
+    .set_position(point)
+    .map_err(|error| error.to_string())?;
   panel.set_size(size).map_err(|error| error.to_string())?;
-  if !show {
-    return Ok(());
+  let main = main.relative_to(point);
+  let side = side.map(|side| side.relative_to(point));
+  #[cfg(windows)]
+  clip_panel_window(panel, main, side)?;
+  Ok(PanelLayout {
+    main: main.logical(scale),
+    side: side.map(|side| side.logical(scale)),
+  })
+}
+
+fn panel_work_area(
+  origin: PhysicalPosition<i32>,
+  area: PhysicalSize<u32>,
+  anchor: Option<(PhysicalPosition<i32>, PhysicalSize<u32>)>,
+) -> PanelRect {
+  let bottom = origin.y + area.height as i32;
+  let (top, end) = match anchor {
+    Some((point, _)) if point.y >= origin.y + area.height as i32 / 2 => {
+      (origin.y, (point.y - ANCHOR_GAP).clamp(origin.y + 1, bottom))
+    }
+    Some((point, icon)) => (
+      (point.y + icon.height as i32 + ANCHOR_GAP).clamp(origin.y, bottom - 1),
+      bottom,
+    ),
+    None => (origin.y, bottom),
+  };
+  PanelRect {
+    position: PhysicalPosition::new(origin.x, top),
+    size: PhysicalSize::new(area.width, (end - top) as u32),
   }
-  panel.show().map_err(|error| error.to_string())?;
-  panel.set_focus().map_err(|error| error.to_string())
+}
+
+fn picker_rect(
+  bounds: PanelRect,
+  main: PanelRect,
+  picker: PickerLayout,
+  scale: f64,
+) -> Option<PanelRect> {
+  let gap = (PICKER_GAP * scale).round() as i32;
+  let left_space = main.position.x - bounds.position.x - gap;
+  let right_space = bounds.right() - main.right() - gap;
+  let preferred = main.size.width as i32;
+  let right = right_space >= preferred || right_space >= left_space;
+  let available = if right { right_space } else { left_space };
+  let height = ((picker.height * scale).ceil() as u32).clamp(1, bounds.size.height);
+  if available < preferred / 2 {
+    let above = main.position.y - bounds.position.y - gap;
+    let below = bounds.bottom() - main.bottom() - gap;
+    let room = above.max(below);
+    if room > 0 {
+      let height = height.min(room as u32);
+      return Some(PanelRect {
+        position: PhysicalPosition::new(
+          main.position.x,
+          if above > below {
+            main.position.y - gap - height as i32
+          } else {
+            main.bottom() + gap
+          },
+        ),
+        size: PhysicalSize::new(main.size.width, height),
+      });
+    }
+  }
+  if available <= 0 {
+    return None;
+  }
+  let width = preferred.min(available);
+  let trigger_top = (picker.trigger_top * scale)
+    .round()
+    .clamp(0.0, f64::from(main.size.height)) as i32;
+  Some(PanelRect {
+    position: PhysicalPosition::new(
+      if right {
+        main.right() + gap
+      } else {
+        main.position.x - gap - width
+      },
+      (main.position.y + trigger_top).clamp(bounds.position.y, bounds.bottom() - height as i32),
+    ),
+    size: PhysicalSize::new(width as u32, height),
+  })
+}
+
+#[cfg(windows)]
+fn clip_panel_window(
+  panel: &tauri::WebviewWindow,
+  main: PanelRect,
+  side: Option<PanelRect>,
+) -> Result<(), String> {
+  use windows_sys::Win32::Graphics::Gdi::{
+    CombineRgn, CreateRectRgn, DeleteObject, SetWindowRgn, RGN_OR,
+  };
+
+  let hwnd = panel.hwnd().map_err(|error| error.to_string())?.0;
+  // The use of one WebView must not make the gap or the area beside a shorter menu capture clicks.
+  // Windows owns the combined region after a successful SetWindowRgn call.
+  unsafe {
+    let region = CreateRectRgn(
+      main.position.x,
+      main.position.y,
+      main.right(),
+      main.bottom(),
+    );
+    if region.is_null() {
+      return Err("Unable to create the Tray window region.".into());
+    }
+    if let Some(side) = side {
+      let part = CreateRectRgn(
+        side.position.x,
+        side.position.y,
+        side.right(),
+        side.bottom(),
+      );
+      if part.is_null() {
+        let _ = DeleteObject(region);
+        return Err("Unable to create the Tray picker region.".into());
+      }
+      let combined = CombineRgn(region, region, part, RGN_OR);
+      let _ = DeleteObject(part);
+      if combined == 0 {
+        let _ = DeleteObject(region);
+        return Err("Unable to combine the Tray menu regions.".into());
+      }
+    }
+    if SetWindowRgn(hwnd, region, 1) == 0 {
+      let _ = DeleteObject(region);
+      return Err("Unable to apply the Tray window region.".into());
+    }
+  }
+  Ok(())
 }
 
 fn panel_position(
@@ -131,9 +390,9 @@ fn panel_position(
     );
   };
   let desired_y = if anchor.y >= origin.y + area.height as i32 / 2 {
-    anchor.y - panel_height - 8
+    anchor.y - panel_height - ANCHOR_GAP
   } else {
-    anchor.y + icon.height as i32 + 8
+    anchor.y + icon.height as i32 + ANCHOR_GAP
   };
   PhysicalPosition::new(
     (anchor.x + (icon.width as i32 - panel_width) / 2).clamp(origin.x, right - panel_width),
@@ -144,6 +403,53 @@ fn panel_position(
 #[cfg(test)]
 mod tests {
   use super::*;
+
+  #[test]
+  fn picker_stays_next_to_its_trigger_and_flips_inside_the_tray_edge() {
+    let bounds = PanelRect {
+      position: PhysicalPosition::new(-1600, 0),
+      size: PhysicalSize::new(1600, 920),
+    };
+    let mut main = PanelRect {
+      position: PhysicalPosition::new(-1540, 500),
+      size: PhysicalSize::new(400, 420),
+    };
+    let spec = PickerLayout {
+      height: 256.0,
+      trigger_top: 160.0,
+    };
+    let right = picker_rect(bounds, main, spec, 1.25).unwrap();
+    assert_eq!(right.position, PhysicalPosition::new(-1132, 600));
+    assert_eq!(right.size, PhysicalSize::new(400, 320));
+    main.position.x = -400;
+    let left = picker_rect(bounds, main, spec, 1.25).unwrap();
+    assert_eq!(left.position, PhysicalPosition::new(-808, 600));
+    assert_eq!(left.bottom(), bounds.bottom());
+  }
+
+  #[test]
+  fn picker_uses_vertical_space_when_the_display_is_too_narrow() {
+    let bounds = PanelRect {
+      position: PhysicalPosition::new(0, 0),
+      size: PhysicalSize::new(420, 860),
+    };
+    let main = PanelRect {
+      position: PhysicalPosition::new(18, 460),
+      size: PhysicalSize::new(400, 400),
+    };
+    let picker = picker_rect(
+      bounds,
+      main,
+      PickerLayout {
+        height: 200.0,
+        trigger_top: 130.0,
+      },
+      1.0,
+    )
+    .unwrap();
+    assert_eq!(picker.position, PhysicalPosition::new(18, 254));
+    assert_eq!(picker.size.width, 400);
+  }
 
   #[test]
   fn tray_anchor_uses_monitor_edges_and_fallback_centers_in_available_area() {
