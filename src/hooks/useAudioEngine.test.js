@@ -4,6 +4,7 @@ import { act, renderHook, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { useRef } from "react";
 import { useAudioEngine } from "./useAudioEngine.js";
+import { useCaptureTransport } from "./useCaptureTransport.js";
 
 vi.mock("../ipc/env.js", () => ({
   isTauri: () => true,
@@ -595,6 +596,74 @@ describe("useAudioEngine", () => {
       );
     }
   );
+
+  it("starts a fresh measurement on the current endpoint when Start is selected after an input change", async () => {
+    const input = {
+      id: "cap-loopback",
+      endpointKey: "loopback-before",
+      label: "Loopback 1/2",
+      defaultSampleRate: 48000,
+      channels: 2,
+    };
+    const replacement = { ...input, endpointKey: "loopback-after" };
+    vi.mocked(listAudioDevices).mockResolvedValue([input]);
+    const intake = { beginCaptureSession: vi.fn(), reset: vi.fn(), pushFrame: vi.fn() };
+    const display = {
+      clearNotice: vi.fn(),
+      setSelectedOffset: vi.fn(),
+      setShowClock: vi.fn(),
+      clock: { startTimer: vi.fn(), stopTimer: vi.fn(), resetTimer: vi.fn() },
+    };
+    const props = {
+      captureDeviceId: input.id,
+      intake,
+      setAudio: vi.fn(),
+      raiseNotice: vi.fn(),
+      setSelectedOffset: display.setSelectedOffset,
+      setShowClock: display.setShowClock,
+      resetTimer: display.clock.resetTimer,
+      stopTimer: display.clock.stopTimer,
+    };
+    const { result } = renderHook(() => {
+      const transport = useCaptureTransport({ display, getLiveIntake: () => intake });
+      useHarness({ ...props, halt: transport.halt, transport });
+      return transport;
+    });
+
+    act(() => result.current.startLive());
+    await waitFor(() => expect(result.current.lifecycle).toBe("running"));
+    expect(startAudioCapture).toHaveBeenCalledWith(
+      expect.objectContaining({ deviceId: input.id, endpointKey: input.endpointKey })
+    );
+
+    vi.mocked(listAudioDevices).mockResolvedValue([replacement]);
+    act(() =>
+      engineEvents.state({
+        state: "error",
+        reason: "inputStreamInvalidated",
+        error: "The stream was invalidated",
+      })
+    );
+    await waitFor(() => expect(result.current.lifecycle).toBe("error"));
+    expect(result.current.lastError?.message).toContain("Select Start to retry.");
+    expect(startAudioCapture).toHaveBeenCalledOnce();
+
+    act(() => result.current.startLive());
+    await waitFor(() => expect(result.current.lifecycle).toBe("running"));
+    expect(result.current.lastError).toBeNull();
+    expect(result.current.resolvedDeviceId).toBe(input.id);
+    expect(startAudioCapture).toHaveBeenCalledTimes(2);
+    expect(startAudioCapture).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        deviceId: input.id,
+        endpointKey: replacement.endpointKey,
+        continueSession: false,
+      })
+    );
+    const restartedFrame = vi.mocked(startAudioCapture).mock.lastCall[0].onFrame;
+    act(() => restartedFrame({ seq: 0, peakDb: [-12], rmsDb: [-24] }));
+    expect(intake.pushFrame).toHaveBeenCalledOnce();
+  });
 
   it.each([
     "recovers",
