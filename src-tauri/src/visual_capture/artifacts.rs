@@ -463,18 +463,17 @@ fn format_time(value: SystemTime) -> io::Result<String> {
 }
 
 fn is_link(metadata: &fs::Metadata) -> bool {
-  if metadata.file_type().is_symlink() {
-    return true;
-  }
+  let is_symlink = metadata.file_type().is_symlink();
   #[cfg(windows)]
   {
     use std::os::windows::fs::MetadataExt;
     const FILE_ATTRIBUTE_REPARSE_POINT: u32 = 0x400;
-    if metadata.file_attributes() & FILE_ATTRIBUTE_REPARSE_POINT != 0 {
-      return true;
-    }
+    is_symlink || metadata.file_attributes() & FILE_ATTRIBUTE_REPARSE_POINT != 0
   }
-  false
+  #[cfg(not(windows))]
+  {
+    is_symlink
+  }
 }
 
 fn normalize_absolute(path: &Path) -> io::Result<PathBuf> {
