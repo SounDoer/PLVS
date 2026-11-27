@@ -115,6 +115,7 @@ after a short delay when you move away. Source groups such as **Output**, **Inpu
 and **Mixes** (when available) start collapsed and expand when selected. Long lists scroll inside
 the side menu. Selecting a Source or Preset keeps its menu open. Press **Esc** to close the side
 menu, then again to collapse the Workbench controls, then once more to dismiss the Tray menu.
+Click outside the Tray menu to dismiss it.
 Agents can inspect the menu on all three platforms and operate the PLVS panel on Windows and
 macOS using [Tray Control](cli.md#commands).
 **Settings…** brings the owning workbench forward and opens Settings. In Dock mode, it shows the

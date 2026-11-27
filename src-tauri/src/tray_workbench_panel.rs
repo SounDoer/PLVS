@@ -2,6 +2,9 @@ use std::sync::atomic::{AtomicBool, Ordering};
 
 use tauri::{Manager, PhysicalPosition, PhysicalSize, WebviewUrl, WebviewWindowBuilder};
 
+#[cfg(windows)]
+mod windows_outside_click;
+
 const LABEL: &str = "tray-workbench";
 const TRAY_ID: &str = "plvs-main-tray";
 const INITIAL_WIDTH: f64 = 320.0;
@@ -127,6 +130,8 @@ pub async fn open_tray_workbench_panel(
   let panel = panel.build().map_err(|error| error.to_string())?;
   #[cfg(target_os = "macos")]
   install_outside_click_monitor(&panel)?;
+  #[cfg(windows)]
+  windows_outside_click::install(&panel)?;
   place_panel(
     &app,
     &window,
