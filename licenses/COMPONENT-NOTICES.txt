@@ -1213,9 +1213,9 @@ PackageDownloadLocation: git+ssh://github.com/tauri-apps/tauri.git
 Creator: Person: Daniel Thompson-Yvetot
 
 ========================================================================
-npm:@tauri-apps/plugin-opener@2.7.2
+npm:@tauri-apps/plugin-opener@2.7.3
 Declared license: MIT OR Apache-2.0
-Source: https://registry.npmjs.org/@tauri-apps/plugin-opener/-/plugin-opener-2.7.2.tgz
+Source: https://registry.npmjs.org/@tauri-apps/plugin-opener/-/plugin-opener-2.7.3.tgz
 
 --- LICENSE.spdx ---
 SPDXVersion: SPDX-2.1
@@ -1267,9 +1267,9 @@ PackageDownloadLocation: git+ssh://github.com/tauri-apps/tauri.git
 Creator: Person: Daniel Thompson-Yvetot
 
 ========================================================================
-npm:@tauri-apps/plugin-store@2.5.0
+npm:@tauri-apps/plugin-store@2.5.1
 Declared license: MIT OR Apache-2.0
-Source: https://registry.npmjs.org/@tauri-apps/plugin-store/-/plugin-store-2.5.0.tgz
+Source: https://registry.npmjs.org/@tauri-apps/plugin-store/-/plugin-store-2.5.1.tgz
 
 --- LICENSE.spdx ---
 SPDXVersion: SPDX-2.1
@@ -1512,9 +1512,9 @@ SOFTWARE.
 
 
 ========================================================================
-npm:lucide-react@1.77.0
+npm:lucide-react@1.82.0
 Declared license: ISC
-Source: https://registry.npmjs.org/lucide-react/-/lucide-react-1.77.0.tgz
+Source: https://registry.npmjs.org/lucide-react/-/lucide-react-1.82.0.tgz
 
 --- LICENSE ---
 ISC License
@@ -1563,9 +1563,9 @@ SOFTWARE.
 
 
 ========================================================================
-npm:marked@18.2.1
+npm:marked@18.3.0
 Declared license: MIT
-Source: https://registry.npmjs.org/marked/-/marked-18.2.1.tgz
+Source: https://registry.npmjs.org/marked/-/marked-18.3.0.tgz
 
 --- LICENSE ---
 # License information
@@ -80372,9 +80372,9 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
 ========================================================================
-rust:tauri-plugin-log@2.10.1
+rust:tauri-plugin-log@2.10.2
 Declared license: Apache-2.0 OR MIT
-Source: https://crates.io/api/v1/crates/tauri-plugin-log/2.10.1/download
+Source: https://crates.io/api/v1/crates/tauri-plugin-log/2.10.2/download
 
 --- LICENSE.spdx ---
 SPDXVersion: SPDX-2.1
@@ -80601,9 +80601,9 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
 ========================================================================
-rust:tauri-plugin-opener@2.7.2
+rust:tauri-plugin-opener@2.7.3
 Declared license: Apache-2.0 OR MIT
-Source: https://crates.io/api/v1/crates/tauri-plugin-opener/2.7.2/download
+Source: https://crates.io/api/v1/crates/tauri-plugin-opener/2.7.3/download
 
 --- LICENSE.spdx ---
 SPDXVersion: SPDX-2.1
@@ -81059,9 +81059,9 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
 ========================================================================
-rust:tauri-plugin-store@2.5.0
+rust:tauri-plugin-store@2.5.1
 Declared license: Apache-2.0 OR MIT
-Source: https://crates.io/api/v1/crates/tauri-plugin-store/2.5.0/download
+Source: https://crates.io/api/v1/crates/tauri-plugin-store/2.5.1/download
 
 --- LICENSE.spdx ---
 SPDXVersion: SPDX-2.1
@@ -85167,9 +85167,9 @@ SOFTWARE.
 
 
 ========================================================================
-rust:tokio@1.53.3
+rust:tokio@1.54.1
 Declared license: MIT
-Source: https://crates.io/api/v1/crates/tokio/1.53.3/download
+Source: https://crates.io/api/v1/crates/tokio/1.54.1/download
 
 --- LICENSE ---
 MIT License

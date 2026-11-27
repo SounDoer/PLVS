@@ -2144,11 +2144,11 @@
       "license": "Apache-2.0 OR MIT",
       "noticeSha256": "9b5429a4da28c54c2e76c2ff87a39b9a0d80078da3183fae859a22455e6be759"
     },
-    "rust:tauri-plugin-log@2.10.1": {
+    "rust:tauri-plugin-log@2.10.2": {
       "license": "Apache-2.0 OR MIT",
       "noticeSha256": "9b5429a4da28c54c2e76c2ff87a39b9a0d80078da3183fae859a22455e6be759"
     },
-    "rust:tauri-plugin-opener@2.7.2": {
+    "rust:tauri-plugin-opener@2.7.3": {
       "license": "Apache-2.0 OR MIT",
       "noticeSha256": "9b5429a4da28c54c2e76c2ff87a39b9a0d80078da3183fae859a22455e6be759"
     },
@@ -2156,7 +2156,7 @@
       "license": "Apache-2.0 OR MIT",
       "noticeSha256": "9b5429a4da28c54c2e76c2ff87a39b9a0d80078da3183fae859a22455e6be759"
     },
-    "rust:tauri-plugin-store@2.5.0": {
+    "rust:tauri-plugin-store@2.5.1": {
       "license": "Apache-2.0 OR MIT",
       "noticeSha256": "9b5429a4da28c54c2e76c2ff87a39b9a0d80078da3183fae859a22455e6be759"
     },
@@ -2228,7 +2228,7 @@
       "license": "MIT OR Apache-2.0 OR Zlib",
       "noticeSha256": "08bfa093b3042d254f619202fd058390b7d5d444d11674d18f98068d7a4f7207"
     },
-    "rust:tokio@1.53.3": {
+    "rust:tokio@1.54.1": {
       "license": "MIT",
       "noticeSha256": "8b464877ffeb6d7741f56b00e32e0a9161256a4ed5e78dad5148a366cf99ce58"
     },
@@ -2993,7 +2993,7 @@
       "license": "MIT OR Apache-2.0",
       "noticeSha256": "08f97ba258f731d682df354fde163db4c37bc6498820e97bb5c36988388104d8"
     },
-    "npm:@tauri-apps/plugin-opener@2.7.2": {
+    "npm:@tauri-apps/plugin-opener@2.7.3": {
       "license": "MIT OR Apache-2.0",
       "noticeSha256": "08f97ba258f731d682df354fde163db4c37bc6498820e97bb5c36988388104d8"
     },
@@ -3001,7 +3001,7 @@
       "license": "MIT OR Apache-2.0",
       "noticeSha256": "08f97ba258f731d682df354fde163db4c37bc6498820e97bb5c36988388104d8"
     },
-    "npm:@tauri-apps/plugin-store@2.5.0": {
+    "npm:@tauri-apps/plugin-store@2.5.1": {
       "license": "MIT OR Apache-2.0",
       "noticeSha256": "08f97ba258f731d682df354fde163db4c37bc6498820e97bb5c36988388104d8"
     },
@@ -3037,11 +3037,11 @@
       "license": "MIT",
       "noticeSha256": "ac9b9a8a8b75db9cd836b28cfa95de6d731dfb56d5491a27afe20e17e096a9ce"
     },
-    "npm:lucide-react@1.77.0": {
+    "npm:lucide-react@1.82.0": {
       "license": "ISC",
       "noticeSha256": "f1baa6938c4a4ebf345e5bbec966787283dcd8376bc9dd2c52a6d185f3688a0d"
     },
-    "npm:marked@18.2.1": {
+    "npm:marked@18.3.0": {
       "license": "MIT",
       "noticeSha256": "71028531f9f1cff3fd8cdb6f4a233a8a363924bcae3703566466deaec898290b"
     },
@@ -3276,21 +3276,21 @@
     "npm:@keyv/serialize@1.1.1": "MIT",
     "npm:@napi-rs/wasm-runtime@1.2.2": "MIT",
     "npm:@oxc-project/types@0.156.0": "MIT",
-    "npm:@rolldown/binding-android-arm-eabi@1.2.16": "MIT",
-    "npm:@rolldown/binding-android-arm64@1.2.16": "MIT",
-    "npm:@rolldown/binding-darwin-arm64@1.2.16": "MIT",
-    "npm:@rolldown/binding-darwin-x64@1.2.16": "MIT",
-    "npm:@rolldown/binding-freebsd-x64@1.2.16": "MIT",
-    "npm:@rolldown/binding-linux-arm-gnueabihf@1.2.16": "MIT",
-    "npm:@rolldown/binding-linux-arm64-gnu@1.2.16": "MIT",
-    "npm:@rolldown/binding-linux-arm64-musl@1.2.16": "MIT",
-    "npm:@rolldown/binding-linux-ppc64-gnu@1.2.16": "MIT",
-    "npm:@rolldown/binding-linux-s390x-gnu@1.2.16": "MIT",
-    "npm:@rolldown/binding-linux-x64-gnu@1.2.16": "MIT",
-    "npm:@rolldown/binding-linux-x64-musl@1.2.16": "MIT",
-    "npm:@rolldown/binding-openharmony-arm64@1.2.16": "MIT",
-    "npm:@rolldown/binding-win32-arm64-msvc@1.2.16": "MIT",
-    "npm:@rolldown/binding-win32-x64-msvc@1.2.16": "MIT",
+    "npm:@rolldown/binding-android-arm-eabi@1.2.18": "MIT",
+    "npm:@rolldown/binding-android-arm64@1.2.18": "MIT",
+    "npm:@rolldown/binding-darwin-arm64@1.2.18": "MIT",
+    "npm:@rolldown/binding-darwin-x64@1.2.18": "MIT",
+    "npm:@rolldown/binding-freebsd-x64@1.2.18": "MIT",
+    "npm:@rolldown/binding-linux-arm-gnueabihf@1.2.18": "MIT",
+    "npm:@rolldown/binding-linux-arm64-gnu@1.2.18": "MIT",
+    "npm:@rolldown/binding-linux-arm64-musl@1.2.18": "MIT",
+    "npm:@rolldown/binding-linux-ppc64-gnu@1.2.18": "MIT",
+    "npm:@rolldown/binding-linux-s390x-gnu@1.2.18": "MIT",
+    "npm:@rolldown/binding-linux-x64-gnu@1.2.18": "MIT",
+    "npm:@rolldown/binding-linux-x64-musl@1.2.18": "MIT",
+    "npm:@rolldown/binding-openharmony-arm64@1.2.18": "MIT",
+    "npm:@rolldown/binding-win32-arm64-msvc@1.2.18": "MIT",
+    "npm:@rolldown/binding-win32-x64-msvc@1.2.18": "MIT",
     "npm:@rolldown/pluginutils@1.0.1": "MIT",
     "npm:@tailwindcss/node@4.3.5": "MIT",
     "npm:@tailwindcss/oxide-android-arm64@4.3.5": "MIT",
@@ -3481,7 +3481,7 @@
     "npm:react-is@17.0.2": "MIT",
     "npm:require-directory@2.1.1": "MIT",
     "npm:require-main-filename@2.0.0": "ISC",
-    "npm:rolldown@1.2.16": "MIT",
+    "npm:rolldown@1.2.18": "MIT",
     "npm:saxes@6.0.0": "ISC",
     "npm:semver@6.3.2": "ISC",
     "npm:semver@7.8.5": "ISC",
@@ -3512,7 +3512,7 @@
     "npm:undici@8.12.3": "MIT",
     "npm:update-browserslist-db@1.4.0": "MIT",
     "npm:uri-js@4.4.1": "BSD-2-Clause",
-    "npm:vite@8.3.6": "MIT",
+    "npm:vite@8.3.8": "MIT",
     "npm:vitest@5.1.1": "MIT",
     "npm:w3c-xmlserializer@6.0.0": "MIT",
     "npm:webidl-conversions@8.0.1": "BSD-2-Clause",
@@ -3539,7 +3539,7 @@
     "rust:autocfg@1.5.1": "Apache-2.0 OR MIT",
     "rust:cargo_toml@1.0.1": "Apache-2.0 OR MIT",
     "rust:cast@0.3.0": "MIT OR Apache-2.0",
-    "rust:cc@1.11.2": "MIT OR Apache-2.0",
+    "rust:cc@1.11.3": "MIT OR Apache-2.0",
     "rust:cfg_aliases@0.2.2": "MIT",
     "rust:cfg-expr@0.15.8": "MIT OR Apache-2.0",
     "rust:ciborium-io@0.2.2": "Apache-2.0",

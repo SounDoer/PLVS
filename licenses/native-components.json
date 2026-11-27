@@ -36,10 +36,10 @@
     "tauri-plugin-dialog@2.8.3": "Cargo links namespace / integration code; package notices retained.",
     "tauri-plugin-fs@2.7.1": "Cargo links namespace / integration code; package notices retained.",
     "tauri-plugin-global-shortcut@2.4.1": "Cargo links namespace / integration code; package notices retained.",
-    "tauri-plugin-log@2.10.1": "Cargo links namespace / integration code; package notices retained.",
-    "tauri-plugin-opener@2.7.2": "Cargo links namespace / integration code; package notices retained.",
+    "tauri-plugin-log@2.10.2": "Cargo links namespace / integration code; package notices retained.",
+    "tauri-plugin-opener@2.7.3": "Cargo links namespace / integration code; package notices retained.",
     "tauri-plugin-process@2.4.0": "Cargo links namespace / integration code; package notices retained.",
-    "tauri-plugin-store@2.5.0": "Cargo links namespace / integration code; package notices retained.",
+    "tauri-plugin-store@2.5.1": "Cargo links namespace / integration code; package notices retained.",
     "tauri-plugin-updater@2.14.1": "Cargo links namespace / integration code; package notices retained.",
     "wasm-bindgen-shared@0.2.127": "Cargo links namespace / integration code; package notices retained.",
     "webkit2gtk-sys@2.0.2": "System/platform binding; Linux uses the distribution WebKitGTK library rather than bundling it."
