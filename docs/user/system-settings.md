@@ -101,8 +101,9 @@ opens the native menu and controls submenu placement, appearance and dismissal. 
 open as submenus in the native menu. The menu includes
 **Show** and **Hide** on all three platforms.
 On Windows and macOS, the Tray menu follows the current Theme and Interface Size. It fits its visible
-options and scrolls when they exceed the available space. **Locate**, **Show** / **Hide**,
-**Start** / **Stop**, Source and Preset selection leave the menu open. **Show** and **Hide**
+options and scrolls when they exceed the available space. Dragging across menu items leaves their
+labels unselected. **Locate**, **Show** / **Hide**, **Start** / **Stop**, Source and Preset selection
+leave the menu open. **Show** and **Hide**
 update when the Workbench completes the action. Quitting another
 Workbench removes its entry while the menu stays open. Opening Settings, checking for updates,
 and opening a new Workbench dismiss the menu. Quitting the Workbench that owns the Tray or

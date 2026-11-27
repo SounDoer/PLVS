@@ -404,7 +404,7 @@ export function TrayWorkbenchPanel() {
   }
 
   return (
-    <main className="relative h-dvh overflow-hidden">
+    <main className="relative h-dvh select-none overflow-hidden">
       <nav
         ref={mainRef}
         className={SURFACE}
