@@ -109,7 +109,8 @@ Workbench removes its entry while the menu stays open. Opening Settings, checkin
 and opening a new Workbench dismiss the menu. Quitting the Workbench that owns the Tray or
 quitting PLVS closes its menu.
 On Windows and macOS, click a Workbench to expand or collapse its controls in place. The arrow
-points down when collapsed and up when expanded. Pause over **Source**, **Loudness Profile** or
+points down when collapsed and up when expanded. On macOS, the menu stays beneath the Tray icon
+on the display where you opened it. Pause over **Source**, **Loudness Profile** or
 **Preset** to open its side menu, or click to open it immediately. The side menu stays open as you
 move into it and closes after a short delay when you move away. Loudness Profile and Preset menus
 fit their names within the available width.

@@ -60,6 +60,15 @@ bool plvs_tray_status_item_geometry(const void *item, PlvsClickedIcon clicked,
     return true;
 }
 
+void plvs_tray_set_panel_frame(void *nativeWindow, double x, double y,
+                               double width, double height) {
+    NSWindow *panel = (__bridge NSWindow *)nativeWindow;
+    double desktopTop = NSMaxY(NSScreen.screens.firstObject.frame);
+    // Resizing with setContentSize: keeps the bottom edge fixed. Apply both the
+    // size and the origin so the top edge stays at the Tray anchor.
+    [panel setFrame:NSMakeRect(x, desktopTop - y - height, width, height) display:YES];
+}
+
 @interface PlvsTrayClickMonitor : NSObject
 @property(nonatomic, strong) id token;
 @end

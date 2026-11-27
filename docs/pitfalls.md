@@ -75,8 +75,10 @@ must not manage it independently.
 
 AppKit can show replicas of one status item on multiple displays while its button still belongs to
 another screen. Anchor the Tray panel to the click's screen and preserve that anchor while its
-pickers resize. Pass AppKit points in the destination screen's coordinate space so moving a reused
-WebView between backing scales does not resize the panel. AppKit can keep the panel key when a
+pickers resize. Apply the origin and size together with AppKit's frame setter in points.
+`setContentSize:` holds the bottom edge fixed, so moving the panel first would shift its top edge
+by the height change. Use the destination screen's scale when converting the layout to AppKit
+points so the size stays consistent across displays. AppKit can keep the panel key when a
 click targets another window of the same process. The local mouse monitor handles that dismissal.
 
 On Linux, the Tauri AppIndicator backend publishes a menu over D-Bus and returns no icon rectangle

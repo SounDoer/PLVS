@@ -304,6 +304,34 @@ fn install_outside_click_monitor(panel: &tauri::WebviewWindow) -> Result<(), Str
     .map_err(|error| error.to_string())
 }
 
+#[cfg(target_os = "macos")]
+fn set_panel_frame(
+  panel: &tauri::WebviewWindow,
+  position: tauri::LogicalPosition<f64>,
+  size: tauri::LogicalSize<f64>,
+) -> Result<(), String> {
+  extern "C" {
+    fn plvs_tray_set_panel_frame(
+      window: *mut std::ffi::c_void,
+      x: f64,
+      y: f64,
+      width: f64,
+      height: f64,
+    );
+  }
+  let handle = panel.clone();
+  panel
+    .run_on_main_thread(move || {
+      if let Ok(window) = handle.ns_window() {
+        // The retained WebviewWindow owns the NSWindow on this thread.
+        unsafe {
+          plvs_tray_set_panel_frame(window, position.x, position.y, size.width, size.height)
+        };
+      }
+    })
+    .map_err(|error| error.to_string())
+}
+
 fn place_panel(
   app: &tauri::AppHandle,
   _main: &tauri::WebviewWindow,
@@ -401,26 +429,27 @@ fn place_panel(
       ),
     )
   });
-  // AppKit uses the existing window's scale to convert physical setters. Supply points
-  // based on the destination screen so a status item on a different display stays anchored.
+  // Supply points in the destination screen's scale for a reused window.
   #[cfg(target_os = "macos")]
-  let (window_point, window_size) = (
+  set_panel_frame(
+    panel,
     point.to_logical::<f64>(monitor_scale),
     size.to_logical::<f64>(monitor_scale),
-  );
+  )?;
   #[cfg(not(target_os = "macos"))]
-  let (window_point, window_size) = (point, size);
   let move_window = !cfg!(windows) || panel.outer_position().ok() != Some(point);
+  #[cfg(not(target_os = "macos"))]
   let resize_window = !cfg!(windows) || panel.inner_size().ok() != Some(size);
-  if move_window {
-    panel
-      .set_position(window_point)
-      .map_err(|error| error.to_string())?;
-  }
-  if resize_window {
-    panel
-      .set_size(window_size)
-      .map_err(|error| error.to_string())?;
+  #[cfg(not(target_os = "macos"))]
+  {
+    if move_window {
+      panel
+        .set_position(point)
+        .map_err(|error| error.to_string())?;
+    }
+    if resize_window {
+      panel.set_size(size).map_err(|error| error.to_string())?;
+    }
   }
   let main = main.relative_to(point);
   let side = side.map(|side| side.relative_to(point));
