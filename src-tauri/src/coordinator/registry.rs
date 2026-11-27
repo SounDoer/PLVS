@@ -273,11 +273,20 @@ fn unix_time_ms() -> Result<u128, String> {
 #[cfg(target_os = "windows")]
 pub(crate) fn process_start_identity(pid: u32) -> Option<u64> {
   use windows_sys::Win32::{
-    Foundation::{CloseHandle, FILETIME},
-    System::Threading::{GetProcessTimes, OpenProcess, PROCESS_QUERY_LIMITED_INFORMATION},
+    Foundation::{CloseHandle, FILETIME, WAIT_TIMEOUT},
+    System::Threading::{
+      GetProcessTimes, OpenProcess, WaitForSingleObject, PROCESS_QUERY_LIMITED_INFORMATION,
+      PROCESS_SYNCHRONIZE,
+    },
   };
 
-  let handle = unsafe { OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, 0, pid) };
+  let handle = unsafe {
+    OpenProcess(
+      PROCESS_QUERY_LIMITED_INFORMATION | PROCESS_SYNCHRONIZE,
+      0,
+      pid,
+    )
+  };
   if handle.is_null() {
     return None;
   }
@@ -286,9 +295,22 @@ pub(crate) fn process_start_identity(pid: u32) -> Option<u64> {
   let mut kernel = FILETIME::default();
   let mut user = FILETIME::default();
   let result = unsafe { GetProcessTimes(handle, &mut creation, &mut exit, &mut kernel, &mut user) };
+  // A terminated process can still return its creation time while another handle references it.
+  let running = unsafe { WaitForSingleObject(handle, 0) } == WAIT_TIMEOUT;
   unsafe { CloseHandle(handle) };
-  (result != 0)
+  (result != 0 && running)
     .then(|| (u64::from(creation.dwHighDateTime) << 32) | u64::from(creation.dwLowDateTime))
+}
+
+#[cfg(all(test, target_os = "windows"))]
+#[test]
+fn exited_process_with_an_open_handle_has_no_live_identity() {
+  let mut child = std::process::Command::new("cmd.exe")
+    .args(["/d", "/c", "exit 0"])
+    .spawn()
+    .unwrap();
+  assert!(child.wait().unwrap().success());
+  assert_eq!(process_start_identity(child.id()), None);
 }
 
 #[cfg(target_os = "macos")]

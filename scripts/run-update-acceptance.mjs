@@ -487,20 +487,24 @@ async function interruptOwnedWindowsHelper(attemptFile, attempt) {
   const pid = attempt.helperPid;
   if (!Number.isInteger(pid)) throw new Error("Interrupted helper attempt recorded no helper PID");
   const executable = path.join(path.dirname(attemptFile), "plvs-update-worker.exe");
-  const actual = run(
+  run(
     "powershell.exe",
     [
       "-NoProfile",
       "-NonInteractive",
       "-Command",
-      '(Get-CimInstance Win32_Process -Filter "ProcessId=$env:PLVS_ACCEPTANCE_PID").ExecutablePath',
+      [
+        "$ErrorActionPreference = 'Stop'",
+        "$id = [int]$env:PLVS_ACCEPTANCE_PID",
+        "$process = Get-Process -Id $id",
+        'if ($process.Path -ne $env:PLVS_ACCEPTANCE_EXE) { throw "Refusing to interrupt unexpected helper process $id : $($process.Path)" }',
+        "$null = $process.Handle",
+        "Stop-Process -InputObject $process -Force",
+        'if (!$process.WaitForExit(10000)) { throw "Interrupted update helper $id did not exit" }',
+      ].join("; "),
     ],
-    { env: { PLVS_ACCEPTANCE_PID: String(pid) } }
+    { env: { PLVS_ACCEPTANCE_PID: String(pid), PLVS_ACCEPTANCE_EXE: executable } }
   );
-  if (path.resolve(actual).toLowerCase() !== path.resolve(executable).toLowerCase()) {
-    throw new Error(`Refusing to interrupt unexpected helper process ${pid}: ${actual}`);
-  }
-  run("taskkill.exe", ["/F", "/PID", String(pid)]);
 }
 
 function windowsRegistryInstallDir(productName) {
