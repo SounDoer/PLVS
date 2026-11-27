@@ -77,19 +77,18 @@ export function CloseConfirmDialog({
       }}
     >
       <DialogContent size="sm" className="overflow-y-auto" aria-describedby={undefined}>
-        <DialogTitle className="mb-2">Close PLVS?</DialogTitle>
+        <DialogTitle>Close PLVS?</DialogTitle>
         {error ? (
-          <div className="mb-3 px-2 text-[length:var(--ui-fs-control)] text-destructive">
+          <div className="mb-3 mt-2 text-[length:var(--ui-fs-control)] text-destructive">
             {error}
           </div>
-        ) : null}
-        {!error ? (
-          <>
-            <div className="mb-2 flex min-h-[var(--ui-shell-h)] items-center justify-between gap-4 rounded-md px-2">
-              <span className={ROW_LABEL_CLASS}>Close Behavior</span>
+        ) : (
+          <div className="mb-3 mt-4 flex flex-col gap-1">
+            <div className="flex min-h-[var(--ui-shell-h)] items-center justify-between gap-4">
+              <span className={ROW_LABEL_CLASS}>Close Action</span>
               <Select value={action} onValueChange={setAction}>
                 <SelectTrigger
-                  aria-label="Close behavior"
+                  aria-label="close action"
                   variant="inline"
                   className="text-popover-foreground"
                 >
@@ -102,12 +101,16 @@ export function CloseConfirmDialog({
               </Select>
             </div>
 
-            <div className="mb-3 flex min-h-[var(--ui-shell-h)] items-center justify-between gap-4 rounded-md px-2">
-              <span className={ROW_LABEL_CLASS}>Don&apos;t Ask Again</span>
-              <Switch aria-label="Don't ask again" checked={dontAsk} onCheckedChange={setDontAsk} />
+            <div className="flex min-h-[var(--ui-shell-h)] items-center justify-between gap-4">
+              <span className={ROW_LABEL_CLASS}>Remember This Choice</span>
+              <Switch
+                aria-label="remember this choice"
+                checked={dontAsk}
+                onCheckedChange={setDontAsk}
+              />
             </div>
-          </>
-        ) : null}
+          </div>
+        )}
 
         <DialogFooter>
           <Button variant="ghost" onClick={handleCancel} disabled={busy}>

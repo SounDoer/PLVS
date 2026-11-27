@@ -63,8 +63,9 @@ workbenches are open; the current coordinator owns the operating-system registra
 the saved workbench set. If a change fails to save, Settings shows an error and PLVS restores the
 saved login setting. If PLVS cannot read or apply **Open at Login** at startup, **Retry** checks
 the system setting and reapplies the saved preference when one exists. **Close Behavior** chooses whether closing the window keeps PLVS running in the system tray or quits it.
-In **Close PLVS?**, the main button shows the selected action, **Quit** or **Minimize to Tray**.
-Choosing **Don't Ask Again** updates **Close Behavior** in Settings.
+With **Ask Each Time**, **Close PLVS?** opens when you close the window. **Close Action** chooses
+**Quit** or **Minimize to Tray** for that close, and the main button shows the selected action.
+Turn on **Remember This Choice** and confirm to save the action as **Close Behavior** in Settings.
 Before either action, PLVS finishes saving pending settings. If saving fails, the window stays open
 and offers **Retry** or **Cancel**.
 If PLVS cannot hide or quit the window after saving, the close dialog offers the same retry.

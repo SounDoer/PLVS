@@ -88,6 +88,8 @@ the UI disagree, the UI on `main` wins and this file is corrected.
 | Item                       | One Loudness Profile, Preset or Theme, saved locally or shared on Sharesets                         | 条目               | project                     |
 | Quick Tour                 | The ten-step introduction offered after first launch and from Settings                              | 快速导览           | onboarding, tutorial        |
 | Settings                   | Application preferences                                                                             | 设置               |                             |
+| Close Action               | The action to take when confirming the current window close                                         | 关闭操作           |                             |
+| Remember This Choice       | Saves the selected Close Action as the default for future window closes                             | 记住此选择         |                             |
 | Portable                   | The Windows ZIP package that runs without installation                                              | 便携版             |                             |
 | Welcome to PLVS            | The first-launch choice of appearance, interface size, updates, and crash-report prompting          | 欢迎使用 PLVS      |                             |
 | Auto Check for Updates     | The Settings option that checks for updates at startup and every 12 hours                           | 自动检查更新       |                             |

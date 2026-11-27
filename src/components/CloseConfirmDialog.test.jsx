@@ -8,15 +8,19 @@ describe("CloseConfirmDialog", () => {
     render(
       <CloseConfirmDialog open={false} onConfirm={vi.fn()} onCancel={vi.fn()} onRetry={undefined} />
     );
-    expect(screen.queryByText("Close Behavior")).toBeNull();
+    expect(screen.queryByText("Close Action")).toBeNull();
   });
 
-  it("renders Close Behavior select and Don't ask again switch when open=true", () => {
+  it("renders the Close Action select and Remember This Choice switch when open", () => {
     render(
       <CloseConfirmDialog open={true} onConfirm={vi.fn()} onCancel={vi.fn()} onRetry={undefined} />
     );
-    expect(screen.getByLabelText("Close behavior")).toBeTruthy();
-    expect(screen.getByRole("switch", { name: /don't ask again/i })).toBeTruthy();
+    expect(screen.getByText("Close Action")).toBeTruthy();
+    expect(screen.getByText("Remember This Choice")).toBeTruthy();
+    expect(screen.getByLabelText("close action")).toBeTruthy();
+    expect(
+      screen.getByRole("switch", { name: "remember this choice", checked: false })
+    ).toBeTruthy();
     expect(screen.getByRole("dialog", { name: "Close PLVS?" })).toBeTruthy();
   });
 
@@ -24,7 +28,7 @@ describe("CloseConfirmDialog", () => {
     render(
       <CloseConfirmDialog open={true} onConfirm={vi.fn()} onCancel={vi.fn()} onRetry={undefined} />
     );
-    const trigger = screen.getByLabelText("Close behavior");
+    const trigger = screen.getByLabelText("close action");
     expect(trigger.textContent).toContain("Quit");
   });
 
@@ -66,10 +70,10 @@ describe("CloseConfirmDialog", () => {
     expect(onConfirm).toHaveBeenCalledWith("quit", true);
   });
 
-  it("uses the selected close behavior as the primary action label", () => {
+  it("uses the selected close action as the primary button label", () => {
     const onConfirm = vi.fn();
     render(<CloseConfirmDialog open onConfirm={onConfirm} onCancel={vi.fn()} onRetry={vi.fn()} />);
-    fireEvent.keyDown(screen.getByRole("combobox", { name: "Close behavior" }), {
+    fireEvent.keyDown(screen.getByRole("combobox", { name: "close action" }), {
       key: "ArrowDown",
     });
     fireEvent.click(screen.getByRole("option", { name: "Minimize to Tray" }));
@@ -91,7 +95,7 @@ describe("CloseConfirmDialog", () => {
     );
 
     expect(screen.getByText("The window was left open.")).toBeTruthy();
-    expect(screen.queryByLabelText("Close behavior")).toBeNull();
+    expect(screen.queryByLabelText("close action")).toBeNull();
     fireEvent.click(screen.getByText("Retry"));
     expect(onRetry).toHaveBeenCalledOnce();
     fireEvent.click(screen.getByText("Cancel"));
