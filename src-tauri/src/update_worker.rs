@@ -358,6 +358,64 @@ pub fn run(ticket_path: &Path) -> Result<(), String> {
   Ok(())
 }
 
+#[cfg(windows)]
+fn install_windows_update(
+  bytes: &[u8],
+  executable: &Path,
+  config: &tauri_plugin_updater::Config,
+  verify: impl FnOnce(&[u8]) -> tauri_plugin_updater::Result<()>,
+  on_spawn: impl FnOnce(u32) -> std::io::Result<()>,
+) -> tauri_plugin_updater::Result<()> {
+  use std::{ffi::OsStr, os::windows::process::CommandExt};
+  use tauri_plugin_updater::Error;
+
+  verify(bytes)?;
+  if !infer::app::is_exe(bytes) {
+    return Err(Error::InvalidUpdaterFormat);
+  }
+
+  let destination = tauri_plugin_updater::extract_path_from_executable(executable)?;
+  let destination = destination
+    .to_str()
+    .ok_or_else(|| std::io::Error::other("Installer destination is not valid Unicode."))?;
+  // NSIS expects a DOS or UNC destination, without Rust's extended-length prefix.
+  let destination = if let Some(unc) = destination.strip_prefix(r"\\?\UNC\") {
+    format!(r"\\{unc}")
+  } else {
+    destination
+      .strip_prefix(r"\\?\")
+      .unwrap_or(destination)
+      .to_owned()
+  };
+
+  let mode = config.windows.clone().unwrap_or_default();
+  let args: Vec<_> = mode
+    .install_mode
+    .nsis_args()
+    .iter()
+    .map(OsStr::new)
+    .chain(std::iter::once(OsStr::new("/UPDATE")))
+    .chain(mode.installer_args.iter().map(OsStr::new))
+    .collect();
+  let staging = tempfile::Builder::new().prefix("plvs-update-").tempdir()?;
+  let installer = staging.path().join("setup.exe");
+  fs::write(&installer, bytes)?;
+  let mut child = Command::new(&installer)
+    .raw_arg(args.join(OsStr::new(" ")))
+    // NSIS requires /D to be last and unquoted, including paths with spaces.
+    .raw_arg(format!("/D={destination}"))
+    .creation_flags(0x08000000)
+    .spawn()?;
+  let recorded = on_spawn(child.id());
+  // Keep the startup fence and staged installer alive even if recording failed.
+  let status = child.wait()?;
+  recorded?;
+  if !status.success() {
+    return Err(std::io::Error::other(format!("Installer exited with {status}.")).into());
+  }
+  Ok(())
+}
+
 fn install(app: &tauri::AppHandle, cache: &UpdateCache, ticket: &Ticket) -> Result<(), String> {
   let gate = InstallGate::claim(cache.root())?;
   let (ready, bytes) = cache.load(&ticket.package_id)?;
@@ -368,10 +426,10 @@ fn install(app: &tauri::AppHandle, cache: &UpdateCache, ticket: &Ticket) -> Resu
     .build()
     .map_err(|e| e.to_string())?;
   let update = updater
-    .from_manifest(ready.manifest)
+    .restore_update(ready.manifest)
     .map_err(|e| e.to_string())?
     .ok_or("The staged version is no longer newer.")?;
-  update.verify_cached(&bytes).map_err(|e| e.to_string())?;
+  update.verify(&bytes).map_err(|e| e.to_string())?;
   if ready.version != update.version {
     return Err("Cached update version metadata is inconsistent.".into());
   }
@@ -405,13 +463,31 @@ fn install(app: &tauri::AppHandle, cache: &UpdateCache, ticket: &Ticket) -> Resu
     save_attempt(cache.root(), &attempt)?;
     pause_for_acceptance_interruption(cache.root())?;
     #[cfg(windows)]
-    let result = update.install_waited_verified(&bytes, |pid| {
-      attempt.installer_pid = Some(pid);
-      attempt.installer_start = crate::coordinator::registry::process_start_identity(pid);
-      save_attempt(cache.root(), &attempt).map_err(std::io::Error::other)
-    });
+    let result = {
+      let config: tauri_plugin_updater::Config = serde_json::from_value(
+        app
+          .config()
+          .plugins
+          .0
+          .get("updater")
+          .cloned()
+          .ok_or("Missing updater configuration.")?,
+      )
+      .map_err(|e| e.to_string())?;
+      install_windows_update(
+        &bytes,
+        &ticket.target,
+        &config,
+        |bytes| update.verify(bytes),
+        |pid| {
+          attempt.installer_pid = Some(pid);
+          attempt.installer_start = crate::coordinator::registry::process_start_identity(pid);
+          save_attempt(cache.root(), &attempt).map_err(std::io::Error::other)
+        },
+      )
+    };
     #[cfg(target_os = "macos")]
-    let result = update.install_verified(&bytes);
+    let result = update.install(&bytes);
     #[cfg(target_os = "linux")]
     let result = crate::linux_update::install(
       cache,
@@ -456,6 +532,80 @@ fn install(app: &tauri::AppHandle, cache: &UpdateCache, ticket: &Ticket) -> Resu
 #[cfg(test)]
 mod tests {
   use super::*;
+
+  #[cfg(windows)]
+  #[test]
+  #[ignore = "Runs only the isolated NSIS fixture built by scripts/probe-cached-updater.mjs"]
+  fn windows_cached_installer_probe() {
+    use base64::{engine::general_purpose::STANDARD, Engine};
+    use minisign_verify::{PublicKey, Signature};
+
+    let root =
+      PathBuf::from(std::env::var_os("PLVS_UPDATER_PROBE_ROOT").expect("isolated probe root"));
+    assert!(root.join("isolated-probe.marker").is_file());
+    let target = root.join("nondefault installation with spaces");
+    fs::create_dir_all(&target).unwrap();
+    let executable = target.canonicalize().unwrap().join("PLVS.exe");
+    let config = serde_json::from_value(serde_json::json!({
+      "pubkey": "",
+      "windows": { "installerArgs": ["/TEST-CUSTOM"] }
+    }))
+    .unwrap();
+    let decode = |name| {
+      let text = fs::read_to_string(root.join(name)).unwrap();
+      String::from_utf8(STANDARD.decode(text.trim()).unwrap()).unwrap()
+    };
+    let key = PublicKey::decode(&decode("probe.key.pub")).unwrap();
+    let signature = Signature::decode(&decode("probe.exe.sig")).unwrap();
+    let verify = |bytes: &[u8]| {
+      key
+        .verify(bytes, &signature, true)
+        .map_err(std::io::Error::other)?;
+      Ok(())
+    };
+    let bytes = fs::read(root.join("probe.exe")).unwrap();
+    let started = Instant::now();
+    let mut pid = None;
+    install_windows_update(&bytes, &executable, &config, verify, |child| {
+      pid = Some(child);
+      Ok(())
+    })
+    .unwrap();
+    assert!(pid.is_some());
+    assert!(started.elapsed().as_millis() >= 600);
+    assert_eq!(
+      fs::read_to_string(target.join("installed-version.txt")).unwrap(),
+      "2.0.0"
+    );
+    let args = fs::read_to_string(target.join("installer-arguments.txt")).unwrap();
+    assert!(args.contains("/UPDATE"), "{args}");
+    assert!(args.contains("/TEST-CUSTOM"), "{args}");
+    assert!(!args.split_whitespace().any(|arg| arg == "/R"), "{args}");
+
+    let mut damaged = bytes.clone();
+    *damaged.last_mut().unwrap() ^= 1;
+    assert!(
+      install_windows_update(&damaged, &executable, &config, verify, |_| {
+        panic!("tampered installer spawned")
+      })
+      .is_err()
+    );
+    let started = Instant::now();
+    let error = install_windows_update(&bytes, &executable, &config, verify, |_| {
+      Err(std::io::Error::other("recording failed"))
+    })
+    .unwrap_err();
+    assert!(error.to_string().contains("recording failed"), "{error}");
+    assert!(started.elapsed().as_millis() >= 600);
+
+    fs::write(target.join("fail.marker"), b"fail").unwrap();
+    let error =
+      install_windows_update(&bytes, &executable, &config, verify, |_| Ok(())).unwrap_err();
+    assert!(
+      error.to_string().contains("Installer exited with"),
+      "{error}"
+    );
+  }
 
   #[cfg(target_os = "macos")]
   #[test]

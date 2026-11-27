@@ -1163,10 +1163,6 @@
       "license": "MIT OR Apache-2.0",
       "noticeSha256": "b5745472f7aa85eaf7e0ebf7870bd1f1c54e2fe051664b606da65e5368690a57"
     },
-    "rust:minisign-verify@0.2.5": {
-      "license": "MIT",
-      "noticeSha256": "c938a6625b8c50f4678b04bde255d066933f1febd9a9e3e328aceff22b445d8b"
-    },
     "rust:minisign-verify@0.3.0": {
       "license": "MIT",
       "noticeSha256": "c938a6625b8c50f4678b04bde255d066933f1febd9a9e3e328aceff22b445d8b"
@@ -2164,7 +2160,7 @@
       "license": "Apache-2.0 OR MIT",
       "noticeSha256": "9b5429a4da28c54c2e76c2ff87a39b9a0d80078da3183fae859a22455e6be759"
     },
-    "rust:tauri-plugin-updater@2.13.2": {
+    "rust:tauri-plugin-updater@2.14.1": {
       "license": "Apache-2.0 OR MIT",
       "noticeSha256": "9b5429a4da28c54c2e76c2ff87a39b9a0d80078da3183fae859a22455e6be759"
     },

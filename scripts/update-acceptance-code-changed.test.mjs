@@ -19,7 +19,6 @@ describe("update acceptance change classification", () => {
         "src-tauri/src/update_worker.rs",
         "src-tauri/src/linux_update.rs",
         "src-tauri/linux-update-installer",
-        "src-tauri/vendor/tauri-plugin-updater",
         "src-tauri/tauri.windows.conf.json",
         "scripts/prepare-macos-signing.sh",
       ])
@@ -27,11 +26,11 @@ describe("update acceptance change classification", () => {
     expect(UPDATE_ACCEPTANCE_PATHS).not.toContain("scripts/run-release-gate.mjs");
     expect(
       filterUpdateAcceptancePaths([
-        "src-tauri/vendor/tauri-plugin-updater/src/updater.rs",
+        "src-tauri/src/update_worker.rs",
         "scripts/run-update-acceptance.mjs",
         "src/components/LevelMeter.jsx",
       ])
-    ).toEqual(["src-tauri/vendor/tauri-plugin-updater/src/updater.rs"]);
+    ).toEqual(["src-tauri/src/update_worker.rs"]);
   });
 
   it("watches the acceptance harness only when asked, as the scheduled run does", () => {
@@ -88,6 +87,27 @@ describe("update acceptance change classification", () => {
         '!define PLVS_AGENT_VERSION "1.0.1"\n!macro NSIS_HOOK_POSTINSTALL\n!macroend\n'
       )
     );
+  });
+
+  it("guards the official updater's requirements, features, and resolved version", () => {
+    const manifest = (appVersion, updater) =>
+      `[workspace.package]\nversion = "${appVersion}"\n[dependencies]\n${updater}\n`;
+    const registry = 'tauri-plugin-updater = { version = "2.14.1", default-features = false }';
+    const normalizeManifest = (contents) =>
+      normalizeUpdateAcceptanceContent("src-tauri/Cargo.toml", contents);
+    expect(normalizeManifest(manifest("1.0.0", registry))).toBe(
+      normalizeManifest(manifest("1.0.1", registry))
+    );
+    expect(normalizeManifest(manifest("1.0.0", registry))).not.toBe(
+      normalizeManifest(manifest("1.0.0", registry.replace("false", "true")))
+    );
+
+    const lock = (appVersion, updaterVersion) =>
+      `[[package]]\nname = "plvs"\nversion = "${appVersion}"\n\n[[package]]\nname = "tauri-plugin-updater"\nversion = "${updaterVersion}"\n`;
+    const normalizeLock = (contents) =>
+      normalizeUpdateAcceptanceContent("src-tauri/Cargo.lock", contents);
+    expect(normalizeLock(lock("1.0.0", "2.14.1"))).toBe(normalizeLock(lock("1.0.1", "2.14.1")));
+    expect(normalizeLock(lock("1.0.0", "2.14.1"))).not.toBe(normalizeLock(lock("1.0.0", "2.14.2")));
   });
 
   it("compares with an explicit baseline commit instead of the last release tag", () => {

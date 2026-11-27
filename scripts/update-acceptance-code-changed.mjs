@@ -33,7 +33,6 @@ export const UPDATE_ACCEPTANCE_PATHS = [
   "src-tauri/tauri.macos.conf.json",
   "src-tauri/tauri.no-updater.conf.json",
   "src-tauri/tauri.windows.conf.json",
-  "src-tauri/vendor/tauri-plugin-updater",
   "scripts/build-linux-deb.mjs",
   "scripts/build-updater-manifest.mjs",
   "scripts/notarize-macos-dmg.sh",
@@ -64,6 +63,8 @@ export const UPDATE_ACCEPTANCE_HARNESS_PATHS = [
   "scripts/verify-update-acceptance.mjs",
 ];
 export const UPDATE_ACCEPTANCE_CONTENT_PATHS = [
+  "src-tauri/Cargo.toml",
+  "src-tauri/Cargo.lock",
   "src-tauri/nsis/installer-hooks.nsh",
   "src-tauri/tauri.conf.json",
 ];
@@ -78,6 +79,16 @@ export function filterUpdateAcceptancePaths(paths, { includeHarness = false } = 
 }
 
 export function normalizeUpdateAcceptanceContent(file, contents) {
+  if (file === "src-tauri/Cargo.toml") {
+    return contents.match(/^tauri-plugin-updater\s*=.*$/gm)?.join("\n") ?? "";
+  }
+  if (file === "src-tauri/Cargo.lock") {
+    return contents
+      .split(/^\[\[package\]\]\r?$/m)
+      .filter((entry) => /^name = "tauri-plugin-updater"\r?$/m.test(entry))
+      .map((entry) => entry.trim())
+      .join("\n");
+  }
   if (file === "src-tauri/nsis/installer-hooks.nsh") {
     return contents.replace(/^!define PLVS_AGENT_VERSION ".*"\r?\n/m, "").trim();
   }

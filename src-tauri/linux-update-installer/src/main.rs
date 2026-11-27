@@ -339,8 +339,7 @@ mod installer {
 
     #[test]
     fn authenticated_bytes_are_bound_to_the_announced_version() {
-      let bytes =
-        include_bytes!("../../vendor/tauri-plugin-updater/tests/fixtures/cached-package.bin");
+      let bytes = include_bytes!("../tests/fixtures/cached-package.bin");
       let mut ticket = Ticket {
         package_path: "/tmp/package".into(),
         package_sha256: Sha256::digest(bytes)
@@ -348,14 +347,11 @@ mod installer {
           .map(|byte| format!("{byte:02x}"))
           .collect(),
         version: "0.22.0".into(),
-        signature: include_str!(
-          "../../vendor/tauri-plugin-updater/tests/fixtures/cached-package.sig"
-        )
-        .trim()
-        .into(),
+        signature: include_str!("../tests/fixtures/cached-package.sig")
+          .trim()
+          .into(),
       };
-      let public_key =
-        include_str!("../../vendor/tauri-plugin-updater/tests/fixtures/cached-package.pub").trim();
+      let public_key = include_str!("../tests/fixtures/cached-package.pub").trim();
 
       verify_package_with_key(&ticket, bytes, public_key).unwrap();
       let mut damaged = bytes.to_vec();

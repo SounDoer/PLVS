@@ -40,14 +40,14 @@
     "tauri-plugin-opener@2.7.2": "Cargo links namespace / integration code; package notices retained.",
     "tauri-plugin-process@2.4.0": "Cargo links namespace / integration code; package notices retained.",
     "tauri-plugin-store@2.5.0": "Cargo links namespace / integration code; package notices retained.",
-    "tauri-plugin-updater@2.13.2": "Cargo links namespace / integration code; package notices retained.",
+    "tauri-plugin-updater@2.14.1": "Cargo links namespace / integration code; package notices retained.",
     "wasm-bindgen-shared@0.2.127": "Cargo links namespace / integration code; package notices retained.",
     "webkit2gtk-sys@2.0.2": "System/platform binding; Linux uses the distribution WebKitGTK library rather than bundling it."
   },
   "inputs": [
     {
       "path": "src-tauri/Cargo.toml",
-      "sha256": "2b62fb5aba8e6e9ecabd64b8a12327e4597925693d3483ba8e9e25c2315665a8"
+      "sha256": "cd327963babf4fb5a6367f87df045b0a3b4464699679424c78268abc37cf8616"
     },
     {
       "path": "scripts/fetch-ffmpeg-sidecar.mjs",

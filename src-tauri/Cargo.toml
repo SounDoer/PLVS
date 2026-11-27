@@ -1,5 +1,5 @@
 [workspace]
-members = ["linux-update-installer", "plvs-cli", "vendor/tauri-plugin-updater"]
+members = ["linux-update-installer", "plvs-cli"]
 exclude = ["vendor/ort-sys", "vendor/voice_activity_detector"]
 resolver = "2"
 
@@ -77,7 +77,8 @@ rubato = "5.0"
 # otherwise keep re-bumping time to the broken release. The `=` constraint makes the pin stick.
 time = { version = "=0.3.55", features = ["formatting"] }
 tauri-plugin-dialog = "2.7.1"
-tauri-plugin-updater = { path = "vendor/tauri-plugin-updater" }
+# PLVS installs raw NSIS executables and Debian packages. The macOS tar reader is unconditional.
+tauri-plugin-updater = { version = "2.14.1", default-features = false, features = ["rustls-tls", "system-proxy"] }
 firered-vad = "0.1.0"
 ort = { version = "=2.0.0-rc.12", default-features = false }
 futures-util = "0.3"
@@ -119,6 +120,7 @@ gtk = "0.18"
 
 [target.'cfg(target_os = "windows")'.dependencies]
 image = { version = "0.25", default-features = false, features = ["png"] }
+infer = "0.22"
 webview2-com = "0.39.1"
 windows-capture = "2.0.1"
 windows = { version = "0.62.2", features = [
@@ -170,6 +172,9 @@ inherits = "release"
 
 [dev-dependencies]
 criterion = { version = "0.8.2", default-features = false, features = ["cargo_bench_support"] }
+
+[target.'cfg(target_os = "windows")'.dev-dependencies]
+minisign-verify = "0.3"
 
 [[bench]]
 name = "spectral_fft_count"

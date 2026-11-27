@@ -67,6 +67,13 @@ The persistence comparison uses the older app's snapshot after it relaunches wit
 preferences and downloads the update. After installation, the runner compares settings and workspace
 with that snapshot and reports the names of changed fields on failure.
 
+The registry Tauri updater restores cached manifests and verifies the package signature and signed
+version. On macOS it also installs the verified bundle. On Windows the PLVS helper starts the
+verified NSIS executable, records its process identity, and holds the startup fence until the
+installer exits. The helper then records the result and owns the relaunch. Run
+`node scripts/probe-cached-updater.mjs` on Windows to exercise that handoff with a signed disposable
+installer before running packaged update acceptance.
+
 Stable releases call `update-acceptance.yml`. When the product update chain changed
 (`UPDATE_ACCEPTANCE_PATHS` in `scripts/update-acceptance-code-changed.mjs`), its
 self-hosted Windows, macOS and Linux jobs build and run the exact commit, export evidence without
@@ -352,8 +359,8 @@ How users reach a version:
   (`plugins.updater.endpoints` in `src-tauri/tauri.conf.json`). GitHub resolves `releases/latest`
   to the release carrying the Latest mark, so moving the mark changes the manifest every installed
   app sees on its next check.
-- PLVS sets no version comparator, so the vendored updater (`src-tauri/vendor/tauri-plugin-updater`)
-  offers a release only when its version is greater than the running one. There is no downgrade.
+- PLVS uses the Tauri updater's default version comparison and leaves downgrades disabled. The
+  updater offers a release only when its version is greater than the running one.
 - The homepage download links and guide share the published website's product revision. Moving
   GitHub's Latest mark changes the updater feed. Redeploy the website to change its download links
   and guide. See [website publication](website-and-sharesets.md#website-checks-and-independent-publication).

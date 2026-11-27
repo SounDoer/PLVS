@@ -226,7 +226,7 @@ fn read_update_status(app: &tauri::AppHandle) -> Result<UpdateStatus, String> {
     let updater = app.updater().map_err(|e| e.to_string())?;
     runtime.cache.verify_ready(|candidate, bytes| {
       let update = updater
-        .from_manifest(candidate.manifest.clone())
+        .restore_update(candidate.manifest.clone())
         .map_err(|error| Some(error.to_string()))?
         .ok_or(None)?;
       if candidate.version != update.version {
@@ -235,7 +235,7 @@ fn read_update_status(app: &tauri::AppHandle) -> Result<UpdateStatus, String> {
         ));
       }
       update
-        .verify_cached(bytes)
+        .verify(bytes)
         .map_err(|error| Some(error.to_string()))
     })?
   };
@@ -393,7 +393,7 @@ pub async fn update_download(
       if automatic {
         automatic_allowed(&task_app, true)?;
       }
-      candidate.verify_cached(&bytes).map_err(|e| e.to_string())?;
+      candidate.verify(&bytes).map_err(|e| e.to_string())?;
       cache.publish_verified(generation, candidate.version, candidate.raw_json, &bytes)
     },
     registration,
@@ -465,10 +465,10 @@ pub async fn update_prepare_install(
     let update = app
       .updater()
       .map_err(|e| e.to_string())?
-      .from_manifest(ready.manifest)
+      .restore_update(ready.manifest)
       .map_err(|e| e.to_string())?
       .ok_or("The update is no longer newer.")?;
-    update.verify_cached(&bytes).map_err(|e| e.to_string())?;
+    update.verify(&bytes).map_err(|e| e.to_string())?;
     if ready.version != update.version {
       return Err("Cached update version metadata is inconsistent.".into());
     }

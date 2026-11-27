@@ -34,6 +34,10 @@ Section
   SetErrorLevel 2
   Quit
   approved:
+  IfFileExists "$INSTDIR\\fail.marker" 0 proceed
+  SetErrorLevel 7
+  Quit
+  proceed:
   CreateDirectory "$INSTDIR"
   Sleep 700
   FileOpen $0 "$INSTDIR\\installed-version.txt" w
@@ -76,10 +80,9 @@ const result = run(
     "--manifest-path",
     "src-tauri/Cargo.toml",
     "-p",
-    "tauri-plugin-updater",
+    "plvs",
+    "--lib",
     "--locked",
-    "--target-dir",
-    "src-tauri/target/updater-probe",
     "windows_cached_installer_probe",
     "--",
     "--ignored",
