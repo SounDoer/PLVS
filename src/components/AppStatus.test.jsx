@@ -1,5 +1,5 @@
 /** @vitest-environment jsdom */
-import { fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import { AppStatusPopover, AppStatusList } from "./AppStatus.jsx";
 import { buildAppStatusItems } from "../lib/appStatus.js";
@@ -53,7 +53,7 @@ describe("status details", () => {
     expect(screen.queryByRole("button", { name: /status:/ })).toBeNull();
   });
 
-  it("opens the complete list from a counted summary, routes actions, and closes on Escape", () => {
+  it("opens the complete list, routes actions, and restores trigger focus on Escape", async () => {
     const onAction = vi.fn();
     const items = buildAppStatusItems({
       layoutUnknown: true,
@@ -70,9 +70,13 @@ describe("status details", () => {
     fireEvent.click(screen.getByRole("button", { name: /status:.*2 notices/i }));
     fireEvent.click(screen.getByRole("button", { name: "View Update Details" }));
     expect(onAction).toHaveBeenCalledWith("update");
-    fireEvent.click(screen.getByRole("button", { name: /status:.*2 notices/i }));
-    fireEvent.keyDown(screen.getByRole("dialog"), { key: "Escape" });
+    const summary = screen.getByRole("button", { name: /status:.*2 notices/i });
+    fireEvent.click(summary);
+    const action = screen.getByRole("button", { name: "Open Channels" });
+    action.focus();
+    fireEvent.keyDown(action, { key: "Escape" });
     expect(screen.queryByRole("region", { name: "status details" })).toBeNull();
+    await waitFor(() => expect(document.activeElement).toBe(summary));
   });
   it("offers troubleshooting alongside the channel settings action", () => {
     const onHelp = vi.fn();

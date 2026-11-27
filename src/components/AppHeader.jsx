@@ -10,6 +10,7 @@ import {
   Trash2,
   Volume2,
 } from "lucide-react";
+import { useRef } from "react";
 import { HoverTip } from "./HoverTip.jsx";
 import { IconButton } from "./IconButton.jsx";
 import { SourceTransportCluster } from "./SourceTransportCluster.jsx";
@@ -151,6 +152,9 @@ export function AppHeader({
   onExportLibraryItem = () => {},
   setSettingsOpen,
 }) {
+  const focusChannelsOnOpen = useRef(false);
+  const sourcesAvailable =
+    audioDevices.length > 0 || captureApplications.length > 0 || sourceMixes?.supported;
   const menuProps = (/** @type {string} */ menu) => ({
     open: openMenu === menu,
     onOpenChange: (/** @type {boolean} */ open) => onMenuOpenChange(menu, open),
@@ -185,7 +189,15 @@ export function AppHeader({
       <AppStatusPopover
         requestedOpen={statusOpen || openMenu === "status"}
         items={statusItems}
-        onAction={onStatusAction}
+        onAction={(action) => {
+          focusChannelsOnOpen.current =
+            action === "channels" &&
+            !!onStatusAction &&
+            isTauriApp &&
+            sourceMode === "live" &&
+            !!sourcesAvailable;
+          onStatusAction?.(action);
+        }}
         onHelp={onStatusHelp}
         onOpenChange={(open) => onMenuOpenChange("status", open)}
       />
@@ -237,13 +249,7 @@ export function AppHeader({
             <Popover
               open={openMenu === "sources"}
               onOpenChange={(open) => {
-                if (
-                  open &&
-                  !audioDevices.length &&
-                  !captureApplications.length &&
-                  !sourceMixes?.supported
-                )
-                  return;
+                if (open && !sourcesAvailable) return;
                 onMenuOpenChange("sources", open);
               }}
             >
@@ -256,9 +262,7 @@ export function AppHeader({
                     tip="Sources"
                     data-tour-target="sources"
                     data-ui-target="toolbar:sources"
-                    disabled={
-                      !audioDevices.length && !captureApplications.length && !sourceMixes?.supported
-                    }
+                    disabled={!sourcesAvailable}
                     className={TOOLBAR_TRIGGER_OPEN_CLASS}
                   />
                 </span>
@@ -267,6 +271,11 @@ export function AppHeader({
                 align="end"
                 sideOffset={6}
                 className={SOURCES_POPOVER_CLASS}
+                onOpenAutoFocus={(event) => {
+                  // Open Channels hands keyboard focus to the first control in Sources.
+                  if (!focusChannelsOnOpen.current) event.preventDefault();
+                  focusChannelsOnOpen.current = false;
+                }}
                 onCloseAutoFocus={(event) => {
                   if (sourceMixes?.draft) event.preventDefault();
                 }}

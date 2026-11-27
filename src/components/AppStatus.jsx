@@ -156,13 +156,22 @@ export function AppStatusPopover({ items, onAction, onHelp, onOpenChange, reques
   }, [open, items.length, changeOpen]);
   if (!items.length) return null;
   return (
-    <Popover open={open} onOpenChange={changeOpen}>
+    <Popover
+      open={open}
+      onOpenChange={(value) => {
+        if (value !== open) changeOpen(value);
+      }}
+    >
       <PopoverTrigger asChild>
         <AppStatusSummary data-ui-target="toolbar:status" items={items} />
       </PopoverTrigger>
       <PopoverContent
         align="end"
         className="w-[var(--ui-surface-status-w)] max-w-[calc(100vw-1rem)] p-0"
+        onCloseAutoFocus={(event) => {
+          // An action such as Open Channels can move focus before Status finishes closing.
+          if (document.activeElement !== document.body) event.preventDefault();
+        }}
       >
         <AppStatusList
           items={items}

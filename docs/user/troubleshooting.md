@@ -72,8 +72,9 @@ PLVS is receiving audio, but it could not identify the channel roles. Loudness
 uses channels 1 and 2 until the layout is set. True Peak Max still covers every
 captured channel.
 
-In Live, select **Open Channels** in Status to set the layout or assign the roles that match your
-source. In File mode, hover over the warning next to the file name to see the calculation limit.
+In Live, select **Open Channels** in Status. This opens **Sources** with **Channels** expanded so
+you can set the layout or assign the roles that match your source. In File mode, hover over the
+warning next to the file name to see the calculation limit.
 See [Multichannel](multichannel.md) for details.
 
 ## <span id="channel-layout-inferred"></span> Channel layout is inferred

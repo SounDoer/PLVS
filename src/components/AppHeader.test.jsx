@@ -1,9 +1,11 @@
 /** @vitest-environment jsdom */
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { fireEvent, render, screen, within } from "@testing-library/react";
+import { act, fireEvent, render, screen, within } from "@testing-library/react";
+import { useState } from "react";
 
 import { AppHeader } from "./AppHeader.jsx";
 import { useToolbarMenuNavigation } from "../uiNavigation/useToolbarMenuNavigation.js";
+import { buildAppStatusItems } from "../lib/appStatus.js";
 
 vi.mock("../workspace/WorkspaceToolbar.jsx", () => ({
   ModulesPopoverContent: () => (
@@ -87,6 +89,7 @@ function renderHeader(overrides = {}) {
  * @param {any} props
  */
 function HeaderWithMenus({ holdFocusControls = vi.fn(), onRefreshSources, ...props }) {
+  const [channelsExpanded, setChannelsExpanded] = useState(false);
   const toolbarMenu = useToolbarMenuNavigation({
     docked: false,
     settingsOpen: false,
@@ -103,6 +106,15 @@ function HeaderWithMenus({ holdFocusControls = vi.fn(), onRefreshSources, ...pro
       {...props}
       openMenu={toolbarMenu.openMenu}
       onMenuOpenChange={toolbarMenu.changeMenu}
+      sourceChannels={
+        props.sourceChannels && { ...props.sourceChannels, expanded: channelsExpanded }
+      }
+      onStatusAction={(action) => {
+        if (action === "channels") {
+          setChannelsExpanded(true);
+          toolbarMenu.changeMenu("sources", true);
+        }
+      }}
     />
   );
 }
@@ -168,6 +180,38 @@ describe("AppHeader", () => {
     expect(screen.getByRole("button", { name: "Microphone (USB Interface)" })).toBeTruthy();
     expect(within(speakers).getByText("Speakers")).toBeTruthy();
     expect(within(speakers).getByText("Realtek USB Audio")).toBeTruthy();
+  });
+
+  it("keeps Sources open and focused on Channels after Status closes", async () => {
+    renderHeader({
+      statusItems: buildAppStatusItems({ layoutUnknown: true }),
+      sourceChannels: {
+        channelCount: 3,
+        roles: ["L", "R", "generic"],
+        layoutId: null,
+        locked: false,
+        canReset: false,
+        onLayout: vi.fn(),
+        onRole: vi.fn(),
+        onReset: vi.fn(),
+        onExpandedChange: vi.fn(),
+      },
+    });
+
+    const status = screen.getByRole("button", { name: "status: Channel Layout Unknown" });
+    status.focus();
+    fireEvent.click(status);
+    const action = screen.getByRole("button", { name: "Open Channels" });
+    action.focus();
+    fireEvent.click(action);
+    expect(screen.getByText("Sources")).toBeTruthy();
+
+    // Radix restores focus on a timer after the outgoing popover unmounts.
+    await act(() => new Promise((resolve) => setTimeout(resolve, 0)));
+    expect(screen.queryByRole("region", { name: "status details" })).toBeNull();
+    const channels = screen.getByRole("button", { name: "Channels", expanded: true });
+    expect(document.activeElement).toBe(channels);
+    expect(screen.getByRole("combobox", { name: "channel 3 role" })).toBeTruthy();
   });
 
   it("lists running applications and refreshes sources when the picker opens", () => {
