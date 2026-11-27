@@ -23,7 +23,8 @@ when applicable.
   [Workbench Control](workbench.md).
 - `tray close` dismisses the panel.
 - `visual screenshot --target tray` captures the open panel, including its picker in the same
-  WebView. It is unavailable while the panel is closed.
+  WebView. The image is cropped to the visible menu bounds. It is unavailable while the panel is
+  closed.
 
 Use the revision and `uiGeneration` returned by **Tray Control** for these actions and optional
 screenshot guards. The Tray generation covers menu state and presentation independently of the

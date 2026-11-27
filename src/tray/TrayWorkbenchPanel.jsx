@@ -5,6 +5,8 @@ import { emitTo, listen } from "@tauri-apps/api/event";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { ChevronDown, ChevronRight, ChevronUp } from "lucide-react";
 import { MenuRow } from "../components/ui/row.jsx";
+import { PresetOptionContent } from "../components/PresetOptionContent.jsx";
+import { SourceGroupHeading, SourceOptionContent } from "../components/SourceOptionContent.jsx";
 import { POPOVER_SURFACE_CLASS } from "../components/ui/surfaceStyles.js";
 import { installKeyboardNavigationTracking } from "../lib/keyboardNavigation.js";
 import { cn } from "../lib/utils.js";
@@ -24,27 +26,48 @@ import {
 
 /** @typedef {import("./trayWorkbenchProtocol.js").TrayPanelItem} TrayPanelItem */
 /** @typedef {{ left: number, top: number, width: number, height: number }} Bounds */
-/** @typedef {{ main: Bounds, side: Bounds | null }} PanelLayout */
+/** @typedef {{ main: Bounds, side: Bounds | null, clipRevision?: number | null, viewport?: { width: number, height: number } }} PanelLayout */
 
 const SURFACE = cn(POPOVER_SURFACE_CLASS, "absolute overflow-x-hidden overflow-y-auto");
-const ROW = "focus:bg-ui-hover disabled:pointer-events-none disabled:text-muted-foreground";
+const ROW = "disabled:pointer-events-none disabled:text-muted-foreground";
 const CHEVRON = "size-[1em] shrink-0 text-muted-foreground";
+const PICKER_HEIGHT_LIMIT = "max-h-[calc(9*var(--ui-row-h)+10px)]";
+const PRESET_MEASUREMENT_WIDTH =
+  "w-max min-w-[12em] max-w-[var(--ui-surface-compact-w)] text-[length:var(--ui-fs-control)]";
 const PICKER_OPEN_DELAY_MS = 200;
 const PICKER_CLOSE_DELAY_MS = 350;
 const initialBounds = { left: 0, top: 0, width: "var(--ui-surface-compact-w)", height: "100dvh" };
 
-/** @param {{ item: TrayPanelItem, onAction: (item: TrayPanelItem) => void }} props */
-function ChoiceRow({ item, onAction }) {
+/** @param {{ item: TrayPanelItem, preset?: boolean, onAction: (item: TrayPanelItem) => void }} props */
+function ChoiceRow({ item, preset, onAction }) {
+  const choice = item.kind === "check";
+  const selected = Boolean(item.checked);
+  const primary = item.display?.primary ?? item.text;
   return (
     <MenuRow
-      className={cn(ROW, item.checked && "bg-ui-hover font-medium")}
-      aria-pressed={item.kind === "check" ? Boolean(item.checked) : undefined}
+      className={ROW}
+      aria-pressed={choice ? selected : undefined}
+      aria-label={item.display?.secondary || item.display?.modified ? item.text : undefined}
       disabled={item.enabled === false}
       onClick={() => onAction(item)}
     >
-      <span className="truncate" title={item.text}>
-        {item.text}
-      </span>
+      {choice ? (
+        preset ? (
+          <PresetOptionContent
+            name={primary}
+            selected={selected}
+            modified={item.display?.modified}
+          />
+        ) : (
+          <SourceOptionContent
+            primary={primary}
+            secondary={item.display?.secondary}
+            selected={selected}
+          />
+        )
+      ) : (
+        <span className="truncate">{item.text}</span>
+      )}
     </MenuRow>
   );
 }
@@ -62,19 +85,14 @@ function SourceGroup({ item, open, toggle, onAction }) {
         aria-controls={id}
         onClick={() => toggle(item.key)}
       >
-        <ChevronRight aria-hidden="true" className={cn(CHEVRON, open && "rotate-90")} />
-        <span className="shrink-0 font-medium text-muted-foreground">{item.text}</span>
-        {!open && selected && (
-          <span className="min-w-0 truncate" title={selected.text}>
-            {selected.text}
-            <span className="sr-only">, selected</span>
-          </span>
-        )}
-        <span className="ml-auto text-[length:var(--ui-fs-caption)] tabular-nums text-muted-foreground">
-          {choices.length}
-        </span>
+        <SourceGroupHeading
+          label={item.text}
+          count={choices.length}
+          open={open}
+          selectedSummary={selected?.display?.primary ?? selected?.text}
+        />
       </MenuRow>
-      <ul id={id} hidden={!open} className="pl-4">
+      <ul id={id} hidden={!open}>
         {open &&
           choices.map((choice) => (
             <li key={choice.key}>
@@ -92,6 +110,7 @@ function SourceGroup({ item, open, toggle, onAction }) {
  *   branchKey?: string,
  *   pickerKey?: string,
  *   groupKeys?: string[],
+ *   presetChoices?: boolean,
  *   onToggleGroup?: (key: string) => void,
  *   onToggleBranch?: (key: string) => void,
  *   onOpenPicker?: (key: string, byKeyboard: boolean) => void,
@@ -104,6 +123,7 @@ function TrayRows({
   branchKey,
   pickerKey,
   groupKeys,
+  presetChoices,
   onToggleGroup,
   onToggleBranch,
   onOpenPicker,
@@ -132,7 +152,7 @@ function TrayRows({
         if (item.kind !== "submenu") {
           return (
             <li key={item.key}>
-              <ChoiceRow item={item} onAction={onAction} />
+              <ChoiceRow item={item} preset={presetChoices} onAction={onAction} />
             </li>
           );
         }
@@ -143,7 +163,7 @@ function TrayRows({
         return (
           <li key={item.key}>
             <MenuRow
-              className={cn(ROW, (!picker || expanded) && "font-medium", expanded && "bg-ui-hover")}
+              className={cn(ROW, (!picker || expanded) && "font-medium")}
               data-tray-menu-key={item.key}
               aria-controls={picker ? (expanded ? "tray-workbench-picker" : undefined) : id}
               aria-expanded={expanded}
@@ -155,10 +175,11 @@ function TrayRows({
                 else onToggleBranch?.(item.key);
               }}
             >
-              <span className="truncate" title={item.text}>
-                {item.pageTitle ?? item.text}
-              </span>
-              <DisclosureIcon aria-hidden="true" className={cn(CHEVRON, "ml-auto")} />
+              <span className="truncate">{item.pageTitle ?? item.text}</span>
+              <DisclosureIcon
+                aria-hidden="true"
+                className={cn(CHEVRON, "ml-auto", expanded && "text-foreground")}
+              />
             </MenuRow>
             {!picker && (
               <div
@@ -201,6 +222,19 @@ function focusFirstPickerChoice(surface) {
   )?.focus();
 }
 
+/** @param {PanelLayout} layout */
+function trayCaptureRect({ main, side }) {
+  if (!side) return { x: main.left, y: main.top, width: main.width, height: main.height };
+  const x = Math.min(main.left, side.left);
+  const y = Math.min(main.top, side.top);
+  return {
+    x,
+    y,
+    width: Math.max(main.left + main.width, side.left + side.width) - x,
+    height: Math.max(main.top + main.height, side.top + side.height) - y,
+  };
+}
+
 export function TrayWorkbenchPanel() {
   const [snapshot, setSnapshot] = useState({
     items: /** @type {TrayPanelItem[]} */ ([]),
@@ -220,6 +254,7 @@ export function TrayWorkbenchPanel() {
   const contentsRef = useRef(null);
   const pickerRef = useRef(/** @type {HTMLElement | null} */ (null));
   const pickerContentsRef = useRef(null);
+  const pickerMeasurementRef = useRef(null);
   const focusPicker = useRef(false);
   const pickerHoverTimer = useRef(0);
   const lastLayout = useRef("");
@@ -229,13 +264,25 @@ export function TrayWorkbenchPanel() {
   const appliedInterfaceSize = useRef(null);
   const appliedThemeRevision = useRef(null);
   const expanded = snapshot.items.find((item) => item.key === navigation.branchKey);
-  const picker = (expanded?.items ?? snapshot.items).find(
-    (item) => item.key === navigation.pickerKey && item.pageTitle
-  );
+  const rows = expanded?.items ?? snapshot.items;
+  const picker = rows.find((item) => item.key === navigation.pickerKey && item.pageTitle);
   const branchKey = expanded?.key;
   const pickerKey = picker?.key;
   const groupKeys = picker ? navigation.groupKeys : undefined;
-  const sideBounds = placement?.pickerKey === pickerKey ? placement?.layout.side : null;
+  const sideBounds = picker && placement?.branchKey === branchKey ? placement?.layout.side : null;
+  const shownPicker = sideBounds
+    ? rows.find((item) => item.key === placement?.pickerKey && item.pageTitle)
+    : undefined;
+  const shownPickerKey = shownPicker?.key;
+  const sizePreset = picker?.pageTitle === "Preset";
+  const needsMeasurement = Boolean(
+    picker && (sizePreset || shownPickerKey !== pickerKey || placement?.groupKeys !== groupKeys)
+  );
+  const layoutReady =
+    placement?.presentation === snapshot.presentation &&
+    placement.branchKey === branchKey &&
+    placement.pickerKey === pickerKey &&
+    placement.groupKeys === groupKeys;
 
   const cancelPickerHover = useCallback(() => window.clearTimeout(pickerHoverTimer.current), []);
 
@@ -298,16 +345,27 @@ export function TrayWorkbenchPanel() {
   }, [branchKey, pickerKey, cancelPickerHover]);
 
   useLayoutEffect(() => {
-    if (!sideBounds || !focusPicker.current) return;
+    if (pickerRef.current) pickerRef.current.scrollTop = 0;
+  }, [shownPickerKey]);
+
+  useLayoutEffect(() => {
+    if (!sideBounds || shownPickerKey !== pickerKey || !focusPicker.current) return;
     focusPicker.current = false;
     focusFirstPickerChoice(pickerRef.current);
-  }, [sideBounds]);
+  }, [sideBounds, shownPickerKey, pickerKey]);
+
+  useLayoutEffect(() => {
+    if (!layoutReady || placement.presentation <= presented.current) return;
+    // Show after the first layout has been applied to the DOM inside the native window.
+    presented.current = placement.presentation;
+    void invoke("show_tray_workbench_panel").catch((error) => setNotice(String(error)));
+  }, [placement, layoutReady]);
 
   useLayoutEffect(() => {
     const main = mainRef.current;
     const contents = contentsRef.current;
-    const pickerSurface = pickerRef.current;
-    const pickerContents = pickerContentsRef.current;
+    const pickerContents = pickerMeasurementRef.current ?? pickerContentsRef.current;
+    const pickerSurface = pickerContents?.parentElement;
     const trigger = pickerKey ? findMenuTrigger(main, pickerKey) : null;
     if (!main || !contents || !snapshot.presentation) return;
     let frame;
@@ -318,6 +376,7 @@ export function TrayWorkbenchPanel() {
       const side =
         pickerSurface && pickerContents && trigger
           ? {
+              width: sizePreset ? pickerSurface.getBoundingClientRect().width : undefined,
               height: Math.min(
                 Math.ceil(pickerContents.getBoundingClientRect().height) + 2,
                 parseFloat(getComputedStyle(pickerSurface).maxHeight) || Infinity
@@ -345,12 +404,10 @@ export function TrayWorkbenchPanel() {
       lastLayout.current = key;
       pendingLayout.current = pendingLayout.current.then(async () => {
         if (key !== lastLayout.current) return;
-        const show = snapshot.presentation > presented.current;
         try {
           const layout = /** @type {PanelLayout} */ (
-            await invoke("layout_tray_workbench_panel", { width, height, side, webviewScale, show })
+            await invoke("layout_tray_workbench_panel", { width, height, side, webviewScale })
           );
-          if (show) presented.current = snapshot.presentation;
           if (layout && key === lastLayout.current) {
             setPlacement({
               layout,
@@ -372,6 +429,7 @@ export function TrayWorkbenchPanel() {
     const observer = new ResizeObserver(scheduleLayout);
     observer.observe(contents);
     if (pickerContents) observer.observe(pickerContents);
+    if (sizePreset && pickerSurface) observer.observe(pickerSurface);
     main.addEventListener("scroll", scheduleLayout);
     window.addEventListener("resize", scheduleLayout);
     applyLayout();
@@ -381,39 +439,56 @@ export function TrayWorkbenchPanel() {
       main.removeEventListener("scroll", scheduleLayout);
       window.removeEventListener("resize", scheduleLayout);
     };
-  }, [snapshot.presentation, snapshot.interfaceSize, branchKey, pickerKey, groupKeys]);
+  }, [
+    snapshot.presentation,
+    snapshot.interfaceSize,
+    branchKey,
+    pickerKey,
+    groupKeys,
+    needsMeasurement,
+    sizePreset,
+  ]);
 
   useEffect(() => {
-    if (
-      !placement ||
-      placement.presentation !== snapshot.presentation ||
-      placement.branchKey !== branchKey ||
-      placement.pickerKey !== pickerKey ||
-      (pickerKey && !placement.layout.side) ||
-      placement.groupKeys !== groupKeys
-    )
-      return;
+    if (!layoutReady || (placement.pickerKey && !placement.layout.side)) return;
+    let active = true;
+    async function reportLayout() {
+      const { layout, presentation, branchKey, pickerKey, groupKeys } = placement;
+      try {
+        if (layout.clipRevision != null) {
+          await invoke("commit_tray_workbench_clip", { revision: layout.clipRevision });
+        }
+        if (!active) return;
+        await emitTo("main", TRAY_WORKBENCH_ACTION, {
+          kind: "rendered",
+          presentation,
+          navigation: { branchKey, pickerKey, groupKeys },
+          rect: trayCaptureRect(layout),
+          viewport: layout.viewport ?? { width: window.innerWidth, height: window.innerHeight },
+          devicePixelRatio: window.devicePixelRatio,
+        });
+      } catch (error) {
+        if (active) setNotice(String(error));
+      }
+    }
     // Report the rendered WebView client after its native placement and React commit.
     let frame = requestAnimationFrame(() => {
       frame = requestAnimationFrame(() => {
-        void emitTo("main", TRAY_WORKBENCH_ACTION, {
-          kind: "rendered",
-          presentation: placement.presentation,
-          navigation: { branchKey, pickerKey, groupKeys },
-          viewport: { width: window.innerWidth, height: window.innerHeight },
-          devicePixelRatio: window.devicePixelRatio,
-        });
+        void reportLayout();
       });
     });
-    return () => cancelAnimationFrame(frame);
-  }, [placement, snapshot.presentation, branchKey, pickerKey, groupKeys]);
+    return () => {
+      active = false;
+      cancelAnimationFrame(frame);
+    };
+  }, [placement, layoutReady]);
 
   /** @param {string} key @param {boolean} byKeyboard */
   function openPicker(key, byKeyboard) {
     cancelPickerHover();
     if (key === pickerKey) {
       if (byKeyboard) {
-        if (sideBounds) focusFirstPickerChoice(pickerRef.current);
+        if (shownPickerKey === key) focusFirstPickerChoice(pickerRef.current);
         else focusPicker.current = true;
       }
       return;
@@ -471,7 +546,7 @@ export function TrayWorkbenchPanel() {
           <TrayRows
             items={snapshot.items}
             branchKey={branchKey}
-            pickerKey={pickerKey}
+            pickerKey={shownPickerKey}
             onToggleBranch={(key) => {
               cancelPickerHover();
               focusPicker.current = false;
@@ -492,23 +567,24 @@ export function TrayWorkbenchPanel() {
           )}
         </div>
       </nav>
-      {picker && (
+      {shownPicker && sideBounds && (
         <section
-          key={picker.key}
           id="tray-workbench-picker"
           ref={pickerRef}
-          aria-label={picker.pageTitle}
-          className={cn(SURFACE, "max-h-[calc(9*var(--ui-row-h)+10px)]")}
-          style={sideBounds ?? { ...initialBounds, visibility: placement ? "hidden" : undefined }}
+          aria-label={shownPicker.pageTitle}
+          className={cn(SURFACE, PICKER_HEIGHT_LIMIT)}
+          style={sideBounds}
           onPointerEnter={cancelPickerHover}
           onPointerLeave={hoverPicker}
         >
           <div ref={pickerContentsRef} className="p-1">
             <TrayRows
-              items={picker.items ?? []}
-              groupKeys={groupKeys}
+              items={shownPicker.items ?? []}
+              groupKeys={placement?.groupKeys}
+              presetChoices={shownPicker.pageTitle === "Preset"}
               onToggleGroup={(key) =>
                 setNavigation((current) => {
+                  if (current.pickerKey !== shownPickerKey) return current;
                   const groups = current.groupKeys ?? [];
                   return {
                     ...current,
@@ -522,6 +598,27 @@ export function TrayWorkbenchPanel() {
             />
           </div>
         </section>
+      )}
+      {picker && needsMeasurement && (
+        <div
+          inert
+          aria-hidden="true"
+          className={cn(
+            SURFACE,
+            PICKER_HEIGHT_LIMIT,
+            "invisible",
+            sizePreset ? PRESET_MEASUREMENT_WIDTH : "w-[var(--ui-surface-compact-w)]"
+          )}
+        >
+          <div ref={pickerMeasurementRef} className="p-1">
+            <TrayRows
+              items={picker.items ?? []}
+              groupKeys={groupKeys}
+              presetChoices={sizePreset}
+              onAction={request}
+            />
+          </div>
+        </div>
       )}
     </main>
   );

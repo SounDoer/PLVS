@@ -129,7 +129,7 @@ export async function settleTrayScreenshot(ctx) {
   const revision = clock.current();
   const {
     uiGeneration,
-    rendered: { viewport, devicePixelRatio },
+    rendered: { rect, viewport, devicePixelRatio },
   } = state;
   if (!(viewport.width > 0 && viewport.height > 0)) throw { reason: "renderNotSettled" };
   const { expectedRevision, expectedUiGeneration } = request.params;
@@ -144,7 +144,7 @@ export async function settleTrayScreenshot(ctx) {
   }
   return {
     windowLabel: TRAY_WORKBENCH_LABEL,
-    rect: { x: 0, y: 0, ...viewport },
+    rect,
     viewport,
     devicePixelRatio,
     revision,

@@ -16,6 +16,7 @@ static HOLD_FOCUS: AtomicBool = AtomicBool::new(false);
 #[derive(Clone, Copy, serde::Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct PickerLayout {
+  width: Option<f64>,
   height: f64,
   trigger_top: f64,
 }
@@ -32,6 +33,11 @@ struct PanelBounds {
 pub struct PanelLayout {
   main: PanelBounds,
   side: Option<PanelBounds>,
+  #[cfg(windows)]
+  viewport: tauri::LogicalSize<f64>,
+  #[cfg(windows)]
+  #[serde(rename = "clipRevision")]
+  clip_revision: Option<u32>,
 }
 
 #[derive(Clone, Copy)]
@@ -162,7 +168,6 @@ pub fn layout_tray_workbench_panel(
   height: f64,
   side: Option<PickerLayout>,
   webview_scale: f64,
-  show: bool,
 ) -> Result<PanelLayout, String> {
   if window.label() != LABEL {
     return Err("Only the Tray panel can submit its layout.".into());
@@ -171,7 +176,12 @@ pub fn layout_tray_workbench_panel(
     .into_iter()
     .any(|value| !value.is_finite() || value <= 0.0)
     || side.is_some_and(|side| {
-      !side.height.is_finite() || side.height <= 0.0 || !side.trigger_top.is_finite()
+      side
+        .width
+        .is_some_and(|width| !width.is_finite() || width <= 0.0)
+        || !side.height.is_finite()
+        || side.height <= 0.0
+        || !side.trigger_top.is_finite()
     })
   {
     return Err("Invalid Tray panel dimensions.".into());
@@ -179,7 +189,7 @@ pub fn layout_tray_workbench_panel(
   let main = app
     .get_webview_window("main")
     .ok_or("The Tray panel has no owning Workbench.")?;
-  let layout = place_panel(
+  place_panel(
     &app,
     &main,
     &window,
@@ -187,12 +197,37 @@ pub fn layout_tray_workbench_panel(
     height,
     Some(webview_scale),
     side,
-  )?;
-  if show {
-    window.show().map_err(|error| error.to_string())?;
-    window.set_focus().map_err(|error| error.to_string())?;
+  )
+}
+
+#[tauri::command]
+pub fn show_tray_workbench_panel(window: tauri::WebviewWindow) -> Result<(), String> {
+  if window.label() != LABEL {
+    return Err("Only the Tray panel can show its window.".into());
   }
-  Ok(layout)
+  window.show().map_err(|error| error.to_string())?;
+  window.set_focus().map_err(|error| error.to_string())
+}
+
+#[tauri::command]
+pub fn commit_tray_workbench_clip(
+  window: tauri::WebviewWindow,
+  revision: u32,
+) -> Result<(), String> {
+  if window.label() != LABEL {
+    return Err("Only the Tray panel can commit its window region.".into());
+  }
+  #[cfg(windows)]
+  {
+    let mut clip = pending_clip()?;
+    if let Some((main, side)) = clip.rectangles.filter(|_| clip.revision == revision) {
+      clip_panel_window(&window, main, side, false)?;
+      clip.rectangles = None;
+    }
+  }
+  #[cfg(not(windows))]
+  let _ = revision;
+  Ok(())
 }
 
 #[repr(C)]
@@ -349,6 +384,12 @@ fn place_panel(
     size,
   };
   let side = side.and_then(|side| picker_rect(bounds, main, side, scale));
+  #[cfg(windows)]
+  let PanelRect {
+    position: point,
+    size,
+  } = panel_window_envelope(bounds, main, scale);
+  #[cfg(not(windows))]
   let (point, size) = side.map_or((main.position, main.size), |side| {
     let x = main.position.x.min(side.position.x);
     let y = main.position.y.min(side.position.y);
@@ -369,19 +410,37 @@ fn place_panel(
   );
   #[cfg(not(target_os = "macos"))]
   let (window_point, window_size) = (point, size);
-  panel
-    .set_position(window_point)
-    .map_err(|error| error.to_string())?;
-  panel
-    .set_size(window_size)
-    .map_err(|error| error.to_string())?;
+  let move_window = !cfg!(windows) || panel.outer_position().ok() != Some(point);
+  let resize_window = !cfg!(windows) || panel.inner_size().ok() != Some(size);
+  if move_window {
+    panel
+      .set_position(window_point)
+      .map_err(|error| error.to_string())?;
+  }
+  if resize_window {
+    panel
+      .set_size(window_size)
+      .map_err(|error| error.to_string())?;
+  }
   let main = main.relative_to(point);
   let side = side.map(|side| side.relative_to(point));
   #[cfg(windows)]
-  clip_panel_window(panel, main, side)?;
+  let clip_revision = {
+    let mut clip = pending_clip()?;
+    let keep_previous =
+      side.is_some() && !move_window && !resize_window && panel.is_visible().unwrap_or(false);
+    clip_panel_window(panel, main, side, keep_previous)?;
+    clip.revision = clip.revision.wrapping_add(1);
+    clip.rectangles = keep_previous.then_some((main, side));
+    keep_previous.then_some(clip.revision)
+  };
   Ok(PanelLayout {
     main: main.logical(scale),
     side: side.map(|side| side.logical(scale)),
+    #[cfg(windows)]
+    viewport: size.to_logical(scale),
+    #[cfg(windows)]
+    clip_revision,
   })
 }
 
@@ -407,6 +466,37 @@ fn panel_work_area(
   }
 }
 
+fn picker_column(bounds: PanelRect, main: PanelRect, gap: i32) -> (bool, i32) {
+  let left_space = main.position.x - bounds.position.x - gap;
+  let right_space = bounds.right() - main.right() - gap;
+  let right = right_space >= main.size.width as i32 || right_space >= left_space;
+  (right, if right { right_space } else { left_space })
+}
+
+#[cfg(any(windows, test))]
+fn panel_window_envelope(bounds: PanelRect, main: PanelRect, scale: f64) -> PanelRect {
+  let gap = (PICKER_GAP * scale).round() as i32;
+  let (right, available) = picker_column(bounds, main, gap);
+  let reserved = if available > 0 {
+    gap + available.min(main.size.width as i32)
+  } else {
+    0
+  };
+  // Keep the WebView origin and size stable while the picker opens, switches, or grows.
+  // The Win32 region still limits drawing and input to the two visible menu rectangles.
+  PanelRect {
+    position: PhysicalPosition::new(
+      if right {
+        main.position.x
+      } else {
+        main.position.x - reserved
+      },
+      bounds.position.y,
+    ),
+    size: PhysicalSize::new(main.size.width + reserved as u32, bounds.size.height),
+  }
+}
+
 fn picker_rect(
   bounds: PanelRect,
   main: PanelRect,
@@ -414,11 +504,10 @@ fn picker_rect(
   scale: f64,
 ) -> Option<PanelRect> {
   let gap = (PICKER_GAP * scale).round() as i32;
-  let left_space = main.position.x - bounds.position.x - gap;
-  let right_space = bounds.right() - main.right() - gap;
-  let preferred = main.size.width as i32;
-  let right = right_space >= preferred || right_space >= left_space;
-  let available = if right { right_space } else { left_space };
+  let (right, available) = picker_column(bounds, main, gap);
+  let preferred = picker.width.map_or(main.size.width, |width| {
+    ((width * scale).ceil() as u32).clamp(1, main.size.width)
+  }) as i32;
   let height = ((picker.height * scale).ceil() as u32).clamp(1, bounds.size.height);
   if available < preferred / 2 {
     let above = main.position.y - bounds.position.y - gap;
@@ -435,7 +524,7 @@ fn picker_rect(
             main.bottom() + gap
           },
         ),
-        size: PhysicalSize::new(main.size.width, height),
+        size: PhysicalSize::new(preferred as u32, height),
       });
     }
   }
@@ -460,13 +549,29 @@ fn picker_rect(
 }
 
 #[cfg(windows)]
+struct PendingClip {
+  revision: u32,
+  rectangles: Option<(PanelRect, Option<PanelRect>)>,
+}
+
+#[cfg(windows)]
+fn pending_clip() -> Result<std::sync::MutexGuard<'static, PendingClip>, String> {
+  static CLIP: std::sync::Mutex<PendingClip> = std::sync::Mutex::new(PendingClip {
+    revision: 0,
+    rectangles: None,
+  });
+  CLIP.lock().map_err(|error| error.to_string())
+}
+
+#[cfg(windows)]
 fn clip_panel_window(
   panel: &tauri::WebviewWindow,
   main: PanelRect,
   side: Option<PanelRect>,
+  keep_previous: bool,
 ) -> Result<(), String> {
   use windows_sys::Win32::Graphics::Gdi::{
-    CombineRgn, CreateRectRgn, DeleteObject, SetWindowRgn, RGN_OR,
+    CombineRgn, CreateRectRgn, DeleteObject, GetWindowRgn, SetWindowRgn, RGN_OR,
   };
 
   let hwnd = panel.hwnd().map_err(|error| error.to_string())?.0;
@@ -498,6 +603,21 @@ fn clip_panel_window(
       if combined == 0 {
         let _ = DeleteObject(region);
         return Err("Unable to combine the Tray menu regions.".into());
+      }
+    }
+    if keep_previous {
+      // Keep the old menu pixels in the region until the WebView has painted the new layout.
+      let previous = CreateRectRgn(0, 0, 0, 0);
+      if previous.is_null() {
+        let _ = DeleteObject(region);
+        return Err("Unable to read the previous Tray menu region.".into());
+      }
+      let combined =
+        GetWindowRgn(hwnd, previous) == 0 || CombineRgn(region, region, previous, RGN_OR) != 0;
+      let _ = DeleteObject(previous);
+      if !combined {
+        let _ = DeleteObject(region);
+        return Err("Unable to preserve the previous Tray menu region.".into());
       }
     }
     if SetWindowRgn(hwnd, region, 1) == 0 {
@@ -550,6 +670,7 @@ mod tests {
       size: PhysicalSize::new(400, 420),
     };
     let spec = PickerLayout {
+      width: None,
       height: 256.0,
       trigger_top: 160.0,
     };
@@ -560,6 +681,30 @@ mod tests {
     let left = picker_rect(bounds, main, spec, 1.25).unwrap();
     assert_eq!(left.position, PhysicalPosition::new(-808, 600));
     assert_eq!(left.bottom(), bounds.bottom());
+  }
+
+  #[test]
+  fn narrower_picker_keeps_the_edge_next_to_the_main_menu() {
+    let bounds = PanelRect {
+      position: PhysicalPosition::new(0, 0),
+      size: PhysicalSize::new(1920, 940),
+    };
+    let mut main = PanelRect {
+      position: PhysicalPosition::new(1510, 660),
+      size: PhysicalSize::new(400, 280),
+    };
+    let spec = PickerLayout {
+      width: Some(180.0),
+      height: 100.0,
+      trigger_top: 100.0,
+    };
+    let left = picker_rect(bounds, main, spec, 1.25).unwrap();
+    assert_eq!(left.size.width, 225);
+    assert_eq!(left.right() + 8, main.position.x);
+    main.position.x = 100;
+    let right = picker_rect(bounds, main, spec, 1.25).unwrap();
+    assert_eq!(right.size.width, 225);
+    assert_eq!(right.position.x, main.right() + 8);
   }
 
   #[test]
@@ -576,6 +721,7 @@ mod tests {
       bounds,
       main,
       PickerLayout {
+        width: None,
         height: 200.0,
         trigger_top: 130.0,
       },
@@ -584,6 +730,39 @@ mod tests {
     .unwrap();
     assert_eq!(picker.position, PhysicalPosition::new(18, 254));
     assert_eq!(picker.size.width, 400);
+  }
+
+  #[test]
+  fn windows_envelope_keeps_the_same_origin_and_size_for_menu_changes() {
+    let bounds = PanelRect {
+      position: PhysicalPosition::new(0, 0),
+      size: PhysicalSize::new(1920, 940),
+    };
+    let mut main = PanelRect {
+      position: PhysicalPosition::new(1510, 660),
+      size: PhysicalSize::new(400, 280),
+    };
+    let compact = panel_window_envelope(bounds, main, 1.25);
+    main.position.y = 420;
+    main.size.height = 520;
+    let expanded = panel_window_envelope(bounds, main, 1.25);
+    assert_eq!(compact.position, PhysicalPosition::new(1102, 0));
+    assert_eq!(compact.size, PhysicalSize::new(808, 940));
+    assert_eq!(expanded.position, compact.position);
+    assert_eq!(expanded.size, compact.size);
+    let side = picker_rect(
+      bounds,
+      main,
+      PickerLayout {
+        width: None,
+        height: 120.0,
+        trigger_top: 300.0,
+      },
+      1.25,
+    )
+    .unwrap();
+    assert_eq!(side.position.x, expanded.position.x);
+    assert!(side.bottom() <= expanded.bottom());
   }
 
   #[test]

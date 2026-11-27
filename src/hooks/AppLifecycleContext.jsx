@@ -11,6 +11,8 @@ import { useUiNavigationEnvironment } from "../uiNavigation/UiNavigationContext.
 import { useDevelopmentEventFixtureAdapter } from "../dev/DevelopmentEventFixturesContext.jsx";
 import { DEVELOPMENT_CRASH_REPORT } from "../dev/developmentEventFixtureData.js";
 import { hideAppWindow, showAppWindow, toggleAppWindow } from "../lib/windowVisibility.js";
+import { applicationSourceName } from "../lib/audioDeviceLabels.js";
+import { mixSourceDetail } from "../lib/sourceMixes.js";
 import { isTauri } from "../ipc/env.js";
 import { useResolvedTheme } from "../theme/useResolvedTheme.js";
 import { useSceneGuard } from "./SceneGuardContext.jsx";
@@ -86,6 +88,7 @@ export function AppLifecycleProvider({ children }) {
     sourceMixes,
     safeAudioDeviceId,
     defaultOutputLabel,
+    defaultOutputReference,
     onSelectCaptureDevice,
     sourceDisplayName,
   } = useSource();
@@ -137,8 +140,19 @@ export function AppLifecycleProvider({ children }) {
   const sourceBusy =
     ["starting", "stopping"].includes(meterRuntime.liveLifecycle) ||
     meterRuntime.liveDeviceTransition !== null;
+  const availableApplications = new Set(captureApplications.map(({ id }) => id));
   const trayMixes = sourceMixes?.supported
-    ? sourceMixes.list.map(({ id, name }) => ({ id, label: name }))
+    ? sourceMixes.list.map((mix) => ({
+        id: mix.id,
+        label: mix.name,
+        detail: mixSourceDetail(
+          mix,
+          audioOutputs,
+          audioInputs,
+          availableApplications,
+          defaultOutputReference
+        ),
+      }))
     : [];
   const publishInstanceState = useInstanceIdentity({
     sourceLabel: sourceDisplayName,
@@ -146,7 +160,11 @@ export function AppLifecycleProvider({ children }) {
     trayState: {
       audioOutputs: audioOutputs.map(({ id, label }) => ({ id, label })),
       audioInputs: audioInputs.map(({ id, label }) => ({ id, label })),
-      captureApplications: captureApplications.map(({ id, label }) => ({ id, label })),
+      captureApplications: captureApplications.map((application) => ({
+        id: application.id,
+        label: application.label,
+        displayName: applicationSourceName(application),
+      })),
       sourceMixes: trayMixes,
       safeAudioDeviceId,
       defaultOutputLabel,

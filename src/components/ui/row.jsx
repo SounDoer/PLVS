@@ -41,4 +41,18 @@ const RowAction = React.forwardRef(function RowAction({ className, ...props }, r
   );
 });
 
-export { MenuRow, RowAction };
+/** @param {{ selected: boolean, label?: string }} props */
+function SelectionDot({ selected, label }) {
+  return (
+    <span
+      aria-label={label}
+      aria-hidden={label ? undefined : true}
+      className={cn(
+        "size-1.5 shrink-0 rounded-full border",
+        selected ? "border-primary bg-primary" : "border-muted-foreground bg-transparent"
+      )}
+    />
+  );
+}
+
+export { MenuRow, RowAction, SelectionDot };

@@ -1,6 +1,7 @@
 import { Menu, Submenu, MenuItem, CheckMenuItem, PredefinedMenuItem } from "@tauri-apps/api/menu";
 
-/** @typedef {{ key: string, kind?: string, text?: string, enabled?: boolean,
+/** @typedef {{ primary: string, secondary?: string, modified?: boolean }} TrayChoiceDisplay */
+/** @typedef {{ key: string, kind?: string, text?: string, enabled?: boolean, display?: TrayChoiceDisplay,
  * checked?: boolean, action?: (...args: any[]) => any, items?: TrayMenuDefinition[] }} TrayMenuDefinition */
 
 /**

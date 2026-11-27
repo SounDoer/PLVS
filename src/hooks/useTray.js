@@ -10,6 +10,7 @@ import { isTauri } from "../ipc/env.js";
 import { openAdditionalWorkbench } from "../ipc/commands.js";
 import { isMacOS, isWindows } from "../lib/platform.js";
 import {
+  applicationSourceName,
   formatAudioDeviceLabel,
   isUnavailableApplicationSource,
 } from "../lib/audioDeviceLabels.js";
@@ -44,14 +45,15 @@ async function loadTrayIcon(scheme) {
   return Image.fromPath(await resolveResource(iconName));
 }
 
-// formatAudioDeviceLabel returns { primary, secondary, full }; a menu item's
-// text must be a single string. Reconstruct the picker's compact form.
 /**
  * @param {string} label
  */
-function menuDeviceText(label) {
+function deviceMenuLabel(label) {
   const { primary, secondary } = formatAudioDeviceLabel(label);
-  return secondary ? `${primary} (${secondary})` : primary;
+  return {
+    text: secondary ? `${primary} (${secondary})` : primary,
+    display: { primary, secondary },
+  };
 }
 
 function sourceLabelFor({
@@ -63,7 +65,7 @@ function sourceLabelFor({
   defaultOutputLabel,
 }) {
   if (safeAudioDeviceId === "default") {
-    const label = defaultOutputLabel ? menuDeviceText(defaultOutputLabel) : "Automatic";
+    const label = defaultOutputLabel ? deviceMenuLabel(defaultOutputLabel).text : "Automatic";
     return `Output · ${label}`;
   }
   if (isSourceMixId(safeAudioDeviceId)) {
@@ -76,9 +78,9 @@ function sourceLabelFor({
     return "Application · Not connected";
   }
   const output = audioOutputs.find((device) => device.id === safeAudioDeviceId);
-  if (output) return `Output · ${menuDeviceText(output.label)}`;
+  if (output) return `Output · ${deviceMenuLabel(output.label).text}`;
   const input = audioInputs.find((device) => device.id === safeAudioDeviceId);
-  return input ? `Input · ${menuDeviceText(input.label)}` : "Not connected";
+  return input ? `Input · ${deviceMenuLabel(input.label).text}` : "Not connected";
 }
 
 function sameTrayInstances(current, next) {
@@ -134,24 +136,40 @@ function sourceDefinitions(cfg, prefix) {
   ) {
     items.push(menuItem(`${prefix}:mix-unavailable`, "Selected Mix Unavailable", null, false));
   }
-  for (const [group, sources, formatLabel] of [
-    ["Output", cfg.audioOutputs, menuDeviceText],
-    ["Input", cfg.audioInputs, menuDeviceText],
-    ["Applications", cfg.captureApplications, (label) => label],
-    ["Mixes", cfg.sourceMixes, (label) => label],
+  for (const [group, sources, labelFor] of [
+    ["Output", cfg.audioOutputs, (source) => deviceMenuLabel(source.label)],
+    ["Input", cfg.audioInputs, (source) => deviceMenuLabel(source.label)],
+    [
+      "Applications",
+      cfg.captureApplications,
+      (source) => ({
+        text: source.label,
+        display: { primary: source.displayName ?? applicationSourceName(source) },
+      }),
+    ],
+    [
+      "Mixes",
+      cfg.sourceMixes,
+      (source) => ({
+        text: source.label,
+        display: { primary: source.label, secondary: source.detail },
+      }),
+    ],
   ]) {
     if (!sources.length) continue;
     items.push({
       key: `${prefix}:${group}:header`,
       kind: "group",
       text: group,
-      items: sources.map((source) => ({
-        ...menuItem(`${prefix}:source:${source.id}`, formatLabel(source.label), () =>
-          cfg.onSelectSource(source.id)
-        ),
-        kind: "check",
-        checked: cfg.safeAudioDeviceId === source.id,
-      })),
+      items: sources.map((source) => {
+        const { text, display } = labelFor(source);
+        return {
+          ...menuItem(`${prefix}:source:${source.id}`, text, () => cfg.onSelectSource(source.id)),
+          display,
+          kind: "check",
+          checked: cfg.safeAudioDeviceId === source.id,
+        };
+      }),
     });
   }
   return items;
@@ -189,6 +207,10 @@ function workbenchDefinitions(cfg, prefix) {
               () => cfg.onApplyPreset(preset.id),
               !cfg.presetsBlocked
             ),
+            display: {
+              primary: preset.name,
+              modified: preset.id === cfg.presetActiveId && cfg.presetDirty,
+            },
             kind: "check",
             checked: preset.id === cfg.presetActiveId,
           }))
@@ -295,9 +317,10 @@ function menuDefinitions(cfg) {
 /**
  * @param {import("../lib/nativeTrayMenu.js").TrayMenuDefinition[]} items
  * @param {string} [ownerId]
+ * @param {boolean} [includeDisplay]
  * @returns {import("../tray/trayWorkbenchProtocol.js").TrayPanelItem[]}
  */
-function panelItems(items, ownerId) {
+function panelItems(items, ownerId, includeDisplay = false) {
   return items
     .filter(
       ({ key }) =>
@@ -305,15 +328,16 @@ function panelItems(items, ownerId) {
           key
         )
     )
-    .map(({ key, kind, text, enabled, checked, items: children }) => {
+    .map(({ key, kind, text, enabled, checked, display, items: children }) => {
       const pageTitle = trayPageTitle(key);
-      const items = children && panelItems(children, ownerId);
+      const items = children && panelItems(children, ownerId, includeDisplay);
       return {
         key,
         kind,
         text,
         enabled,
         checked,
+        ...(includeDisplay && display ? { display } : {}),
         pageTitle,
         dismiss: trayActionDismisses(key, ownerId),
         items,
@@ -354,7 +378,7 @@ function findTrayAction(items, key) {
  *   audioOutputs?: any[],
  *   audioInputs?: any[],
  *   captureApplications?: any[],
- *   sourceMixes?: { id: string, label: string }[],
+ *   sourceMixes?: { id: string, label: string, detail?: string }[],
  *   safeAudioDeviceId?: string,
  *   defaultOutputLabel?: string,
  *   sourceBusy?: boolean,
@@ -625,7 +649,11 @@ export function useTray({
     if (navigation) panelPresentation.current += 1;
     const { resolvedTheme, interfaceSize } = menuInputsRef.current;
     await emitTo(TRAY_WORKBENCH_LABEL, TRAY_WORKBENCH_STATE, {
-      items: panelItems(panelDefinitions.current(), window.__PLVS_INITIAL_STATE__?.instanceId),
+      items: panelItems(
+        panelDefinitions.current(),
+        window.__PLVS_INITIAL_STATE__?.instanceId,
+        true
+      ),
       theme: createThemePublication(resolvedTheme),
       interfaceSize,
       presentation: panelPresentation.current,

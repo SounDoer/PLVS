@@ -32,7 +32,8 @@ function setup(customPanel = true) {
       state.navigation = navigation;
       state.rendered = {
         presentation: 1,
-        viewport: { width: 610, height: 280 },
+        rect: { x: 0, y: 320, width: 610, height: 280 },
+        viewport: { width: 610, height: 750 },
         devicePixelRatio: 2,
       };
       state.uiGeneration += 1;
@@ -106,7 +107,8 @@ describe("Tray Control", () => {
     const capture = await settleTrayScreenshot(ctx("visual.screenshot"));
     expect(capture).toMatchObject({
       windowLabel: "tray-workbench",
-      rect: { x: 0, y: 0, width: 610, height: 280 },
+      rect: { x: 0, y: 320, width: 610, height: 280 },
+      viewport: { width: 610, height: 750 },
       uiGeneration: 5,
     });
     await expect(

@@ -1,6 +1,5 @@
 import { useState } from "react";
-import { mixInputs, resolveMixFormat } from "../lib/mixRouting.js";
-import { ChevronRight, SlidersHorizontal, Trash2 } from "lucide-react";
+import { SlidersHorizontal, Trash2 } from "lucide-react";
 import {
   applicationSourceName,
   applicationWindowContext,
@@ -18,15 +17,9 @@ import {
   MANAGEMENT_ROW_CLASS,
   ManagementIconAction,
 } from "./ManagementRow.jsx";
-import {
-  isMixOutputDevice,
-  isSourceMixId,
-  mixInputAvailable,
-  sourceMixMemberCount,
-} from "../lib/sourceMixes.js";
+import { isSourceMixId, mixSourceDetail } from "../lib/sourceMixes.js";
 import { useUiNavigationTarget, useUiSurface } from "../uiNavigation/UiNavigationContext.jsx";
-
-const SOURCE_LEADING_CLASS = "grid w-[1em] shrink-0 place-items-center";
+import { SourceGroupHeading, SourceOptionContent } from "./SourceOptionContent.jsx";
 
 /** @param {{ primary: string, secondary?: string, selected: boolean, onSelect: (...args: any[]) => any, ariaLabel: string, uiTarget?: string, actions?: import("react").ReactNode, tip?: string }} props */
 function SourceRow({ primary, secondary, selected, onSelect, ariaLabel, uiTarget, actions, tip }) {
@@ -45,20 +38,7 @@ function SourceRow({ primary, secondary, selected, onSelect, ariaLabel, uiTarget
       onClick={onSelect}
       className={actions ? "py-1" : undefined}
     >
-      <span aria-hidden="true" className={SOURCE_LEADING_CLASS}>
-        <span
-          className={cn(
-            "size-1.5 rounded-full border",
-            selected ? "border-primary bg-primary" : "border-muted-foreground bg-transparent"
-          )}
-        />
-      </span>
-      <span className="min-w-0 flex-1">
-        <span className="block truncate text-foreground">{primary}</span>
-        {secondary ? (
-          <span className="mt-0 block truncate text-muted-foreground">{secondary}</span>
-        ) : null}
-      </span>
+      <SourceOptionContent primary={primary} secondary={secondary} selected={selected} />
     </Row>
   );
   if (!actions)
@@ -125,27 +105,12 @@ function SourceSection({ id, group, label, count, open, onOpenChange, selectedSu
         aria-controls={id}
         onClick={() => onOpenChange(!open)}
       >
-        <span aria-hidden="true" className={SOURCE_LEADING_CLASS}>
-          <ChevronRight
-            className={cn(
-              "size-[1em] text-muted-foreground transition-transform",
-              open && "rotate-90"
-            )}
-          />
-        </span>
-        <span className="shrink-0 font-medium text-muted-foreground">{label}</span>
-        {!open && selectedSummary ? (
-          <>
-            <span aria-hidden="true" className="size-1.5 shrink-0 rounded-full bg-primary" />
-            <span className="min-w-0 truncate text-foreground">
-              {selectedSummary}
-              <span className="sr-only">, selected</span>
-            </span>
-          </>
-        ) : null}
-        <span className="ml-auto shrink-0 text-[length:var(--ui-fs-caption)] tabular-nums text-muted-foreground">
-          {count}
-        </span>
+        <SourceGroupHeading
+          label={label}
+          count={count}
+          open={open}
+          selectedSummary={selectedSummary}
+        />
       </MenuRow>
       <div
         id={id}
@@ -286,20 +251,13 @@ export function DeviceSelectionContent({
             selectedSummary={selectedMix?.name}
           >
             {sourceMixes.list.map((mix) => {
-              const unavailable =
-                mix.members.filter(({ id }) => !available.has(id)).length +
-                mixInputs(mix).filter((input) => !mixInputAvailable(input, audioInputs)).length +
-                Number(
-                  Boolean(
-                    mix.output &&
-                    !audioOutputs.some(
-                      (device) => device.id === mix.output.id && isMixOutputDevice(device)
-                    )
-                  )
-                );
-              const members = sourceMixMemberCount(mix);
-              const count = unavailable || members;
-              const detail = `${count} ${count === 1 ? "Source" : "Sources"} ${unavailable ? "Unavailable" : `· ${resolveMixFormat(mix, audioOutputs, defaultOutputReference).name}`}`;
+              const detail = mixSourceDetail(
+                mix,
+                audioOutputs,
+                audioInputs,
+                available,
+                defaultOutputReference
+              );
               return (
                 <SourceRow
                   key={mix.id}

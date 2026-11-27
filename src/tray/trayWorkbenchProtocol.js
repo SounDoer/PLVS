@@ -7,6 +7,7 @@ export const TRAY_WORKBENCH_PROBE = "tray-workbench://probe";
 /**
  * @typedef {{ key: string, kind?: string, text?: string, enabled?: boolean,
  * checked?: boolean, dismiss: boolean, pageTitle?: "Source" | "Preset" | undefined,
+ * display?: import("../lib/nativeTrayMenu.js").TrayChoiceDisplay,
  * items?: TrayPanelItem[] }} TrayPanelItem
  */
 

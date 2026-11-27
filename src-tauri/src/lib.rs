@@ -328,6 +328,8 @@ pub fn run() {
       runtime_open_workbench,
       tray_workbench_panel::open_tray_workbench_panel,
       tray_workbench_panel::layout_tray_workbench_panel,
+      tray_workbench_panel::show_tray_workbench_panel,
+      tray_workbench_panel::commit_tray_workbench_clip,
       tray_workbench_panel::set_tray_workbench_focus_hold,
       coordinator::runtime_retire_current_workspace,
       coordinator::runtime_restore_retired_workspace,

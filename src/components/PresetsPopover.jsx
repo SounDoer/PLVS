@@ -3,7 +3,7 @@ import { Check, Download, Pencil, RefreshCw, Trash2, X } from "lucide-react";
 import { AddButton } from "@/components/AddButton";
 import { InlineConfirm } from "@/components/InlineConfirm.jsx";
 import { MANAGEMENT_ROW_ACTIONS_CLASS, ManagementIconAction } from "@/components/ManagementRow.jsx";
-import { TruncatingLabel } from "@/components/TruncatingLabel.jsx";
+import { PresetOptionContent } from "@/components/PresetOptionContent.jsx";
 import { POPOVER_HEADER_CLASS, POPOVER_TITLE_CLASS } from "@/components/ui/surfaceStyles.js";
 import { cn } from "@/lib/utils";
 import { SortableList } from "@/components/ui/sortable-list.jsx";
@@ -159,22 +159,16 @@ export function PresetsPopoverContent({
                       // handle's own gap.
                       className={cn("pl-1 pr-2", blockedClass)}
                     >
-                      <span
-                        aria-label={
+                      <PresetOptionContent
+                        name={preset.name}
+                        selected={isActive}
+                        modified={isDirty}
+                        showTruncationTip
+                        selectionLabel={
                           isActive
                             ? `Active preset ${preset.name}${isDirty ? " (modified)" : ""}`
                             : undefined
                         }
-                        className={cn(
-                          "size-1.5 shrink-0 rounded-full border",
-                          isActive
-                            ? "border-primary bg-primary"
-                            : "border-muted-foreground bg-transparent"
-                        )}
-                      />
-                      <TruncatingLabel
-                        text={`${preset.name}${isDirty ? " *" : ""}`}
-                        className="min-w-0 flex-1 text-foreground"
                       />
                     </RowAction>
                     <span className={cn(MANAGEMENT_ROW_ACTIONS_CLASS, "pr-2")}>

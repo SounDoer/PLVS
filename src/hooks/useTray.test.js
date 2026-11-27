@@ -59,6 +59,7 @@ vi.mock("@tauri-apps/api/menu", () => ({
   PredefinedMenuItem: { new: vi.fn(async (options) => nativeHandle(options)) },
 }));
 vi.mock("@tauri-apps/api/window", () => ({
+  Window: { getByLabel: vi.fn().mockResolvedValue(null) },
   getCurrentWindow: () => ({ isVisible: vi.fn().mockResolvedValue(true) }),
 }));
 vi.mock("@tauri-apps/api/image", () => ({
@@ -717,7 +718,7 @@ describe("useTray", () => {
         captureStatus: "running",
         trayState: {
           sourceBusy: false,
-          audioOutputs: [{ id: "speakers", label: "Speakers" }],
+          audioOutputs: [{ id: "speakers", label: "Speakers (Interface)" }],
           captureApplications: [{ id: "app:chrome", label: "Chrome" }],
         },
       },
@@ -731,7 +732,7 @@ describe("useTray", () => {
       colorScheme: "dark",
       css: { "--popover": "#252525" },
     };
-    const { rerender } = renderHook(
+    const { result, rerender } = renderHook(
       ({ resolvedTheme, interfaceSize }) =>
         useTray({ ...defaultProps, resolvedTheme, interfaceSize }),
       {
@@ -784,10 +785,25 @@ describe("useTray", () => {
       pageTitle: "Source",
       items: [
         { kind: "check", text: "Automatic", checked: true },
-        { kind: "group", text: "Output", items: [{ kind: "check", text: "Speakers" }] },
+        {
+          kind: "group",
+          text: "Output",
+          items: [
+            {
+              kind: "check",
+              text: "Speakers (Interface)",
+              display: { primary: "Speakers", secondary: "Interface" },
+            },
+          ],
+        },
         { kind: "group", text: "Applications", items: [{ kind: "check", text: "Chrome" }] },
       ],
     });
+    const publicPeer = (await result.current.read()).items.find(
+      ({ key }) => key === "workbench:peer"
+    );
+    const publicOutput = publicPeer.items.find(({ pageTitle }) => pageTitle === "Source").items[1];
+    expect(publicOutput.items[0]).not.toHaveProperty("display");
     expect(peer.items.find(({ key }) => key === "workbench:peer:preset").pageTitle).toBe("Preset");
     expect(peer.items.find(({ key }) => key.endsWith(":settings")).dismiss).toBe(true);
     for (const action of ["locate", "window", "transport", "quit"]) {

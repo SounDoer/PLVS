@@ -3,8 +3,32 @@ import {
   MIX_FORMATS,
   isMixDestination,
   mixInputs,
+  resolveMixFormat,
   validMixRoles,
 } from "./mixRouting.js";
+
+export function mixSourceDetail(
+  mix,
+  audioOutputs,
+  audioInputs,
+  availableApplications,
+  defaultOutputReference
+) {
+  const unavailable =
+    mix.members.filter(({ id }) => !availableApplications.has(id)).length +
+    mixInputs(mix).filter((input) => !mixInputAvailable(input, audioInputs)).length +
+    Number(
+      Boolean(
+        mix.output &&
+        !audioOutputs.some((device) => device.id === mix.output.id && isMixOutputDevice(device))
+      )
+    );
+  const count = unavailable || sourceMixMemberCount(mix);
+  const status = unavailable
+    ? "Unavailable"
+    : `· ${resolveMixFormat(mix, audioOutputs, defaultOutputReference).name}`;
+  return `${count} ${count === 1 ? "Source" : "Sources"} ${status}`;
+}
 
 export function isSourceMixId(value) {
   return (
