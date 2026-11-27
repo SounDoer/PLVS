@@ -112,6 +112,8 @@ On Windows and macOS, click a Workbench to expand or collapse its controls in pl
 points down when collapsed and up when expanded. Pause over **Source** or **Preset** to open its
 side menu, or click to open it immediately. The side menu stays open as you move into it and closes
 after a short delay when you move away. The Preset menu fits its names within the available width.
+You can browse Sources while capture starts or stops. Source choices become available once the
+transition finishes.
 Source groups such as **Output**, **Input**, **Applications**,
 and **Mixes** (when available) start collapsed and expand when selected. Long lists scroll inside
 the side menu. As in the main window, a filled dot marks the current Source or Preset. Devices show

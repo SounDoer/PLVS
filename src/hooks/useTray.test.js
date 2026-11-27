@@ -1230,6 +1230,28 @@ describe("useTray", () => {
     expect(nativeEnabled).toBe(true);
   });
 
+  it("keeps the custom Source picker browsable while guarding device changes", async () => {
+    vi.mocked(isWindows).mockReturnValue(true);
+    const onSelectSource = vi.fn().mockResolvedValue(true);
+    const { result, rerender } = renderHook(
+      ({ sourceBusy }) => useTray({ ...defaultProps, sourceBusy, onSelectSource }),
+      { initialProps: { sourceBusy: true } }
+    );
+    await act(async () => {});
+
+    const { items } = await result.current.read();
+    const source = items.find((item) => item.pageTitle === "Source");
+    const automatic = source.items[0];
+    expect(source.enabled).toBe(true);
+    expect(automatic.enabled).toBe(false);
+    await expect(result.current.activate(automatic.key)).rejects.toThrow(/no longer available/);
+    expect(onSelectSource).not.toHaveBeenCalled();
+
+    rerender({ sourceBusy: false });
+    await act(async () => result.current.activate(automatic.key));
+    expect(onSelectSource).toHaveBeenCalledExactlyOnceWith("default");
+  });
+
   it("renders device labels as strings via the real formatter", async () => {
     renderHook(() =>
       useTray({

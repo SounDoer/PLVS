@@ -17,6 +17,8 @@ when applicable.
 
 - `tray open` opens the actual Tray panel at the icon. The optional `--item` accepts a Workbench
   branch, Source or Preset picker, or Source group key. The command settles after that page renders.
+  Source navigation remains available during capture transitions. Source choices are disabled until
+  the owning Workbench finishes the transition.
 - `tray activate --item <item-id>` invokes an enabled choice on the open page through the same
   path as a click. Expand the Source group before choosing from it. Actions keep or dismiss the
   menu according to the clicked item's rules. For Quit Workbench and Quit PLVS, use

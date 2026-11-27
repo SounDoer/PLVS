@@ -14,8 +14,36 @@ vi.mock("@tauri-apps/api/core", () => ({
 vi.mock("@tauri-apps/api/window", () => ({ getCurrentWindow: vi.fn() }));
 
 afterEach(() => {
+  vi.restoreAllMocks();
   vi.useRealTimers();
   vi.unstubAllGlobals();
+});
+
+it("offers a scrollbar only when the settled picker clips its measured contents", async () => {
+  const getBounds = HTMLElement.prototype.getBoundingClientRect;
+  vi.spyOn(HTMLElement.prototype, "getBoundingClientRect").mockImplementation(function () {
+    const parent = this.parentElement;
+    if (!this.classList.contains("p-1") || !parent?.matches("section,[inert]")) {
+      return getBounds.call(this);
+    }
+    const applicationsOpen = Array.from(this.querySelectorAll('button[aria-expanded="true"]')).some(
+      (button) => button.textContent.startsWith("Applications")
+    );
+    return new DOMRect(0, 0, 320, applicationsOpen ? 380 : 130);
+  });
+  const { publish } = await openTray();
+  await publish([source("Automatic")]);
+  fireEvent.click(screen.getByRole("button", { name: "Source" }));
+  const side = await screen.findByRole("region", { name: "Source" });
+  const options = within(side);
+  expect(side.classList.contains("overflow-y-hidden")).toBe(true);
+
+  fireEvent.click(options.getByRole("button", { name: /^Output/ }));
+  await options.findByRole("button", { name: "Speakers" });
+  expect(side.classList.contains("overflow-y-hidden")).toBe(true);
+  fireEvent.click(options.getByRole("button", { name: /^Applications/ }));
+  await options.findByRole("button", { name: "Browser" });
+  expect(side.classList.contains("overflow-y-auto")).toBe(true);
 });
 
 const mainBounds = { left: 0, top: 0, width: 320, height: 400 };

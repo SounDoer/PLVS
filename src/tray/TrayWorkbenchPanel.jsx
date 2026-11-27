@@ -28,7 +28,7 @@ import {
 /** @typedef {{ left: number, top: number, width: number, height: number }} Bounds */
 /** @typedef {{ main: Bounds, side: Bounds | null, clipRevision?: number | null, viewport?: { width: number, height: number } }} PanelLayout */
 
-const SURFACE = cn(POPOVER_SURFACE_CLASS, "absolute overflow-x-hidden overflow-y-auto");
+const SURFACE = cn(POPOVER_SURFACE_CLASS, "absolute overflow-x-hidden");
 const ROW = "disabled:pointer-events-none disabled:text-muted-foreground";
 const CHEVRON = "size-[1em] shrink-0 text-muted-foreground";
 const PICKER_HEIGHT_LIMIT = "max-h-[calc(9*var(--ui-row-h)+10px)]";
@@ -45,7 +45,7 @@ function ChoiceRow({ item, preset, onAction }) {
   const primary = item.display?.primary ?? item.text;
   return (
     <MenuRow
-      className={ROW}
+      className={cn(ROW, choice && "disabled:opacity-50")}
       aria-pressed={choice ? selected : undefined}
       aria-label={item.display?.secondary || item.display?.modified ? item.text : undefined}
       disabled={item.enabled === false}
@@ -246,7 +246,7 @@ export function TrayWorkbenchPanel() {
   );
   const [notice, setNotice] = useState("");
   const [placement, setPlacement] = useState(
-    /** @type {{ layout: PanelLayout, presentation: number, branchKey?: string, pickerKey?: string, groupKeys?: string[] } | null} */ (
+    /** @type {{ layout: PanelLayout, pickerScrolls: boolean, presentation: number, branchKey?: string, pickerKey?: string, groupKeys?: string[] } | null} */ (
       null
     )
   );
@@ -373,14 +373,17 @@ export function TrayWorkbenchPanel() {
       const styles = getComputedStyle(main);
       const width = parseFloat(styles.getPropertyValue("--ui-surface-compact-w"));
       const height = Math.ceil(contents.getBoundingClientRect().height) + 2;
+      const pickerContentHeight = pickerContents
+        ? pickerContents.getBoundingClientRect().height + 2
+        : 0;
+      const pickerHeightLimit = pickerSurface
+        ? parseFloat(getComputedStyle(pickerSurface).maxHeight) || Infinity
+        : Infinity;
       const side =
         pickerSurface && pickerContents && trigger
           ? {
               width: sizePreset ? pickerSurface.getBoundingClientRect().width : undefined,
-              height: Math.min(
-                Math.ceil(pickerContents.getBoundingClientRect().height) + 2,
-                parseFloat(getComputedStyle(pickerSurface).maxHeight) || Infinity
-              ),
+              height: Math.min(Math.ceil(pickerContentHeight), pickerHeightLimit),
               triggerTop: Math.max(
                 0,
                 Math.round(
@@ -394,6 +397,7 @@ export function TrayWorkbenchPanel() {
         width,
         height,
         side,
+        pickerContentHeight,
         webviewScale,
         snapshot.presentation,
         branchKey,
@@ -411,6 +415,13 @@ export function TrayWorkbenchPanel() {
           if (layout && key === lastLayout.current) {
             setPlacement({
               layout,
+              // Scroll only when the settled layout needs it. The WebView can still report the
+              // previous client height when the rows and new bounds are committed together.
+              pickerScrolls: Boolean(
+                layout.side &&
+                pickerContentHeight - Math.min(layout.side.height, pickerHeightLimit) >
+                  1 / webviewScale
+              ),
               presentation: snapshot.presentation,
               branchKey,
               pickerKey,
@@ -538,7 +549,7 @@ export function TrayWorkbenchPanel() {
     <main className="relative h-dvh select-none overflow-hidden">
       <nav
         ref={mainRef}
-        className={SURFACE}
+        className={cn(SURFACE, "overflow-y-auto")}
         style={placement?.layout.main ?? initialBounds}
         aria-label="PLVS tray"
       >
@@ -572,7 +583,11 @@ export function TrayWorkbenchPanel() {
           id="tray-workbench-picker"
           ref={pickerRef}
           aria-label={shownPicker.pageTitle}
-          className={cn(SURFACE, PICKER_HEIGHT_LIMIT)}
+          className={cn(
+            SURFACE,
+            PICKER_HEIGHT_LIMIT,
+            placement?.pickerScrolls ? "overflow-y-auto" : "overflow-y-hidden"
+          )}
           style={sideBounds}
           onPointerEnter={cancelPickerHover}
           onPointerLeave={hoverPicker}
@@ -606,7 +621,7 @@ export function TrayWorkbenchPanel() {
           className={cn(
             SURFACE,
             PICKER_HEIGHT_LIMIT,
-            "invisible",
+            "invisible overflow-y-hidden",
             sizePreset ? PRESET_MEASUREMENT_WIDTH : "w-[var(--ui-surface-compact-w)]"
           )}
         >

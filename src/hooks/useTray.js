@@ -117,10 +117,16 @@ async function reportNativeAction(action) {
 const separator = (key) => ({ key, kind: "separator" });
 
 function sourceDefinitions(cfg, prefix) {
+  const selectable = !cfg.customPanel || !cfg.sourceBusy;
   /** @type {import("../lib/nativeTrayMenu.js").TrayMenuDefinition[]} */
   const items = [
     {
-      ...menuItem(`${prefix}:default`, "Automatic", () => cfg.onSelectSource("default")),
+      ...menuItem(
+        `${prefix}:default`,
+        "Automatic",
+        () => cfg.onSelectSource("default"),
+        selectable
+      ),
       kind: "check",
       checked: cfg.safeAudioDeviceId === "default",
     },
@@ -164,7 +170,12 @@ function sourceDefinitions(cfg, prefix) {
       items: sources.map((source) => {
         const { text, display } = labelFor(source);
         return {
-          ...menuItem(`${prefix}:source:${source.id}`, text, () => cfg.onSelectSource(source.id)),
+          ...menuItem(
+            `${prefix}:source:${source.id}`,
+            text,
+            () => cfg.onSelectSource(source.id),
+            selectable
+          ),
           display,
           kind: "check",
           checked: cfg.safeAudioDeviceId === source.id,
@@ -189,7 +200,7 @@ function workbenchDefinitions(cfg, prefix) {
       key: `${prefix}:source`,
       kind: "submenu",
       text: `Source: ${sourceLabelFor(cfg)}`,
-      enabled: !cfg.sourceBusy,
+      enabled: !cfg.sourceBusy || (cfg.customPanel && cfg.sourceSnapshotReady !== false),
       items: sourceDefinitions(cfg, `${prefix}:source`),
     },
     {
@@ -234,6 +245,8 @@ function peerInputs(instance, cfg) {
     presetDirty: false,
     presetsBlocked: true,
     ...instance.trayState,
+    customPanel: cfg.customPanel,
+    sourceSnapshotReady: Boolean(instance.trayState),
     updateBusy: cfg.updateBusy || instance.trayState?.updateBusy === true,
     windowVisible: instance.visible,
     running: instance.captureStatus === "running",
@@ -608,6 +621,7 @@ export function useTray({
   // Everything menuDefinitions reads that can change after creation. The ref keeps the
   // creation effect current if state changes while TrayIcon.new is still pending.
   const menuInputs = {
+    customPanel: useWorkbenchPanel,
     windowVisible,
     running,
     updateBusy,
