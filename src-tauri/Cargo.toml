@@ -1,7 +1,11 @@
 [workspace]
 members = ["linux-update-installer", "plvs-cli", "vendor/tauri-plugin-updater"]
-exclude = ["vendor/voice_activity_detector"]
+exclude = ["vendor/ort-sys", "vendor/voice_activity_detector"]
 resolver = "2"
+
+# FireRed pins ort rc.12. Backport Cargo 1.100 build-directory support without changing ONNX Runtime.
+[patch.crates-io]
+ort-sys = { path = "vendor/ort-sys" }
 
 [workspace.package]
 version = "0.27.1"

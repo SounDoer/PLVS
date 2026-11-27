@@ -22,7 +22,8 @@ describe("Tauri dependency contracts", () => {
     expect(macDependencies).toContain('tauri-nspanel = "=2.1.1"');
     expect(cargoToml.match(/^tauri-nspanel =/gm)).toHaveLength(1);
     expect(cargoToml).not.toContain("vendor/tao");
-    expect(cargoToml).not.toContain("[patch.crates-io]");
+    const cratesIoPatches = cargoToml.split("[patch.crates-io]")[1]?.split("\n[")[0].trim();
+    expect(cratesIoPatches).toBe('ort-sys = { path = "vendor/ort-sys" }');
     const nativeRoot = join(process.cwd(), "src-tauri", "src");
     const constructors = readdirSync(nativeRoot, { recursive: true })
       .filter((file) => file.endsWith(".rs"))

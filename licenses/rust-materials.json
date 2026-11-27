@@ -3,7 +3,7 @@
     "source": "licenses/rust/COPYRIGHT-library.html",
     "destination": "licenses/rust/COPYRIGHT-library.html",
     "markers": [],
-    "sha256": "5647be074c8edf7339fd863055923a8fc80bc5610a8d4661ec3b767b9d392c27"
+    "sha256": "626556344c12679d7cab2c1aa2ce80de01937b62c2c88c62f0650a469be18799"
   },
   {
     "source": "licenses/rust/licenses/Apache-2.0.txt",

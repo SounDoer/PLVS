@@ -6,6 +6,21 @@ capture, and Ubuntu Preview packaging. Environment setup and everyday commands r
 
 ## Desktop development
 
+### Rust toolchain and voice activity detection
+
+FireRedVAD pins `ort` to 2.0.0-rc.12, which PLVS also uses for Silero. Cargo 1.100 moved
+intermediate build files. The original `ort-sys` build script looked for the executable directory
+at a fixed distance from those files and failed when staging native libraries.
+
+PLVS vendors the published `ort-sys` 2.0.0-rc.12 crate with the
+[upstream build-directory fix](https://github.com/pykeio/ort/commit/eed56816088613b24f8d1a5bf9ae0fd43d8d6a70)
+applied to its existing download path. The ONNX Runtime 1.24.2 archives, inference bindings, and
+model files retain their reviewed versions. Remove the Cargo patch once both detectors can use
+an upstream release that supports the new layout. Recheck both engines and the runtime notices
+when updating ONNX Runtime itself.
+
+### Running the dev app
+
 Desktop (Tauri):
 
 ```bash
