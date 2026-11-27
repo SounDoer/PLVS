@@ -584,12 +584,8 @@ export function TrayWorkbenchPanel() {
           id="tray-workbench-picker"
           ref={pickerRef}
           aria-label={shownPicker.pageTitle}
-          className={cn(
-            SURFACE,
-            PICKER_HEIGHT_LIMIT,
-            placement?.pickerScrolls ? "overflow-y-auto" : "overflow-y-hidden"
-          )}
-          style={sideBounds}
+          className={cn(SURFACE, PICKER_HEIGHT_LIMIT)}
+          style={{ ...sideBounds, overflowY: placement?.pickerScrolls ? "auto" : "hidden" }}
           onPointerEnter={cancelPickerHover}
           onPointerLeave={hoverPicker}
         >

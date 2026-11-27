@@ -23,7 +23,7 @@ it("offers a scrollbar only when the settled picker clips its measured contents"
   const getBounds = HTMLElement.prototype.getBoundingClientRect;
   vi.spyOn(HTMLElement.prototype, "getBoundingClientRect").mockImplementation(function () {
     const parent = this.parentElement;
-    if (!this.classList.contains("p-1") || !parent?.matches("section,[inert]")) {
+    if (!parent?.matches("#tray-workbench-picker,[inert]")) {
       return getBounds.call(this);
     }
     const applicationsOpen = Array.from(this.querySelectorAll('button[aria-expanded="true"]')).some(
@@ -36,14 +36,14 @@ it("offers a scrollbar only when the settled picker clips its measured contents"
   fireEvent.click(screen.getByRole("button", { name: "Source" }));
   const side = await screen.findByRole("region", { name: "Source" });
   const options = within(side);
-  expect(side.classList.contains("overflow-y-hidden")).toBe(true);
+  expect(getComputedStyle(side).overflowY).toBe("hidden");
 
   fireEvent.click(options.getByRole("button", { name: /^Output/ }));
   await options.findByRole("button", { name: "Speakers" });
-  expect(side.classList.contains("overflow-y-hidden")).toBe(true);
+  expect(getComputedStyle(side).overflowY).toBe("hidden");
   fireEvent.click(options.getByRole("button", { name: /^Applications/ }));
   await options.findByRole("button", { name: "Browser" });
-  expect(side.classList.contains("overflow-y-auto")).toBe(true);
+  expect(getComputedStyle(side).overflowY).toBe("auto");
 });
 
 const mainBounds = { left: 0, top: 0, width: 320, height: 400 };
