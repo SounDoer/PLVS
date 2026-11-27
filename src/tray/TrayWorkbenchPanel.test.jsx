@@ -15,7 +15,10 @@ vi.mock("@tauri-apps/api/core", () => ({
 }));
 vi.mock("@tauri-apps/api/window", () => ({ getCurrentWindow: vi.fn() }));
 
-afterEach(() => vi.unstubAllGlobals());
+afterEach(() => {
+  vi.useRealTimers();
+  vi.unstubAllGlobals();
+});
 
 function source(checked) {
   const choice = (text) => ({
@@ -139,4 +142,74 @@ it("switches the side menu directly and resets it when the tray reopens", async 
   await publish([source("Automatic"), presets], 2);
   expect(screen.queryByRole("region", { name: "Preset" })).toBeNull();
   expect(screen.getByRole("button", { name: "Source", expanded: false })).toBeTruthy();
+});
+
+it("opens only pickers on mouse dwell and keeps the current picker open during diagonal entry", async () => {
+  vi.useFakeTimers();
+  const { publish } = await openTray();
+  await publish([peer("Automatic")]);
+  const workbench = screen.getByRole("button", { name: "Peer Workbench" });
+  const mouse = { pointerType: "mouse" };
+  const advance = (ms) => act(async () => vi.advanceTimersByTimeAsync(ms));
+
+  fireEvent.pointerOver(workbench, mouse);
+  await advance(400);
+  expect(workbench.getAttribute("aria-expanded")).toBe("false");
+  fireEvent.click(workbench);
+  const source = screen.getByRole("button", { name: "Source" });
+  const preset = screen.getByRole("button", { name: "Preset" });
+
+  fireEvent.pointerOver(source, mouse);
+  await advance(100);
+  expect(source.getAttribute("aria-expanded")).toBe("false");
+  fireEvent.pointerOut(source, mouse);
+  await advance(400);
+  expect(source.getAttribute("aria-expanded")).toBe("false");
+  fireEvent.pointerOver(source, mouse);
+  await advance(220);
+  const side = screen.getByRole("region", { name: "Source" });
+  expect(side.contains(document.activeElement)).toBe(false);
+  fireEvent.click(source, { detail: 1 });
+  expect(source.getAttribute("aria-expanded")).toBe("true");
+
+  fireEvent.pointerOut(source, { ...mouse, relatedTarget: preset });
+  await advance(100);
+  fireEvent.pointerOut(preset, mouse);
+  await advance(100);
+  fireEvent.pointerOver(side, mouse);
+  await advance(400);
+  expect(screen.getByRole("region", { name: "Source" })).toBe(side);
+  expect(preset.getAttribute("aria-expanded")).toBe("false");
+
+  fireEvent.pointerOut(side, mouse);
+  await advance(200);
+  expect(source.getAttribute("aria-expanded")).toBe("true");
+  await advance(200);
+  expect(source.getAttribute("aria-expanded")).toBe("false");
+  expect(workbench.getAttribute("aria-expanded")).toBe("true");
+  fireEvent.pointerOver(preset, mouse);
+  await advance(220);
+  expect(screen.getByRole("region", { name: "Preset" })).toBeTruthy();
+});
+
+it("cancels a pending picker on Escape or a new Tray presentation", async () => {
+  vi.useFakeTimers();
+  const { hide, publish } = await openTray();
+  const items = [source("Automatic")];
+  await publish(items);
+  const trigger = screen.getByRole("button", { name: "Source" });
+  const mouse = { pointerType: "mouse" };
+
+  fireEvent.pointerOver(trigger, mouse);
+  fireEvent.keyDown(window, { key: "Escape" });
+  await act(async () => vi.advanceTimersByTimeAsync(400));
+  expect(hide).toHaveBeenCalledOnce();
+  expect(trigger.getAttribute("aria-expanded")).toBe("false");
+
+  fireEvent.pointerOver(trigger, mouse);
+  await publish(items, 2);
+  await act(async () => vi.advanceTimersByTimeAsync(400));
+  expect(trigger.getAttribute("aria-expanded")).toBe("false");
+  fireEvent.click(trigger, { detail: 1 });
+  expect(trigger.getAttribute("aria-expanded")).toBe("true");
 });

@@ -108,11 +108,13 @@ update when the Workbench completes the action. Quitting another
 Workbench removes its entry while the menu stays open. Opening Settings, checking for updates,
 and opening a new Workbench dismiss the menu. Quitting the Workbench that owns the Tray or
 quitting PLVS closes its menu.
-On Windows and macOS, selecting a Workbench expands its controls in place. **Source** and **Preset** open
-beside those controls. Source groups such as **Output**, **Input**, **Applications**, and **Mixes** (when available) start
-collapsed and expand when selected. Long lists scroll inside the side menu. Selecting a Source
-or Preset keeps its menu open. Press **Esc** to close the side menu, then again to collapse the
-Workbench controls, then once more to dismiss the Tray menu.
+On Windows and macOS, click a Workbench to expand or collapse its controls in place. The arrow
+points down when collapsed and up when expanded. Pause over **Source** or **Preset** to open its
+side menu, or click to open it immediately. The side menu stays open as you move into it and closes
+after a short delay when you move away. Source groups such as **Output**, **Input**, **Applications**,
+and **Mixes** (when available) start collapsed and expand when selected. Long lists scroll inside
+the side menu. Selecting a Source or Preset keeps its menu open. Press **Esc** to close the side
+menu, then again to collapse the Workbench controls, then once more to dismiss the Tray menu.
 Agents can inspect the menu on all three platforms and operate the PLVS panel on Windows and
 macOS using [Tray Control](cli.md#commands).
 **Settings…** brings the owning workbench forward and opens Settings. In Dock mode, it shows the
