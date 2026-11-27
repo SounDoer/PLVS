@@ -1,0 +1,41 @@
+name: Bug Report
+description: Report something that is not working as expected in PLVS.
+body:
+  - type: markdown
+    attributes:
+      value: |
+        This report is public. Remove personal information from logs and screenshots.
+        Report suspected security vulnerabilities through [GitHub's private reporting form](https://github.com/SounDoer/PLVS/security/advisories/new).
+  - type: input
+    id: plvs-version
+    attributes:
+      label: PLVS Version
+      description: Include the version number and the Preview build identifier if applicable.
+    validations:
+      required: true
+  - type: input
+    id: operating-system
+    attributes:
+      label: Operating System
+      description: Include the OS name and version.
+    validations:
+      required: true
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Steps to Reproduce
+      description: Describe what you did before the problem occurred.
+    validations:
+      required: true
+  - type: textarea
+    id: behavior
+    attributes:
+      label: Expected and Actual Behavior
+      description: Describe what you expected to happen and what happened instead.
+    validations:
+      required: true
+  - type: textarea
+    id: additional-context
+    attributes:
+      label: Additional Context
+      description: If relevant, include your audio device, capture source, or screenshots.

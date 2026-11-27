@@ -1,0 +1,17 @@
+name: Feature Request
+description: Suggest an improvement to PLVS.
+body:
+  - type: textarea
+    id: use-case
+    attributes:
+      label: Use Case
+      description: What are you trying to do, and where does your current workflow fall short?
+    validations:
+      required: true
+  - type: textarea
+    id: desired-outcome
+    attributes:
+      label: Desired Outcome
+      description: What would you like PLVS to let you do?
+    validations:
+      required: true
