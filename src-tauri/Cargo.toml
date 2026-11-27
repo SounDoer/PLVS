@@ -94,7 +94,7 @@ tauri-plugin-clipboard-manager = "2.3.3"
 hound = { version = "3.5.1", optional = true }
 # Agent Control MCP adapter (`plvs-cli mcp`). Pinned: the 3.x API moves quickly and published
 # examples disagree, so upgrades are deliberate.
-rmcp = { version = "=3.9.0", default-features = false, features = ["server", "base64", "transport-io"] }
+rmcp = { version = "=3.11.0", default-features = false, features = ["server", "base64", "transport-io"] }
 tokio = { version = "1", features = ["rt", "macros", "time", "io-std"] }
 base64 = "0.22"
 # The MCP adapter saves CSV and recording outputs to the user's Downloads folder by default.
