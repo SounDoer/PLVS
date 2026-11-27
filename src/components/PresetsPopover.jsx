@@ -3,7 +3,7 @@ import { Check, Download, Pencil, RefreshCw, Trash2, X } from "lucide-react";
 import { AddButton } from "@/components/AddButton";
 import { InlineConfirm } from "@/components/InlineConfirm.jsx";
 import { MANAGEMENT_ROW_ACTIONS_CLASS, ManagementIconAction } from "@/components/ManagementRow.jsx";
-import { PresetOptionContent } from "@/components/PresetOptionContent.jsx";
+import { NamedOptionContent } from "@/components/NamedOptionContent.jsx";
 import { POPOVER_HEADER_CLASS, POPOVER_TITLE_CLASS } from "@/components/ui/surfaceStyles.js";
 import { cn } from "@/lib/utils";
 import { SortableList } from "@/components/ui/sortable-list.jsx";
@@ -159,10 +159,10 @@ export function PresetsPopoverContent({
                       // handle's own gap.
                       className={cn("pl-1 pr-2", blockedClass)}
                     >
-                      <PresetOptionContent
-                        name={preset.name}
+                      <NamedOptionContent
+                        text={`${preset.name}${isDirty ? " *" : ""}`}
                         selected={isActive}
-                        modified={isDirty}
+                        className="text-foreground"
                         showTruncationTip
                         selectionLabel={
                           isActive

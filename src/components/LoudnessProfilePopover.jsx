@@ -3,7 +3,7 @@ import { Download, SlidersHorizontal, Trash2 } from "lucide-react";
 import { InlineConfirm } from "@/components/InlineConfirm.jsx";
 import { MANAGEMENT_ROW_ACTIONS_CLASS, ManagementIconAction } from "@/components/ManagementRow.jsx";
 import { AddButton } from "@/components/AddButton";
-import { TruncatingLabel } from "@/components/TruncatingLabel.jsx";
+import { NamedOptionContent } from "@/components/NamedOptionContent.jsx";
 import { Button } from "@/components/ui/button";
 import { POPOVER_HEADER_CLASS, POPOVER_TITLE_CLASS } from "@/components/ui/surfaceStyles.js";
 import { cn } from "@/lib/utils";
@@ -22,17 +22,6 @@ const ROW_CLASS =
 // on the Off row, the same-size spacer that stands in for it), so the left side only needs enough
 // padding for its own hover/focus rounding, not a second helping of the handle's own gap.
 const ROW_BUTTON_CLASS = "pl-1 pr-2";
-
-function ActiveDot({ active }) {
-  return (
-    <span
-      className={cn(
-        "size-1.5 shrink-0 rounded-full border",
-        active ? "border-primary bg-primary" : "border-muted-foreground bg-transparent"
-      )}
-    />
-  );
-}
 
 /**
  * Popover body for Loudness Profile switching and management.
@@ -98,8 +87,7 @@ export function LoudnessProfilePopoverContent({
           disabled={blocked}
           className={cn(ROW_BUTTON_CLASS, blockedClass)}
         >
-          <ActiveDot active={active === LOUDNESS_PROFILE_OFF} />
-          <span className="min-w-0 flex-1 truncate">Off</span>
+          <NamedOptionContent text="Off" selected={active === LOUDNESS_PROFILE_OFF} />
         </RowAction>
       </div>
 
@@ -120,8 +108,11 @@ export function LoudnessProfilePopoverContent({
                 disabled={blocked}
                 className={cn(ROW_BUTTON_CLASS, blockedClass)}
               >
-                <ActiveDot active={active === selection} />
-                <TruncatingLabel text={entry.name} className="min-w-0 flex-1" />
+                <NamedOptionContent
+                  text={entry.name}
+                  selected={active === selection}
+                  showTruncationTip
+                />
               </RowAction>
               {manageable ? (
                 <span className={cn(MANAGEMENT_ROW_ACTIONS_CLASS, "pr-2")}>

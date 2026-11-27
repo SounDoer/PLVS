@@ -27,10 +27,14 @@ export async function runTrayContract({
 
   const owner = `workbench:${firstInstance}`;
   const source = initial.items.find(({ key }) => key === `${owner}:source`);
+  const profile = initial.items.find(({ key }) => key === `${owner}:loudness-profile`);
   const preset = initial.items.find(({ key }) => key === `${owner}:preset`);
   const automatic = source.items.find(({ text }) => text === "Automatic");
   assert.equal(automatic.checked, true);
   assert.ok(preset);
+  assert.equal(initial.items.indexOf(profile), initial.items.indexOf(source) + 1);
+  const off = profile.items.find(({ text }) => text === "Off");
+  const activeProfile = profile.items.find(({ checked }) => checked);
   assert.equal(initial.visible, supportsPanel ? false : null);
 
   if (supportsPanel) {
@@ -53,6 +57,25 @@ export async function runTrayContract({
     ]);
     assert.equal(captured.target.kind, "tray");
     assert.ok(captured.artifact.width > 400 && captured.artifact.height > 0);
+    assert.equal(action("open", profile.key).navigation.pickerKey, profile.key);
+    assert.equal(action("activate", off.key).visible, true);
+    await until(
+      () =>
+        inspect()
+          .items.find(({ key }) => key === profile.key)
+          .items.find(({ key }) => key === off.key).checked,
+      "the active Loudness Profile changes to Off"
+    );
+    if (activeProfile && activeProfile.key !== off.key) {
+      action("activate", activeProfile.key);
+      await until(
+        () =>
+          inspect()
+            .items.find(({ key }) => key === profile.key)
+            .items.find(({ key }) => key === activeProfile.key).checked,
+        "the original Loudness Profile is restored"
+      );
+    }
     assert.equal(action("open", preset.key).navigation.pickerKey, preset.key);
     assert.equal(action("activate", `${owner}:window`).visible, true);
     assert.equal(invoke(["window", "inspect"]).visible, false);
@@ -69,7 +92,7 @@ export async function runTrayContract({
       "Settings opened from the Tray"
     );
     steps.push(
-      "open both Tray pickers, verify screenshot and stale tokens, toggle visibility and open Settings"
+      "open the Tray pickers, switch Loudness Profile, verify screenshot and stale tokens, toggle visibility and open Settings"
     );
   } else {
     action("open", source.key, initial, { expectedError: "controlUnavailable" });

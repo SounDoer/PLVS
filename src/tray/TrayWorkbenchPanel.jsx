@@ -5,7 +5,7 @@ import { emitTo, listen } from "@tauri-apps/api/event";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { ChevronDown, ChevronRight, ChevronUp } from "lucide-react";
 import { MenuRow } from "../components/ui/row.jsx";
-import { PresetOptionContent } from "../components/PresetOptionContent.jsx";
+import { NamedOptionContent } from "../components/NamedOptionContent.jsx";
 import { SourceGroupHeading, SourceOptionContent } from "../components/SourceOptionContent.jsx";
 import { POPOVER_SURFACE_CLASS } from "../components/ui/surfaceStyles.js";
 import { installKeyboardNavigationTracking } from "../lib/keyboardNavigation.js";
@@ -32,14 +32,14 @@ const SURFACE = cn(POPOVER_SURFACE_CLASS, "absolute overflow-x-hidden");
 const ROW = "disabled:pointer-events-none disabled:text-muted-foreground";
 const CHEVRON = "size-[1em] shrink-0 text-muted-foreground";
 const PICKER_HEIGHT_LIMIT = "max-h-[calc(9*var(--ui-row-h)+10px)]";
-const PRESET_MEASUREMENT_WIDTH =
+const NAMED_PICKER_MEASUREMENT_WIDTH =
   "w-max min-w-[12em] max-w-[var(--ui-surface-compact-w)] text-[length:var(--ui-fs-control)]";
 const PICKER_OPEN_DELAY_MS = 200;
 const PICKER_CLOSE_DELAY_MS = 350;
 const initialBounds = { left: 0, top: 0, width: "var(--ui-surface-compact-w)", height: "100dvh" };
 
-/** @param {{ item: TrayPanelItem, preset?: boolean, onAction: (item: TrayPanelItem) => void }} props */
-function ChoiceRow({ item, preset, onAction }) {
+/** @param {{ item: TrayPanelItem, named?: boolean, onAction: (item: TrayPanelItem) => void }} props */
+function ChoiceRow({ item, named, onAction }) {
   const choice = item.kind === "check";
   const selected = Boolean(item.checked);
   const primary = item.display?.primary ?? item.text;
@@ -52,11 +52,11 @@ function ChoiceRow({ item, preset, onAction }) {
       onClick={() => onAction(item)}
     >
       {choice ? (
-        preset ? (
-          <PresetOptionContent
-            name={primary}
+        named ? (
+          <NamedOptionContent
+            text={item.display?.modified ? `${primary} *` : primary}
             selected={selected}
-            modified={item.display?.modified}
+            className="text-foreground"
           />
         ) : (
           <SourceOptionContent
@@ -110,7 +110,7 @@ function SourceGroup({ item, open, toggle, onAction }) {
  *   branchKey?: string,
  *   pickerKey?: string,
  *   groupKeys?: string[],
- *   presetChoices?: boolean,
+ *   namedChoices?: boolean,
  *   onToggleGroup?: (key: string) => void,
  *   onToggleBranch?: (key: string) => void,
  *   onOpenPicker?: (key: string, byKeyboard: boolean) => void,
@@ -123,7 +123,7 @@ function TrayRows({
   branchKey,
   pickerKey,
   groupKeys,
-  presetChoices,
+  namedChoices,
   onToggleGroup,
   onToggleBranch,
   onOpenPicker,
@@ -152,7 +152,7 @@ function TrayRows({
         if (item.kind !== "submenu") {
           return (
             <li key={item.key}>
-              <ChoiceRow item={item} preset={presetChoices} onAction={onAction} />
+              <ChoiceRow item={item} named={namedChoices} onAction={onAction} />
             </li>
           );
         }
@@ -274,9 +274,10 @@ export function TrayWorkbenchPanel() {
     ? rows.find((item) => item.key === placement?.pickerKey && item.pageTitle)
     : undefined;
   const shownPickerKey = shownPicker?.key;
-  const sizePreset = picker?.pageTitle === "Preset";
+  const sizeNamedPicker = Boolean(picker && picker.pageTitle !== "Source");
   const needsMeasurement = Boolean(
-    picker && (sizePreset || shownPickerKey !== pickerKey || placement?.groupKeys !== groupKeys)
+    picker &&
+    (sizeNamedPicker || shownPickerKey !== pickerKey || placement?.groupKeys !== groupKeys)
   );
   const layoutReady =
     placement?.presentation === snapshot.presentation &&
@@ -382,7 +383,7 @@ export function TrayWorkbenchPanel() {
       const side =
         pickerSurface && pickerContents && trigger
           ? {
-              width: sizePreset ? pickerSurface.getBoundingClientRect().width : undefined,
+              width: sizeNamedPicker ? pickerSurface.getBoundingClientRect().width : undefined,
               height: Math.min(Math.ceil(pickerContentHeight), pickerHeightLimit),
               triggerTop: Math.max(
                 0,
@@ -440,7 +441,7 @@ export function TrayWorkbenchPanel() {
     const observer = new ResizeObserver(scheduleLayout);
     observer.observe(contents);
     if (pickerContents) observer.observe(pickerContents);
-    if (sizePreset && pickerSurface) observer.observe(pickerSurface);
+    if (sizeNamedPicker && pickerSurface) observer.observe(pickerSurface);
     main.addEventListener("scroll", scheduleLayout);
     window.addEventListener("resize", scheduleLayout);
     applyLayout();
@@ -457,7 +458,7 @@ export function TrayWorkbenchPanel() {
     pickerKey,
     groupKeys,
     needsMeasurement,
-    sizePreset,
+    sizeNamedPicker,
   ]);
 
   useEffect(() => {
@@ -596,7 +597,7 @@ export function TrayWorkbenchPanel() {
             <TrayRows
               items={shownPicker.items ?? []}
               groupKeys={placement?.groupKeys}
-              presetChoices={shownPicker.pageTitle === "Preset"}
+              namedChoices={shownPicker.pageTitle !== "Source"}
               onToggleGroup={(key) =>
                 setNavigation((current) => {
                   if (current.pickerKey !== shownPickerKey) return current;
@@ -622,14 +623,14 @@ export function TrayWorkbenchPanel() {
             SURFACE,
             PICKER_HEIGHT_LIMIT,
             "invisible overflow-y-hidden",
-            sizePreset ? PRESET_MEASUREMENT_WIDTH : "w-[var(--ui-surface-compact-w)]"
+            sizeNamedPicker ? NAMED_PICKER_MEASUREMENT_WIDTH : "w-[var(--ui-surface-compact-w)]"
           )}
         >
           <div ref={pickerMeasurementRef} className="p-1">
             <TrayRows
               items={picker.items ?? []}
               groupKeys={groupKeys}
-              presetChoices={sizePreset}
+              namedChoices={sizeNamedPicker}
               onAction={request}
             />
           </div>

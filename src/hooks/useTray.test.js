@@ -848,6 +848,59 @@ describe("useTray", () => {
     expect(coordination.issue).toHaveBeenNthCalledWith(2, "peer", "hide", null);
   });
 
+  it("shows Loudness Profile between Source and Preset and selects it in the owning Workbench", async () => {
+    vi.mocked(isWindows).mockReturnValue(true);
+    window.__PLVS_INITIAL_STATE__ = { instanceId: "owner" };
+    const list = [{ id: "reference", name: "Reference" }];
+    const select = vi.fn().mockReturnValue(true);
+    const instances = [
+      { instanceId: "owner", displayName: "Owner" },
+      {
+        instanceId: "peer",
+        displayName: "Peer",
+        trayState: { loudnessProfile: { list, active: "profile:reference", blocked: false } },
+      },
+    ];
+    invoke.mockImplementation(async (command) =>
+      command === "runtime_list_instances" ? instances : true
+    );
+    const { result, rerender } = renderHook(
+      ({ blocked }) =>
+        useTray({ ...defaultProps, loudnessProfile: { list, active: "off", blocked, select } }),
+      { initialProps: { blocked: false } }
+    );
+    await act(async () => {});
+    const { items } = await result.current.read();
+    for (const branch of items.slice(0, 2)) {
+      expect(branch.items.map((item) => item.pageTitle).filter(Boolean)).toEqual([
+        "Source",
+        "Loudness Profile",
+        "Preset",
+      ]);
+    }
+    const local = items[0].items.find(({ pageTitle }) => pageTitle === "Loudness Profile");
+    const peer = items[1].items.find(({ pageTitle }) => pageTitle === "Loudness Profile");
+    expect(local.items.map(({ text, checked }) => [text, checked])).toEqual([
+      ["Off", true],
+      ["Reference", false],
+    ]);
+    expect(peer.items[1].checked).toBe(true);
+    await act(async () => result.current.activate(local.items[1].key));
+    expect(select).toHaveBeenCalledExactlyOnceWith("reference");
+    await act(async () => result.current.activate(peer.items[0].key));
+    expect(coordination.issue).toHaveBeenCalledExactlyOnceWith(
+      "peer",
+      "selectLoudnessProfile",
+      "off"
+    );
+
+    rerender({ blocked: true });
+    await expect(result.current.activate(local.items[0].key)).rejects.toThrow(
+      /no longer available/
+    );
+    expect(select).toHaveBeenCalledTimes(1);
+  });
+
   it("uses the refreshed peer visibility for successive panel clicks", async () => {
     vi.mocked(isMacOS).mockReturnValue(true);
     window.__PLVS_INITIAL_STATE__ = { instanceId: "owner" };

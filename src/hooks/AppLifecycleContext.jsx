@@ -18,6 +18,7 @@ import { useResolvedTheme } from "../theme/useResolvedTheme.js";
 import { useSceneGuard } from "./SceneGuardContext.jsx";
 import { useWindowChrome } from "./WindowChromeContext.jsx";
 import { usePresetLibrary } from "./PresetsContext.jsx";
+import { useLoudnessProfile } from "./LoudnessProfileContext.jsx";
 import { useCrashReportSetting } from "./useCrashReportSetting.js";
 import { useCrashReporting } from "./useCrashReporting.js";
 import { useUpdateController } from "./useUpdateController.js";
@@ -72,6 +73,17 @@ export function AppLifecycleProvider({ children }) {
   const toggleFocusControls = reveal.toggleControls;
   const { activeBlockingEditors } = useSceneGuard();
   const presets = usePresetLibrary();
+  const loudnessProfile = useLoudnessProfile();
+  const selectProfile = loudnessProfile.control.select;
+  const selectLoudnessProfile = useCallback(
+    (id) => !selectProfile(id).issues?.length,
+    [selectProfile]
+  );
+  const trayLoudnessProfile = {
+    list: loudnessProfile.profiles,
+    active: loudnessProfile.active,
+    blocked: loudnessProfile.draftBlocksLibraryActions,
+  };
   const meterRuntime = useMeterRuntime();
   const {
     running,
@@ -169,6 +181,10 @@ export function AppLifecycleProvider({ children }) {
       safeAudioDeviceId,
       defaultOutputLabel,
       sourceBusy,
+      loudnessProfile: {
+        ...trayLoudnessProfile,
+        list: trayLoudnessProfile.list.map(({ id, name }) => ({ id, name })),
+      },
       presetList: presets.list.map(({ id, name }) => ({ id, name })),
       presetActiveId: presets.activeId,
       presetDirty: presets.dirty,
@@ -287,6 +303,7 @@ export function AppLifecycleProvider({ children }) {
       hide: () => requestCloseAction("tray"),
       settings: trayActions.onOpenSettings,
       selectSource: onSelectCaptureDevice,
+      selectLoudnessProfile,
       applyPreset: presets.apply,
       clearActiveSource: () => dispatchShortcut?.("clear") ?? false,
     },
@@ -311,6 +328,7 @@ export function AppLifecycleProvider({ children }) {
     defaultOutputLabel,
     sourceBusy,
     onSelectSource: onSelectCaptureDevice,
+    loudnessProfile: { ...trayLoudnessProfile, select: selectLoudnessProfile },
     presets,
   });
 

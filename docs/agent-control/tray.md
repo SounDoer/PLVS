@@ -16,13 +16,15 @@ native `visible` and the settled `navigation`, with `branchKey`, `pickerKey`, an
 when applicable.
 
 - `tray open` opens the actual Tray panel at the icon. The optional `--item` accepts a Workbench
-  branch, Source or Preset picker, or Source group key. The command settles after that page renders.
+  branch, Source, Loudness Profile or Preset picker, or Source group key. The command settles after
+  that page renders.
   Source navigation remains available during capture transitions. Source choices are disabled until
   the owning Workbench finishes the transition.
 - `tray activate --item <item-id>` invokes an enabled choice on the open page through the same
   path as a click. Expand the Source group before choosing from it. Actions keep or dismiss the
-  menu according to the clicked item's rules. For Quit Workbench and Quit PLVS, use
-  [Workbench Control](workbench.md).
+  menu according to the clicked item's rules. **Off** and other Loudness Profile choices apply to
+  the Workbench whose menu is open. A Loudness Profile draft disables these choices. For Quit
+  Workbench and Quit PLVS, use [Workbench Control](workbench.md).
 - `tray close` dismisses the panel.
 - `visual screenshot --target tray` captures the open panel, including its picker in the same
   WebView. The image is cropped to the visible menu bounds. It is unavailable while the panel is

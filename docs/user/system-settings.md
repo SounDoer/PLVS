@@ -103,39 +103,42 @@ open as submenus in the native menu. The menu includes
 On Windows and macOS, the Tray menu follows the current Theme and Interface Size. It fits its visible
 options and scrolls when they exceed the available space. Long names are truncated to fit the menu.
 Dragging across menu items leaves their labels unselected. **Locate**, **Show** / **Hide**,
-**Start** / **Stop**, Source and Preset selection leave the menu open. **Show** and **Hide** update
-when the Workbench completes the action. Quitting another
+**Start** / **Stop**, and selecting a Source, Loudness Profile or Preset leave the menu open.
+**Show** and **Hide** update when the Workbench completes the action. Quitting another
 Workbench removes its entry while the menu stays open. Opening Settings, checking for updates,
 and opening a new Workbench dismiss the menu. Quitting the Workbench that owns the Tray or
 quitting PLVS closes its menu.
 On Windows and macOS, click a Workbench to expand or collapse its controls in place. The arrow
-points down when collapsed and up when expanded. Pause over **Source** or **Preset** to open its
-side menu, or click to open it immediately. The side menu stays open as you move into it and closes
-after a short delay when you move away. The Preset menu fits its names within the available width.
+points down when collapsed and up when expanded. Pause over **Source**, **Loudness Profile** or
+**Preset** to open its side menu, or click to open it immediately. The side menu stays open as you
+move into it and closes after a short delay when you move away. Loudness Profile and Preset menus
+fit their names within the available width.
 You can browse Sources while capture starts or stops. Source choices become available once the
 transition finishes.
 Source groups such as **Output**, **Input**, **Applications**,
 and **Mixes** (when available) start collapsed and expand when selected. Long lists scroll inside
-the side menu. As in the main window, a filled dot marks the current Source or Preset. Devices show
-their name and any secondary label on separate lines. Presets appear in library order. Selecting a
-Source or Preset keeps its menu open. Press **Esc** to close the side menu, then again to collapse
-the Workbench controls, then once more to dismiss the Tray menu.
+the side menu. As in the main window, a filled dot marks the current Source, Loudness Profile or
+Preset. Devices show their name and any secondary label on separate lines. **Loudness Profile** lists
+**Off** first, then the profiles in library order. Finish editing an open Loudness Profile before
+switching. Presets also appear in library order. Press **Esc** to close the side menu, then again to
+collapse the Workbench controls, then once more to dismiss the Tray menu.
 Click outside the Tray menu to dismiss it.
 Agents can inspect the menu on all three platforms and operate the PLVS panel on Windows and
 macOS using [Tray Control](cli.md#commands).
 **Settings…** brings the owning workbench forward and opens Settings. In Dock mode, it shows the
 Settings window while keeping Dock active.
 
-With one workbench open, its window, Start / Stop, Source, Preset and Settings controls appear
-directly in the Tray menu. With several open, each workbench's Source-derived name appears directly
-at the top level. Its submenu begins with **Locate** and ends with **Quit Workbench**. **Locate**
+With one workbench open, its window, Start / Stop, Source, Loudness Profile, Preset and Settings
+controls appear directly in the Tray menu. With several open, each workbench's Source-derived name
+appears at the top level. Its submenu begins with **Locate** and ends with **Quit Workbench**. **Locate**
 brings the selected workbench forward and briefly lights its inside edge in its theme's accent
 colour, even with **Hide Window Frame** enabled. The outline and glow fade together. With reduced
 motion enabled, the outline appears briefly and stays static. A visible Dock strip lights up in
-place. A hidden workbench or a minimized window is restored. Source and Preset show that
-workbench's choices and current selection, and Settings opens in that workbench. **New Workbench** is available at
-the top level with one or several workbenches open. It opens another with **Automatic** selected
-and its Transport **Stopped**. Update actions and **Quit PLVS** also remain at the top level.
+place. A hidden workbench or a minimized window is restored. Source, Loudness Profile and Preset
+show that workbench's choices and current selection, and Settings opens in that workbench.
+**New Workbench** is available at the top level with one or several workbenches open. It opens
+another with **Automatic** selected and its Transport **Stopped**. Update actions and **Quit PLVS**
+also remain at the top level.
 **Show** brings the selected workbench to the front, restoring it if minimized. A workbench with
 an open editor or dialog refuses to quit and comes to the front so you can finish or close what is
 open first. **Quit PLVS** flushes and closes the complete

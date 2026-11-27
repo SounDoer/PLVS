@@ -15,6 +15,7 @@ import {
   isUnavailableApplicationSource,
 } from "../lib/audioDeviceLabels.js";
 import { isSourceMixId } from "../lib/sourceMixes.js";
+import { LOUDNESS_PROFILE_OFF, profileSelectionId } from "../lib/loudnessProfileCatalog.js";
 import {
   clearCurrentTrayIcon,
   closeTrayIcon,
@@ -186,6 +187,25 @@ function sourceDefinitions(cfg, prefix) {
   return items;
 }
 
+function loudnessProfileDefinition(cfg, prefix) {
+  const { list, active, blocked } = cfg.loudnessProfile;
+  const choices = [{ id: LOUDNESS_PROFILE_OFF, name: "Off" }, ...list];
+  return {
+    key: prefix,
+    kind: "submenu",
+    text: "Loudness Profile",
+    enabled: !cfg.updateBusy,
+    items: choices.map(({ id, name }) => {
+      const selection = id === LOUDNESS_PROFILE_OFF ? id : profileSelectionId(id);
+      return {
+        ...menuItem(`${prefix}:${id}`, name, () => cfg.onSelectLoudnessProfile(id), !blocked),
+        kind: "check",
+        checked: active === selection,
+      };
+    }),
+  };
+}
+
 function workbenchDefinitions(cfg, prefix) {
   return [
     menuItem(
@@ -203,6 +223,7 @@ function workbenchDefinitions(cfg, prefix) {
       enabled: !cfg.sourceBusy || (cfg.customPanel && cfg.sourceSnapshotReady !== false),
       items: sourceDefinitions(cfg, `${prefix}:source`),
     },
+    ...(cfg.loudnessProfile ? [loudnessProfileDefinition(cfg, `${prefix}:loudness-profile`)] : []),
     {
       key: `${prefix}:preset`,
       kind: "submenu",
@@ -282,6 +303,9 @@ function menuDefinitions(cfg) {
                 onSelectSource: local
                   ? cfg.onSelectSource
                   : (id) => cfg.onInstanceAction(instance, "selectSource", id),
+                onSelectLoudnessProfile: local
+                  ? cfg.onSelectLoudnessProfile
+                  : (id) => cfg.onInstanceAction(instance, "selectLoudnessProfile", id),
                 onApplyPreset: local
                   ? cfg.onApplyPreset
                   : (id) => cfg.onInstanceAction(instance, "applyPreset", id),
@@ -396,6 +420,7 @@ function findTrayAction(items, key) {
  *   defaultOutputLabel?: string,
  *   sourceBusy?: boolean,
  *   onSelectSource?: (...args: any[]) => any,
+ *   loudnessProfile?: { list: { id: string, name: string }[], active: string, blocked: boolean, select: (id: string) => boolean },
  *   presets?: import("./usePresets.js").PresetsMenu,
  * }} options
  */
@@ -420,6 +445,7 @@ export function useTray({
   defaultOutputLabel = "",
   sourceBusy = false,
   onSelectSource = () => {},
+  loudnessProfile,
   presets = { list: [], activeId: null, dirty: false, blocked: false, apply: () => {} },
 }) {
   const isMac = isMacOS();
@@ -455,11 +481,17 @@ export function useTray({
   const onSelectSourceRef = useRef(onSelectSource);
   const onApplyPresetRef = useRef(presets.apply);
   const updateBusyRef = useRef(updateBusy);
-  const navigationRef = useRef({ onLocateWindow, onOpenSettings, updateMenu });
+  const selectLoudnessProfile = loudnessProfile?.select;
+  const navigationRef = useRef({
+    onLocateWindow,
+    onOpenSettings,
+    updateMenu,
+    selectLoudnessProfile,
+  });
   useLayoutEffect(() => {
     updateBusyRef.current = updateBusy;
-    navigationRef.current = { onLocateWindow, onOpenSettings, updateMenu };
-  }, [updateBusy, onLocateWindow, onOpenSettings, updateMenu]);
+    navigationRef.current = { onLocateWindow, onOpenSettings, updateMenu, selectLoudnessProfile };
+  }, [updateBusy, onLocateWindow, onOpenSettings, updateMenu, selectLoudnessProfile]);
   const stableLocateWindow = useCallback(() => {
     if (updateBusyRef.current) return;
     void navigationRef.current
@@ -505,6 +537,10 @@ export function useTray({
     if (!updateBusyRef.current) onQuitRef.current();
   }, []);
   const stableSelectSource = useCallback((id) => onSelectSourceRef.current(id), []);
+  const stableSelectLoudnessProfile = useCallback((id) => {
+    if (updateBusyRef.current) return false;
+    return navigationRef.current.selectLoudnessProfile?.(id) ?? false;
+  }, []);
   const stableApplyPreset = useCallback((id) => {
     if (updateBusyRef.current) return false;
     return onApplyPresetRef.current(id);
@@ -632,6 +668,7 @@ export function useTray({
     safeAudioDeviceId,
     defaultOutputLabel,
     sourceBusy,
+    loudnessProfile,
     presetList: presets.list,
     presetActiveId: presets.activeId,
     presetDirty: presets.dirty,
@@ -784,6 +821,7 @@ export function useTray({
       onNewWorkbench: () => reportNativeAction(stableNewWorkbench),
       onQuit: stableQuit,
       onSelectSource: stableSelectSource,
+      onSelectLoudnessProfile: (id) => reportNativeAction(() => stableSelectLoudnessProfile(id)),
       onApplyPreset: (id) => reportNativeAction(() => stableApplyPreset(id)),
       onToggleInstance: (instance) => reportNativeAction(() => stableToggleInstance(instance)),
       onInstanceAction: stableInstanceAction,
@@ -799,6 +837,7 @@ export function useTray({
       stableNewWorkbench,
       stableQuit,
       stableSelectSource,
+      stableSelectLoudnessProfile,
       stableApplyPreset,
       stableToggleInstance,
       stableInstanceAction,
@@ -818,6 +857,7 @@ export function useTray({
         instances: instancesRef.current,
         onNewWorkbench: stableNewWorkbench,
         onApplyPreset: stableApplyPreset,
+        onSelectLoudnessProfile: stableSelectLoudnessProfile,
         onToggleInstance: stableToggleInstance,
         onOpenSettings: stableOpenSettings,
         onOpenUpdate: stableOpenUpdate,
@@ -829,6 +869,7 @@ export function useTray({
   }, [
     menuConfig,
     stableApplyPreset,
+    stableSelectLoudnessProfile,
     stableNewWorkbench,
     stableOpenSettings,
     stableOpenUpdate,
@@ -933,6 +974,9 @@ export function useTray({
     safeAudioDeviceId,
     defaultOutputLabel,
     sourceBusy,
+    loudnessProfile?.list,
+    loudnessProfile?.active,
+    loudnessProfile?.blocked,
     presets.list,
     presets.activeId,
     presets.dirty,

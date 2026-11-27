@@ -101,9 +101,15 @@ async function handleRuntimeCommand(command, prepared) {
       return;
     }
     if (
-      ["locate", "hide", "settings", "selectSource", "applyPreset", "clearActiveSource"].includes(
-        command.action
-      )
+      [
+        "locate",
+        "hide",
+        "settings",
+        "selectSource",
+        "selectLoudnessProfile",
+        "applyPreset",
+        "clearActiveSource",
+      ].includes(command.action)
     ) {
       if (current.busy || prepared.size)
         throw new Error("PLVS is preparing an application operation.");

@@ -113,6 +113,7 @@ describe("runtime coordination", () => {
     ["hide", null],
     ["settings", null],
     ["selectSource", "output-peer"],
+    ["selectLoudnessProfile", "profile-peer"],
     ["applyPreset", "preset-peer"],
     ["clearActiveSource", null],
   ])("dispatches %s to the receiving workbench's business action", async (action, payload) => {

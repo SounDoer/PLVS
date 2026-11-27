@@ -171,6 +171,7 @@ impl RuntimeCommandMailbox {
         | "hide"
         | "settings"
         | "selectSource"
+        | "selectLoudnessProfile"
         | "applyPreset"
         | "clearActiveSource"
         | "quitInstance"
@@ -180,7 +181,10 @@ impl RuntimeCommandMailbox {
     ) {
       return Err("Unknown runtime coordination action.".to_string());
     }
-    let needs_payload = matches!(action, "selectSource" | "applyPreset");
+    let needs_payload = matches!(
+      action,
+      "selectSource" | "selectLoudnessProfile" | "applyPreset"
+    );
     if needs_payload != payload.is_some()
       || payload.is_some_and(|value| value.is_empty() || value.len() > 4096)
     {
@@ -530,7 +534,7 @@ mod tests {
   fn tray_commands_preserve_target_payloads_and_reject_invalid_shapes() {
     let root = test_root("tray-payload");
     let mailbox = RuntimeCommandMailbox::open(&root).unwrap();
-    for action in ["selectSource", "applyPreset"] {
+    for action in ["selectSource", "selectLoudnessProfile", "applyPreset"] {
       assert!(mailbox.issue("instance-a", "operation-a", action).is_err());
       mailbox
         .issue_with_payload("instance-a", "operation-a", action, Some("selected-id"))

@@ -317,3 +317,26 @@ it("renders the shared Source labels and current Preset dot in selection-only ro
   expect(preset.querySelector(".bg-primary")).toBeTruthy();
   expect(presets.getAllByRole("button")).toEqual([preset]);
 });
+
+it("renders Loudness Profile choices with the active dot and only selection actions", async () => {
+  const { publish } = await openTray();
+  const off = { key: "off", kind: "check", text: "Off", checked: true, dismiss: false };
+  const reference = { ...off, key: "reference", text: "Reference", checked: false };
+  await publish([
+    source("Automatic"),
+    { key: "profiles", kind: "submenu", pageTitle: "Loudness Profile", items: [off, reference] },
+    peer("Automatic").items.at(-1),
+  ]);
+  fireEvent.click(screen.getByRole("button", { name: "Loudness Profile" }));
+  const side = within(await screen.findByRole("region", { name: "Loudness Profile" }));
+  const offRow = side.getByRole("button", { name: "Off", pressed: true });
+  const profileRow = side.getByRole("button", { name: "Reference", pressed: false });
+  expect(offRow.querySelector(".bg-primary")).toBeTruthy();
+  expect(side.getAllByRole("button")).toEqual([offRow, profileRow]);
+  fireEvent.click(profileRow);
+  expect(emitTo).toHaveBeenCalledWith("main", TRAY_WORKBENCH_ACTION, {
+    kind: "activate",
+    key: "reference",
+  });
+  expect(screen.getByRole("region", { name: "Loudness Profile" })).toBeTruthy();
+});

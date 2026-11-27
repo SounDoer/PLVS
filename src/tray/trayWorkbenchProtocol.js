@@ -6,7 +6,7 @@ export const TRAY_WORKBENCH_PROBE = "tray-workbench://probe";
 
 /**
  * @typedef {{ key: string, kind?: string, text?: string, enabled?: boolean,
- * checked?: boolean, dismiss: boolean, pageTitle?: "Source" | "Preset" | undefined,
+ * checked?: boolean, dismiss: boolean, pageTitle?: "Source" | "Loudness Profile" | "Preset" | undefined,
  * display?: import("../lib/nativeTrayMenu.js").TrayChoiceDisplay,
  * items?: TrayPanelItem[] }} TrayPanelItem
  */
@@ -14,6 +14,7 @@ export const TRAY_WORKBENCH_PROBE = "tray-workbench://probe";
 /** @param {string} key */
 export function trayPageTitle(key) {
   if (/^workbench:[^:]+:source$/.test(key)) return "Source";
+  if (/^workbench:[^:]+:loudness-profile$/.test(key)) return "Loudness Profile";
   if (/^workbench:[^:]+:preset$/.test(key)) return "Preset";
 }
 
