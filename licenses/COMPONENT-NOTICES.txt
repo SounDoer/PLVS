@@ -1995,9 +1995,9 @@ SOFTWARE.
 
 
 ========================================================================
-npm:tailwind-merge@3.7.0
+npm:tailwind-merge@3.7.1
 Declared license: MIT
-Source: https://registry.npmjs.org/tailwind-merge/-/tailwind-merge-3.7.0.tgz
+Source: https://registry.npmjs.org/tailwind-merge/-/tailwind-merge-3.7.1.tgz
 
 --- LICENSE.md ---
 MIT License
